@@ -65,14 +65,105 @@ backend/src/modules/master-data/
 ```
 
 ## 3. Các thành phần dùng chung mà module dựa vào
-- `backend/src/common/guards/auth.guard.ts`
-- `backend/src/common/guards/permission.guard.ts`
-- `backend/src/common/decorators/permission.decorator.ts`
-- `backend/src/common/decorators/current-user.decorator.ts`
+
+### Guards & Decorators
+- `backend/src/common/guards/auth.guard.ts` - Xác thực JWT token
+- `backend/src/common/guards/permission.guard.ts` - Kiểm tra quyền RBAC
+- `backend/src/common/decorators/permission.decorator.ts` - Decorator `@Permission()`
+- `backend/src/common/decorators/current-user.decorator.ts` - Decorator `@CurrentUser()`
+
+### Infrastructure
 - `backend/src/common/filters/http-exception.filter.ts`
 - `backend/src/common/interceptors/response.interceptor.ts`
 - `backend/src/infrastructure/prisma/prisma.module.ts`
 - `backend/src/infrastructure/prisma/prisma.service.ts`
+
+### Foundation Services (từ Module 1)
+- `LogService` - Ghi audit log cho mọi mutation (create, update, deactivate, reactivate)
+- `IdempotencyService` - Xử lý idempotency cho create operations có externalId
+
+## 3.1 RBAC Protection
+
+Tất cả controllers trong module đều được bảo vệ bởi RBAC:
+
+```typescript
+@Controller('master-data/owners')
+@UseGuards(AuthGuard, PermissionGuard)
+export class OwnerController {
+  @Post()
+  @Permission('MASTER_DATA.OWNER.CREATE')
+  async create(@Body() dto: CreateOwnerDto, @CurrentUser() user: RequestUser) {
+    return this.ownerService.create(dto, { userId: user.id });
+  }
+}
+```
+
+### Permission Codes
+| Entity | CREATE | READ | UPDATE | DEACTIVATE | REACTIVATE |
+|--------|--------|------|--------|------------|------------|
+| Owner | MASTER_DATA.OWNER.CREATE | MASTER_DATA.OWNER.READ | MASTER_DATA.OWNER.UPDATE | MASTER_DATA.OWNER.DEACTIVATE | MASTER_DATA.OWNER.REACTIVATE |
+| Item | MASTER_DATA.ITEM.CREATE | MASTER_DATA.ITEM.READ | MASTER_DATA.ITEM.UPDATE | MASTER_DATA.ITEM.DEACTIVATE | MASTER_DATA.ITEM.REACTIVATE |
+| Warehouse | MASTER_DATA.WAREHOUSE.CREATE | MASTER_DATA.WAREHOUSE.READ | MASTER_DATA.WAREHOUSE.UPDATE | MASTER_DATA.WAREHOUSE.DEACTIVATE | MASTER_DATA.WAREHOUSE.REACTIVATE |
+| Zone | MASTER_DATA.ZONE.CREATE | MASTER_DATA.ZONE.READ | MASTER_DATA.ZONE.UPDATE | MASTER_DATA.ZONE.DEACTIVATE | MASTER_DATA.ZONE.REACTIVATE |
+| Location | MASTER_DATA.LOCATION.CREATE | MASTER_DATA.LOCATION.READ | MASTER_DATA.LOCATION.UPDATE | MASTER_DATA.LOCATION.DEACTIVATE | MASTER_DATA.LOCATION.REACTIVATE |
+| UOM | MASTER_DATA.UOM.CREATE | MASTER_DATA.UOM.READ | MASTER_DATA.UOM.UPDATE | MASTER_DATA.UOM.DEACTIVATE | MASTER_DATA.UOM.REACTIVATE |
+| VehicleType | MASTER_DATA.VEHICLE_TYPE.CREATE | MASTER_DATA.VEHICLE_TYPE.READ | MASTER_DATA.VEHICLE_TYPE.UPDATE | MASTER_DATA.VEHICLE_TYPE.DEACTIVATE | MASTER_DATA.VEHICLE_TYPE.REACTIVATE |
+| Vendor | MASTER_DATA.VENDOR.CREATE | MASTER_DATA.VENDOR.READ | MASTER_DATA.VENDOR.UPDATE | MASTER_DATA.VENDOR.DEACTIVATE | MASTER_DATA.VENDOR.REACTIVATE |
+| InventoryStatus | - | MASTER_DATA.INVENTORY_STATUS.READ | MASTER_DATA.INVENTORY_STATUS.UPDATE | - | - |
+| Lookup | - | MASTER_DATA.LOOKUP.READ | - | - | - |
+
+## 3.2 Audit Trail Integration
+
+Mọi mutation đều được ghi audit log thông qua `LogService`:
+
+```typescript
+await this.logService.createAuditLog({
+  entityType: 'WAREHOUSE',
+  entityId: result.id,
+  action: 'CREATE', // CREATE | UPDATE | DEACTIVATE | REACTIVATE
+  userId: ctx.userId,
+  oldValue: oldData, // cho UPDATE/DEACTIVATE/REACTIVATE
+  newValue: result,
+});
+```
+
+## 3.3 Idempotency Support
+
+Create operations hỗ trợ idempotency qua `externalId`:
+
+```typescript
+if (dto.externalId) {
+  return this.idempotencyService.executeWithIdempotency(
+    `WAREHOUSE:${dto.externalId}`,
+    doCreate,
+  );
+}
+```
+
+## 3.4 FK Pre-validation
+
+Services validate FK existence trước khi create/update để trả lỗi thân thiện:
+
+```typescript
+// item.service.ts
+const baseUom = await this.prisma.mdUom.findUnique({ where: { id: dto.baseUomId } });
+if (!baseUom) throw new BadRequestException('Base UOM not found');
+```
+
+## 3.5 Transaction-based Deactivation
+
+Warehouse và Zone deactivation được wrap trong `$transaction` để tránh race condition:
+
+```typescript
+async deactivate(id, dto, ctx) {
+  return this.prisma.$transaction(async (tx) => {
+    const warehouse = await tx.mdWarehouse.findUnique({ where: { id } });
+    const activeZoneCount = await tx.mdZone.count({ where: { warehouseId: id, isActive: true } });
+    if (activeZoneCount > 0) throw new BadRequestException('Cannot deactivate');
+    return tx.mdWarehouse.update({ ... });
+  });
+}
+```
 
 ## 4. Nguyên tắc response chung
 Tất cả API thành công đều được wrap bởi `ResponseInterceptor` theo dạng:

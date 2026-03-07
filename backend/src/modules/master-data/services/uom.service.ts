@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { UomRepository } from '../repositories/uom.repository';
-import { DeactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
+import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { CreateUomDto, UpdateUomDto, ListUomDto } from '../dto/uom.dto';
 import { MdUom } from '@prisma/client';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 export { CreateUomDto, UpdateUomDto, ListUomDto };
 
 @Injectable()
 export class UomService {
-  constructor(private readonly uomRepository: UomRepository) {}
+  constructor(
+    private readonly uomRepository: UomRepository,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateUomDto, ctx: RequestContext): Promise<MdUom> {
     const existing = await this.uomRepository.findByCode(dto.uomCode);
@@ -52,7 +58,7 @@ export class UomService {
     return this.uomRepository.deactivate(id, ctx.userId!, uom.rowVersion);
   }
 
-  async reactivate(id: string, dto: any, ctx: RequestContext): Promise<MdUom> {
+  async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdUom> {
     const uom = await this.findById(id);
     if (uom.isActive) throw new BadRequestException('UOM is already active');
     return this.uomRepository.reactivate(id, ctx.userId!, uom.rowVersion);
