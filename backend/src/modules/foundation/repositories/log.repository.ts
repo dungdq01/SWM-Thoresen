@@ -15,17 +15,34 @@ export class LogRepository {
     entityId?: string;
     correlationId?: string;
     userId?: string;
+    page?: number;
+    limit?: number;
+    fromDate?: Date;
+    toDate?: Date;
   }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
+
     const where: Prisma.AuditLogWhereInput = {
       ...(filters.entityType ? { entityType: filters.entityType } : {}),
       ...(filters.entityId ? { entityId: filters.entityId } : {}),
       ...(filters.correlationId ? { correlationId: filters.correlationId } : {}),
       ...(filters.userId ? { userId: filters.userId } : {}),
+      ...(filters.fromDate || filters.toDate
+        ? {
+            occurredAt: {
+              ...(filters.fromDate ? { gte: filters.fromDate } : {}),
+              ...(filters.toDate ? { lte: filters.toDate } : {}),
+            },
+          }
+        : {}),
     };
 
     return this.prisma.auditLog.findMany({
       where,
       orderBy: { occurredAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 
@@ -33,15 +50,35 @@ export class LogRepository {
     return this.prisma.auditLog.create({ data });
   }
 
-  listExceptionLogs(filters: { sourceModule?: string; isResolved?: boolean }) {
+  listExceptionLogs(filters: {
+    sourceModule?: string;
+    isResolved?: boolean;
+    page?: number;
+    limit?: number;
+    fromDate?: Date;
+    toDate?: Date;
+  }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
+
     const where: Prisma.ExceptionLogWhereInput = {
       ...(filters.sourceModule ? { sourceModule: filters.sourceModule } : {}),
       ...(filters.isResolved !== undefined ? { isResolved: filters.isResolved } : {}),
+      ...(filters.fromDate || filters.toDate
+        ? {
+            occurredAt: {
+              ...(filters.fromDate ? { gte: filters.fromDate } : {}),
+              ...(filters.toDate ? { lte: filters.toDate } : {}),
+            },
+          }
+        : {}),
     };
 
     return this.prisma.exceptionLog.findMany({
       where,
       orderBy: { occurredAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 

@@ -321,6 +321,8 @@ audit_log / exception_log / idempotency_record là bảng runtime safety và tru
   - `business_rule_catalog`
   - `decision_log`
   - `change_control_record`
+- `services/governance.service.ts`
+  - **HI-3 Fix:** CRUD operations + audit log được wrap trong `prisma.$transaction()` để đảm bảo transaction safety
 
 ### Logging / idempotency
 - `repositories/log.repository.ts`
@@ -333,3 +335,6 @@ audit_log / exception_log / idempotency_record là bảng runtime safety và tru
 - `idempotency_record` là source of truth cho retry-safe command.
 - `audit_log` và `exception_log` nên được đọc qua API/service, không nên query ad-hoc không có filter.
 - Khi bổ sung bảng mới cho `foundation`, cần giữ đúng nguyên tắc: controller mỏng, service xử lý rule, repository chỉ truy cập DB.
+- **List endpoints hỗ trợ pagination:** `page` (default 1), `limit` (default 20, max 100)
+- **Audit log và Exception log hỗ trợ date filter:** `fromDate`, `toDate`
+- **Governance CRUD operations:** Luôn được wrap trong transaction với audit log để đảm bảo data integrity

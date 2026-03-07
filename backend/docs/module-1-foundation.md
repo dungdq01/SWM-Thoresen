@@ -642,8 +642,9 @@ Các fix theo feedback từ `docs/feedback/fb_M01.md`:
 ### HIGH Fixes
 | ID | Issue | File | Fix |
 |---|---|---|---|
-| HI-1 | Missing pagination | `log.dto.ts` | Thêm `page`, `limit` cho audit/exception logs |
+| HI-1 | Missing pagination | `role.dto.ts`, `log.dto.ts`, `log.repository.ts`, `role.repository.ts` | Thêm `page`, `limit` cho tất cả list endpoints + implement skip/take |
 | HI-2 | DEV_AUTH_BYPASS guard | `auth.guard.ts` | Thêm `NODE_ENV !== 'production'` check |
+| HI-3 | Audit log transaction safety | `governance.service.ts` | Wrap CRUD + audit log trong Prisma `$transaction()` |
 | HI-4 | Missing TRF/ADJ sequences | `seed.ts` | Thêm TRF, ADJ vào seed |
 | HI-5 | Health check DB | `health.controller.ts` | Thêm `SELECT 1` query |
 | HI-7 | Inactive permission | `permission.repository.ts` | Thêm `isActive: true` filter |
@@ -651,4 +652,4 @@ Các fix theo feedback từ `docs/feedback/fb_M01.md`:
 ### MEDIUM Fixes
 | ID | Issue | File | Fix |
 |---|---|---|---|
-| MD-8 | Date range filter | `log.dto.ts` | Thêm `fromDate`, `toDate` |
+| MD-8 | Date range filter | `log.dto.ts`, `log.repository.ts` | Thêm `fromDate`, `toDate` với filter trong repository |

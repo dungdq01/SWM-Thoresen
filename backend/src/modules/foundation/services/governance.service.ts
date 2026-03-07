@@ -12,12 +12,14 @@ import {
 } from '@prisma/client';
 import { GovernanceRepository } from '../repositories/governance.repository';
 import { LogService } from './log.service';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 @Injectable()
 export class GovernanceService {
   constructor(
     private readonly governanceRepository: GovernanceRepository,
     private readonly logService: LogService,
+    private readonly prisma: PrismaService,
   ) {}
 
   listRules(filters: { domain?: string; status?: string }) {
@@ -44,23 +46,38 @@ export class GovernanceService {
       throw new ConflictException(`Rule code ${data.ruleCode} đã tồn tại.`);
     }
 
-    const created = await this.governanceRepository.createRule({
-      ...data,
-      currentStatus: data.currentStatus as BusinessRuleStatus,
-      effectivePhase: data.effectivePhase as EffectivePhase,
-    });
+    // HI-3 Fix: Wrap create + audit log in transaction
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.businessRuleCatalog.create({
+        data: {
+          ruleCode: data.ruleCode,
+          domain: data.domain,
+          title: data.title,
+          description: data.description,
+          currentStatus: data.currentStatus as BusinessRuleStatus,
+          sourceOfTruth: data.sourceOfTruth,
+          brdReference: data.brdReference,
+          supersedes: data.supersedes,
+          effectivePhase: data.effectivePhase as EffectivePhase,
+          ownerRole: data.ownerRole,
+        },
+      });
 
-    await this.logService.createAuditLog({
-      entityType: 'BUSINESS_RULE',
-      entityId: created.id,
-      action: 'CREATE_BUSINESS_RULE',
-      newValue: created,
-      userId: data.actorUserId,
-      userRole: data.actorRole,
-      requestId: data.requestId,
-      sourceModule: 'FOUNDATION',
+      await tx.auditLog.create({
+        data: {
+          entityType: 'BUSINESS_RULE',
+          entityId: created.id,
+          action: 'CREATE_BUSINESS_RULE',
+          newValue: JSON.stringify(created),
+          userId: data.actorUserId,
+          userRole: data.actorRole,
+          requestId: data.requestId,
+          sourceModule: 'FOUNDATION',
+        },
+      });
+
+      return created;
     });
-    return created;
   }
 
   async updateRule(
@@ -84,24 +101,38 @@ export class GovernanceService {
       throw new NotFoundException(`Không tìm thấy business rule với id ${id}.`);
     }
 
-    const updated = await this.governanceRepository.updateRule(id, {
-      ...data,
-      currentStatus: data.currentStatus as BusinessRuleStatus | undefined,
-      effectivePhase: data.effectivePhase as EffectivePhase | undefined,
-    });
+    // HI-3 Fix: Wrap update + audit log in transaction
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.businessRuleCatalog.update({
+        where: { id },
+        data: {
+          ...(data.title !== undefined ? { title: data.title } : {}),
+          ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(data.currentStatus !== undefined ? { currentStatus: data.currentStatus as BusinessRuleStatus } : {}),
+          ...(data.sourceOfTruth !== undefined ? { sourceOfTruth: data.sourceOfTruth } : {}),
+          ...(data.brdReference !== undefined ? { brdReference: data.brdReference } : {}),
+          ...(data.supersedes !== undefined ? { supersedes: data.supersedes } : {}),
+          ...(data.effectivePhase !== undefined ? { effectivePhase: data.effectivePhase as EffectivePhase } : {}),
+          ...(data.ownerRole !== undefined ? { ownerRole: data.ownerRole } : {}),
+        },
+      });
 
-    await this.logService.createAuditLog({
-      entityType: 'BUSINESS_RULE',
-      entityId: id,
-      action: 'UPDATE_BUSINESS_RULE',
-      oldValue: existing,
-      newValue: updated,
-      userId: data.actorUserId,
-      userRole: data.actorRole,
-      requestId: data.requestId,
-      sourceModule: 'FOUNDATION',
+      await tx.auditLog.create({
+        data: {
+          entityType: 'BUSINESS_RULE',
+          entityId: id,
+          action: 'UPDATE_BUSINESS_RULE',
+          oldValue: JSON.stringify(existing),
+          newValue: JSON.stringify(updated),
+          userId: data.actorUserId,
+          userRole: data.actorRole,
+          requestId: data.requestId,
+          sourceModule: 'FOUNDATION',
+        },
+      });
+
+      return updated;
     });
-    return updated;
   }
 
   listDecisionLogs(filters: { contextDomain?: string; status?: string }) {
@@ -128,23 +159,40 @@ export class GovernanceService {
       throw new ConflictException(`Decision no ${data.decisionNo} đã tồn tại.`);
     }
 
-    const created = await this.governanceRepository.createDecisionLog({
-      ...data,
-      status: data.status as DecisionLogStatus,
-      decidedBy: data.actorUserId,
-    });
+    // HI-3 Fix: Wrap create + audit log in transaction
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.decisionLog.create({
+        data: {
+          decisionNo: data.decisionNo,
+          title: data.title,
+          decisionType: data.decisionType,
+          contextDomain: data.contextDomain,
+          summary: data.summary,
+          decidedValue: data.decidedValue,
+          rationale: data.rationale,
+          status: data.status as DecisionLogStatus,
+          sourceRefs: data.sourceRefs,
+          impactedModules: data.impactedModules,
+          decidedBy: data.actorUserId,
+          decidedAt: new Date(),
+        },
+      });
 
-    await this.logService.createAuditLog({
-      entityType: 'DECISION_LOG',
-      entityId: created.id,
-      action: 'CREATE_DECISION_LOG',
-      newValue: created,
-      userId: data.actorUserId,
-      userRole: data.actorRole,
-      requestId: data.requestId,
-      sourceModule: 'FOUNDATION',
+      await tx.auditLog.create({
+        data: {
+          entityType: 'DECISION_LOG',
+          entityId: created.id,
+          action: 'CREATE_DECISION_LOG',
+          newValue: JSON.stringify(created),
+          userId: data.actorUserId,
+          userRole: data.actorRole,
+          requestId: data.requestId,
+          sourceModule: 'FOUNDATION',
+        },
+      });
+
+      return created;
     });
-    return created;
   }
 
   async createChangeControl(data: {
@@ -166,24 +214,38 @@ export class GovernanceService {
       throw new ConflictException(`Change no ${data.changeNo} đã tồn tại.`);
     }
 
-    const created = await this.governanceRepository.createChangeControl({
-      ...data,
-      requestedBy: data.actorUserId,
-      priority: data.priority as ChangePriority,
-      status: data.status as ChangeControlStatus,
-    });
+    // HI-3 Fix: Wrap create + audit log in transaction
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.changeControlRecord.create({
+        data: {
+          changeNo: data.changeNo,
+          changeType: data.changeType,
+          title: data.title,
+          description: data.description,
+          requestedBy: data.actorUserId,
+          priority: data.priority as ChangePriority,
+          impactSummary: data.impactSummary,
+          impactedModules: data.impactedModules,
+          status: data.status as ChangeControlStatus,
+          targetRelease: data.targetRelease,
+        },
+      });
 
-    await this.logService.createAuditLog({
-      entityType: 'CHANGE_CONTROL',
-      entityId: created.id,
-      action: 'CREATE_CHANGE_CONTROL',
-      newValue: created,
-      userId: data.actorUserId,
-      userRole: data.actorRole,
-      requestId: data.requestId,
-      sourceModule: 'FOUNDATION',
+      await tx.auditLog.create({
+        data: {
+          entityType: 'CHANGE_CONTROL',
+          entityId: created.id,
+          action: 'CREATE_CHANGE_CONTROL',
+          newValue: JSON.stringify(created),
+          userId: data.actorUserId,
+          userRole: data.actorRole,
+          requestId: data.requestId,
+          sourceModule: 'FOUNDATION',
+        },
+      });
+
+      return created;
     });
-    return created;
   }
 
   /**

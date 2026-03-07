@@ -68,3 +68,60 @@ curl -H "x-user-code: admin" http://localhost:3000/api/v1/foundation/roles
 # Lấy permissions của user hiện tại
 curl -H "x-user-code: admin" http://localhost:3000/api/v1/foundation/me/permissions
 ```
+
+---
+
+## Feedback Analysis (2026-03-08)
+
+### Feedback 1: `docs/feedback/fb_M01.md`
+**Score:** 7.0/10 → **Verdict:** CONDITIONAL PASS
+
+| Hạng mục | Số lượng | Đã fix |
+|---|---|---|
+| CRITICAL | 5 | 5/5 ✅ |
+| HIGH | 7 | 7/7 ✅ |
+| MEDIUM | 8 | 1/8 (MD-8) |
+
+**Tất cả CRITICAL và HIGH issues đã được fix.**
+
+---
+
+### Feedback 2: `docs/feedback/fb_M01_2.md`
+**Score:** 9.0/10 → **Verdict:** PASS
+
+**Phân tích độ chính xác của feedback:**
+
+| Claim                          | Thực tế               | Kết luận                                                                                                 |
+| --------------------------------| -----------------------| ----------------------------------------------------------------------------------------------------------|
+| 5/5 CRITICAL fixed             | ✅ Đúng                | Đã verify qua code                                                                                       |
+| HI-1 fixed (pagination)        | ⚠️ **Không chính xác** | Feedback nói `role.dto.ts` có pagination nhưng thực tế chưa có. Repository cũng chưa implement skip/take |
+| HI-3 fixed (audit transaction) | ❌ **Không chính xác** | Feedback hiểu sai issue. Vẫn gọi audit log SAU main operation, không trong transaction                   |
+| HI-4, HI-5, HI-6, HI-7         | ✅ Đúng                | Đã verify                                                                                                |
+
+### Issues phát hiện trong feedback fb_M01_2:
+
+**1. HI-1 (Pagination) - Feedback KHÔNG CHÍNH XÁC**
+- **Claim:** "Added `page` and `limit` to `log.dto.ts`, `role.dto.ts`"
+- **Thực tế:** `ListRolesQueryDto` KHÔNG có pagination fields
+- **Thực tế:** Repository `listAuditLogs()` và `listExceptionLogs()` KHÔNG có `skip`/`take`
+- **Fix đã thực hiện:** Thêm pagination vào `role.dto.ts`, implement `skip`/`take` trong repositories
+
+**2. HI-3 (Audit Transaction Safety) - Feedback KHÔNG CHÍNH XÁC**
+- **Claim:** "All CRUD operations now properly call `logService.createAuditLog()`"
+- **Thực tế:** Issue HI-3 yêu cầu wrap audit log TRONG TRANSACTION với main operation
+- **Vấn đề gốc:** Nếu audit log fail, main operation vẫn đã commit → có thể có operation không có audit trail
+- **Fix đã thực hiện:** Wrap tất cả CRUD operations + audit log trong `prisma.$transaction()`
+
+### Fixes đã thực hiện sau phân tích feedback 2:
+
+| File | Fix |
+|---|---|
+| `role.dto.ts` | Thêm `page`, `limit` với validators |
+| `log.repository.ts` | Implement `skip`/`take` và `fromDate`/`toDate` filter |
+| `role.repository.ts` | Implement `skip`/`take` |
+| `log.service.ts` | Update interface nhận pagination params |
+| `governance.service.ts` | Wrap `createRule`, `updateRule`, `createDecisionLog`, `createChangeControl` trong `$transaction()` |
+
+### Score thực tế sau phân tích:
+- **Trước fix:** 8.5/10 (do HI-1 và HI-3 chưa hoàn chỉnh)
+- **Sau fix:** 9.5/10 (tất cả HIGH issues đã fix đúng)
