@@ -1,0 +1,1 @@
+export { SettingsAppLayout } from './SettingsLayout'
