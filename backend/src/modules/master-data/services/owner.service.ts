@@ -3,10 +3,18 @@ import { OwnerRepository } from '../repositories/owner.repository';
 import { CreateOwnerDto, UpdateOwnerDto, ListOwnerDto } from '../dto/owner.dto';
 import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { MdOwner } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 @Injectable()
 export class OwnerService {
-  constructor(private readonly ownerRepository: OwnerRepository) {}
+  constructor(
+    private readonly ownerRepository: OwnerRepository,
+    private readonly prisma: PrismaService,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateOwnerDto, ctx: RequestContext): Promise<MdOwner> {
     const existing = await this.ownerRepository.findByCode(dto.ownerCode);

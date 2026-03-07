@@ -3,12 +3,20 @@ import { LocationRepository } from '../repositories/location.repository';
 import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { CreateLocationDto, UpdateLocationDto, ListLocationDto } from '../dto/location.dto';
 import { MdLocation, LocationStatus } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 export { CreateLocationDto, UpdateLocationDto, ListLocationDto };
 
 @Injectable()
 export class LocationService {
-  constructor(private readonly locationRepository: LocationRepository) {}
+  constructor(
+    private readonly locationRepository: LocationRepository,
+    private readonly prisma: PrismaService,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateLocationDto, ctx: RequestContext): Promise<MdLocation> {
     const existing = await this.locationRepository.findByWarehouseAndCode(dto.warehouseId, dto.locationCode);

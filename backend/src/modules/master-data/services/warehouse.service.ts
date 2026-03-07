@@ -3,34 +3,59 @@ import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { CreateWarehouseDto, UpdateWarehouseDto, ListWarehouseDto } from '../dto/warehouse.dto';
 import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { MdWarehouse } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 @Injectable()
 export class WarehouseService {
-  constructor(private readonly warehouseRepository: WarehouseRepository) {}
+  constructor(
+    private readonly warehouseRepository: WarehouseRepository,
+    private readonly prisma: PrismaService,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateWarehouseDto, ctx: RequestContext): Promise<MdWarehouse> {
-    const existing = await this.warehouseRepository.findByCode(dto.warehouseCode);
-    if (existing) {
-      throw new ConflictException(`Warehouse code ${dto.warehouseCode} already exists`);
-    }
+    const doCreate = async () => {
+      const existing = await this.warehouseRepository.findByCode(dto.warehouseCode);
+      if (existing) {
+        throw new ConflictException(`Warehouse code ${dto.warehouseCode} already exists`);
+      }
 
-    return this.warehouseRepository.create({
-      warehouseCode: dto.warehouseCode,
-      warehouseName: dto.warehouseName,
-      siteId: dto.siteId || 'TVL-SITE',
-      warehouseType: dto.warehouseType,
-      totalAreaM2: dto.totalAreaM2,
-      usableAreaM2: dto.usableAreaM2,
-      maxHeightM: dto.maxHeightM,
-      maxCapacityMt: dto.maxCapacityMt,
-      address: dto.address,
-      hasWeighbridge: dto.hasWeighbridge || false,
-      weighbridgeCount: dto.weighbridgeCount,
-      isBonded: dto.isBonded || false,
-      capacityWarningPct: dto.capacityWarningPct,
-      createdBy: ctx.userId,
-      updatedBy: ctx.userId,
-    });
+      const result = await this.warehouseRepository.create({
+        warehouseCode: dto.warehouseCode,
+        warehouseName: dto.warehouseName,
+        siteId: dto.siteId || 'TVL-SITE',
+        warehouseType: dto.warehouseType,
+        totalAreaM2: dto.totalAreaM2,
+        usableAreaM2: dto.usableAreaM2,
+        maxHeightM: dto.maxHeightM,
+        maxCapacityMt: dto.maxCapacityMt,
+        address: dto.address,
+        hasWeighbridge: dto.hasWeighbridge || false,
+        weighbridgeCount: dto.weighbridgeCount,
+        isBonded: dto.isBonded || false,
+        capacityWarningPct: dto.capacityWarningPct,
+        createdBy: ctx.userId,
+        updatedBy: ctx.userId,
+      });
+
+      await this.logService.createAuditLog({
+        entityType: 'WAREHOUSE',
+        entityId: result.id,
+        action: 'CREATE',
+        userId: ctx.userId,
+        newValue: result,
+      });
+
+      return result;
+    };
+
+    if (dto.externalId) {
+      return this.idempotencyService.executeWithIdempotency(`WAREHOUSE:${dto.externalId}`, doCreate);
+    }
+    return doCreate();
   }
 
   async findById(id: string): Promise<MdWarehouse> {
@@ -53,7 +78,22 @@ export class WarehouseService {
     const warehouse = await this.findById(id);
     if (!warehouse.isActive) throw new BadRequestException('Cannot update inactive warehouse');
 
-    return this.warehouseRepository.update(
+    // HI-3: FK pre-validation
+    if (dto.defaultReceivingLocationId) {
+      const loc = await this.prisma.mdLocation.findUnique({ where: { id: dto.defaultReceivingLocationId } });
+      if (!loc) throw new BadRequestException('Default receiving location not found');
+    }
+    if (dto.defaultStagingLocationId) {
+      const loc = await this.prisma.mdLocation.findUnique({ where: { id: dto.defaultStagingLocationId } });
+      if (!loc) throw new BadRequestException('Default staging location not found');
+    }
+    if (dto.defaultShippingLocationId) {
+      const loc = await this.prisma.mdLocation.findUnique({ where: { id: dto.defaultShippingLocationId } });
+      if (!loc) throw new BadRequestException('Default shipping location not found');
+    }
+
+    const oldValue = { ...warehouse };
+    const result = await this.warehouseRepository.update(
       id,
       {
         warehouseName: dto.warehouseName,
@@ -74,24 +114,70 @@ export class WarehouseService {
       },
       BigInt(dto.rowVersion),
     );
+
+    await this.logService.createAuditLog({
+      entityType: 'WAREHOUSE',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdWarehouse> {
-    const warehouse = await this.findById(id);
-    if (!warehouse.isActive) throw new BadRequestException('Warehouse is already inactive');
+    // HI-6: Wrap in transaction to prevent race condition
+    return this.prisma.$transaction(async (tx) => {
+      const warehouse = await tx.mdWarehouse.findUnique({ where: { id } });
+      if (!warehouse) throw new NotFoundException(`Warehouse ${id} not found`);
+      if (!warehouse.isActive) throw new BadRequestException('Warehouse is already inactive');
 
-    const hasActiveZones = await this.warehouseRepository.hasActiveZones(id);
-    if (hasActiveZones) {
-      throw new BadRequestException('Cannot deactivate warehouse with active zones');
-    }
+      const activeZoneCount = await tx.mdZone.count({ where: { warehouseId: id, isActive: true } });
+      if (activeZoneCount > 0) {
+        throw new BadRequestException('Cannot deactivate warehouse with active zones');
+      }
 
-    return this.warehouseRepository.deactivate(id, ctx.userId!, warehouse.rowVersion);
+      const result = await tx.mdWarehouse.update({
+        where: { id, rowVersion: warehouse.rowVersion },
+        data: {
+          isActive: false,
+          deactivatedAt: new Date(),
+          deactivatedBy: ctx.userId,
+          rowVersion: { increment: 1 },
+        },
+      });
+
+      await this.logService.createAuditLog({
+        entityType: 'WAREHOUSE',
+        entityId: id,
+        action: 'DEACTIVATE',
+        userId: ctx.userId,
+        oldValue: warehouse,
+        newValue: result,
+      });
+
+      return result;
+    });
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdWarehouse> {
     const warehouse = await this.findById(id);
     if (warehouse.isActive) throw new BadRequestException('Warehouse is already active');
-    return this.warehouseRepository.reactivate(id, ctx.userId!, warehouse.rowVersion);
+    
+    const result = await this.warehouseRepository.reactivate(id, ctx.userId!, warehouse.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'WAREHOUSE',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: warehouse,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdWarehouse[]> {

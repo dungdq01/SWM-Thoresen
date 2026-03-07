@@ -3,18 +3,45 @@ import { ItemRepository } from '../repositories/item.repository';
 import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { CreateItemDto, UpdateItemDto, ListItemDto } from '../dto/item.dto';
 import { MdItem } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 export { CreateItemDto, UpdateItemDto, ListItemDto };
 
 @Injectable()
 export class ItemService {
-  constructor(private readonly itemRepository: ItemRepository) {}
+  constructor(
+    private readonly itemRepository: ItemRepository,
+    private readonly prisma: PrismaService,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateItemDto, ctx: RequestContext): Promise<MdItem> {
-    const existing = await this.itemRepository.findByCode(dto.itemCode);
-    if (existing) throw new ConflictException(`Item code ${dto.itemCode} already exists`);
+    const doCreate = async () => {
+      const existing = await this.itemRepository.findByCode(dto.itemCode);
+      if (existing) throw new ConflictException(`Item code ${dto.itemCode} already exists`);
 
-    return this.itemRepository.create({
+      // HI-3: FK pre-validation
+      const baseUom = await this.prisma.mdUom.findUnique({ where: { id: dto.baseUomId } });
+      if (!baseUom) throw new BadRequestException('Base UOM not found');
+      const billingUom = await this.prisma.mdUom.findUnique({ where: { id: dto.billingUomId } });
+      if (!billingUom) throw new BadRequestException('Billing UOM not found');
+      if (dto.catchWeightUomId) {
+        const catchUom = await this.prisma.mdUom.findUnique({ where: { id: dto.catchWeightUomId } });
+        if (!catchUom) throw new BadRequestException('Catch weight UOM not found');
+      }
+      if (dto.defaultZoneId) {
+        const zone = await this.prisma.mdZone.findUnique({ where: { id: dto.defaultZoneId } });
+        if (!zone) throw new BadRequestException('Default zone not found');
+      }
+      if (dto.packagingMaterialItemId) {
+        const pkgItem = await this.prisma.mdItem.findUnique({ where: { id: dto.packagingMaterialItemId } });
+        if (!pkgItem) throw new BadRequestException('Packaging material item not found');
+      }
+
+      const result = await this.itemRepository.create({
       itemCode: dto.itemCode,
       itemName: dto.itemName,
       itemNameEn: dto.itemNameEn,
@@ -47,6 +74,22 @@ export class ItemService {
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
+
+      await this.logService.createAuditLog({
+        entityType: 'ITEM',
+        entityId: result.id,
+        action: 'CREATE',
+        userId: ctx.userId,
+        newValue: result,
+      });
+
+      return result;
+    };
+
+    if (dto.externalId) {
+      return this.idempotencyService.executeWithIdempotency(`ITEM:${dto.externalId}`, doCreate);
+    }
+    return doCreate();
   }
 
   async findById(id: string): Promise<MdItem> {
@@ -63,7 +106,18 @@ export class ItemService {
     const item = await this.findById(id);
     if (!item.isActive) throw new BadRequestException('Cannot update inactive item');
 
-    return this.itemRepository.update(id, {
+    // HI-3: FK pre-validation
+    if (dto.defaultZoneId) {
+      const zone = await this.prisma.mdZone.findUnique({ where: { id: dto.defaultZoneId } });
+      if (!zone) throw new BadRequestException('Default zone not found');
+    }
+    if (dto.packagingMaterialItemId) {
+      const pkgItem = await this.prisma.mdItem.findUnique({ where: { id: dto.packagingMaterialItemId } });
+      if (!pkgItem) throw new BadRequestException('Packaging material item not found');
+    }
+
+    const oldValue = { ...item };
+    const result = await this.itemRepository.update(id, {
       itemName: dto.itemName,
       itemNameEn: dto.itemNameEn,
       altItemCode: dto.altItemCode,
@@ -88,18 +142,53 @@ export class ItemService {
       isStorageBillable: dto.isStorageBillable,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
+
+    await this.logService.createAuditLog({
+      entityType: 'ITEM',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdItem> {
     const item = await this.findById(id);
     if (!item.isActive) throw new BadRequestException('Item is already inactive');
-    return this.itemRepository.deactivate(id, ctx.userId!, item.rowVersion);
+    
+    const result = await this.itemRepository.deactivate(id, ctx.userId!, item.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'ITEM',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: item,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdItem> {
     const item = await this.findById(id);
     if (item.isActive) throw new BadRequestException('Item is already active');
-    return this.itemRepository.reactivate(id, ctx.userId!, item.rowVersion);
+    
+    const result = await this.itemRepository.reactivate(id, ctx.userId!, item.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'ITEM',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: item,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdItem[]> {
