@@ -96,13 +96,16 @@ Lỗi được wrap bởi `HttpExceptionFilter` theo dạng:
 ## 5. Auth, permission và idempotency đang hoạt động ra sao?
 ### Auth
 - Mặc định hệ thống dùng `AuthGuard`.
-- Nếu `DEV_AUTH_BYPASS=true`, backend đọc user từ header `x-user-code`, nếu không có sẽ mặc định là `admin`.
+- Nếu `DEV_AUTH_BYPASS=true` **và `NODE_ENV !== 'production'`**, backend đọc user từ header `x-user-code`, nếu không có sẽ mặc định là `admin`.
+- **Lưu ý bảo mật (HI-2):** DEV_AUTH_BYPASS sẽ bị bỏ qua trong production để tránh rủi ro bảo mật.
 - Nếu tắt bypass, backend yêu cầu `Authorization: Bearer <token>` và token phải có `userCode`.
 
 ### Permission
 - Mỗi endpoint gắn `@Permission(...)`.
 - `PermissionGuard` đọc permission effective từ user hiện tại.
+- **DENY effect (CR-1):** Nếu role có DENY permission, permission đó sẽ bị loại khỏi effective permissions.
 - Nếu request có header `x-warehouse-code`, guard sẽ check warehouse scope của user.
+- **Owner scope (CR-2):** Nếu request có header `x-owner-id` và user có `ownerScopes`, guard sẽ check owner scope.
 
 ### Idempotency
 - Các command API chính hỗ trợ header `Idempotency-Key`.
@@ -492,7 +495,7 @@ Seed đang tạo sẵn:
   - Outbound: `CUSTOMER_REJECT`, `WEIGHT_MISMATCH`, `QUALITY_ISSUE`
   - Inventory: `CYCLE_COUNT_ADJUST`, `DAMAGE_WRITEOFF`, `STATUS_CHANGE`, `SHRINKAGE`
   - General: `OTHER`, `MANUAL_WEIGHT`, `MANUAL_ADJUST`, `DUPLICATE_RETRY`
-- **Number sequences:** `RCV`, `SHP`, `WRK`, `TRX`, `DN`
+- **Number sequences:** `RCV`, `SHP`, `WRK`, `TRX`, `DN`, `TRF`, `ADJ`
 - **Business rule, decision log, change control record:** mẫu
 
 ## 8. Internal shared services cho module khác
@@ -566,8 +569,10 @@ const result = await idempotencyService.execute({
 - Command API nên gửi thêm `Idempotency-Key` để an toàn retry.
 - Khi chạy local, có thể dùng `DEV_AUTH_BYPASS=true` và gửi `x-user-code: admin`.
 - Nếu thao tác có scope warehouse, có thể gửi `x-warehouse-code: WH5.1`.
+- Nếu thao tác có scope owner (ví dụ: CUST_VIEWER), gửi `x-owner-id: <owner_id>`.
 - Tất cả API thật đang nằm dưới prefix `/api/v1`.
 - Dữ liệu role/permission của user hiện tại có thể bootstrap nhanh bằng `GET /api/v1/foundation/me/permissions`.
+- **Audit logs và Exception logs API** hỗ trợ pagination (`page`, `limit`) và date range filter (`fromDate`, `toDate`).
 
 ## 10. Hướng dẫn chạy backend local
 
@@ -618,3 +623,32 @@ curl -H "x-user-code: admin" http://localhost:3000/api/v1/foundation/me/permissi
 | `P1003: Database does not exist` | Database chưa được tạo | Chạy `CREATE DATABASE swms;` trong psql/pgAdmin |
 | `P1001: Can't reach database` | PostgreSQL chưa chạy hoặc sai port | Kiểm tra PostgreSQL service và `DATABASE_URL` trong `.env` |
 | `relation does not exist` | Chưa chạy migration | Chạy `npx prisma migrate dev` |
+
+---
+
+## 11. Changelog - Code Review Fixes (2026-03-08)
+
+Các fix theo feedback từ `docs/feedback/fb_M01.md`:
+
+### CRITICAL Fixes
+| ID | Issue | File | Fix |
+|---|---|---|---|
+| CR-1 | DENY permission effect | `permission.repository.ts` | Implement DENY subtraction logic |
+| CR-2 | Owner scope enforcement | `permission.guard.ts` | Thêm check `x-owner-id` header |
+| CR-3 | Idempotency race condition | `idempotency.service.ts` | Insert-first pattern với P2002 error handling |
+| CR-4 | PrismaService disconnect | `prisma.service.ts` | Thêm `onModuleDestroy()` |
+| CR-5 | Timezone bug | `number-sequence.service.ts` | Dùng `Asia/Ho_Chi_Minh` timezone |
+
+### HIGH Fixes
+| ID | Issue | File | Fix |
+|---|---|---|---|
+| HI-1 | Missing pagination | `log.dto.ts` | Thêm `page`, `limit` cho audit/exception logs |
+| HI-2 | DEV_AUTH_BYPASS guard | `auth.guard.ts` | Thêm `NODE_ENV !== 'production'` check |
+| HI-4 | Missing TRF/ADJ sequences | `seed.ts` | Thêm TRF, ADJ vào seed |
+| HI-5 | Health check DB | `health.controller.ts` | Thêm `SELECT 1` query |
+| HI-7 | Inactive permission | `permission.repository.ts` | Thêm `isActive: true` filter |
+
+### MEDIUM Fixes
+| ID | Issue | File | Fix |
+|---|---|---|---|
+| MD-8 | Date range filter | `log.dto.ts` | Thêm `fromDate`, `toDate` |

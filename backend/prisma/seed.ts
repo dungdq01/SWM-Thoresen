@@ -304,7 +304,8 @@ async function main() {
     });
   }
 
-  for (const sequenceCode of ['RCV', 'SHP', 'WRK', 'TRX', 'DN']) {
+  // HI-4 Fix: Add TRF and ADJ sequences for Module 6 (Inventory Control)
+  for (const sequenceCode of ['RCV', 'SHP', 'WRK', 'TRX', 'DN', 'TRF', 'ADJ']) {
     await prisma.numberSequence.upsert({
       where: { sequenceCode },
       update: {

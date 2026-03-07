@@ -1,0 +1,8 @@
+export { Header } from './Header'
+export { HeroSection } from './HeroSection'
+export { PartnersSection } from './PartnersSection'
+export { FeaturesSection } from './FeaturesSection'
+export { MobileAppSection } from './MobileAppSection'
+export { WhyChooseUsSection } from './WhyChooseUsSection'
+export { CTASection } from './CTASection'
+export { Footer } from './Footer'

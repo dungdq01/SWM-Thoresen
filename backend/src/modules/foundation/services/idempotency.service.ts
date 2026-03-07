@@ -31,7 +31,37 @@ export class IdempotencyService {
     }
 
     const requestHash = this.hashPayload(params.payload);
-    const existing = await this.logRepository.getIdempotencyByKey(trimmedKey);
+
+    // CR-3 Fix: Insert-first pattern to prevent race condition
+    // Try to create record first, handle conflict if already exists
+    let existing = await this.logRepository.getIdempotencyByKey(trimmedKey);
+
+    if (!existing) {
+      try {
+        await this.logRepository.createIdempotencyRecord({
+          idempotencyKey: trimmedKey,
+          commandName: params.commandName,
+          sourceModule: params.sourceModule,
+          requestHash,
+          requestPayload: params.payload as never,
+          correlationId: params.correlationId,
+          lockedUntil: new Date(Date.now() + 60_000),
+          expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+      } catch (error: unknown) {
+        // Handle unique constraint violation (concurrent insert)
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'P2002'
+        ) {
+          existing = await this.logRepository.getIdempotencyByKey(trimmedKey);
+        } else {
+          throw error;
+        }
+      }
+    }
 
     if (existing) {
       if (existing.requestHash && existing.requestHash !== requestHash) {
@@ -59,17 +89,6 @@ export class IdempotencyService {
         return existing.responseBody as T;
       }
     }
-
-    await this.logRepository.createIdempotencyRecord({
-      idempotencyKey: trimmedKey,
-      commandName: params.commandName,
-      sourceModule: params.sourceModule,
-      requestHash,
-      requestPayload: params.payload as never,
-      correlationId: params.correlationId,
-      lockedUntil: new Date(Date.now() + 60_000),
-      expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    });
 
     try {
       const result = await params.execute();

@@ -61,6 +61,20 @@ export class PermissionGuard implements CanActivate {
       );
     }
 
+    // CR-2 Fix: Enforce owner scope for CUST_VIEWER and similar roles
+    const ownerHeader = request.headers['x-owner-id'];
+    const ownerId = Array.isArray(ownerHeader) ? ownerHeader[0] : ownerHeader;
+
+    if (
+      ownerId &&
+      user.ownerScopes.length > 0 &&
+      !user.ownerScopes.includes(ownerId)
+    ) {
+      throw new ForbiddenException(
+        `Bạn không có quyền truy cập dữ liệu của owner ${ownerId}.`,
+      );
+    }
+
     return true;
   }
 }

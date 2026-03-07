@@ -167,19 +167,24 @@ export class NumberSequenceService {
   }
 
   private resolveCounterDate(resetPolicy: SequenceResetPolicy): Date {
-    const now = new Date();
-    const current = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    // CR-5 Fix: Use Vietnam timezone (UTC+7) for daily reset
+    const vnNow = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }),
+    );
+    const current = new Date(
+      Date.UTC(vnNow.getFullYear(), vnNow.getMonth(), vnNow.getDate()),
+    );
 
     if (resetPolicy === SequenceResetPolicy.NONE) {
       return new Date(Date.UTC(2000, 0, 1));
     }
 
     if (resetPolicy === SequenceResetPolicy.MONTHLY) {
-      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      return new Date(Date.UTC(vnNow.getFullYear(), vnNow.getMonth(), 1));
     }
 
     if (resetPolicy === SequenceResetPolicy.YEARLY) {
-      return new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+      return new Date(Date.UTC(vnNow.getFullYear(), 0, 1));
     }
 
     return current;

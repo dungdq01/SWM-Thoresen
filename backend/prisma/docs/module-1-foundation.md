@@ -285,7 +285,9 @@ audit_log / exception_log / idempotency_record là bảng runtime safety và tru
 | FOUNDATION | `OTHER`, `MANUAL_WEIGHT`, `MANUAL_ADJUST`, `DUPLICATE_RETRY` |
 
 ### Number sequences
-- `RCV`, `SHP`, `WRK`, `TRX`, `DN`
+- `RCV`, `SHP`, `WRK`, `TRX`, `DN`, `TRF`, `ADJ`
+
+> **HI-4 Fix:** Thêm `TRF` (Transfer) và `ADJ` (Adjustment) cho Module 6 Inventory Control.
 
 ### Governance
 - business rule mẫu
