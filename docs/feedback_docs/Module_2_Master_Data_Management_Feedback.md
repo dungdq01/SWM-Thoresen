@@ -10,16 +10,16 @@
 
 ## Review Gate Checklist (8 items)
 
-| # | Gate Question | Result | Note |
-|---|-------------|--------|------|
-| 1 | 4 inventory statuses dung, AVAILABLE-only allocation enforced? | PASS | Section 16.6 ro rang, [CONFIRMED] tag co |
-| 2 | cargo_form -> billing rate mapping dung? | NEED ACTION | Mapping chi co trong BA_PO_Master (US-M2-002 AC2), spec chua co bang mapping cu the |
-| 3 | Tolerance per owner+item hoat dong dung? | NEED ACTION | MD-BR-009 co rule nhung thieu schema chi tiet cho owner_item_policy |
-| 4 | Location type restriction: putaway chi vao STORAGE? | PASS | Section 14.6 ro, Case 2 co |
-| 5 | Capacity calculation dung cong thuc? | NEED ACTION | Cong thuc chi co trong BA_PO_Master (AC2), spec chua co |
-| 6 | [TO-CONFIRM] items da chot? | NEED ACTION | 10 items chua co priority/impact |
-| 7 | Import Excel: validation dung, error report ro rang? | PASS | Sub-module 8 kha chi tiet |
-| 8 | Owner segregation: CUST_VIEWER chi thay hang cua minh? | PASS | Cross-ref dung voi M1 RBAC |
+| #   | Gate Question                                                  | Result      | Note                                                                                |
+| -----| ----------------------------------------------------------------| -------------| -------------------------------------------------------------------------------------|
+| 1   | 4 inventory statuses dung, AVAILABLE-only allocation enforced? | PASS        | Section 16.6 ro rang, [CONFIRMED] tag co                                            |
+| 2   | cargo_form -> billing rate mapping dung?                       | NEED ACTION | Mapping chi co trong BA_PO_Master (US-M2-002 AC2), spec chua co bang mapping cu the |
+| 3   | Tolerance per owner+item hoat dong dung?                       | NEED ACTION | MD-BR-009 co rule nhung thieu schema chi tiet cho owner_item_policy                 |
+| 4   | Location type restriction: putaway chi vao STORAGE?            | PASS        | Section 14.6 ro, Case 2 co                                                          |
+| 5   | Capacity calculation dung cong thuc?                           | NEED ACTION | Cong thuc chi co trong BA_PO_Master (AC2), spec chua co                             |
+| 6   | [TO-CONFIRM] items da chot?                                    | NEED ACTION | 10 items chua co priority/impact                                                    |
+| 7   | Import Excel: validation dung, error report ro rang?           | PASS        | Sub-module 8 kha chi tiet                                                           |
+| 8   | Owner segregation: CUST_VIEWER chi thay hang cua minh?         | PASS        | Cross-ref dung voi M1 RBAC                                                          |
 
 **Result: 4/8 PASS, 4 NEED ACTION**
 

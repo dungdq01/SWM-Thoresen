@@ -11,11 +11,22 @@ export class LogService {
     entityId?: string;
     correlationId?: string;
     userId?: string;
+    page?: number;
+    limit?: number;
+    fromDate?: Date;
+    toDate?: Date;
   }) {
     return this.logRepository.listAuditLogs(filters);
   }
 
-  listExceptionLogs(filters: { sourceModule?: string; isResolved?: boolean }) {
+  listExceptionLogs(filters: {
+    sourceModule?: string;
+    isResolved?: boolean;
+    page?: number;
+    limit?: number;
+    fromDate?: Date;
+    toDate?: Date;
+  }) {
     return this.logRepository.listExceptionLogs(filters);
   }
 

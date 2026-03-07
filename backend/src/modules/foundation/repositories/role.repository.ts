@@ -6,7 +6,15 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 export class RoleRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(filters: { isActive?: boolean; roleCode?: string }) {
+  list(filters: {
+    isActive?: boolean;
+    roleCode?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 20;
+
     const where: Prisma.RoleWhereInput = {
       ...(filters.isActive !== undefined ? { isActive: filters.isActive } : {}),
       ...(filters.roleCode
@@ -22,6 +30,8 @@ export class RoleRepository {
         },
       },
       orderBy: { roleCode: 'asc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 
