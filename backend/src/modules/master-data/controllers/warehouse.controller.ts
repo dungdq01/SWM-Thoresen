@@ -1,46 +1,54 @@
-import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { WarehouseService } from '../services/warehouse.service';
 import { CreateWarehouseDto, UpdateWarehouseDto, ListWarehouseDto } from '../dto/warehouse.dto';
-import { DeactivateDto, ReactivateDto, RequestContext } from '../dto/common.dto';
+import { DeactivateDto, ReactivateDto } from '../dto/common.dto';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
 @Controller('master-data/warehouses')
+@UseGuards(AuthGuard, PermissionGuard)
 export class WarehouseController {
   constructor(private readonly warehouseService: WarehouseService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateWarehouseDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.warehouseService.create(dto, ctx);
+  @Permission('MASTER_DATA.WAREHOUSE.CREATE')
+  async create(@Body() dto: CreateWarehouseDto, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.create(dto, { userId: user.id });
   }
 
   @Get()
+  @Permission('MASTER_DATA.WAREHOUSE.READ')
   async findMany(@Query() dto: ListWarehouseDto) {
     return this.warehouseService.findMany(dto);
   }
 
   @Get(':id')
+  @Permission('MASTER_DATA.WAREHOUSE.READ')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.warehouseService.findById(id);
   }
 
   @Put(':id')
-  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWarehouseDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.warehouseService.update(id, dto, ctx);
+  @Permission('MASTER_DATA.WAREHOUSE.UPDATE')
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWarehouseDto, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.warehouseService.deactivate(id, dto, ctx);
+  @Permission('MASTER_DATA.WAREHOUSE.DEACTIVATE')
+  async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.warehouseService.reactivate(id, dto, ctx);
+  @Permission('MASTER_DATA.WAREHOUSE.REACTIVATE')
+  async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.reactivate(id, dto, { userId: user.id });
   }
 }

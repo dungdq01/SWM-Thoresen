@@ -1,45 +1,53 @@
-import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { ZoneService, CreateZoneDto, UpdateZoneDto, ListZoneDto } from '../services/zone.service';
-import { DeactivateDto, ReactivateDto, RequestContext } from '../dto/common.dto';
+import { DeactivateDto, ReactivateDto } from '../dto/common.dto';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
 @Controller('master-data/zones')
+@UseGuards(AuthGuard, PermissionGuard)
 export class ZoneController {
   constructor(private readonly zoneService: ZoneService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateZoneDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.zoneService.create(dto, ctx);
+  @Permission('MASTER_DATA.ZONE.CREATE')
+  async create(@Body() dto: CreateZoneDto, @CurrentUser() user: RequestUser) {
+    return this.zoneService.create(dto, { userId: user.id });
   }
 
   @Get()
+  @Permission('MASTER_DATA.ZONE.READ')
   async findMany(@Query() dto: ListZoneDto) {
     return this.zoneService.findMany(dto);
   }
 
   @Get(':id')
+  @Permission('MASTER_DATA.ZONE.READ')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.zoneService.findById(id);
   }
 
   @Put(':id')
-  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateZoneDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.zoneService.update(id, dto, ctx);
+  @Permission('MASTER_DATA.ZONE.UPDATE')
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateZoneDto, @CurrentUser() user: RequestUser) {
+    return this.zoneService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.zoneService.deactivate(id, dto, ctx);
+  @Permission('MASTER_DATA.ZONE.DEACTIVATE')
+  async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
+    return this.zoneService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto) {
-    const ctx: RequestContext = { userId: undefined };
-    return this.zoneService.reactivate(id, dto, ctx);
+  @Permission('MASTER_DATA.ZONE.REACTIVATE')
+  async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
+    return this.zoneService.reactivate(id, dto, { userId: user.id });
   }
 }

@@ -61,6 +61,13 @@ export class VehicleTypeRepository {
     });
   }
 
+  async reactivate(id: string, userId: string, expectedVersion: bigint): Promise<MdVehicleType> {
+    return this.prisma.mdVehicleType.update({
+      where: { id, rowVersion: expectedVersion },
+      data: { isActive: true, deactivatedAt: null, deactivatedBy: null, updatedBy: userId, rowVersion: { increment: 1 } },
+    });
+  }
+
   async findAllActive(): Promise<MdVehicleType[]> {
     return this.prisma.mdVehicleType.findMany({ where: { isActive: true }, orderBy: { vehicleTypeCode: 'asc' } });
   }

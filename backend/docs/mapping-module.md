@@ -190,6 +190,7 @@
 | GET | `/api/v1/master-data/uoms/:id` | Get UOM by ID |
 | PUT | `/api/v1/master-data/uoms/:id` | Update UOM |
 | POST | `/api/v1/master-data/uoms/:id/deactivate` | Deactivate UOM |
+| POST | `/api/v1/master-data/uoms/:id/reactivate` | Reactivate UOM |
 
 ### Vehicle Type Management
 | Method | Path | Description |
@@ -199,6 +200,7 @@
 | GET | `/api/v1/master-data/vehicle-types/:id` | Get vehicle type by ID |
 | PUT | `/api/v1/master-data/vehicle-types/:id` | Update vehicle type |
 | POST | `/api/v1/master-data/vehicle-types/:id/deactivate` | Deactivate vehicle type |
+| POST | `/api/v1/master-data/vehicle-types/:id/reactivate` | Reactivate vehicle type |
 
 ### Inventory Status Management
 | Method | Path | Description |

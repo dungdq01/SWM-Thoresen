@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsUUID, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsUUID, Min, Max, IsEmail } from 'class-validator';
 import { OwnerType } from '@prisma/client';
 import { PaginationDto } from './common.dto';
 
@@ -31,7 +31,7 @@ export class CreateOwnerDto {
   address!: string;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   billingEmail?: string;
 
   @IsOptional()
@@ -83,7 +83,7 @@ export class UpdateOwnerDto {
   address?: string;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   billingEmail?: string;
 
   @IsOptional()
