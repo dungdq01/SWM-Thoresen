@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolePermissionEffect {
+  ALLOW
+  DENY
+}
+
+enum SequenceScopeType {
+  GLOBAL
+  PER_WAREHOUSE
+  CUSTOM
+}
+
+enum SequenceResetPolicy {
+  NONE
+  DAILY
+  MONTHLY
+  YEARLY
+}
+
+enum BusinessRuleStatus {
+  CONFIRMED
+  TO_CONFIRM
+  PHASE_2
+}
+
+enum EffectivePhase {
+  GO_LIVE
+  PHASE_2
+}
+
+enum DecisionLogStatus {
+  DRAFT
+  CONFIRMED
+  SUPERSEDED
+}
+
+enum ChangePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ChangeControlStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum ExceptionSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IdempotencyStatus {
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+model AppUser {
+  id          String     @id @default(uuid()) @db.Uuid
+  userCode    String     @unique @map("user_code") @db.VarChar(50)
+  username    String     @unique @db.VarChar(80)
+  fullName    String     @map("full_name") @db.VarChar(150)
+  email       String?    @unique @db.VarChar(150)
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  userRoles   UserRole[]
+
+  @@map("app_user")
+}
+
+model Role {
+  id            String           @id @default(uuid()) @db.Uuid
+  roleCode      String           @unique @map("role_code") @db.VarChar(50)
+  roleName      String           @map("role_name") @db.VarChar(150)
+  description   String?          @db.Text
+  isSystemRole  Boolean          @default(false) @map("is_system_role")
+  isActive      Boolean          @default(true) @map("is_active")
+  effectiveFrom DateTime?        @map("effective_from")
+  effectiveTo   DateTime?        @map("effective_to")
+  createdBy     String?          @map("created_by") @db.Uuid
+  updatedBy     String?          @map("updated_by") @db.Uuid
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  permissions   RolePermission[]
+  userRoles     UserRole[]
+
+  @@map("role")
+}
+
+model Permission {
+  id             String           @id @default(uuid()) @db.Uuid
+  permissionCode String           @unique @map("permission_code") @db.VarChar(120)
+  moduleCode     String           @map("module_code") @db.VarChar(50)
+  resourceCode   String           @map("resource_code") @db.VarChar(50)
+  actionCode     String           @map("action_code") @db.VarChar(50)
+  description    String?          @db.Text
+  isSensitive    Boolean          @default(false) @map("is_sensitive")
+  isActive       Boolean          @default(true) @map("is_active")
+  createdBy      String?          @map("created_by") @db.Uuid
+  updatedBy      String?          @map("updated_by") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  roleLinks      RolePermission[]
+
+  @@unique([moduleCode, resourceCode, actionCode])
+  @@map("permission")
+}
+
+model RolePermission {
+  id           String               @id @default(uuid()) @db.Uuid
+  roleId       String               @map("role_id") @db.Uuid
+  permissionId String               @map("permission_id") @db.Uuid
+  effect       RolePermissionEffect @default(ALLOW)
+  scopeType    String?              @map("scope_type") @db.VarChar(30)
+  scopeValue   String?              @map("scope_value") @db.VarChar(100)
+  createdBy    String?              @map("created_by") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at")
+  role         Role                 @relation(fields: [roleId], references: [id])
+  permission   Permission           @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permission")
+}
+
+model UserRole {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  roleId        String    @map("role_id") @db.Uuid
+  warehouseCode String?   @map("warehouse_code") @db.VarChar(50)
+  ownerId       String?   @map("owner_id") @db.VarChar(50)
+  isPrimary     Boolean   @default(false) @map("is_primary")
+  isActive      Boolean   @default(true) @map("is_active")
+  assignedAt    DateTime  @default(now()) @map("assigned_at")
+  assignedBy    String?   @map("assigned_by") @db.Uuid
+  revokedAt     DateTime? @map("revoked_at")
+  revokedBy     String?   @map("revoked_by") @db.Uuid
+  user          AppUser   @relation(fields: [userId], references: [id])
+  role          Role      @relation(fields: [roleId], references: [id])
+
+  @@index([userId, isActive])
+  @@index([roleId, isActive])
+  @@map("user_role")
+}
+
+model ReasonCode {
+  id               String    @id @default(uuid()) @db.Uuid
+  code             String    @unique @db.VarChar(50)
+  description      String    @db.VarChar(255)
+  category         String    @db.VarChar(50)
+  domainCode       String    @map("domain_code") @db.VarChar(50)
+  requiresApproval Boolean   @default(false) @map("requires_approval")
+  affectsBilling   Boolean   @default(false) @map("affects_billing")
+  requiresNote     Boolean   @default(false) @map("requires_note")
+  sortOrder        Int       @default(0) @map("sort_order")
+  isActive         Boolean   @default(true) @map("is_active")
+  effectiveFrom    DateTime? @map("effective_from")
+  effectiveTo      DateTime? @map("effective_to")
+  createdBy        String?   @map("created_by") @db.Uuid
+  updatedBy        String?   @map("updated_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([domainCode, category, isActive])
+  @@map("reason_code")
+}
+
+model NumberSequence {
+  id               String              @id @default(uuid()) @db.Uuid
+  sequenceCode     String              @unique @map("sequence_code") @db.VarChar(30)
+  description      String?             @db.VarChar(255)
+  scopeType        SequenceScopeType   @map("scope_type")
+  resetPolicy      SequenceResetPolicy @map("reset_policy")
+  prefixTemplate   String              @map("prefix_template") @db.VarChar(100)
+  formatTemplate   String              @map("format_template") @db.VarChar(150)
+  runningNoLength  Int                 @default(6) @map("running_no_length")
+  allowGap         Boolean             @default(true) @map("allow_gap")
+  isActive         Boolean             @default(true) @map("is_active")
+  createdBy        String?             @map("created_by") @db.Uuid
+  updatedBy        String?             @map("updated_by") @db.Uuid
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  counters         NumberSequenceCounter[]
+
+  @@map("number_sequence")
+}
+
+model NumberSequenceCounter {
+  id          String         @id @default(uuid()) @db.Uuid
+  sequenceId  String         @map("sequence_id") @db.Uuid
+  scopeKey    String         @map("scope_key") @db.VarChar(100)
+  counterDate DateTime       @db.Date @map("counter_date")
+  lastNumber  BigInt         @default(0) @map("last_number")
+  versionNo   BigInt         @default(0) @map("version_no")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  sequence    NumberSequence @relation(fields: [sequenceId], references: [id])
+
+  @@unique([sequenceId, scopeKey, counterDate])
+  @@map("number_sequence_counter")
+}
+
+model BusinessRuleCatalog {
+  id             String             @id @default(uuid()) @db.Uuid
+  ruleCode       String             @unique @map("rule_code") @db.VarChar(50)
+  domain         String             @db.VarChar(50)
+  title          String             @db.VarChar(255)
+  description    String             @db.Text
+  currentStatus  BusinessRuleStatus @map("current_status")
+  sourceOfTruth  String             @map("source_of_truth") @db.VarChar(255)
+  brdReference   String?            @map("brd_reference") @db.VarChar(255)
+  supersedes     String?            @db.VarChar(255)
+  effectivePhase EffectivePhase     @map("effective_phase")
+  ownerRole      String?            @map("owner_role") @db.VarChar(50)
+  lastReviewedAt DateTime?          @map("last_reviewed_at")
+  isActive       Boolean            @default(true) @map("is_active")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@index([domain, currentStatus])
+  @@map("business_rule_catalog")
+}
+
+model DecisionLog {
+  id              String            @id @default(uuid()) @db.Uuid
+  decisionNo      String            @unique @map("decision_no") @db.VarChar(50)
+  title           String            @db.VarChar(255)
+  decisionType    String            @map("decision_type") @db.VarChar(50)
+  contextDomain   String            @map("context_domain") @db.VarChar(50)
+  summary         String            @db.Text
+  decidedValue    String            @map("decided_value") @db.Text
+  rationale       String?           @db.Text
+  status          DecisionLogStatus
+  sourceRefs      Json?             @map("source_refs")
+  impactedModules Json?             @map("impacted_modules")
+  effectiveFrom   DateTime?         @map("effective_from")
+  decidedBy       String?           @map("decided_by") @db.Uuid
+  decidedAt       DateTime?         @map("decided_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@map("decision_log")
+}
+
+model ChangeControlRecord {
+  id              String              @id @default(uuid()) @db.Uuid
+  changeNo        String              @unique @map("change_no") @db.VarChar(50)
+  changeType      String              @map("change_type") @db.VarChar(30)
+  title           String              @db.VarChar(255)
+  description     String              @db.Text
+  requestedBy     String?             @map("requested_by") @db.Uuid
+  priority        ChangePriority
+  impactSummary   String?             @map("impact_summary") @db.Text
+  impactedModules Json?               @map("impacted_modules")
+  status          ChangeControlStatus
+  targetRelease   String?             @map("target_release") @db.VarChar(30)
+  approvedBy      String?             @map("approved_by") @db.Uuid
+  approvedAt      DateTime?           @map("approved_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  @@map("change_control_record")
+}
+
+model AuditLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  entityType   String    @map("entity_type") @db.VarChar(50)
+  entityId     String    @map("entity_id") @db.VarChar(100)
+  action       String    @db.VarChar(50)
+  fieldName    String?   @map("field_name") @db.VarChar(100)
+  oldValue     String?   @map("old_value") @db.Text
+  newValue     String?   @map("new_value") @db.Text
+  userId       String?   @map("user_id") @db.Uuid
+  userRole     String?   @map("user_role") @db.VarChar(50)
+  ipAddress    String?   @map("ip_address") @db.VarChar(64)
+  deviceType   String?   @map("device_type") @db.VarChar(20)
+  occurredAt   DateTime  @default(now()) @map("occurred_at")
+  reasonCode   String?   @map("reason_code") @db.VarChar(50)
+  notes        String?   @db.Text
+  correlationId String?  @map("correlation_id") @db.VarChar(100)
+  requestId    String?   @map("request_id") @db.VarChar(100)
+  sourceModule String?   @map("source_module") @db.VarChar(50)
+  warehouseCode String?  @map("warehouse_code") @db.VarChar(50)
+  ownerId      String?   @map("owner_id") @db.VarChar(50)
+  metadata     Json?
+
+  @@index([entityType, entityId, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([correlationId])
+  @@index([sourceModule, occurredAt])
+  @@map("audit_log")
+}
+
+model ExceptionLog {
+  id            String            @id @default(uuid()) @db.Uuid
+  exceptionNo   String            @unique @map("exception_no") @db.VarChar(50)
+  exceptionType String            @map("exception_type") @db.VarChar(50)
+  severity      ExceptionSeverity
+  sourceModule  String            @map("source_module") @db.VarChar(50)
+  entityType    String?           @map("entity_type") @db.VarChar(50)
+  entityId      String?           @map("entity_id") @db.VarChar(100)
+  action        String?           @db.VarChar(50)
+  reasonCode    String?           @map("reason_code") @db.VarChar(50)
+  message       String            @db.Text
+  details       Json?
+  correlationId String?           @map("correlation_id") @db.VarChar(100)
+  externalId    String?           @map("external_id") @db.VarChar(100)
+  userId        String?           @map("user_id") @db.Uuid
+  userRole      String?           @map("user_role") @db.VarChar(50)
+  occurredAt    DateTime          @default(now()) @map("occurred_at")
+  isResolved    Boolean           @default(false) @map("is_resolved")
+  resolvedAt    DateTime?         @map("resolved_at")
+  resolvedBy    String?           @map("resolved_by") @db.Uuid
+
+  @@index([sourceModule, occurredAt])
+  @@index([isResolved, occurredAt])
+  @@map("exception_log")
+}
+
+model IdempotencyRecord {
+  id             String            @id @default(uuid()) @db.Uuid
+  idempotencyKey String            @unique @map("idempotency_key") @db.VarChar(120)
+  commandName    String            @map("command_name") @db.VarChar(100)
+  sourceModule   String            @map("source_module") @db.VarChar(50)
+  requestHash    String?           @map("request_hash") @db.VarChar(128)
+  requestPayload Json?             @map("request_payload")
+  responseCode   Int?              @map("response_code")
+  responseBody   Json?             @map("response_body")
+  resourceType   String?           @map("resource_type") @db.VarChar(50)
+  resourceId     String?           @map("resource_id") @db.VarChar(100)
+  status         IdempotencyStatus
+  lockedUntil    DateTime?         @map("locked_until")
+  correlationId  String?           @map("correlation_id") @db.VarChar(100)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  expiredAt      DateTime?         @map("expired_at")
+
+  @@index([commandName, sourceModule])
+  @@index([expiredAt])
+  @@map("idempotency_record")
+}

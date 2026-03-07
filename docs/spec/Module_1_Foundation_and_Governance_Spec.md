@@ -3,38 +3,38 @@
 
 **Dự án:** Thoresen Vinama Logistics (TVL) — Smart Warehouse Management (SWM)  
 **Góc nhìn:** Business Analyst 10 năm kinh nghiệm  
-**Phiên bản:** 1.0  
-**Ngày:** 07/03/2026  
-**Trạng thái:** Draft for Review  
+**Phiên bản:** 1.1  
+**Ngày cập nhật:** 08/03/2026  
+**Trạng thái:** Revised for Build Review  
 **Đối tượng đọc:** Sponsor, PM, BA, Tech Lead, Dev, QA, Solution Architect, Ops Lead, Key User  
 
 ---
 
 ## 1. Mục đích tài liệu
 
-Tài liệu này đặc tả chi tiết module **Foundation & Governance** của hệ thống SWM. Đây là module nền tảng nhưng không phải module “phụ trợ”. Nó quyết định hệ thống có được vận hành đúng quyền, đúng quy tắc, đúng số chứng từ, đúng audit và đúng baseline triển khai hay không.
+Tài liệu này đặc tả chi tiết module **Foundation & Governance** của hệ thống SWM. Đây là module nền tảng để toàn bộ chương trình vận hành **đúng quyền, đúng luật, đúng mã số, đúng audit, đúng baseline**.
 
-Nếu Master Data giúp hệ thống biết **đang quản lý cái gì**, còn Inventory Core Engine giúp hệ thống biết **ghi nhận tồn kho như thế nào**, thì Foundation & Governance giúp toàn bộ chương trình biết **ai được làm gì, làm theo luật nào, dùng mã gì, lưu vết ra sao, và đâu là baseline được phép build**.
+Nếu Master Data giúp hệ thống biết **đang quản lý cái gì**, còn Inventory Core Engine giúp hệ thống biết **ghi nhận tồn kho như thế nào**, thì Foundation & Governance giúp hệ thống biết **ai được làm gì, làm theo luật nào, dùng mã gì, lưu vết ra sao, và build theo baseline nào**.
 
 Tài liệu được viết theo hướng:
-- Người business có thể hiểu vai trò của module trong bức tranh tổng thể.
-- Người non-business vẫn hiểu module này đang kiểm soát điều gì.
-- Dev/QA có thể dùng như nền để bóc tiếp API spec, DB design, permission matrix, audit design, test scenario.
+- Người business hiểu vai trò module trong bức tranh tổng thể.
+- Người non-business vẫn hiểu module đang kiểm soát điều gì.
+- Dev/QA dùng làm baseline để bóc FS, API spec, DB design, permission matrix, audit design và test scenario.
 
 ---
 
 ## 2. Vị trí của module trong toàn chương trình
 
-Trong bản đồ 11 module của SWM, **Foundation & Governance là Module 1** và đóng vai trò làm “lớp kiểm soát nền” cho tất cả module còn lại.
+Trong bản đồ 11 module của SWM, **Foundation & Governance là Module 1** và đóng vai trò làm **lớp kiểm soát nền** cho tất cả module còn lại.
 
-Module này không trực tiếp tạo receipt, shipment hay billing. Tuy nhiên, mọi module sau đều phụ thuộc vào nó:
+Module này không trực tiếp tạo Receipt, Shipment hay Billing. Tuy nhiên, mọi module sau đều phụ thuộc vào nó:
 - Không có RBAC đúng → user thao tác sai quyền.
 - Không có number sequence đúng → chứng từ và transaction không truy vết được.
 - Không có reason code/audit policy → không kiểm soát được ngoại lệ.
-- Không có baseline rules catalog → dev build theo tài liệu cũ, QA test theo tài liệu mới, dẫn đến lệch hệ thống.
+- Không có rule baseline catalog → Dev build theo tài liệu cũ, QA test theo tài liệu mới.
 - Không có idempotency policy → retry từ mobile/weighbridge/API có thể sinh duplicate posting.
 
-Nói ngắn gọn, module này là **lớp “kỷ luật hệ thống”**.
+Nói ngắn gọn, module này là **lớp kỷ luật hệ thống**.
 
 ---
 
@@ -48,7 +48,7 @@ TVL vận hành kho bulk cargo và bagged goods trong bối cảnh:
 - Hệ thống có nhiều vai trò thao tác: Warehouse Manager, Warehouse Keeper, Weighbridge Operator, Billing Officer, Admin, Customer Viewer.
 - Có ngoại lệ nghiệp vụ nhạy cảm như manual weight, cancel sau post, force approve outbound, inventory adjustment, re-weigh.
 
-Trong môi trường như vậy, nếu không có lớp governance thống nhất, hệ thống rất dễ rơi vào các rủi ro:
+Nếu không có lớp governance thống nhất, hệ thống rất dễ rơi vào các rủi ro:
 - Sai người thực hiện sai thao tác.
 - Cùng một nghiệp vụ nhưng mỗi module hiểu một kiểu.
 - Dữ liệu bị sửa tay mà không trace được.
@@ -60,7 +60,6 @@ Trong môi trường như vậy, nếu không có lớp governance thống nhấ
 ## 4. Mục tiêu của module
 
 ### 4.1 Mục tiêu nghiệp vụ
-
 - Chuẩn hóa quyền hạn của từng vai trò trong hệ thống.
 - Chuẩn hóa quy tắc nền dùng chung cho tất cả module.
 - Chuẩn hóa cách sinh mã chứng từ và mã giao dịch.
@@ -69,7 +68,6 @@ Trong môi trường như vậy, nếu không có lớp governance thống nhấ
 - Thiết lập baseline governance cho quá trình build, test, deploy và vận hành.
 
 ### 4.2 Mục tiêu hệ thống
-
 - Mọi command có side effect phải có cơ chế chống duplicate.
 - Mọi thao tác ngoại lệ phải có reason code và audit.
 - Mọi chứng từ và transaction phải có reference format nhất quán.
@@ -81,7 +79,6 @@ Trong môi trường như vậy, nếu không có lớp governance thống nhấ
 ## 5. Phạm vi module
 
 ### 5.1 In-scope
-
 1. RBAC & Permission Control  
 2. Role Catalog & Responsibility Baseline  
 3. Number Sequence & Reference Control  
@@ -91,18 +88,17 @@ Trong môi trường như vậy, nếu không có lớp governance thống nhấ
 7. Exception Governance  
 8. Idempotency & Command Safety Policy  
 9. Document Control & Decision Baseline  
-10. Governance support cho AI-first delivery (prompt log, verify checklist, traceability)  
+10. Governance support cho AI-first delivery (prompt log, verify checklist, traceability)
 
 ### 5.2 Out-of-scope
-
 - Thiết kế chi tiết workflow của Inbound, Outbound, Inventory, Billing, VAS.
 - Thiết kế DB logic của InventTrans/OnHand/InventDim.
 - Tính phí chi tiết theo rate card.
 - Dashboard/report UI chi tiết.
 - Quản lý user provisioning từ hệ thống IAM bên ngoài.
+- Thiết kế SOC/SIEM/infra security chi tiết.
 
 ### 5.3 Boundary với các module khác
-
 - Module này **không sở hữu transaction business flow**, mà sở hữu **luật nền** để flow được kiểm soát.
 - Module này **không quyết định inventory posting business event**, nhưng quyết định **quy tắc nền bắt buộc cho posting** như audit, idempotency, role authority, numbering, immutable ledger policy.
 - Module này **không thay thế security engineering**, nhưng là nơi định nghĩa baseline permission và audit scope ở mức nghiệp vụ-hệ thống.
@@ -111,41 +107,46 @@ Trong môi trường như vậy, nếu không có lớp governance thống nhấ
 
 ## 6. Nguyên tắc nền tảng phải giữ xuyên suốt
 
-Các nguyên tắc dưới đây là baseline mà toàn hệ thống phải tuân thủ:
-
 1. **Chứng từ không phải nguồn sự thật cuối cùng của tồn kho.**  
-   Nguồn sự thật của tồn kho là bộ ba **InventDim → InventTrans → OnHand**.
+   Nguồn sự thật của tồn kho là bộ ba **InventDim → InventTrans → OnHand**. `[CONFIRMED]`
 
-2. **Inbound chỉ post tồn khi đạt RECEIVED.** `[CONFIRMED — CFM-02]`
-   Các state trước đó chỉ là state vận hành.
+2. **Inbound chỉ post tồn khi đạt RECEIVED.**  
+   Các state trước đó chỉ là state vận hành. `[CONFIRMED]`
 
-3. **Outbound chỉ trừ tồn khi đạt SHIPPED.** `[CONFIRMED — CFM-03]`
-   Allocation/Picking chưa được hiểu là giảm physical_qty.
+3. **Outbound chỉ trừ tồn khi đạt SHIPPED.**  
+   Allocation/Picking chưa được hiểu là giảm physical_qty. `[CONFIRMED]`
 
 4. **Weighbridge là nguồn xác nhận khối lượng thực tế.**  
-   Manual weight chỉ được phép theo chính sách kiểm soát đặc biệt.
+   Manual weight chỉ được phép theo chính sách kiểm soát đặc biệt. `[CONFIRMED]`
 
-5. **Mọi ngoại lệ ảnh hưởng business phải có reason code và audit trail.**
+5. **Mọi ngoại lệ ảnh hưởng business phải có reason code và audit trail.** `[CONFIRMED]`
 
-6. **Billing chỉ đáng tin khi transaction truth đã đúng.**  
-   Không đi tắt từ chứng từ sang phí nếu chưa đi qua transaction baseline.
+6. **Billing chỉ đáng tin khi transaction truth đã đúng.** `[CONFIRMED]`
 
-7. **Ledger đã post là bất biến.** `[CONFIRMED — CFM-01]`
-   Không update/delete trực tiếp InventTrans đã post. Sửa sai bằng reverse.
+7. **Ledger đã post là bất biến.**  
+   Không update/delete trực tiếp InventTrans đã post. Sửa sai bằng reverse. `[CONFIRMED]`
 
-8. **Idempotency là bắt buộc cho mọi API có side effect.** `[CONFIRMED — CFM-04]`
+8. **Idempotency là bắt buộc cho mọi API có side effect.** `[CONFIRMED]`
 
-9. **Module phải tách ownership rõ ràng.**  
-   Receipt không sở hữu tồn kho; Work không sở hữu billing; Debit Note không sở hữu operational truth.
+9. **Module phải tách ownership rõ ràng.** `[CONFIRMED]`
 
 10. **Mọi baseline rule phải có tình trạng rõ ràng.**  
-   Chỉ có 3 trạng thái được phép dùng trong tài liệu: `[CONFIRMED]`, `[TO-CONFIRM]`, `[PHASE 2]`.
+    Chỉ có 3 trạng thái được phép dùng trong tài liệu: `[CONFIRMED]`, `[TO-CONFIRM]`, `[PHASE 2]`. `[CONFIRMED]`
 
 ---
 
-## 7. Kết quả đầu ra chính của module
+## 7. Quy ước trạng thái quyết định dùng trong tài liệu
 
-Khi module Foundation & Governance được triển khai đầy đủ, hệ thống phải có tối thiểu các output sau:
+| Tag | Ý nghĩa | Quy tắc sử dụng |
+|---|---|---|
+| `[CONFIRMED]` | Đã được chốt theo baseline hiện tại | Dev/QA được phép build và test theo nội dung này |
+| `[TO-CONFIRM]` | Chưa được TVL sign-off cuối cùng | Không nên đóng cứng logic/code nếu chưa được chốt |
+| `[PHASE 2]` | Không thuộc go-live Phase 1 | Không đưa vào backlog build Phase 1 trừ khi có change request |
+| `[PROCESS — NOT CODE]` | Quy trình/quản trị, không mặc định là tính năng phải build | Dev chỉ build nếu có explicit scope giao thành system feature |
+
+---
+
+## 8. Kết quả đầu ra chính của module
 
 1. Permission matrix chuẩn cho Web/Mobile/API.
 2. Role catalog và rule áp dụng cho từng hành động trọng yếu.
@@ -160,9 +161,9 @@ Khi module Foundation & Governance được triển khai đầy đủ, hệ th�
 
 ---
 
-## 8. Input và Output tổng thể của module
+## 9. Input và Output tổng thể của module
 
-### 8.1 Input tổng thể
+### 9.1 Input tổng thể
 
 | Nhóm input | Nội dung |
 |---|---|
@@ -175,7 +176,7 @@ Khi module Foundation & Governance được triển khai đầy đủ, hệ th�
 | Integration safety | Retry, duplicate prevention, external_id, command idempotency |
 | Governance requirement | Cadence review, decision ownership, sign-off, change control |
 
-### 8.2 Output tổng thể
+### 9.2 Output tổng thể
 
 | Nhóm output | Nội dung |
 |---|---|
@@ -190,10 +191,9 @@ Khi module Foundation & Governance được triển khai đầy đủ, hệ th�
 
 ---
 
-## 9. Các đối tượng dữ liệu mà module quản lý hoặc chi phối
+## 10. Các đối tượng dữ liệu mà module quản lý hoặc chi phối
 
 Module này không sở hữu các object giao dịch vận hành như Receipt hay Shipment, nhưng nó sở hữu hoặc chi phối các object kiểm soát sau:
-
 - `role`
 - `permission`
 - `role_permission`
@@ -204,55 +204,45 @@ Module này không sở hữu các object giao dịch vận hành như Receipt h
 - `business_rule_catalog`
 - `decision_log`
 - `change_control_record`
-- `idempotency_key` hoặc logic external_id policy
+- `idempotency_key` hoặc logic `external_id` policy
 
 Ngoài ra module này còn chi phối cách các object khác phải vận hành, ví dụ:
 - `invent_trans` phải immutable
 - `receipt/shipment` phải dùng sequence chuẩn
-- `command APIs` phải dùng external_id
-- `manual weight` phải có reason_code + audit
+- `command APIs` phải dùng `external_id`
+- `manual weight` phải có `reason_code + audit`
 
 ---
 
-## 10. Danh sách sub-modules
-
-Module Foundation & Governance được chia thành 8 sub-modules để dễ phân tích, thiết kế và triển khai:
+## 11. Danh sách sub-modules
 
 1. RBAC & Permission Control  
-2. Role Responsibility & Approval Governance  
+2. Role Responsibility & Approval Governance `[PROCESS-HEAVY]`  
 3. Number Sequence & Reference Control  
 4. Business Rules Baseline Management  
 5. Reason Code Management  
 6. Audit Trail & Exception Governance  
 7. Idempotency & Command Safety Control  
-8. Document Governance, Change Control & Delivery Baseline  
+8. Document Governance, Change Control & Delivery Baseline `[PROCESS — NOT CODE]`
+
+> Lưu ý: Sub-module 2 là phần governance thiên về phân tách trách nhiệm, approval authority và sign-off boundary. Có thể có một số cấu hình hỗ trợ trong hệ thống, nhưng bản thân nó không mặc định đồng nghĩa với việc phải build UI/workflow riêng ngay từ Phase 1.
 
 ---
 
-# 11. Sub-module 1 — RBAC & Permission Control
+# 12. Sub-module 1 — RBAC & Permission Control
 
-## 11.1 Mục đích
-
+## 12.1 Mục đích
 Quản lý ai được quyền xem, tạo, sửa, xác nhận, post, cancel, approve, reverse, lock, export và quản trị trên từng nhóm chức năng.
 
-Đây là lớp phân quyền vận hành chính thức của hệ thống. Mục tiêu không chỉ là “ẩn/hiện nút”, mà là **kiểm soát authority ở cả UI, API và workflow**.
+## 12.2 Mô tả nghiệp vụ
+Đây là lớp phân quyền vận hành chính thức của hệ thống. Mục tiêu không chỉ là **ẩn/hiện nút**, mà là **kiểm soát authority ở cả UI, API và workflow**. `[CONFIRMED]`
 
-## 11.2 Mô tả nghiệp vụ
+RBAC phải hỗ trợ tối thiểu 3 lớp:
+- **View authority**
+- **Action authority**
+- **Approval authority**
 
-TVL có nhiều vai trò với nhiệm vụ khác nhau. Một số thao tác là tác vụ thường ngày, nhưng một số thao tác có rủi ro cao và phải được giới hạn rất chặt, ví dụ:
-- manual weight
-- inventory adjustment
-- force approve outbound
-- cancel sau post
-- reverse transaction
-- lock debit note
-
-Vì vậy RBAC phải hỗ trợ ít nhất 3 lớp:
-- **View authority**: được xem dữ liệu nào
-- **Action authority**: được thao tác gì
-- **Approval authority**: được duyệt hay override gì
-
-## 11.3 Input
+## 12.3 Input
 
 | Input | Mô tả |
 |---|---|
@@ -262,7 +252,7 @@ Vì vậy RBAC phải hỗ trợ ít nhất 3 lớp:
 | Owner scope rules | Customer Viewer chỉ xem dữ liệu theo owner |
 | App channel | Web, Mobile, API, System |
 
-## 11.4 Output
+## 12.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -271,83 +261,79 @@ Vì vậy RBAC phải hỗ trợ ít nhất 3 lớp:
 | UI/API enforcement rule | Quy định kiểm tra quyền ở cả frontend và backend |
 | Restricted action registry | Danh sách hành động nhạy cảm cần audit mạnh |
 
-## 11.5 Roles Go-Live baseline `[CONFIRMED — CFM-06]`
+## 12.5 Roles Go-Live baseline
 
-| Role Code | Vai trò | Mục đích chính |
+| Role Code | Vai trò | Trạng thái | Ghi chú |
+|---|---|---|---|
+| ADMIN | System Admin | `[CONFIRMED]` | Toàn quyền cấu hình hệ thống |
+| WH_MANAGER | Warehouse Manager | `[CONFIRMED]` | Quản lý vận hành kho và ngoại lệ |
+| WH_KEEPER | Warehouse Keeper | `[CONFIRMED]` | Tác nghiệp kho thực địa |
+| WB_OPERATOR | Weighbridge Operator | `[CONFIRMED]` | Vận hành cân và OCR |
+| BILLING_OFC | Billing Officer | `[CONFIRMED]` | Vận hành billing và debit note |
+| OPS_SUPER | Operations Supervisor | `[CONFIRMED]` | Giám sát vận hành và dashboard |
+| WH_ADMIN | Warehouse Admin | `[TO-CONFIRM]` | Chưa chốt tách role riêng hay gộp |
+| CUST_VIEWER | Customer Viewer | `[CONFIRMED]` | Chỉ xem dữ liệu trong phạm vi owner |
+
+## 12.6 Output quyền ở mức business
+
+| Nhóm hành động | Quyền mặc định | Trạng thái |
 |---|---|---|
-| ADMIN | System Admin | Toàn quyền cấu hình hệ thống |
-| WH_MANAGER | Warehouse Manager | Quản lý vận hành kho và ngoại lệ |
-| WH_KEEPER | Warehouse Keeper | Tác nghiệp kho thực địa |
-| WB_OPERATOR | Weighbridge Operator | Vận hành cân và OCR |
-| BILLING_OFC | Billing Officer | Vận hành billing và debit note |
-| OPS_SUPER | Operations Supervisor | Giám sát vận hành và dashboard |
-| WH_ADMIN | Warehouse Admin | Tạo/chỉnh chứng từ vận hành nền `[TO-CONFIRM: WH_ADMIN tach biet hay gop WH_MANAGER?]` |
-| CUST_VIEWER | Customer Viewer | Chỉ xem dữ liệu trong phạm vi owner |
+| Xem dashboard/reports | Theo role và owner scope | `[CONFIRMED]` |
+| Tạo PO/Receipt/SO/Shipment | WH_ADMIN / WH_MANAGER / role được ủy quyền | `[TO-CONFIRM]` |
+| Execute work | WH_KEEPER / WH_MANAGER | `[CONFIRMED]` |
+| Weigh in/out | WB_OPERATOR | `[CONFIRMED]` |
+| Manual weight | WH_MANAGER | `[CONFIRMED]` |
+| Inventory adjustment | WH_MANAGER | `[CONFIRMED]` |
+| Force approve outbound exception | WH_MANAGER | `[CONFIRMED]` |
+| Lock debit note | BILLING_OFC | `[CONFIRMED]` |
+| System setup | ADMIN | `[CONFIRMED]` |
 
-## 11.6 Output quyền ở mức business
-
-| Nhóm hành động | Quyền mặc định |
-|---|---|
-| Xem dashboard/reports | Theo role và owner scope |
-| Tạo PO/Receipt/SO/Shipment | WH_ADMIN / WH_MANAGER / role được ủy quyền |
-| Execute work | WH_KEEPER / WH_MANAGER |
-| Weigh in/out | WB_OPERATOR |
-| Manual weight | WH_MANAGER |
-| Inventory adjustment | WH_MANAGER |
-| Force approve outbound exception | WH_MANAGER |
-| Lock debit note | BILLING_OFC |
-| System setup | ADMIN |
-
-## 11.7 Business cases điển hình
+## 12.7 Business cases điển hình
 
 ### Case 1 — Customer Viewer chỉ được xem dữ liệu owner của mình
-- **Input:** user role = CUST_VIEWER, owner_id = CUST001
-- **Output:** chỉ xem được inventory/report/shipment/receipt liên quan owner CUST001
+- **Input:** user role = `CUST_VIEWER`, owner_id = `CUST001`
+- **Output:** chỉ xem được inventory/report/shipment/receipt liên quan owner `CUST001`
 - **Kỳ vọng:** không được xem dữ liệu owner khác, kể cả qua export hoặc deep link API
 
 ### Case 2 — Warehouse Keeper không được manual weight
-- **Input:** user role = WH_KEEPER, thao tác nhập tay trọng lượng
+- **Input:** user role = `WH_KEEPER`, thao tác nhập tay trọng lượng
 - **Output:** hệ thống từ chối hành động
-- **Kỳ vọng:** chỉ WH_MANAGER được phép manual weight
+- **Kỳ vọng:** chỉ `WH_MANAGER` được phép manual weight
 
 ### Case 3 — Billing Officer được lock debit note nhưng không được post inventory
-- **Input:** user role = BILLING_OFC
+- **Input:** user role = `BILLING_OFC`
 - **Output:** được tạo/generate/lock debit note; không được gọi action post/reverse inventory
 
 ### Case 4 — API phải chặn dù UI bị bypass
 - **Input:** user không có quyền nhưng gửi API trực tiếp
-- **Output:** backend trả forbidden
-- **Kỳ vọng:** RBAC không chỉ nằm ở frontend
+- **Output:** backend trả `403 Forbidden`
 
-## 11.8 Quy tắc bắt buộc
+## 12.8 Acceptance Criteria
+- **AC-RBAC-01:** User không có quyền thực hiện action thì backend phải trả `403`, đồng thời ghi audit `ACCESS_DENIED` cho action nhạy cảm.
+- **AC-RBAC-02:** Customer Viewer không được xem dữ liệu ngoài owner scope qua UI, export và API.
+- **AC-RBAC-03:** `WH_KEEPER` không thể manual weight trong mọi kênh thao tác.
+- **AC-RBAC-04:** Thay đổi role/permission phải có hiệu lực theo cơ chế session/token policy đã thiết kế; tối thiểu backend phải áp dụng quyền mới ngay khi request kế tiếp được authorize lại.
+- **AC-RBAC-05:** Các action nhạy cảm phải log `user_id`, `user_role`, `timestamp`, `device_type`.
 
-- Permission phải kiểm ở backend là lớp cuối cùng.
-- Export cũng phải chịu kiểm soát giống view data.
-- Quyền approval phải tách khỏi quyền execute nếu nghiệp vụ yêu cầu.
-- Các action nhạy cảm phải log role ณ thời điểm action.
+## 12.9 Quy tắc bắt buộc
+- Permission phải kiểm ở backend là lớp cuối cùng. `[CONFIRMED]`
+- Export cũng phải chịu kiểm soát giống view data. `[CONFIRMED]`
+- Quyền approval phải tách khỏi quyền execute nếu nghiệp vụ yêu cầu. `[CONFIRMED]`
+- Các action nhạy cảm phải log role tại thời điểm action. `[CONFIRMED]`
 
 ---
 
-# 12. Sub-module 2 — Role Responsibility & Approval Governance `[PROCESS — NOT CODE]`
+# 13. Sub-module 2 — Role Responsibility & Approval Governance `[PROCESS-HEAVY]`
 
-> **Luu y:** Sub-module nay dinh nghia quy trinh va chinh sach quan ly, KHONG phai feature can code.
-> Dev KHONG can build UI/logic rieng cho sub-module nay. Output la tai lieu RACI/approval matrix de cac module khac tham chieu.
-
-## 12.1 Mục đích
-
+## 13.1 Mục đích
 Xác định ranh giới trách nhiệm giữa các vai trò, đặc biệt cho các thao tác cần phê duyệt, override hoặc sign-off.
 
-## 12.2 Mô tả nghiệp vụ
-
+## 13.2 Mô tả nghiệp vụ
 RBAC trả lời câu hỏi **“ai được bấm nút”**, còn sub-module này trả lời câu hỏi **“ai chịu trách nhiệm nghiệp vụ khi nút đó được bấm”**.
 
-Trong hệ thống TVL, đây là phần rất quan trọng vì có nhiều ngoại lệ có thể dẫn đến tranh chấp số liệu hoặc doanh thu:
-- outbound fail tolerance cần manager override
-- manual weight có thể ảnh hưởng trực tiếp inventory/billing
-- reverse/cancel sau post ảnh hưởng ledger integrity
-- lock debit note ảnh hưởng thương mại và công nợ
+Đây là phần governance thiên về **approval matrix, segregation of duties, escalation, sign-off checkpoint** hơn là một feature runtime độc lập. `[PROCESS — NOT CODE]`
 
-## 12.3 Input
+## 13.3 Input
 
 | Input | Mô tả |
 |---|---|
@@ -356,7 +342,7 @@ Trong hệ thống TVL, đây là phần rất quan trọng vì có nhiều ngo�
 | RACI baseline | Trách nhiệm theo dự án và vận hành |
 | Approval policy | Hành động nào cần approve/override |
 
-## 12.4 Output
+## 13.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -365,63 +351,50 @@ Trong hệ thống TVL, đây là phần rất quan trọng vì có nhiều ngo�
 | Escalation policy | Chính sách escalations khi phát sinh ngoại lệ |
 | Sign-off checkpoints | Điểm chốt trách nhiệm trong build/test/UAT/go-live |
 
-## 12.5 Cases điển hình
+## 13.5 Cases điển hình
+- **Outbound exception approval:** shipment có line fail tolerance → `WH_MANAGER` là role được force approve. `[CONFIRMED]`
+- **Inventory adjustment:** chỉ role có authority được tạo adjustment với `reason_code` bắt buộc. `[CONFIRMED]`
+- **UAT checkpoint sign-off:** kết quả test, defect summary, go/no-go decision phải có sign-off record theo vai trò. `[CONFIRMED]`
 
-### Case 1 — Outbound exception approval
-- **Input:** shipment có line fail tolerance
-- **Output:** trạng thái chờ xử lý tập trung; WH_MANAGER là role được force approve
-- **Giá trị kiểm soát:** tránh để keeper hoặc operator tự quyết ngoại lệ
+## 13.6 Acceptance Criteria
+- **AC-APP-01:** Các action được xác định là nhạy cảm phải có owner authority rõ ràng trong approval matrix.
+- **AC-APP-02:** Không được để cùng một role thực hiện và duyệt mọi action nhạy cảm nếu business đã yêu cầu segregation.
+- **AC-APP-03:** Record approval/override phải lưu được ai duyệt, lúc nào, duyệt cái gì và reason gì.
+- **AC-APP-04:** Các checkpoint build/UAT/go-live phải có danh sách vai trò sign-off tối thiểu.
 
-### Case 2 — Inventory adjustment
-- **Input:** điều chỉnh tồn kho do shrinkage/damage/manual correction
-- **Output:** chỉ role có authority được tạo adjustment với reason_code bắt buộc
-- **Giá trị kiểm soát:** tránh sửa tồn tùy tiện
-
-### Case 3 — UAT checkpoint sign-off
-- **Input:** kết quả test, defect summary, go/no-go decision
-- **Output:** sign-off record theo vai trò Sponsor/PO/PM/QA/IMP
-- **Giá trị kiểm soát:** bảo đảm go-live có điểm chốt trách nhiệm rõ
-
-## 12.6 Nguyên tắc
-
-- Người thực hiện và người duyệt không nên luôn là cùng một người cho các tác vụ nhạy cảm.
-- Các action có tác động thương mại hoặc ledger phải có authority cao hơn action tác nghiệp thông thường.
-- Approval phải lưu được: ai duyệt, lúc nào, duyệt cái gì, lý do gì, trước/sau ra sao.
+## 13.7 Nguyên tắc
+- Người thực hiện và người duyệt không nên luôn là cùng một người cho tác vụ nhạy cảm. `[CONFIRMED]`
+- Action có tác động thương mại hoặc ledger phải có authority cao hơn action tác nghiệp thông thường. `[CONFIRMED]`
+- Approval phải lưu được: ai duyệt, lúc nào, duyệt cái gì, lý do gì, trước/sau ra sao. `[CONFIRMED]`
 
 ---
 
-# 13. Sub-module 3 — Number Sequence & Reference Control
+# 14. Sub-module 3 — Number Sequence & Reference Control
 
-## 13.1 Mục đích
-
+## 14.1 Mục đích
 Quản lý việc sinh mã chứng từ và mã giao dịch thống nhất, không trùng, có khả năng truy vết, dễ đọc và phù hợp vận hành phân tán theo kho.
 
-## 13.2 Mô tả nghiệp vụ
+## 14.2 Mô tả nghiệp vụ
+Sequence không chỉ để “đẹp mã”. Nó là chìa khóa để truy vết giao dịch, đối chiếu chứng từ, vận hành ngoài hiện trường và hỗ trợ audit/billing/dispute resolution.
 
-Trong SWM, sequence không chỉ để “đẹp mã”. Nó là chìa khóa để:
-- truy vết giao dịch
-- đối chiếu chứng từ với log hệ thống
-- vận hành ngoài hiện trường
-- hỗ trợ audit/billing/dispute resolution
+Baseline hiện tại:
+- Scope = **PER_WAREHOUSE** `[CONFIRMED]`
+- Format chuẩn: `PREFIX-YYYYMMDD-SEQ` `[CONFIRMED]`
+- Daily reset `[CONFIRMED]`
+- Dùng cho tối thiểu: Receipt, Shipment, Work, Transaction, Debit Note `[CONFIRMED]`
+- Chính sách **gap khi rollback kỹ thuật** chưa chốt cuối cùng `[TO-CONFIRM]`
 
-Baseline hiện tại yêu cầu: `[CONFIRMED — CFM-09]`
-- Scope = **PER_WAREHOUSE**
-- Mỗi kho có counter riêng
-- Format chuẩn: `PREFIX-YYYYMMDD-SEQ`
-- Sequence dùng cho ít nhất: Receipt, Shipment, Work, Transaction, Debit Note
-- `[TO-CONFIRM]` Chinh sach xu ly sequence gap khi DB rollback ky thuat
-
-## 13.3 Input
+## 14.3 Input
 
 | Input | Mô tả |
 |---|---|
-| Sequence code | RCV, SHP, WRK, TRX, DN, TRF, ADJ... |
-| Scope | warehouse_code |
+| Sequence code | `RCV`, `SHP`, `WRK`, `TRX`, `DN`, `TRF`, `ADJ`... |
+| Scope | `warehouse_code` |
 | Date reset policy | daily reset |
 | Format rule | prefix + date + zero-padded sequence |
 | Command context | document type, warehouse, posting time |
 
-## 13.4 Output
+## 14.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -430,64 +403,54 @@ Baseline hiện tại yêu cầu: `[CONFIRMED — CFM-09]`
 | Collision prevention | Chính sách chống trùng mã |
 | Reusable service | Service dùng chung cho các module khác |
 
-## 13.5 Baseline mã số đề xuất
+## 14.5 Baseline mã số đề xuất
 
-| Object | Prefix | Ví dụ |
-|---|---|---|
-| Inbound Receipt | RCV | RCV-20260315-000001 |
-| Shipment | SHP | SHP-20260315-000001 |
-| Work | WRK | WRK-20260315-000001 |
-| Inventory Transaction | TRX | TRX-20260315-000001 |
-| Transfer | TRF | TRF-20260315-000001 |
-| Adjustment | ADJ | ADJ-20260315-000001 |
-| Debit Note | DN | DN-20260331-000001 |
+| Object | Prefix | Ví dụ | Trạng thái |
+|---|---|---|---|
+| Inbound Receipt | `RCV` | `RCV-20260315-000001` | `[CONFIRMED]` |
+| Shipment | `SHP` | `SHP-20260315-000001` | `[CONFIRMED]` |
+| Work | `WRK` | `WRK-20260315-000001` | `[CONFIRMED]` |
+| Inventory Transaction | `TRX` | `TRX-20260315-000001` | `[CONFIRMED]` |
+| Transfer | `TRF` | `TRF-20260315-000001` | `[TO-CONFIRM]` |
+| Adjustment | `ADJ` | `ADJ-20260315-000001` | `[TO-CONFIRM]` |
+| Debit Note | `DN` | `DN-20260331-000001` | `[CONFIRMED]` |
 
-## 13.6 Cases điển hình
+## 14.6 Cases điển hình
+- **Sinh số Receipt theo kho:** `WH5.1 + RCV + 2026-03-15` → `RCV-20260315-000001`
+- **Hai kho cùng tạo Receipt cùng ngày:** mỗi kho có counter riêng, không xung đột
+- **Retry cùng external_id:** không sinh mã mới, trả về reference cũ
+- **Transaction fail giữa chừng:** phải có chính sách trace rõ về sequence gap `[TO-CONFIRM]`
 
-### Case 1 — Sinh số Receipt theo kho
-- **Input:** warehouse = WH5.1, sequence_code = RCV, ngày = 2026-03-15
-- **Output:** RCV-20260315-000001
-- **Ý nghĩa:** độc lập với kho khác
+## 14.7 Acceptance Criteria
+- **AC-SEQ-01:** Sequence phát sinh phải unique theo policy đã cấu hình.
+- **AC-SEQ-02:** Concurrent create trong cùng warehouse không được sinh trùng mã.
+- **AC-SEQ-03:** Cùng một command đã xử lý thành công thì retry không được sinh reference mới.
+- **AC-SEQ-04:** Mọi module phải dùng shared sequence service; không tự format riêng.
+- **AC-SEQ-05:** Chính sách gap khi rollback phải được quyết định trước khi chốt FS/API chi tiết cho service sequence. `[TO-CONFIRM]`
 
-### Case 2 — Hai kho cùng tạo Receipt cùng ngày
-- **Input:** WH5.1 và WH5.3 cùng phát sinh receipt
-- **Output:** mỗi kho có counter riêng, không xung đột
-
-### Case 3 — Retry cùng external_id không sinh mã mới
-- **Input:** client retry do timeout nhưng cùng external_id
-- **Output:** trả về reference đã sinh trước đó
-- **Ý nghĩa:** chống duplicate và giữ trace sạch
-
-### Case 4 — Giao dịch fail giữa chừng
-- **Input:** transaction tạo số nhưng DB rollback kỹ thuật
-- **Output:** phải có chính sách rõ về trace sequence; không gây mất khả năng audit
-
-## 13.7 Quy tắc bắt buộc
-
-- Sequence generation phải thread-safe / transaction-safe.
-- Mã không được tái sử dụng.
-- Không được sinh reference khác nhau cho cùng một command đã xử lý thành công.
-- Sequence service phải được dùng qua shared service, không để từng module tự viết format riêng.
+## 14.8 Quy tắc bắt buộc
+- Sequence generation phải thread-safe / transaction-safe. `[CONFIRMED]`
+- Mã không được tái sử dụng. `[CONFIRMED]`
+- Không được sinh reference khác nhau cho cùng một command đã xử lý thành công. `[CONFIRMED]`
+- Sequence service phải dùng qua shared service. `[CONFIRMED]`
 
 ---
 
-# 14. Sub-module 4 — Business Rules Baseline Management
+# 15. Sub-module 4 — Business Rules Baseline Management
 
-## 14.1 Mục đích
+## 15.1 Mục đích
+Quản lý baseline rule chính thức để BA, Dev, QA, PM cùng dùng một nguồn sự thật cho build và test.
 
-Quản lý baseline rule chính thức để team BA, Dev, QA, PM cùng dùng một nguồn sự thật cho việc build và test.
-
-## 14.2 Mô tả nghiệp vụ
-
+## 15.2 Mô tả nghiệp vụ
 SWM hiện có nhiều tài liệu: Project Charter, PRD, Blueprint, BRD, Module Master, Inventory Spec, Master Data Spec. Nếu không có baseline catalog, cùng một nghiệp vụ có thể bị hiểu khác nhau.
 
 Ví dụ tiêu biểu:
-- Một số tài liệu cũ còn ghi inbound fail tolerance → `PENDING_APPROVAL`.
-- Baseline mới hơn đã chốt inbound fail tolerance → `REJECTED` + re-weigh, không dùng inbound approval ở go-live.
+- Tài liệu cũ còn ghi inbound fail tolerance → `PENDING_APPROVAL`.
+- Baseline mới hơn đã chốt inbound fail tolerance → `REJECTED + re-weigh`, không dùng inbound approval ở go-live.
 
-Do đó, module này phải đóng vai trò **trọng tài baseline**.
+Do đó, sub-module này đóng vai trò **trọng tài baseline**. `[CONFIRMED]`
 
-## 14.3 Input
+## 15.3 Input
 
 | Input | Mô tả |
 |---|---|
@@ -496,78 +459,69 @@ Do đó, module này phải đóng vai trò **trọng tài baseline**.
 | To-confirm list | Điểm còn mở |
 | Phase boundary | Phase 1 vs Phase 2 |
 
-## 14.4 Output
+## 15.4 Output
 
 | Output | Mô tả |
 |---|---|
 | Rule catalog | Danh mục rule chính thức |
-| Rule status | CONFIRMED / TO-CONFIRM / PHASE 2 |
+| Rule status | `CONFIRMED / TO-CONFIRM / PHASE 2` |
 | Superseded note | Ghi chú rule cũ đã bị thay thế |
 | Rule owner | BA/PO/Lead chịu trách nhiệm xác nhận |
 
-## 14.5 Cấu trúc rule catalog đề xuất
+## 15.5 Cấu trúc rule catalog đề xuất
 
 | Trường | Ý nghĩa |
 |---|---|
 | rule_code | Mã rule nội bộ |
-| domain | INBOUND / OUTBOUND / INVENTORY / BILLING / FOUNDATION |
+| domain | `INBOUND / OUTBOUND / INVENTORY / BILLING / FOUNDATION` |
 | title | Tên rule |
 | description | Mô tả rule |
-| current_status | CONFIRMED / TO-CONFIRM / PHASE 2 |
+| current_status | `CONFIRMED / TO-CONFIRM / PHASE 2` |
 | source_of_truth | Tài liệu đang được lấy làm baseline |
+| brd_reference | Mã rule ở BRD nếu có |
 | supersedes | Rule/tài liệu cũ bị thay thế |
 | effective_phase | Go-Live / Phase 2 |
 | owner | Người chịu trách nhiệm nội dung |
 | last_reviewed_at | Ngày rà soát cuối |
 
-## 14.6 Cases điển hình
+## 15.6 Cases điển hình
+- **Inbound fail tolerance:** catalog phải chốt baseline go-live là `REJECTED + re-weigh`, đồng thời đánh dấu rule cũ là superseded. `[CONFIRMED]`
+- **Inventory status go-live:** chỉ có 4 status go-live: `AVAILABLE, DAMAGED, BLOCKED, IN_TRANSIT`. `[CONFIRMED]`
+- **Batch/Lot tracking:** đánh dấu `PHASE 2`, không đưa vào build Phase 1. `[PHASE 2]`
 
-### Case 1 — Inbound fail tolerance
-- **Input:** cùng một rule xuất hiện khác nhau ở BRD và PRD mới
-- **Output:** catalog phải chốt baseline go-live là `REJECTED + re-weigh`, đồng thời đánh dấu rule cũ là superseded
+## 15.7 Acceptance Criteria
+- **AC-RULE-01:** Mọi rule trọng yếu dùng để build phải có `current_status` rõ ràng.
+- **AC-RULE-02:** Rule conflict giữa tài liệu cũ/mới phải có decision log hoặc superseded note.
+- **AC-RULE-03:** QA test case phải map ngược được về rule catalog.
+- **AC-RULE-04:** Rule catalog phải có `source_of_truth` và khi có thể nên có `brd_reference`.
 
-### Case 2 — Inventory status go-live
-- **Input:** tài liệu inventory status
-- **Output:** baseline chính thức chỉ có 4 status go-live: AVAILABLE, DAMAGED, BLOCKED, IN_TRANSIT
-
-### Case 3 — Batch/Lot tracking
-- **Input:** yêu cầu mở rộng tương lai
-- **Output:** đánh dấu `PHASE 2`, không đưa vào build Phase 1
-
-## 14.7 Quy tắc bắt buộc
-
-- Mọi backlog build phải trace ngược được về rule catalog.
-- QA test case phải map được về rule_code.
-- Rule catalog phải có cột “source of truth” và “superseded” để tránh nhầm lẫn tài liệu cũ mới.
+## 15.8 Quy tắc bắt buộc
+- Mọi backlog build phải trace ngược được về rule catalog. `[CONFIRMED]`
+- QA test case phải map được về `rule_code`. `[CONFIRMED]`
+- Rule catalog phải có cột `source_of_truth` và `supersedes`. `[CONFIRMED]`
 
 ---
 
-# 15. Sub-module 5 — Reason Code Management
+# 16. Sub-module 5 — Reason Code Management
 
-## 15.1 Mục đích
-
+## 16.1 Mục đích
 Chuẩn hóa mã lý do cho các hành động ngoại lệ hoặc hành động nhạy cảm, để dữ liệu audit có ý nghĩa nghiệp vụ và có thể thống kê được.
 
-## 15.2 Mô tả nghiệp vụ
+## 16.2 Mô tả nghiệp vụ
+Nếu chỉ cho user nhập free text lý do, hệ thống sẽ không thể phân tích xu hướng ngoại lệ, đối soát nguyên nhân sai lệch, quản trị kiểm soát nội bộ hay làm báo cáo rủi ro.
 
-Nếu chỉ cho user nhập free text lý do, hệ thống sẽ không thể:
-- phân tích xu hướng ngoại lệ
-- đối soát nguyên nhân sai lệch
-- quản trị kiểm soát nội bộ
-- làm báo cáo quản trị rủi ro
+Do đó cần reason code catalog với `category`, `approval_flag`, `billing_impact` và mô tả business rõ ràng. `[CONFIRMED]`
 
-Do đó, cần reason code catalog với category, approval flag, ảnh hưởng billing/audit và mô tả business rõ ràng.
-
-## 15.3 Input
+## 16.3 Input
 
 | Input | Mô tả |
 |---|---|
 | Exception scenarios | Manual weight, cancel, reverse, adjustment, status change, override |
-| Business categories | MANUAL_WEIGHT, CANCEL, ADJUSTMENT, DAMAGE, SHRINKAGE, OTHER |
+| Business categories | `MANUAL_WEIGHT`, `CANCEL`, `ADJUSTMENT`, `DAMAGE`, `SHRINKAGE`, `OTHER` |
 | Approval policy | Loại nào cần approve |
 | Billing impact | Loại nào ảnh hưởng billing |
 
-## 15.4 Output
+## 16.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -576,7 +530,7 @@ Do đó, cần reason code catalog với category, approval flag, ảnh hưởng
 | Validation policy | Hành động nào bắt buộc reason code |
 | Reporting base | Nền để báo cáo ngoại lệ |
 
-## 15.5 Cấu trúc dữ liệu đề xuất
+## 16.5 Cấu trúc dữ liệu đề xuất
 
 | Field | Ý nghĩa |
 |---|---|
@@ -586,109 +540,94 @@ Do đó, cần reason code catalog với category, approval flag, ảnh hưởng
 | requires_approval | Có cần duyệt hay không |
 | affects_billing | Có ảnh hưởng thương mại hay không |
 | is_active | Có còn dùng hay không |
+| requires_note | Có bắt buộc nhập ghi chú bổ sung hay không |
 
-## 15.6 Danh mục category đề xuất
+## 16.6 Danh mục category đề xuất
+- `MANUAL_WEIGHT`
+- `CANCEL`
+- `REVERSE`
+- `ADJUSTMENT`
+- `DAMAGE`
+- `SHRINKAGE`
+- `STATUS_CHANGE`
+- `EXCEPTION_OVERRIDE`
+- `DOCUMENT_ERROR`
+- `SCALE_ISSUE`
+- `OTHER`
 
-- MANUAL_WEIGHT
-- CANCEL
-- REVERSE
-- ADJUSTMENT
-- DAMAGE
-- SHRINKAGE
-- STATUS_CHANGE
-- EXCEPTION_OVERRIDE
-- DOCUMENT_ERROR
-- SCALE_ISSUE
-- OTHER
+## 16.7 Minimum reason code set cho go-live
 
-## 15.7 Minimum Reason Code List cho Go-Live `[TO-CONFIRM voi TVL]`
+### 16.7.1 Inbound
+| Code | Mô tả | Trạng thái |
+|---|---|---|
+| `DAMAGED` | Hàng hư hỏng khi nhận | `[CONFIRMED]` |
+| `SHORT_DELIVERY` | Giao thiếu so với chứng từ | `[CONFIRMED]` |
+| `OVER_DELIVERY` | Giao dư so với chứng từ | `[CONFIRMED]` |
+| `WRONG_ITEM` | Sai mặt hàng/sku/owner | `[CONFIRMED]` |
+| `SCALE_CALIBRATION` | Cân lỗi/cần nhập tay do hiệu chuẩn | `[CONFIRMED]` |
+| `DOCUMENTATION_ERROR` | Sai chứng từ nguồn | `[CONFIRMED]` |
 
-Danh sach reason code toi thieu can co truoc go-live. TVL can review va bo sung/chinh sua.
+### 16.7.2 Outbound
+| Code | Mô tả | Trạng thái |
+|---|---|---|
+| `CUSTOMER_REJECT` | Khách từ chối nhận | `[CONFIRMED]` |
+| `WEIGHT_MISMATCH` | Sai lệch trọng lượng | `[CONFIRMED]` |
+| `QUALITY_ISSUE` | Vấn đề chất lượng | `[CONFIRMED]` |
+| `LOADING_LEFTOVER` | Còn hàng sau load | `[TO-CONFIRM]` |
 
-**Inbound domain:**
-| Code | Category | Description | Requires Approval | Affects Billing |
-|------|----------|-------------|-------------------|-----------------|
-| RC-IN-001 | DAMAGE | Hang hu hong khi nhan | No | Yes |
-| RC-IN-002 | SHORT_DELIVERY | Giao thieu so voi PO | No | Yes |
-| RC-IN-003 | OVER_DELIVERY | Giao du so voi PO | No | Yes |
-| RC-IN-004 | WRONG_ITEM | Hang sai chung loai | No | Yes |
-| RC-IN-005 | SCALE_ISSUE | Can bi loi, can lai | No | No |
+### 16.7.3 Inventory
+| Code | Mô tả | Trạng thái |
+|---|---|---|
+| `CYCLE_COUNT_ADJUST` | Điều chỉnh do kiểm kê | `[CONFIRMED]` |
+| `DAMAGE_WRITEOFF` | Ghi giảm do hư hỏng | `[CONFIRMED]` |
+| `STATUS_CHANGE` | Thay đổi inventory status | `[CONFIRMED]` |
+| `SHRINKAGE` | Hao hụt | `[CONFIRMED]` |
 
-**Outbound domain:**
-| Code | Category | Description | Requires Approval | Affects Billing |
-|------|----------|-------------|-------------------|-----------------|
-| RC-OUT-001 | WEIGHT_MISMATCH | Can outbound vuot tolerance | Yes (WH_MANAGER) | Yes |
-| RC-OUT-002 | CUSTOMER_REJECT | Khach hang tu choi nhan hang | No | Yes |
-| RC-OUT-003 | QUALITY_ISSUE | Van de chat luong phat hien khi xuat | No | Yes |
-| RC-OUT-004 | EXCEPTION_OVERRIDE | Manager force approve outbound exception | Yes (WH_MANAGER) | No |
+### 16.7.4 General
+| Code | Mô tả | Trạng thái |
+|---|---|---|
+| `OTHER` | Lý do khác | `[CONFIRMED]` |
 
-**Inventory domain:**
-| Code | Category | Description | Requires Approval | Affects Billing |
-|------|----------|-------------|-------------------|-----------------|
-| RC-INV-001 | CYCLE_COUNT_ADJUST | Dieu chinh sau kiem ke | Yes (WH_MANAGER) | Yes |
-| RC-INV-002 | DAMAGE_WRITEOFF | Xoa hang hu hong | Yes (WH_MANAGER) | Yes |
-| RC-INV-003 | SHRINKAGE | Hao hut tu nhien | Yes (WH_MANAGER) | Yes |
-| RC-INV-004 | STATUS_CHANGE | Thay doi trang thai inventory | No | No |
-| RC-INV-005 | MANUAL_WEIGHT | Nhap tay trong luong do can loi | Yes (WH_MANAGER) | Yes |
+**Quy tắc riêng cho `OTHER`:** bắt buộc nhập note bổ sung tối thiểu theo policy UI/API. `[CONFIRMED]`
 
-**General:**
-| Code | Category | Description | Requires Approval | Affects Billing |
-|------|----------|-------------|-------------------|-----------------|
-| RC-GEN-001 | CANCEL | Huy chung tu | Yes (WH_MANAGER) | Depends |
-| RC-GEN-002 | REVERSE | Dao nguoc transaction | Yes (WH_MANAGER) | Yes |
-| RC-GEN-003 | OTHER | Ly do khac (bat buoc ghi notes) | Depends | Depends |
+## 16.8 Cases điển hình
+- **Manual weight entry:** bắt buộc chọn reason code thuộc nhóm `MANUAL_WEIGHT`
+- **Inventory adjustment:** bắt buộc chọn reason code `ADJUSTMENT / SHRINKAGE / DAMAGE` phù hợp
+- **Cancel document:** bắt buộc chọn reason code nhóm `CANCEL`
+- **Force approve outbound:** dùng reason code nhóm `EXCEPTION_OVERRIDE`
 
-## 15.8 Cases dien hinh
+## 16.9 Acceptance Criteria
+- **AC-RSN-01:** Các action nhạy cảm không được submit thành công nếu thiếu `reason_code`.
+- **AC-RSN-02:** `OTHER` phải yêu cầu nhập note bổ sung.
+- **AC-RSN-03:** Reason code catalog phải được dùng chung giữa UI, API, audit và reporting.
+- **AC-RSN-04:** Reason code inactive không được dùng cho transaction mới.
+- **AC-RSN-05:** Hệ thống phải có minimum go-live reason code set trước SIT/UAT end-to-end.
 
-### Case 1 — Manual weight entry
-- **Input:** WH_MANAGER nhập tay cân do thiết bị lỗi
-- **Output:** bắt buộc chọn reason code thuộc nhóm MANUAL_WEIGHT
-- **Kỳ vọng:** ghi audit đầy đủ approved_by/user/time
-
-### Case 2 — Inventory adjustment
-- **Input:** cần điều chỉnh tồn do shrinkage hoặc damage
-- **Output:** bắt buộc chọn reason code ADJUSTMENT/SHRINKAGE/DAMAGE phù hợp
-
-### Case 3 — Cancel document
-- **Input:** cancel receipt hoặc shipment ở state cho phép
-- **Output:** bắt buộc chọn reason code CANCEL
-
-### Case 4 — Force approve outbound
-- **Input:** manager duyệt ngoại lệ outbound
-- **Output:** reason code EXCEPTION_OVERRIDE + audit trail
-
-## 15.9 Quy tac bat buoc
-
-- Khong cho nhap free text thay cho reason code o cac action nhay cam, nhưng có thể cho thêm notes bổ sung.
-- Reason code phải dùng chung giữa UI, API, audit, reporting.
-- Không được hard-code reason list riêng lẻ theo màn hình.
+## 16.10 Quy tắc bắt buộc
+- Không cho nhập free text thay cho reason code ở action nhạy cảm, nhưng có thể cho thêm notes bổ sung. `[CONFIRMED]`
+- Reason code phải dùng chung giữa UI, API, audit, reporting. `[CONFIRMED]`
+- Không hard-code reason list riêng lẻ theo màn hình. `[CONFIRMED]`
 
 ---
 
-# 16. Sub-module 6 — Audit Trail & Exception Governance
+# 17. Sub-module 6 — Audit Trail & Exception Governance
 
-## 16.1 Mục đích
-
+## 17.1 Mục đích
 Thiết lập cơ chế ghi vết và kiểm soát ngoại lệ cho toàn hệ thống, để bất kỳ thay đổi quan trọng nào cũng truy ngược được ai làm, lúc nào, thay đổi gì và vì sao.
 
-## 16.2 Mô tả nghiệp vụ
+## 17.2 Mô tả nghiệp vụ
+Trong bài toán TVL, audit không phải phần “nice to have”. Đây là nền bắt buộc vì manual weight, reverse/cancel, dữ liệu cân và posting đều ảnh hưởng trực tiếp đến tranh chấp và billing. `[CONFIRMED]`
 
-Trong bài toán TVL, audit không phải phần “nice to have”. Đây là nền bắt buộc vì:
-- manual weight là điểm cực kỳ nhạy cảm
-- reverse/cancel có thể làm thay đổi số liệu inventory/billing
-- dữ liệu cân và posting ảnh hưởng trực tiếp tranh chấp khách hàng
-- hệ thống cần retention dài để phục vụ đối soát và kiểm tra nội bộ
-
-## 16.3 Input
+## 17.3 Input
 
 | Input | Mô tả |
 |---|---|
-| Entity list | INVENT_TRANS, ON_HAND, RECEIPT, SHIPMENT, TRANSFER, WORK_ORDER, ADJUSTMENT... |
-| Action list | CREATE, UPDATE, POST, CANCEL, APPROVE, REJECT, REVERSE |
+| Entity list | `INVENT_TRANS`, `ON_HAND`, `RECEIPT`, `SHIPMENT`, `TRANSFER`, `WORK_ORDER`, `ADJUSTMENT`... |
+| Action list | `CREATE`, `UPDATE`, `POST`, `CANCEL`, `APPROVE`, `REJECT`, `REVERSE` |
 | Mandatory audit fields | user, role, timestamp, old/new, reason_code... |
 | Exception scenarios | manual, override, duplicate reject, reverse, lock |
 
-## 16.4 Output
+## 17.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -697,7 +636,7 @@ Trong bài toán TVL, audit không phải phần “nice to have”. Đây là n
 | retention policy | Chính sách lưu giữ |
 | traceability rule | Quy tắc truy vết xuyên module |
 
-## 16.5 Audit schema tối thiểu
+## 17.5 Audit schema tối thiểu
 
 | Field | Mục đích |
 |---|---|
@@ -711,15 +650,15 @@ Trong bài toán TVL, audit không phải phần “nice to have”. Đây là n
 | user_id | ai làm |
 | user_role | role tại thời điểm thao tác |
 | ip_address | nguồn truy cập |
-| device_type | WEB/MOBILE/API/SYSTEM |
+| device_type | `WEB/MOBILE/API/SYSTEM` |
 | timestamp | thời gian |
 | reason_code | lý do nếu là action nhạy cảm |
 | notes | mô tả bổ sung |
 | correlation_id | gom nhóm event liên quan |
 
-## 16.6 Khi nào bắt buộc audit mạnh
+> Audit schema tối thiểu hiện tại gồm **15 fields**. Đây là baseline hiện hành của spec này.
 
-Các hành động sau phải luôn có audit record đầy đủ:
+## 17.6 Khi nào bắt buộc audit mạnh
 - manual weight
 - cancel document
 - reverse transaction
@@ -731,53 +670,37 @@ Các hành động sau phải luôn có audit record đầy đủ:
 - thay đổi sequence config
 - thay đổi reason code master
 
-## 16.7 Cases điển hình
+## 17.7 Cases điển hình
+- **Reverse transaction:** audit `REVERSE`, `reason_code` bắt buộc, `correlation_id` nối trans gốc và trans đảo
+- **Manual weight:** audit đầy đủ `user`, `role`, `reason`, `old/new`, `device_type`
+- **Update permission matrix:** phải audit before/after
+- **Exception reporting:** thống kê được loại ngoại lệ nào xảy ra nhiều nhất và bởi vai trò nào
 
-### Case 1 — Reverse transaction
-- **Input:** user thực hiện reverse InventTrans
-- **Output:** audit log action = REVERSE, reason_code bắt buộc, correlation_id nối trans gốc và trans đảo
+## 17.8 Acceptance Criteria
+- **AC-AUD-01:** Các action trong danh sách bắt buộc audit mạnh phải luôn tạo được audit record.
+- **AC-AUD-02:** Audit record phải lưu ít nhất bộ field tối thiểu đã định nghĩa.
+- **AC-AUD-03:** Reverse/cancel/override phải có `reason_code` và `correlation_id` phù hợp.
+- **AC-AUD-04:** Audit phải được ghi ở backend hoặc event layer đáng tin cậy.
+- **AC-AUD-05:** Retention cho transaction-related logs là tối thiểu 7 năm.
 
-### Case 2 — Manual weight
-- **Input:** cân nhập tay do scale lỗi
-- **Output:** audit đầy đủ user, role, reason, old/new, device_type
-
-### Case 3 — Update permission matrix
-- **Input:** ADMIN thay đổi quyền một role
-- **Output:** phải audit trước/sau để trace ai mở quyền gì
-
-### Case 4 — Exception reporting
-- **Input:** tập hợp audit/exception log theo tháng
-- **Output:** thống kê được loại ngoại lệ nào xảy ra nhiều nhất và bởi vai trò nào
-
-## 16.8 Quy tắc bắt buộc
-
-- Audit log không được phụ thuộc vào frontend.
-- Audit phải ghi ở backend hoặc event layer đáng tin cậy.
-- Retention tối thiểu 7 năm cho transaction-related logs. `[TO-CONFIRM: chinh sach retention chinh thuc cua TVL]`
-- Cần hỗ trợ correlation giữa nhiều log thuộc cùng một flow.
+## 17.9 Quy tắc bắt buộc
+- Audit log không được phụ thuộc vào frontend. `[CONFIRMED]`
+- Audit phải ghi ở backend hoặc event layer đáng tin cậy. `[CONFIRMED]`
+- Retention tối thiểu 7 năm cho transaction-related logs. `[CONFIRMED]`
+- Cần hỗ trợ correlation giữa nhiều log thuộc cùng một flow. `[CONFIRMED]`
+- Mức field-level audit cho một số master data lớn đang là điểm mở chi tiết triển khai. `[TO-CONFIRM]`
 
 ---
 
-# 17. Sub-module 7 — Idempotency & Command Safety Control
+# 18. Sub-module 7 — Idempotency & Command Safety Control
 
-## 17.1 Mục đích
-
+## 18.1 Mục đích
 Ngăn duplicate command khi client retry do timeout, mạng chập chờn, queue local, weighbridge resend hoặc integration replay.
 
-## 17.2 Mô tả nghiệp vụ
+## 18.2 Mô tả nghiệp vụ
+TVL có các nguồn phát lệnh nhạy cảm với duplicate: Mobile App, Weighbridge Local Agent, API integrations, worker jobs. Nếu không có idempotency, hệ thống có thể post receipt/shipment trùng, tạo 2 InventTrans cho 1 event, sinh nhiều mã chứng từ cho 1 request và lệch on-hand/billing. `[CONFIRMED]`
 
-TVL có các nguồn phát lệnh nhạy cảm với duplicate:
-- Mobile App trong điều kiện mạng không ổn định
-- Weighbridge Local Agent đọc từ COM port và gửi lên hệ thống
-- API integrations hoặc worker jobs
-
-Nếu không có idempotency, hệ thống có thể:
-- post receipt/shipment trùng
-- tạo 2 InventTrans cho 1 event
-- sinh nhiều mã chứng từ cho 1 request
-- lệch on-hand và billing
-
-## 17.3 Input
+## 18.3 Input
 
 | Input | Mô tả |
 |---|---|
@@ -786,7 +709,7 @@ Nếu không có idempotency, hệ thống có thể:
 | command name | post receipt, post shipment, reverse, confirm, lock... |
 | payload fingerprint | dùng khi cần so sánh nội dung |
 
-## 17.4 Output
+## 18.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -795,63 +718,46 @@ Nếu không có idempotency, hệ thống có thể:
 | Idempotency registry | nơi lưu dấu command đã xử lý |
 | Technical guardrails | unique constraints / row locks / dedup checks |
 
-## 17.5 Rule baseline đề xuất
+## 18.5 Rule baseline đề xuất
+1. `external_id` phải được gửi cho mọi command API có side effect. `[CONFIRMED]`
+2. Cùng `external_id` + cùng command context → trả kết quả cũ, không tạo record mới. `[CONFIRMED]`
+3. Receipt posting phải check `(ref_type, ref_id, ref_line_id, stage=PHYSICAL)`. `[CONFIRMED]`
+4. Shipment posting phải check tương tự. `[CONFIRMED]`
+5. Reverse không được chạy 2 lần trên cùng 1 trans gốc. `[CONFIRMED]`
+6. InventDim dùng `dim_hash` để dedup. `[CONFIRMED]`
+7. Allocation/number sequence phải có lock strategy phù hợp. `[CONFIRMED]`
 
-1. `external_id` phải được gửi cho mọi command API có side effect.  
-2. Cùng `external_id` + cùng command context → trả kết quả cũ, không tạo record mới.  
-3. Receipt posting phải check `(ref_type, ref_id, ref_line_id, stage=PHYSICAL)`.  
-4. Shipment posting phải check tương tự.  
-5. Reverse không được chạy 2 lần trên cùng 1 trans gốc.  
-6. InventDim dùng `dim_hash` để dedup.  
-7. Allocation/number sequence phải có lock strategy phù hợp.  
+## 18.6 Cases điển hình
+- **Mobile retry sau timeout:** trả kết quả cũ, không tạo thêm InventTrans
+- **Weighbridge gửi lại weight event:** nhận diện duplicate và không post lặp
+- **Reverse double click:** lần thứ hai bị reject vì trans đã reversed
+- **Sequence collision khi concurrent create:** sequence vẫn unique và không sinh trùng mã
 
-## 17.6 Cases điển hình
+## 18.7 Acceptance Criteria
+- **AC-IDEM-01:** Mọi command API có side effect trong go-live scope phải định nghĩa rõ idempotency key strategy.
+- **AC-IDEM-02:** Retry cùng `external_id` không tạo transaction/document mới.
+- **AC-IDEM-03:** Duplicate reject phải có audit/exception log phù hợp.
+- **AC-IDEM-04:** Reverse cùng trans gốc không thể chạy thành công hai lần.
+- **AC-IDEM-05:** Danh sách command APIs bắt buộc có `external_id` phải được chốt trước FS/API chi tiết. `[TO-CONFIRM]`
 
-### Case 1 — Mobile retry sau timeout
-- **Input:** người dùng bấm Complete Work, app timeout và retry lại cùng external_id
-- **Output:** hệ thống trả kết quả đã xử lý, không tạo thêm InventTrans
-
-### Case 2 — Weighbridge gửi lại weight event
-- **Input:** local agent resend cùng event
-- **Output:** hệ thống nhận diện duplicate và không post lặp
-
-### Case 3 — Reverse double click
-- **Input:** user bấm reverse hai lần
-- **Output:** lần thứ hai bị reject vì trans đã reversed
-
-### Case 4 — Sequence collision khi concurrent create
-- **Input:** nhiều request đồng thời cùng loại chứng từ trong một kho
-- **Output:** sequence vẫn unique và không sinh trùng mã
-
-## 17.7 Quy tắc bắt buộc
-
-- Idempotency phải được xem là rule business-critical, không phải enhancement kỹ thuật.
-- Mọi API side effect phải được liệt kê và dán chính sách idempotency rõ ràng.
-- Duplicate rejection cũng phải có audit/exception log phù hợp.
+## 18.8 Quy tắc bắt buộc
+- Idempotency là rule business-critical, không phải enhancement kỹ thuật. `[CONFIRMED]`
+- Mọi API side effect phải được liệt kê và dán chính sách idempotency rõ ràng. `[CONFIRMED]`
+- Duplicate rejection cũng phải có audit/exception log phù hợp. `[CONFIRMED]`
 
 ---
 
-# 18. Sub-module 8 — Document Governance, Change Control & Delivery Baseline `[PROCESS — NOT CODE]`
+# 19. Sub-module 8 — Document Governance, Change Control & Delivery Baseline `[PROCESS — NOT CODE]`
 
-> **Luu y:** Sub-module nay dinh nghia quy trinh quan ly tai lieu va change control, KHONG phai feature can code.
-> Dev KHONG can build UI cho document governance. Output la checklist, decision log template va quy trinh sign-off.
-
-## 18.1 Mục đích
-
+## 19.1 Mục đích
 Quản lý baseline tài liệu, quyết định thay đổi và kỷ luật triển khai để toàn team cùng bám một chuẩn duy nhất từ BA đến Dev, QA và go-live.
 
-## 18.2 Mô tả nghiệp vụ
+## 19.2 Mô tả nghiệp vụ
+Dự án SWM là AI-first delivery nhưng vẫn yêu cầu kiểm soát chặt về traceability, prompt log, review checklist, test evidence, decision log và sign-off.
 
-Dự án SWM là dự án AI-first delivery nhưng vẫn yêu cầu kiểm soát rất chặt về traceability, prompt log, review checklist, test evidence, decision log và sign-off. Vì vậy governance không dừng ở runtime system, mà còn kéo sang lifecycle delivery.
+Sub-module này **không mặc định là dashboard hay workflow runtime bắt buộc phải build**. Nó là **khung quản trị delivery**; chỉ build thành feature khi có explicit scope riêng. `[PROCESS — NOT CODE]`
 
-Sub-module này giúp trả lời:
-- Tài liệu nào là nguồn chuẩn hiện tại?
-- Khi tài liệu mâu thuẫn nhau thì lấy cái nào?
-- Quyết định thay đổi được log ra sao?
-- Yêu cầu nào phải sign-off trước khi build?
-- Release/go-live cần những checkpoint nào?
-
-## 18.3 Input
+## 19.3 Input
 
 | Input | Mô tả |
 |---|---|
@@ -860,7 +766,7 @@ Sub-module này giúp trả lời:
 | Change requests | đề xuất thay đổi scope/rule |
 | Delivery evidence | prompt log, checklist, test evidence, UAT sign-off |
 
-## 18.4 Output
+## 19.4 Output
 
 | Output | Mô tả |
 |---|---|
@@ -870,34 +776,27 @@ Sub-module này giúp trả lời:
 | Delivery checklist | Checklist build/test/release/go-live |
 | Sign-off pack | Bộ tài liệu chốt từng mốc |
 
-## 18.5 Cases điển hình
+## 19.5 Cases điển hình
+- **Tài liệu cũ và mới mâu thuẫn:** decision log xác định baseline mới là source of truth; rule cũ bị superseded
+- **Build-ready gate:** story chưa có traceability và AC rõ → chưa đạt build-ready
+- **Go-live gate:** phải đủ runbook, test evidence, critical defect = 0, sign-off đúng vai trò
+- **AI-generated delivery evidence:** phải có prompt log, verification steps, test evidence theo governance charter
 
-### Case 1 — Tài liệu cũ và mới mâu thuẫn
-- **Input:** BRD cũ và PRD mới mô tả inbound tolerance khác nhau
-- **Output:** decision log xác định baseline mới là source of truth; rule cũ bị superseded
+## 19.6 Acceptance Criteria
+- **AC-DOC-01:** Mỗi rule trọng yếu phải có source of truth rõ ràng.
+- **AC-DOC-02:** Issue conflict giữa tài liệu phải có decision log trước khi build.
+- **AC-DOC-03:** Build-ready checklist phải bao gồm tối thiểu scope, rule traceability, AC, dependency và open-item status.
+- **AC-DOC-04:** Go-live checklist phải có test evidence và sign-off tối thiểu theo governance baseline.
 
-### Case 2 — Build-ready gate
-- **Input:** story đã viết xong nhưng chưa có rule traceability và acceptance criteria rõ
-- **Output:** chưa đạt điều kiện build-ready
-
-### Case 3 — Go-live gate
-- **Input:** release candidate chuẩn bị go-live
-- **Output:** cần đủ runbook, test evidence, critical defect = 0, sign-off đúng vai trò
-
-### Case 4 — AI-generated delivery evidence
-- **Input:** PR do AI-assisted development sinh ra
-- **Output:** phải có prompt log, verification steps, test evidence theo governance charter
-
-## 18.6 Quy tắc bắt buộc
-
-- Mỗi rule trọng yếu phải có source of truth rõ ràng.
-- Không merge/publish artifact nếu chưa có verify evidence phù hợp.
-- Change control phải phân biệt được: change về nghiệp vụ, change về kỹ thuật, change về scope.
-- Decision log phải đọc được cả bởi business lẫn dev.
+## 19.7 Quy tắc bắt buộc
+- Mỗi rule trọng yếu phải có source of truth rõ ràng. `[CONFIRMED]`
+- Không merge/publish artifact nếu chưa có verify evidence phù hợp. `[CONFIRMED]`
+- Change control phải phân biệt được change về nghiệp vụ, kỹ thuật, scope. `[CONFIRMED]`
+- Decision log phải đọc được cả bởi business lẫn dev. `[CONFIRMED]`
 
 ---
 
-## 19. Danh sách case tổng hợp theo module
+## 20. Danh sách case tổng hợp theo module
 
 | Case ID | Tên case | Input | Output |
 |---|---|---|---|
@@ -914,7 +813,7 @@ Sub-module này giúp trả lời:
 
 ---
 
-## 20. Ma trận input / output / case theo sub-module
+## 21. Ma trận input / output / case theo sub-module
 
 | Sub-module | Input chính | Output chính | Case tiêu biểu |
 |---|---|---|---|
@@ -929,35 +828,32 @@ Sub-module này giúp trả lời:
 
 ---
 
-## 21. Business rules của riêng module Foundation & Governance
+## 22. Business rules của riêng module Foundation & Governance
 
-Dưới đây là bộ rule nền đề xuất cho module này.
+| Rule ID | Rule | Mô tả | BRD Reference | Trạng thái |
+|---|---|---|---|---|
+| FG-BR-001 | Backend-enforced permission | Quyền phải được kiểm ở backend, không chỉ UI | BR-RBAC-001 | `[CONFIRMED]` |
+| FG-BR-002 | Restricted action audit | Manual/override/reverse/lock phải audit đầy đủ | BR-WB-001, BR-IN-007 | `[CONFIRMED]` |
+| FG-BR-003 | Sequence uniqueness | Mã chứng từ phải unique theo chính sách sequence | BR-MD-005 | `[CONFIRMED]` |
+| FG-BR-004 | Per-warehouse sequence | Sequence scope = PER_WAREHOUSE | BR-MD-005 | `[CONFIRMED]` |
+| FG-BR-005 | No free-text-only reason | Action nhạy cảm phải dùng reason code chuẩn | BR-WB-001, BR-IN-007 | `[CONFIRMED]` |
+| FG-BR-006 | Immutable posted ledger | Ledger đã post không được update/delete trực tiếp | Không map trực tiếp trong BRD hiện có | `[CONFIRMED]` |
+| FG-BR-007 | Mandatory idempotency | Command API có side effect phải có external_id | BR-AUD-003 | `[CONFIRMED]` |
+| FG-BR-008 | Duplicate-safe retry | Retry cùng external_id không tạo mới | BR-AUD-003 | `[CONFIRMED]` |
+| FG-BR-009 | Rule status clarity | Mọi rule phải có trạng thái CONFIRMED/TO-CONFIRM/PHASE 2 | Không map trực tiếp trong BRD hiện có | `[CONFIRMED]` |
+| FG-BR-010 | Superseded tracking | Rule cũ bị thay thế phải được đánh dấu rõ | Không map trực tiếp trong BRD hiện có | `[CONFIRMED]` |
+| FG-BR-011 | Audit retention | Transaction-related logs lưu tối thiểu 7 năm | Không map trực tiếp trong BRD hiện có | `[CONFIRMED]` |
+| FG-BR-012 | Customer data scope | Customer Viewer chỉ được xem dữ liệu trong owner scope | Tham chiếu overview/module spec, chưa có BRD code riêng rõ ràng | `[CONFIRMED]` |
+| FG-BR-013 | Authority segregation | Action nhạy cảm phải đúng role authority | BR-RBAC-001 (một phần), BR-IN-007 (một phần) | `[CONFIRMED]` |
+| FG-BR-014 | Change traceability | Mọi thay đổi baseline phải có decision log | Không map trực tiếp trong BRD hiện có | `[CONFIRMED]` |
 
-| Rule ID | Rule | Mô tả | BRD Reference |
-|---|---|---|---|
-| FG-BR-001 | Backend-enforced permission | Quyền phải được kiểm ở backend, không chỉ UI | BR-MD-001 |
-| FG-BR-002 | Restricted action audit | Manual/override/reverse/lock phải audit đầy đủ | BR-INV-009, BR-WB-004 |
-| FG-BR-003 | Sequence uniqueness | Mã chứng từ phải unique theo chính sách sequence | BR-MD-002 |
-| FG-BR-004 | Per-warehouse sequence | Sequence scope = PER_WAREHOUSE | BR-MD-002 |
-| FG-BR-005 | No free-text-only reason | Action nhạy cảm phải dùng reason code chuẩn | BR-MD-003 |
-| FG-BR-006 | Immutable posted ledger | Ledger đã post không được update/delete trực tiếp | BR-INV-001, BR-INV-002 |
-| FG-BR-007 | Mandatory idempotency | Command API có side effect phải có external_id | BR-INV-005 |
-| FG-BR-008 | Duplicate-safe retry | Retry cùng external_id không tạo mới | BR-INV-005 |
-| FG-BR-009 | Rule status clarity | Mọi rule phải có trạng thái CONFIRMED/TO-CONFIRM/PHASE 2 | — (Foundation internal) |
-| FG-BR-010 | Superseded tracking | Rule cũ bị thay thế phải được đánh dấu rõ | — (Foundation internal) |
-| FG-BR-011 | Audit retention | Transaction-related logs lưu tối thiểu 7 năm | BR-INV-009 |
-| FG-BR-012 | Customer data scope | Customer Viewer chỉ được xem dữ liệu trong owner scope | BR-MD-001 |
-| FG-BR-013 | Authority segregation | Action nhạy cảm phải đúng role authority | BR-MD-001 |
-| FG-BR-014 | Change traceability | Mọi thay đổi baseline phải có decision log | — (Foundation internal) |
+> Ghi chú: Cột **BRD Reference** chỉ map khi thực sự có rule tương ứng trong bộ BRD hiện tại. Không ép map giả chỉ để đủ cột.
 
 ---
 
-## 22. Luồng nghiệp vụ tổng quát của module
+## 23. Luồng nghiệp vụ tổng quát của module
 
-Mặc dù module này không có state machine business như Receipt hay Shipment, nó vẫn có luồng vận hành logic như sau:
-
-### 22.1 Luồng governance baseline
-
+### 23.1 Luồng governance baseline
 1. Thu thập tài liệu nguồn và confirmed decisions  
 2. Chuẩn hóa glossary và rule catalog  
 3. Xác định role catalog và permission matrix  
@@ -967,8 +863,7 @@ Mặc dù module này không có state machine business như Receipt hay Shipmen
 7. Ghi decision log cho các điểm thay đổi  
 8. Dùng checklist để kiểm soát build/test/go-live  
 
-### 22.2 Luồng runtime control điển hình
-
+### 23.2 Luồng runtime control điển hình
 1. User gửi request thao tác  
 2. Hệ thống kiểm tra permission  
 3. Hệ thống kiểm tra command idempotency  
@@ -979,10 +874,9 @@ Mặc dù module này không có state machine business như Receipt hay Shipmen
 
 ---
 
-## 23. Yêu cầu dữ liệu và thiết kế mức khái niệm
+## 24. Yêu cầu dữ liệu và thiết kế mức khái niệm
 
-### 23.1 Bảng/đối tượng tối thiểu nên có
-
+### 24.1 Bảng/đối tượng tối thiểu nên có
 | Object | Vai trò |
 |---|---|
 | role | danh mục vai trò |
@@ -996,8 +890,7 @@ Mặc dù module này không có state machine business như Receipt hay Shipmen
 | decision_log | log quyết định thay đổi baseline |
 | change_control | quản lý thay đổi |
 
-### 23.2 Quan hệ khái niệm
-
+### 24.2 Quan hệ khái niệm
 - `role` 1-n `role_permission`
 - `permission` 1-n `role_permission`
 - `reason_code` được tham chiếu bởi `audit_log`, `adjustment`, `manual_weight`, `cancel`, `reverse`
@@ -1007,7 +900,7 @@ Mặc dù module này không có state machine business như Receipt hay Shipmen
 
 ---
 
-## 24. Yêu cầu phi chức năng áp cho module
+## 25. Yêu cầu phi chức năng áp cho module
 
 | Nhóm | Yêu cầu |
 |---|---|
@@ -1022,54 +915,21 @@ Mặc dù module này không có state machine business như Receipt hay Shipmen
 
 ---
 
-## 25. Acceptance criteria ở mức module
+## 26. Acceptance criteria ở mức module
 
 Module Foundation & Governance được xem là đạt khi tối thiểu thỏa các điều kiện sau:
-
 1. Có permission matrix được phê duyệt và được enforce ở backend.
 2. Có reason code catalog dùng chung toàn hệ thống.
 3. Có sequence config hoạt động ổn định cho các document chính.
 4. Có audit log cho các action nhạy cảm.
 5. Có idempotency policy cho command APIs trọng yếu.
-6. Có rule catalog chỉ rõ CONFIRMED/TO-CONFIRM/PHASE 2.
+6. Có rule catalog chỉ rõ `CONFIRMED/TO-CONFIRM/PHASE 2`.
 7. Có decision log cho các điểm mâu thuẫn tài liệu đã được xử lý.
 8. Có checklist build/test/go-live bám governance baseline.
 
-### 25.1 Acceptance Criteria chi tiet theo sub-module
-
-**Sub-module 1 — RBAC & Permission Control**
-- AC-1.1: User khong co permission goi API → backend tra 403 + audit log ghi ACCESS_DENIED
-- AC-1.2: Role assignment thay doi → co hieu luc ngay lap tuc (khong can re-login)
-- AC-1.3: ADMIN role khong the tu xoa chinh minh khoi role ADMIN
-- AC-1.4: CUST_VIEWER chi xem duoc data thuoc owner_id cua minh, ke ca qua API direct call
-- AC-1.5: Export data cung chiu kiem soat permission nhu view data
-
-**Sub-module 3 — Number Sequence & Reference Control**
-- AC-3.1: 2 request dong thoi cung warehouse cung loai → sinh 2 ma khac nhau, khong trung
-- AC-3.2: Retry cung external_id → tra ve reference da sinh truoc do, khong sinh ma moi
-- AC-3.3: Sequence reset dung theo daily policy (counter ve 1 moi ngay)
-- AC-3.4: Format output dung chuan PREFIX-YYYYMMDD-SEQ (vi du: RCV-20260315-000001)
-
-**Sub-module 5 — Reason Code Management**
-- AC-5.1: Manual weight KHONG co reason_code → API reject 400
-- AC-5.2: Cancel document KHONG co reason_code → API reject 400
-- AC-5.3: Reason code catalog co the them/sua/deactivate qua admin UI
-- AC-5.4: Deactivated reason code khong hien thi trong dropdown nhung van hien thi trong audit history
-
-**Sub-module 6 — Audit Trail & Exception Governance**
-- AC-6.1: Manual weight → audit log ghi du: user, role, old_value, new_value, reason_code, device_type, timestamp
-- AC-6.2: Reverse transaction → correlation_id noi trans goc va trans dao
-- AC-6.3: Audit log KHONG the edit/delete boi bat ky role nao (ke ca ADMIN)
-- AC-6.4: Query audit log theo entity_type + entity_id + date range tra ket qua trong < 2s
-
-**Sub-module 7 — Idempotency & Command Safety Control**
-- AC-7.1: Post receipt voi cung external_id 2 lan → chi tao 1 InventTrans, lan 2 tra ket qua cu
-- AC-7.2: Reverse da reverse → reject voi error code cu the (ALREADY_REVERSED)
-- AC-7.3: Weighbridge resend cung event → khong tao duplicate weight record
-
 ---
 
-## 26. Rủi ro nếu module làm không đủ
+## 27. Rủi ro nếu module làm không đủ
 
 | Rủi ro | Hậu quả |
 |---|---|
@@ -1083,7 +943,7 @@ Module Foundation & Governance được xem là đạt khi tối thiểu thỏa 
 
 ---
 
-## 27. Khuyến nghị cho Dev Team
+## 28. Khuyến nghị cho Dev Team
 
 1. Thiết kế module này như **shared control layer**, không phải feature nhỏ lẻ.
 2. Tách riêng **action permission**, **approval authority** và **data scope**.
@@ -1091,11 +951,12 @@ Module Foundation & Governance được xem là đạt khi tối thiểu thỏa 
 4. Xây audit/event trail ở backend service layer, không giao toàn bộ cho UI.
 5. Tạo `business_rule_catalog` hoặc ít nhất `decision registry` để team không build theo trí nhớ.
 6. Sequence service phải là shared service dùng chung, không để mỗi module tự generate.
-7. Các action nhạy cảm nên có correlation_id để trace xuyên từ UI → API → DB → audit.
+7. Các action nhạy cảm nên có `correlation_id` để trace xuyên từ UI → API → DB → audit.
+8. Không tự suy diễn Sub-module 2 và 8 thành dashboard/feature nếu backlog không giao explicit scope.
 
 ---
 
-## 28. Khuyến nghị cho QA Team
+## 29. Khuyến nghị cho QA Team
 
 1. Test permission ở cả UI và API.  
 2. Test duplicate/retry cho các command quan trọng.  
@@ -1103,46 +964,59 @@ Module Foundation & Governance được xem là đạt khi tối thiểu thỏa 
 4. Test reason code mandatory validation.  
 5. Test sequence uniqueness ở điều kiện concurrent.  
 6. Test superseded rule handling để bảo đảm hệ thống bám baseline mới.  
+7. Map test case vào `FG-BR-*` và nếu có thì map thêm BRD reference.  
 
 ---
 
-## 29. Diem can chot them truoc khi thiet ke FS/API chi tiet
+## 30. Điểm cần chốt thêm trước khi thiết kế FS/API chi tiết
 
-Cac diem duoi day can duoc xac nhan chinh thuc truoc khi boc tiep tai lieu chuc nang chi tiet:
+| # | Open Item | Trạng thái | Priority | Impact nếu chưa chốt | Block module |
+|---|---|---|---|---|---|
+| 1 | Có giữ `WH_ADMIN` là role riêng hay gộp vào role khác | `[TO-CONFIRM]` | P1 | Lệch permission matrix và API authorization | M1, M2, M4, M5 |
+| 2 | Danh sách action nhạy cảm cuối cùng cần approval/dual control | `[TO-CONFIRM]` | P1 | Dev/QA không khóa đúng boundary authority | M1, M4, M5, M8 |
+| 3 | Danh sách prefix chuẩn đầy đủ cho tất cả document codes go-live | `[TO-CONFIRM]` | P2 | Sequence service thiếu mã đối tượng | M1, M4, M5, M6, M8 |
+| 4 | Chính sách sequence gap khi rollback kỹ thuật | `[TO-CONFIRM]` | P1 | Thiết kế sequence/audit/traceability không thống nhất | M1, M4, M5, M6, M8 |
+| 5 | Danh sách reason code go-live đầy đủ theo từng domain | `[TO-CONFIRM]` | P1 | User không thao tác được ngoại lệ; QA không test đủ | M1, M4, M5, M6, M8 |
+| 6 | Danh sách command APIs bắt buộc phải có `external_id` | `[TO-CONFIRM]` | P1 | Duplicate protection không đủ | M4, M5, M6, M8 |
+| 7 | Mức chi tiết audit cho update master data: field-level hay entity-level | `[TO-CONFIRM]` | P2 | DB/event design và storage sizing không rõ | M1, M2, M6 |
+| 8 | Chính sách truy cập decision log/rule catalog cho end user nội bộ | `[TO-CONFIRM]` | P3 | Không block build lõi nhưng ảnh hưởng vận hành/governance | M1 |
 
-| # | To-Confirm Item | Priority | Impact (block module nao) | Deadline |
-|---|----------------|----------|--------------------------|----------|
-| 1 | Danh sach role go-live cuoi cung: `WH_ADMIN` tach biet hay gop `WH_MANAGER/Admin`? | P2 | M1 RBAC, M7 Work Execution | Truoc Sprint 1 |
-| 2 | Danh sach action nhay cam cuoi cung can approval/dual control | P2 | M1 RBAC, M4-M6 exception flows | Truoc Sprint 1 |
-| 3 | Danh sach prefix chuan day du cho tat ca document codes go-live | P3 | M3 Number Sequence (khong block build) | Truoc Sprint 2 |
-| 4 | Chinh sach sequence gap khi rollback ky thuat | P3 | M3 Number Sequence | Truoc Sprint 2 |
-| 5 | **Danh sach reason code go-live day du theo tung domain** | **P1** | **M4 Inbound, M5 Outbound, M6 Inventory, M9 VAS** | **Truoc Sprint 1** |
-| 6 | Danh sach command APIs bat buoc phai co `external_id` | P2 | M1 Idempotency, all modules | Truoc Sprint 1 |
-| 7 | Muc chi tiet audit cho update master data: field-level hay entity-level? | P3 | M2 Master Data | Truoc Sprint 2 |
-| 8 | Chinh sach truy cap decision log/rule catalog cho end user noi bo | P3 | M1 Doc Governance (khong block build) | Truoc Go-Live |  
+> Quy tắc ưu tiên: các item P1 phải chốt trước khi đóng FS/API chi tiết cho các module phụ thuộc trực tiếp.
 
 ---
 
-## 30. Kết luận
+## 31. Kết luận
 
 Foundation & Governance là module nền để biến SWM từ một tập hợp màn hình và API thành một hệ thống có thể kiểm soát, truy vết và vận hành đáng tin cậy trong môi trường logistics bulk cargo của TVL.
 
 Nếu module này được thiết kế tốt:
-- Team dev sẽ có baseline rõ để build đúng.
-- QA sẽ có nền rõ để viết test đúng.
-- Business sẽ giảm tranh chấp do ngoại lệ được kiểm soát.
-- Hệ thống sẽ giữ được tính nhất quán giữa quyền hạn, rule, sequence, audit và transaction safety.
+- Team dev có baseline rõ để build đúng.
+- QA có nền rõ để viết test đúng.
+- Business giảm tranh chấp do ngoại lệ được kiểm soát.
+- Hệ thống giữ được tính nhất quán giữa quyền hạn, rule, sequence, audit và transaction safety.
 
 Nếu module này bị làm sơ sài, toàn bộ các module khác dù chạy được vẫn có nguy cơ sai nền, khó kiểm soát và khó go-live ổn định.
 
 ---
 
-## 31. Baseline source note dùng để biên soạn tài liệu này
+## 32. Baseline source note dùng để biên soạn tài liệu này
 
-Tài liệu này được tổng hợp theo baseline mới hơn của bộ tài liệu SWM hiện có. Trong trường hợp các tài liệu cũ và mới mâu thuẫn nhau, ưu tiên được đề xuất như sau:
+Tài liệu này được tổng hợp theo baseline mới hơn của bộ tài liệu SWM hiện có. Trong trường hợp tài liệu cũ và mới mâu thuẫn nhau, ưu tiên được đề xuất như sau:
 
-1. PRD/Blueprint/Module Master/Overview bản mới hơn  
+1. PRD / Blueprint / Module Master / Overview bản mới hơn  
 2. Inventory Transaction Spec và Master Data Supplement cho các quy tắc nền kỹ thuật-nghiệp vụ  
-3. BRD dùng để tham khảo chi tiết rule, nhưng rule nào mâu thuẫn với baseline mới hơn phải được đánh dấu là superseded  
+3. BRD dùng để tham khảo chi tiết rule; rule nào mâu thuẫn với baseline mới hơn phải được đánh dấu là superseded  
 4. Project Charter dùng cho governance dự án, AI governance, cadence, RACI và KPI  
 
+---
+
+## 33. Danh sách thay đổi so với bản 1.0
+
+1. Bổ sung quy ước tag `[CONFIRMED]`, `[TO-CONFIRM]`, `[PHASE 2]`, `[PROCESS — NOT CODE]`.
+2. Gắn trạng thái quyết định vào các phần trọng yếu thay vì viết như mọi nội dung đều đã chốt.
+3. Bổ sung Acceptance Criteria riêng cho từng sub-module.
+4. Bổ sung cột `BRD Reference` cho business rules, chỉ map khi thực sự có rule tương ứng.
+5. Làm rõ Sub-module 2 là `PROCESS-HEAVY` và Sub-module 8 là `[PROCESS — NOT CODE]` để tránh Dev build nhầm feature.
+6. Bổ sung minimum go-live reason code set.
+7. Nâng Section open items thành bảng có `Priority` và `Impact`.
+8. Giữ lại các feedback đúng; loại bỏ các nhận xét sai reference, sai rule code, sai số lượng open item và sai tên sub-module.
