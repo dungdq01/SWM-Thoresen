@@ -52,6 +52,12 @@ export class UomService {
     return this.uomRepository.deactivate(id, ctx.userId!, uom.rowVersion);
   }
 
+  async reactivate(id: string, dto: any, ctx: RequestContext): Promise<MdUom> {
+    const uom = await this.findById(id);
+    if (uom.isActive) throw new BadRequestException('UOM is already active');
+    return this.uomRepository.reactivate(id, ctx.userId!, uom.rowVersion);
+  }
+
   async findAllActive(): Promise<MdUom[]> {
     return this.uomRepository.findAllActive();
   }

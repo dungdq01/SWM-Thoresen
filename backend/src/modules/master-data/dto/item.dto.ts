@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsInt, Min } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CargoForm } from '@prisma/client';
 
@@ -64,16 +64,22 @@ export class CreateItemDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   @Type(() => Number)
   tolerancePctInbound?: number;
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   @Type(() => Number)
   tolerancePctOutbound?: number;
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   @Type(() => Number)
   shrinkageRatePct?: number;
 
@@ -168,16 +174,22 @@ export class UpdateItemDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   @Type(() => Number)
   tolerancePctInbound?: number;
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   @Type(() => Number)
   tolerancePctOutbound?: number;
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   @Type(() => Number)
   shrinkageRatePct?: number;
 

@@ -61,6 +61,13 @@ export class UomRepository {
     });
   }
 
+  async reactivate(id: string, userId: string, expectedVersion: bigint): Promise<MdUom> {
+    return this.prisma.mdUom.update({
+      where: { id, rowVersion: expectedVersion },
+      data: { isActive: true, deactivatedAt: null, deactivatedBy: null, updatedBy: userId, rowVersion: { increment: 1 } },
+    });
+  }
+
   async findAllActive(): Promise<MdUom[]> {
     return this.prisma.mdUom.findMany({ where: { isActive: true }, orderBy: { uomCode: 'asc' } });
   }

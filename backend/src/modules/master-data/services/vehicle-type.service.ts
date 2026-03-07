@@ -58,6 +58,12 @@ export class VehicleTypeService {
     return this.vehicleTypeRepository.deactivate(id, ctx.userId!, vehicleType.rowVersion);
   }
 
+  async reactivate(id: string, dto: any, ctx: RequestContext): Promise<MdVehicleType> {
+    const vehicleType = await this.findById(id);
+    if (vehicleType.isActive) throw new BadRequestException('Vehicle type is already active');
+    return this.vehicleTypeRepository.reactivate(id, ctx.userId!, vehicleType.rowVersion);
+  }
+
   async findAllActive(): Promise<MdVehicleType[]> {
     return this.vehicleTypeRepository.findAllActive();
   }
