@@ -24,11 +24,13 @@ export class PermissionRepository {
   }
 
   findByCodes(permissionCodes: string[]) {
+    // HI-7 Fix: Only return active permissions
     return this.prisma.permission.findMany({
       where: {
         permissionCode: {
           in: permissionCodes,
         },
+        isActive: true,
       },
     });
   }
@@ -60,14 +62,24 @@ export class PermissionRepository {
     const ownerScopes = Array.from(
       new Set(rows.map((item) => item.ownerId).filter(Boolean)),
     ) as string[];
-    const permissionCodes = Array.from(
-      new Set(
-        rows.flatMap((item) =>
-          item.role.permissions
-            .filter((link) => link.permission.isActive && link.effect === 'ALLOW')
-            .map((link) => link.permission.permissionCode),
-        ),
+
+    // CR-1 Fix: Implement DENY effect subtraction
+    const allowedCodes = new Set(
+      rows.flatMap((item) =>
+        item.role.permissions
+          .filter((link) => link.permission.isActive && link.effect === 'ALLOW')
+          .map((link) => link.permission.permissionCode),
       ),
+    );
+    const deniedCodes = new Set(
+      rows.flatMap((item) =>
+        item.role.permissions
+          .filter((link) => link.permission.isActive && link.effect === 'DENY')
+          .map((link) => link.permission.permissionCode),
+      ),
+    );
+    const permissionCodes = Array.from(allowedCodes).filter(
+      (code) => !deniedCodes.has(code),
     );
 
     return {

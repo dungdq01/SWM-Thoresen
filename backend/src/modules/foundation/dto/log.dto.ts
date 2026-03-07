@@ -1,9 +1,13 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDate,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 
 function transformBoolean(value: unknown): boolean | undefined {
@@ -47,6 +51,31 @@ export class ListAuditLogsQueryDto {
   @IsString()
   @MaxLength(50)
   userId?: string;
+
+  // HI-1 Fix: Add pagination
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+
+  // MD-8 Fix: Add date range filter
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  fromDate?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  toDate?: Date;
 }
 
 export class ListExceptionLogsQueryDto {
@@ -59,4 +88,29 @@ export class ListExceptionLogsQueryDto {
   @Transform(({ value }: { value: unknown }) => transformBoolean(value))
   @IsBoolean()
   isResolved?: boolean;
+
+  // HI-1 Fix: Add pagination
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+
+  // MD-8 Fix: Add date range filter
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  fromDate?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  toDate?: Date;
 }

@@ -34,7 +34,11 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     request.requestId ??= randomUUID();
 
-    const bypass = this.configService.get<string>('DEV_AUTH_BYPASS') === 'true';
+    // HI-2 Fix: Only allow bypass in non-production environments
+    const nodeEnv = this.configService.get<string>('NODE_ENV');
+    const bypass =
+      this.configService.get<string>('DEV_AUTH_BYPASS') === 'true' &&
+      nodeEnv !== 'production';
     const userCodeHeader = request.headers['x-user-code'];
     const requestedUserCode = Array.isArray(userCodeHeader)
       ? userCodeHeader[0]
