@@ -78,14 +78,14 @@
 
 ## Summary for Dev Team
 
-| Priority | Action Item | Owner | Deadline |
-|----------|------------|-------|----------|
-| HIGH | AI-2: [CONFIRMED]/[TO-CONFIRM] tags | BA | Truoc Sprint 1 |
-| HIGH | AI-4: Acceptance Criteria per sub-module | BA + QA | Truoc Sprint 1 |
-| HIGH | AI-6: Reason code list cho go-live | BA + TVL | Truoc Sprint 2 |
-| MEDIUM | AI-1: FG-BR → BRD mapping | BA | Sprint 1 |
-| MEDIUM | AI-3: [PROCESS] tags | BA | Sprint 1 |
-| MEDIUM | AI-5: TO-CONFIRM priority | PM + BA | Truoc Sprint 1 |
+| Priority | Action Item                              | Owner    | Deadline       |
+| ----------| ------------------------------------------| ----------| ----------------|
+| HIGH     | AI-2: [CONFIRMED]/[TO-CONFIRM] tags      | BA       | Truoc Sprint 1 |
+| HIGH     | AI-4: Acceptance Criteria per sub-module | BA + QA  | Truoc Sprint 1 |
+| HIGH     | AI-6: Reason code list cho go-live       | BA + TVL | Truoc Sprint 2 |
+| MEDIUM   | AI-1: FG-BR → BRD mapping                | BA       | Sprint 1       |
+| MEDIUM   | AI-3: [PROCESS] tags                     | BA       | Sprint 1       |
+| MEDIUM   | AI-5: TO-CONFIRM priority                | PM + BA  | Truoc Sprint 1 |
 
 ---
 

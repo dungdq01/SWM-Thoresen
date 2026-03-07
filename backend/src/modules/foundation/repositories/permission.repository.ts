@@ -1,0 +1,80 @@
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+
+@Injectable()
+export class PermissionRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  list(filters: { moduleCode?: string; resourceCode?: string }) {
+    const where: Prisma.PermissionWhereInput = {
+      ...(filters.moduleCode ? { moduleCode: filters.moduleCode } : {}),
+      ...(filters.resourceCode ? { resourceCode: filters.resourceCode } : {}),
+      isActive: true,
+    };
+
+    return this.prisma.permission.findMany({
+      where,
+      orderBy: [
+        { moduleCode: 'asc' },
+        { resourceCode: 'asc' },
+        { actionCode: 'asc' },
+      ],
+    });
+  }
+
+  findByCodes(permissionCodes: string[]) {
+    return this.prisma.permission.findMany({
+      where: {
+        permissionCode: {
+          in: permissionCodes,
+        },
+      },
+    });
+  }
+
+  async getEffectivePermissionsByUserId(userId: string) {
+    const rows = await this.prisma.userRole.findMany({
+      where: {
+        userId,
+        isActive: true,
+        role: { isActive: true },
+      },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const roleCodes = rows.map((item) => item.role.roleCode);
+    const warehouseScopes = Array.from(
+      new Set(rows.map((item) => item.warehouseCode).filter(Boolean)),
+    ) as string[];
+    const ownerScopes = Array.from(
+      new Set(rows.map((item) => item.ownerId).filter(Boolean)),
+    ) as string[];
+    const permissionCodes = Array.from(
+      new Set(
+        rows.flatMap((item) =>
+          item.role.permissions
+            .filter((link) => link.permission.isActive && link.effect === 'ALLOW')
+            .map((link) => link.permission.permissionCode),
+        ),
+      ),
+    );
+
+    return {
+      roleCodes,
+      warehouseScopes,
+      ownerScopes,
+      permissionCodes,
+    };
+  }
+}
