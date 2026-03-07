@@ -2,24 +2,24 @@
 # Module 2: Master Data Management
 
 **Dự án:** Thoresen Vinama Logistics (TVL) — Smart Warehouse Management (SWM)  
-**Góc nhìn:** Product Owner + Business Analyst  
-**Phiên bản:** 1.0  
-**Ngày:** 08/03/2026  
-**Trạng thái:** Draft for Review  
-**Đối tượng đọc:** Sponsor, PM, BA, Tech Lead, Dev, QA, Solution Architect, Ops Lead, Billing Lead, Key User
+**Góc nhìn:** Business Analyst 10 năm kinh nghiệm  
+**Phiên bản:** 2.0  
+**Ngày cập nhật:** 08/03/2026  
+**Trạng thái:** Revised for Build Review  
+**Đối tượng đọc:** Sponsor, PM, BA, Tech Lead, Dev, QA, Solution Architect, Ops Lead, Billing Lead, Key User, Data Migration Team
 
 ---
 
 ## 1. Mục đích tài liệu
 
-Tài liệu này đặc tả chi tiết module **Master Data Management** của hệ thống SWM. Đây là module dữ liệu nền để toàn hệ thống biết đang quản lý **chủ hàng nào, nhà cung cấp nào, mặt hàng nào, kho nào, vị trí nào, trạng thái tồn kho nào và tham số billing nào**.
+Tài liệu này đặc tả chi tiết module **Master Data Management** của hệ thống SWM. Đây là module dữ liệu nền để toàn hệ thống biết đang quản lý **chủ hàng nào, nhà cung cấp nào, mặt hàng nào, kho nào, vị trí nào, trạng thái tồn kho nào, thông số vận hành nào và tham chiếu billing nào**.
 
-Nếu Module 1 giúp hệ thống biết **ai được làm gì và theo luật nào**, thì Module 2 giúp hệ thống biết **đang quản lý cái gì, với thuộc tính nào, giới hạn nào và cách tham chiếu nào**.
+Nếu Module 1 giúp hệ thống biết **ai được làm gì và theo luật nào**, thì Module 2 giúp hệ thống biết **đang quản lý cái gì, bằng mã nào, thuộc tính nào, quan hệ nào, và các module downstream được phép dùng dữ liệu đó ra sao**.
 
 Tài liệu được viết theo hướng:
-- Người business hiểu vì sao master data là nền của vận hành và billing.
-- Dev/QA có thể bóc tiếp FS, API contract, DB design, import validation, test scenario.
-- Team dự án có baseline rõ giữa **master data vận hành**, **master data inventory** và **master data billing/commercial**.
+- Người business hiểu vì sao master data là nền của vận hành, inventory và billing.
+- Dev/QA có thể bóc tiếp FS, API contract, DB design, import contract, validation, test scenario và migration checklist.
+- Team dự án có baseline rõ giữa **master data nghiệp vụ**, **master data inventory**, **master data vận hành kho** và **master data billing/commercial**.
 
 ---
 
@@ -27,15 +27,16 @@ Tài liệu được viết theo hướng:
 
 Trong bản đồ 11 module của SWM, **Master Data Management là Module 2**.
 
-Module này không trực tiếp post tồn kho, không trực tiếp tạo billing event, nhưng là nguồn dữ liệu nền cho tất cả module còn lại:
-- M3 cần dimensions và status để tạo InventDim / OnHand / InventTrans.
-- M4 cần owner, vendor, item, warehouse, location, vehicle type để tạo inbound flow.
-- M5 cần owner, item, warehouse, location, inventory status để allocate và ship.
-- M7 cần warehouse/location/work-related masters để điều phối thao tác thực địa.
-- M9 cần item packaging / bagging setup.
-- M10 cần rate reference, day type, contract linkage, billing-related flags.
+Module này không trực tiếp post tồn kho, không trực tiếp tạo debit note, nhưng là nguồn dữ liệu nền cho tất cả module còn lại:
+- **M1 — Foundation & Governance**: cung cấp RBAC, audit, reason code, number sequence, idempotency policy cho việc quản trị master data.
+- **M3 — Inventory Core Engine**: dùng dimension values, status, warehouse, location, item, owner để tạo `invent_dim`, `invent_trans`, `on_hand`.
+- **M4 — Inbound**: dùng owner, vendor, item, warehouse, location, vehicle type, tolerance baseline để nhận hàng.
+- **M5 — Outbound**: dùng owner, item, warehouse, location, inventory status để allocate, pick, stage, ship.
+- **M6/M7 — Inventory Operations / Warehouse Execution**: dùng location/zone/profile/capacity/rule để thực hiện move, count, transfer, work.
+- **M9 — VAS / Bagging**: dùng packaging item, nominal bag weight, cargo form để tạo nghiệp vụ đóng bao.
+- **M10 — Billing**: dùng service code, day type, cargo form, billing_uom, billing flag, rate reference để định nghĩa baseline tính phí.
 
-Nói ngắn gọn, Module 2 là **data foundation** của toàn hệ thống.
+Nói ngắn gọn, Module 2 là **data foundation** của toàn hệ thống và là **single controlled source** cho master data Phase 1.
 
 ---
 
@@ -44,980 +45,851 @@ Nói ngắn gọn, Module 2 là **data foundation** của toàn hệ thống.
 TVL vận hành kho bulk cargo và bagged goods trong bối cảnh:
 - Không dùng barcode/RFID làm trục chính cho mọi hàng hóa.
 - Weighbridge là nguồn xác nhận khối lượng thực tế cho hàng xá.
-- Tồn kho được phân biệt theo dimension, trong đó **owner** là chiều cực kỳ quan trọng.
-- Billing phụ thuộc vào thuộc tính master data như cargo_form, billing_uom, storage flag, day type, rate reference.
-- Kho có nhiều location type khác nhau, nhưng không phải location nào cũng được dùng cho putaway, staging hay billing.
+- Tồn kho phải được tách theo dimension, trong đó **owner** là chiều bắt buộc của bài toán 3PL.
+- Billing phụ thuộc mạnh vào master data như `cargo_form`, `billing_uom`, `is_storage_billable`, `service_code`, `day_type`, `rate_reference`, `zone/location billable flag`.
+- Kho có nhiều loại location khác nhau, nhưng không phải location nào cũng được dùng cho receiving, storage, staging, shipping hay billing.
+- Hệ thống cần import dữ liệu nền đầu kỳ nhanh, kiểm lỗi được theo dòng, có preview trước commit, có khả năng re-import an toàn và có truy vết sau go-live.
 
-Trong môi trường như vậy, nếu master data yếu hoặc sai:
+Trong môi trường này, nếu master data yếu hoặc sai:
 - cùng một SKU nhưng owner khác nhau có thể bị gộp tồn sai,
 - location dùng sai mục đích sẽ làm putaway/pick sai,
 - tolerance sai sẽ làm inbound/outbound exception sai,
 - billing mapping sai sẽ làm tính phí sai,
-- import dữ liệu đầu kỳ sai sẽ làm toàn bộ module downstream lỗi theo.
+- dữ liệu import đầu kỳ sai sẽ kéo lỗi hàng loạt sang inventory, vận hành và kế toán đối soát.
 
 ---
 
 ## 4. Mục tiêu của module
 
 ### 4.1 Mục tiêu nghiệp vụ
-
 - Chuẩn hóa danh mục master data dùng chung toàn hệ thống.
-- Bảo đảm mọi giao dịch đều tham chiếu đúng owner, item, warehouse, location và status.
-- Tách biệt tồn kho theo đúng dimension đã chốt cho Phase 1.
-- Tạo nền đúng để kiểm tolerance, capacity, putaway, allocation và billing.
-- Hỗ trợ import master data nhanh, có validation và traceability cho go-live.
+- Bảo đảm mọi giao dịch đều tham chiếu đúng owner, item, warehouse, location, status, zone và billing baseline.
+- Tách biệt tồn kho theo đúng dimension Phase 1.
+- Tạo nền đúng để kiểm tolerance, capacity, putaway, allocation, storage billing và bagging/bulk handling.
+- Hỗ trợ import master data nhanh, có validation, preview, rollback-safe và traceability cho SIT/UAT/go-live.
 
 ### 4.2 Mục tiêu hệ thống
-
 - Mọi master quan trọng phải có mã duy nhất, trạng thái active/inactive và audit field.
-- Mọi tham chiếu giữa các master phải được validate trước khi cho phép sử dụng trong giao dịch.
-- Mọi dữ liệu go-live phải import được theo template chuẩn, preview được và kiểm lỗi theo dòng.
-- Mọi thay đổi master data ảnh hưởng vận hành/billing phải truy vết được.
-- Master data phải đủ rõ để downstream modules không cần tự định nghĩa lại cùng một thuộc tính.
+- Mọi quan hệ tham chiếu giữa các master phải được validate trước khi cho phép dùng trong giao dịch.
+- Mọi dữ liệu go-live phải import được theo template chuẩn, có duplicate check, cross-reference check và báo lỗi theo dòng.
+- Mọi thay đổi master data ảnh hưởng vận hành/billing phải truy vết được theo chuẩn governance của Module 1.
+- Downstream modules không được tự định nghĩa lại cùng một thuộc tính master data nếu Module 2 đã sở hữu thuộc tính đó.
 
 ---
 
 ## 5. Phạm vi module
 
 ### 5.1 In-scope Phase 1
-
 1. Owner / Customer master  
 2. Vendor / Supplier master  
 3. Item / SKU master  
 4. Warehouse master  
-5. Location master  
-6. Vehicle Type master  
-7. Inventory Status master  
-8. Billing-related master data baseline  
-9. Master Data Import & Validation  
-10. Master data activation / deactivation policy  
-11. Cross-reference validation giữa các master  
-12. Master data readiness checklist cho go-live
+5. Zone master  
+6. Location master  
+7. Vehicle Type master  
+8. UOM và UOM Conversion baseline  
+9. Inventory Status master  
+10. Billing-related master baseline  
+11. Master Data Import & Validation  
+12. Master data activation / deactivation policy  
+13. Cross-reference validation giữa các master  
+14. Data readiness checklist cho SIT/UAT/go-live  
+15. Owner-item operational override policy
 
 ### 5.2 Out-of-scope / Phase 2
-
-- LPN / pallet master  
-- Batch/Lot attributes  
+- Batch/Lot master và batch attributes  
 - Serial tracking  
-- Advanced FEFO logic phụ thuộc batch  
-- Master governance workflow nhiều cấp phê duyệt  
-- MDM hub / integration với ERP master engine theo thời gian thực
+- LPN/Pallet master  
+- FEFO logic thực thi dựa trên batch  
+- Nhiều cấp approval workflow cho master changes  
+- Real-time MDM hub / ERP master engine  
+- Contract pricing engine chi tiết và charge calculation runtime
 
 ### 5.3 Boundary với các module khác
-
-- Module này **sở hữu master data**, nhưng **không sở hữu giao dịch tồn kho**.
-- Module này **định nghĩa dimension values**, nhưng **M3 mới là nơi tạo InventDim / ghi InventTrans / cập nhật OnHand**.
+- Module này **sở hữu master data**, nhưng **không sở hữu transaction runtime**.
+- Module này **định nghĩa dimension values**, nhưng **M3 mới là nơi tạo `invent_dim`, ghi `invent_trans`, cập nhật `on_hand`**.
 - Module này **định nghĩa status master**, nhưng **M3/M4/M5/M6** là nơi dùng status trong flow.
-- Module này có thể lưu **billing reference master**, nhưng **không tính phí và không phát hành debit note**.
-- Module này cho phép import dữ liệu nền, nhưng **không thay thế migration strategy toàn dự án**.
+- Module này **định nghĩa billing reference baseline**, nhưng **M10** mới là nơi tính phí, chốt charge và phát hành debit note.
+- Module này **cho phép import dữ liệu nền**, nhưng **không thay thế migration strategy tổng thể của dự án**.
 
 ---
 
-## 6. Nguyên tắc nền tảng phải giữ xuyên suốt
+## 6. Quy ước trạng thái quyết định dùng trong tài liệu
+
+| Tag | Ý nghĩa | Quy tắc sử dụng |
+|---|---|---|
+| `[CONFIRMED]` | Đã chốt theo baseline hiện tại | Dev/QA được build và test theo nội dung này |
+| `[BUILD-BASELINE]` | Chưa có sign-off riêng của TVL nhưng được chốt làm baseline build để tránh blocker | Dev được build; nếu đổi sau này thì quản lý qua change request |
+| `[TO-CONFIRM]` | Còn mở, chưa nên đóng cứng nếu chưa có sign-off | Có thể dựng cấu hình mở, tránh hard-code |
+| `[PHASE 2]` | Không thuộc go-live Phase 1 | Không đưa vào backlog Phase 1 trừ khi có CR |
+| `[PROCESS — NOT CODE]` | Quy trình/quản trị, không mặc định là feature phải build | Chỉ build nếu có scope rõ |
+
+---
+
+## 7. Nguyên tắc nền tảng phải giữ xuyên suốt
 
 1. **Master data là điều kiện tiên quyết để tạo giao dịch.**  
-   Thiếu hoặc sai master data thì transaction phải bị chặn từ đầu.
+   Thiếu hoặc sai master data thì transaction phải bị chặn từ đầu. `[CONFIRMED]`
 
-2. **Owner là dimension bắt buộc của tồn kho Phase 1.** `[CONFIRMED]`  
-   Cùng item nhưng owner khác nhau phải được xem là tồn kho khác nhau.
+2. **Owner là dimension bắt buộc của tồn kho Phase 1.**  
+   Cùng item nhưng owner khác nhau phải được xem là tồn kho khác nhau. `[CONFIRMED]`
 
-3. **Inventory dimensions Phase 1 chỉ gồm Site + Warehouse + Location + Owner + Status.** `[CONFIRMED]`  
-   Batch/Lot/Serial không đưa vào go-live.
+3. **Inventory dimensions Phase 1 chỉ gồm Site + Warehouse + Location + Owner + Status.**  
+   Batch/Lot/Serial không đưa vào go-live. `[CONFIRMED]`
 
 4. **Inventory status go-live chỉ có 4 giá trị:** `AVAILABLE`, `DAMAGED`, `BLOCKED`, `IN_TRANSIT`. `[CONFIRMED]`
 
 5. **Chỉ `AVAILABLE` mới được allocate cho outbound.** `[CONFIRMED]`
 
-6. **Location type phải điều khiển hành vi vận hành.**  
-   Không phải location nào cũng được phép receiving, storage, staging hay shipping.
+6. **Location type, zone và profile phải điều khiển hành vi vận hành.**  
+   Không phải location nào cũng được phép receiving, storage, staging, shipping hay billing. `[CONFIRMED]`
 
-7. **Putaway chỉ được vào location hợp lệ theo type/policy.** `[CONFIRMED]`
+7. **Putaway chỉ được vào location hợp lệ theo type/policy/profile/capacity.** `[CONFIRMED]`
 
-8. **Capacity và thuộc tính kho/vị trí phải là dữ liệu điều khiển vận hành, không phải thông tin trang trí.**
+8. **Capacity và thuộc tính kho/vị trí là dữ liệu điều khiển vận hành, không phải thông tin trang trí.** `[CONFIRMED]`
 
 9. **Item master phải phản ánh đúng bản chất hàng hóa bulk/bagged của TVL.**  
-   cargo_form, catch weight, density, tolerance, billing_uom là thuộc tính lõi.
+   `cargo_form`, `catch_weight`, `density`, `tolerance`, `billing_uom`, `is_packaging` là thuộc tính lõi. `[CONFIRMED]`
 
-10. **Inactive master không được dùng cho giao dịch mới nhưng lịch sử phải được giữ nguyên.**
+10. **Inactive master không được dùng cho giao dịch mới nhưng lịch sử phải được giữ nguyên.** `[CONFIRMED]`
 
-11. **Import master data phải có validation theo dòng và preview trước commit.**
+11. **Import master data phải có validation theo dòng và preview trước commit.** `[CONFIRMED]`
 
-12. **Master data ảnh hưởng billing phải được đồng bộ nghĩa với module Billing.**
+12. **Master data ảnh hưởng billing phải đồng nghĩa và đồng scope với Billing module.** `[CONFIRMED]`
+
+13. **Mọi thay đổi master data nhạy cảm phải kế thừa governance của Module 1: RBAC + audit + reason code khi cần.** `[CONFIRMED]`
+
+14. **Mọi API có side effect của Module 2 phải idempotent.** `[CONFIRMED]`
+
+15. **Module 2 chỉ sở hữu định nghĩa dữ liệu; downstream modules sở hữu hành vi runtime.** `[CONFIRMED]`
 
 ---
 
-## 7. Kết quả đầu ra chính của module
+## 8. Kết quả đầu ra chính của module
 
 Khi Module 2 được triển khai đầy đủ, hệ thống phải có tối thiểu các output sau:
-
 1. Owner master có đủ thông tin vận hành và billing.
-2. Vendor master phân biệt được nhóm nhà cung cấp / đại lý tàu.
-3. Item master phản ánh đúng cargo form, tolerance, catch weight, density, packaging.
-4. Warehouse master và Location master đủ dùng cho receiving / storage / staging / shipping.
-5. Vehicle type master phục vụ inbound/outbound planning.
+2. Vendor master phân biệt được nhóm nhà cung cấp / đại lý tàu / đối tác inbound.
+3. Item master phản ánh đúng cargo form, tolerance, density, catch weight, packaging, billing_uom.
+4. Warehouse / Zone / Location master đủ dùng cho receiving / storage / staging / shipping / billing zoning.
+5. Vehicle type master phục vụ inbound/outbound planning và weighbridge/billing baseline.
 6. Inventory status master cố định cho go-live Phase 1.
-7. Billing-related master baseline như service code / day type / rate reference.
-8. Import template chuẩn cho Owner, Vendor, Item, Warehouse, Location, Vehicle Type, Rate Card.
-9. Validation engine cho import với error report theo dòng.
-10. Activation/deactivation policy rõ cho từng loại master.
-11. Data readiness checklist để xác nhận trước SIT/UAT/go-live.
+7. Billing reference baseline gồm `service_code`, `day_type`, `rate_reference`.
+8. UOM baseline và conversion baseline đủ dùng cho KG / MT / BAG / UNIT / M3 / M2.
+9. Import template chuẩn cho Owner, Vendor, Item, Warehouse, Zone, Location, Vehicle Type, UOM, UOM Conversion, Rate Reference.
+10. Validation engine cho import với error report theo dòng.
+11. Activation/deactivation policy rõ cho từng loại master.
+12. Data readiness checklist để xác nhận trước SIT/UAT/go-live.
 
 ---
 
-## 8. Input và Output tổng thể của module
+## 9. Danh sách object dữ liệu mà module quản lý hoặc chi phối
 
-### 8.1 Input tổng thể
-
-| Nhóm input | Nội dung |
-|---|---|
-| Business entities | Owner, Vendor, Item, Warehouse, Location, Vehicle Type |
-| Inventory baseline | Inventory dimensions, status go-live, allocation rule |
-| Billing baseline | Rate reference, service code, day type, billing_uom |
-| Operational policy | Putaway rule, capacity, tolerance, location usage |
-| Data migration requirement | File import, field mapping, unique key, validation |
-| Governance requirement | Active/inactive, audit field, source of truth |
-
-### 8.2 Output tổng thể
-
-| Nhóm output | Nội dung |
-|---|---|
-| Owner/Vendor baseline | Danh mục đối tác chuẩn cho vận hành |
-| Item baseline | Danh mục SKU với thuộc tính hàng xá/hàng bao |
-| Warehouse/Location baseline | Cấu trúc kho và vị trí chuẩn |
-| Status baseline | 4 inventory statuses go-live |
-| Billing reference baseline | service/day type/rate reference |
-| Import baseline | Template + rule validate + preview + error report |
-| Data quality baseline | duplicate check, cross-reference check, inactive policy |
-
----
-
-## 9. Các đối tượng dữ liệu mà module quản lý
-
-Module này sở hữu hoặc quản lý trực tiếp các object sau:
-
+### 9.1 Object sở hữu trực tiếp
 - `owner`
 - `vendor`
 - `item`
 - `warehouse`
+- `zone`
 - `location`
 - `vehicle_type`
+- `uom`
+- `uom_conversion`
 - `inventory_status`
 - `service_code`
-- `day_type_calendar`
-- `rate_reference` / `rate_card`
-- `master_import_batch`
-- `master_import_error`
-- `owner_item_policy` hoặc cấu hình override tolerance theo owner + item
-
-Ngoài ra module này chi phối dữ liệu đầu vào cho:
-- `invent_dim` thông qua dimension values
-- `receipt/shipment/work` thông qua master references
-- `billing_event/debit_note` thông qua thuộc tính billing master
-
----
-
-## 10. Danh sách sub-modules
-
-Module Master Data Management được chia thành 8 sub-modules:
-
-1. Owner & Customer Master  
-2. Vendor & Counterparty Master  
-3. Item / SKU & Product Attribute Master  
-4. Warehouse & Location Structure Master  
-5. Vehicle Type & Operational Support Master  
-6. Inventory Status & Inventory Dimension Baseline  
-7. Billing Reference Master  
-8. Master Data Import, Validation & Readiness Control
-
----
-
-## 11. Sub-module 1 — Owner & Customer Master
-
-### 11.1 Mục đích
-
-Quản lý chủ hàng để mọi tồn kho, giao dịch và dữ liệu billing được gắn đúng owner.
-
-### 11.2 Mô tả nghiệp vụ
-
-Trong TVL, owner không chỉ là khách hàng thương mại mà còn là chiều tách tồn kho bắt buộc. Cùng một SKU nhưng khác owner phải được quản lý độc lập.
-
-### 11.3 Input
-
-| Input | Mô tả |
-|---|---|
-| owner_code | Mã owner duy nhất |
-| company / short_name | Tên đầy đủ / tên ngắn |
-| tax_code | Mã số thuế |
-| billing_contact | Liên hệ nhận debit note |
-| payment_terms | Điều khoản thanh toán |
-| default_tolerance_pct | Dung sai mặc định |
-| owner_type | DIRECT / CONSIGNED / loại khác nếu có |
-| default_warehouse_id | Kho mặc định |
-| active flag | Đang hoạt động hay không |
-
-### 11.4 Output
-
-| Output | Mô tả |
-|---|---|
-| owner master record | hồ sơ owner chuẩn |
-| owner active status | dùng để cho/không cho giao dịch mới |
-| owner billing linkage | dữ liệu nền cho billing |
-| owner inventory segregation | dùng như dimension source |
-
-### 11.5 Cases điển hình
-
-#### Case 1 — Tạo owner mới
-- **Input:** owner_code, company, tax_code, billing_contact
-- **Output:** owner được tạo, sẵn sàng dùng cho item/inventory/reporting
-
-#### Case 2 — Deactivate owner
-- **Input:** owner đang có lịch sử tồn kho nhưng ngừng giao dịch mới
-- **Output:** không cho tạo receipt/shipment mới cho owner này; lịch sử vẫn giữ nguyên
-
-#### Case 3 — Cùng item, owner khác nhau
-- **Input:** SKU giống nhau nhưng owner A và owner B
-- **Output:** downstream inventory phải tách dimension độc lập
-
-### 11.6 Quy tắc bắt buộc
-
-- owner_code phải unique.
-- Owner inactive không được dùng cho transaction mới.
-- Owner là dimension bắt buộc của inventory Phase 1.
-- CUST_VIEWER nếu có phải gắn owner scope tương ứng ở M1.
-
----
-
-## 12. Sub-module 2 — Vendor & Counterparty Master
-
-### 12.1 Mục đích
-
-Quản lý nhà cung cấp/đối tác giao hàng để inbound được trace đúng nguồn hàng và ngữ cảnh giao nhận.
-
-### 12.2 Mô tả nghiệp vụ
-
-TVL có cả vendor chuẩn và vendor kiểu vessel agent / trader trong một số flow. Master này cần đủ để phục vụ vận hành, đối chiếu và báo cáo.
-
-### 12.3 Input
-
-| Input | Mô tả |
-|---|---|
-| vendor_code | Mã NCC duy nhất |
-| company | Tên NCC |
-| supplier_group | DOMESTIC / OVERSEAS / VESSEL_AGENT |
-| country_region | Quốc gia |
-| vessel_name | Tên tàu nếu áp dụng |
-| contact / phone / email | thông tin liên hệ |
-| active flag | trạng thái hoạt động |
-
-### 12.4 Output
-
-| Output | Mô tả |
-|---|---|
-| vendor master | hồ sơ NCC chuẩn |
-| vendor classification | phân loại đúng phục vụ inbound |
-| source traceability | truy ngược nguồn giao hàng |
-
-### 12.5 Cases điển hình
-
-#### Case 1 — Tạo vendor thường
-- **Input:** NCC nội địa, contact chuẩn
-- **Output:** vendor active dùng cho inbound planning
-
-#### Case 2 — Tạo vessel agent
-- **Input:** supplier_group = VESSEL_AGENT, vessel_name có giá trị
-- **Output:** hệ thống cho phép dùng trong luồng liên quan hàng tàu
-
-### 12.6 Quy tắc bắt buộc
-
-- vendor_code phải unique.
-- Vendor inactive không dùng cho chứng từ mới.
-- Phân loại vendor phải đủ rõ để không nhầm vendor chuẩn với vessel-related counterparty.
-
----
-
-## 13. Sub-module 3 — Item / SKU & Product Attribute Master
-
-### 13.1 Mục đích
-
-Quản lý SKU với đầy đủ thuộc tính vận hành, inventory và billing để hệ thống xử lý đúng cho bulk cargo và bagged goods.
-
-### 13.2 Mô tả nghiệp vụ
-
-Đây là bảng quan trọng nhất của master data cho TVL vì hàng xá phụ thuộc vào cân, không phụ thuộc barcode. Item master phải phản ánh được cargo form, catch weight, density, tolerance, packaging và thuộc tính billing.
-
-### 13.3 Input
-
-| Input | Mô tả |
-|---|---|
-| sku / item_code | mã hàng duy nhất |
-| owner_code | chủ hàng sở hữu item |
-| descr / descr_en | tên hàng VN/EN |
-| product_group | BULK / BAGGED / PACKAGING / JUMBO |
-| cargo_form | BULK / BAGGED_25KG / BAGGED_40KG / BAGGED_50KG / JUMBO / PACKAGING |
-| density_mt_per_m3 | mật độ khối lượng |
-| is_catch_weight | có dùng actual weight hay không |
-| catch_weight_uom | đơn vị cân |
-| tolerance_pct_inbound | dung sai nhập mặc định ở mức item |
-| tolerance_pct_outbound | dung sai xuất mặc định ở mức item |
-| shrinkage_rate_pct | hao hụt chuẩn nếu có |
-| billing_uom | đơn vị tính phí |
-| billing_rate_group | nhóm rate billing tham chiếu |
-| is_packaging | có phải vật tư bao bì hay không |
-| default_bag_weight_kg | trọng lượng bao chuẩn |
-| dpm_dual_tracking_default | mặc định có áp dụng dual-tracking hay không |
-| hs_code / origin | thuộc tính hải quan nếu cần |
-| active flag | trạng thái sử dụng |
-
-### 13.4 Output
-
-| Output | Mô tả |
-|---|---|
-| item master | hồ sơ SKU chuẩn |
-| operational attributes | cargo form, density, tolerance, catch weight |
-| billing attributes | billing_uom, packaging flags |
-| inventory behavior hints | dimension usage, putaway/bagging relevance |
-
-### 13.5 Cases điển hình
-
-#### Case 1 — Tạo item bulk cargo
-- **Input:** cargo_form = BULK, is_catch_weight = TRUE, density có giá trị
-- **Output:** item phù hợp flow dùng actual weight từ cân
-
-#### Case 2 — Tạo item bagged goods
-- **Input:** cargo_form = BAGGED_50KG, stdgrosswgt/stdnetwgt/default_bag_weight_kg có giá trị
-- **Output:** item dùng được cho bagging/billing logic tương ứng
-
-#### Case 3 — Owner + item override tolerance
-- **Input:** owner A muốn tolerance khác default của item
-- **Output:** hệ thống cho phép dùng policy override owner + item nếu thiết kế mở
-
-### 13.6 Quy tắc bắt buộc
-
-- item_code hoặc bộ khóa owner+sku phải unique theo policy cuối cùng. `[TO-CONFIRM]`
-- Với hàng xá, `is_catch_weight = TRUE` là baseline mặc định nếu TVL đã chốt.
-- cargo_form là field điều khiển nghiệp vụ và billing, không chỉ để hiển thị.
-- Item inactive không được dùng cho transaction mới.
-- Tolerance hierarchy chính thức: `owner_item_policy override > item default > owner default`. `[CONFIRMED]`
-- DPM dual-tracking phải được support bằng field/policy rõ ràng; vị trí triển khai ưu tiên ở `owner_item_policy` nếu đây là rule theo từng owner. `[TO-CONFIRM]`
-
-### 13.7 Bảng baseline cargo_form -> billing rate group
-
-Bảng này là baseline nghiệp vụ để Module 10 Billing không phải hard-code mapping ngoài master data. Nếu đơn giá cụ thể chưa chốt, ít nhất phải chốt được **rate group** và quan hệ với cargo_form.
-
-| cargo_form | Billing rate group | Tình trạng |
-|---|---|---|
-| BULK | BULK_RATE | `[TO-CONFIRM]` |
-| BAGGED_25KG | BAG_25_RATE | `[TO-CONFIRM]` |
-| BAGGED_40KG | BAG_40_RATE | `[TO-CONFIRM]` |
-| BAGGED_50KG | BAG_50_RATE | `[TO-CONFIRM]` |
-| JUMBO | JUMBO_RATE | `[TO-CONFIRM]` |
-| PACKAGING | PACKAGING_RATE | `[TO-CONFIRM]` |
-
-> Ghi chú: nếu TVL đã có baseline đơn giá như 21K / 28K / 32K trong tài liệu thương mại, BA phải map ngược chúng vào `rate_reference` hoặc `rate_card` để Dev/QA dùng cùng một source of truth.
-
----
-
-## 14. Sub-module 4 — Warehouse & Location Structure Master
-
-### 14.1 Mục đích
-
-Quản lý cấu trúc kho và vị trí để hệ thống biết hàng được nhận ở đâu, cất ở đâu, staging ở đâu và xuất ở đâu.
-
-### 14.2 Mô tả nghiệp vụ
-
-TVL có nhiều kho và nhiều loại vị trí. Nếu không chuẩn hóa warehouse/location master, hệ thống sẽ putaway sai, pick sai và tính phí sai vị trí.
-
-### 14.3 Input
-
-| Input | Mô tả |
-|---|---|
-| warehouse_code | mã kho |
-| warehouse_name | tên kho |
-| site_id | site nếu có |
-| total_area_m2 / usable_area_m2 | diện tích |
-| max_height_m | chiều cao tối đa |
-| designed_capacity_mt | sức chứa thiết kế |
-| operational_capacity_mt | sức chứa vận hành đang áp dụng |
-| capacity_calc_method | MANUAL / FORMULA / HYBRID |
-| location_code | mã vị trí |
-| location_type | RECEIVING / STORAGE / STAGING / SHIPPING |
-| zone / aisle / block | phân khu nếu có |
-| is_billing_location | vị trí có tính phí lưu kho hay không |
-| qr_code | mã QR của location |
-| active flag | trạng thái sử dụng |
-
-### 14.4 Output
-
-| Output | Mô tả |
-|---|---|
-| warehouse master | hồ sơ kho |
-| location hierarchy | danh mục vị trí |
-| location usage policy | dùng cho receiving/storage/staging/shipping |
-| capacity baseline | giới hạn phục vụ vận hành |
-| billing-location flag | nền cho storage billing |
-
-### 14.5 Cases điển hình
-
-#### Case 1 — Tạo location STORAGE
-- **Input:** location_type = STORAGE
-- **Output:** location hợp lệ cho putaway và có thể dùng để tính phí nếu bật billing flag
-
-#### Case 2 — Cố putaway vào STAGING
-- **Input:** location_type = STAGING
-- **Output:** hệ thống phải chặn putaway nếu policy go-live chỉ cho STORAGE
-
-#### Case 3 — Capacity warning
-- **Input:** tồn dự kiến vượt 85% hoặc 100% capacity location
-- **Output:** cảnh báo vàng/đỏ theo baseline đã chốt
-
-### 14.6 Quy tắc bắt buộc
-
-- warehouse_code và location_code phải unique theo policy.
-- Putaway chỉ được vào location type hợp lệ.
-- Chỉ location có `is_billing_location = TRUE` mới là nguồn tính storage billing nếu policy này được dùng.
-- QR code location phải generate/print được để phục vụ scan location ở thực địa.
-- Capacity phải tách được tối thiểu giữa `designed_capacity_mt` và `operational_capacity_mt`. `[CONFIRMED]`
-- Nếu công thức capacity chưa chốt đầy đủ cho Phase 1, baseline triển khai mặc định là `capacity_calc_method = MANUAL`; công thức tính tự động sẽ được ghi nhận như enhancement hoặc Phase 2. `[TO-CONFIRM]`
-
-### 14.7 Gợi ý baseline cho capacity policy
-
-| Thuộc tính | Ý nghĩa | Ghi chú |
-|---|---|---|
-| designed_capacity_mt | sức chứa theo thiết kế | dùng cho tham chiếu dài hạn |
-| operational_capacity_mt | sức chứa vận hành thực tế | dùng cho cảnh báo và quyết định vận hành |
-| capacity_calc_method | MANUAL / FORMULA / HYBRID | chốt trước build |
-| warning_threshold_pct | ngưỡng cảnh báo vàng | ví dụ 85% nếu TVL chốt |
-| blocking_threshold_pct | ngưỡng chặn/cảnh báo đỏ | ví dụ 100% nếu TVL chốt |
-
-Nếu TVL chốt công thức ở Phase 1, công thức phải nêu rõ đầu vào dùng theo `density`, `usable_area`, `max_height`, `stacking_factor`, hay chỉ dùng giá trị nhập tay từ vận hành.
-
----
-
-## 15. Sub-module 5 — Vehicle Type & Operational Support Master
-
-### 15.1 Mục đích
-
-Quản lý các master hỗ trợ vận hành như loại xe để dùng cho planning, gate flow và đối chiếu chứng từ.
-
-### 15.2 Mô tả nghiệp vụ
-
-Vehicle type không phải master lớn nhưng cần để chuẩn hóa inbound/outbound planning, đặc biệt khi đối chiếu theo loại phương tiện, tải trọng hoặc luồng trạm cân.
-
-### 15.3 Input
-
-| Input | Mô tả |
-|---|---|
-| vehicle_type_code | mã loại xe |
-| description | mô tả |
-| max_load_mt | tải trọng tham chiếu |
-| active flag | trạng thái |
-
-### 15.4 Output
-
-| Output | Mô tả |
-|---|---|
-| vehicle type master | danh mục loại phương tiện |
-| planning reference | dữ liệu nền cho planning/report |
-
-### 15.5 Quy tắc bắt buộc
-
-- vehicle_type_code phải unique.
-- Inactive vehicle type không dùng cho giao dịch mới.
-
----
-
-## 16. Sub-module 6 — Inventory Status & Inventory Dimension Baseline
-
-### 16.1 Mục đích
-
-Chuẩn hóa inventory statuses và dimension baseline để toàn hệ thống ghi nhận tồn kho theo cùng một logic.
-
-### 16.2 Mô tả nghiệp vụ
-
-Đây là phần giao thoa mạnh giữa M2 và M3. M2 sở hữu **status master** và **dimension values**, còn M3 sở hữu cơ chế tạo InventDim / InventTrans / OnHand.
-
-### 16.3 Input
-
-| Input | Mô tả |
-|---|---|
-| inventory statuses | danh sách trạng thái tồn kho |
-| dimension baseline | Site, Warehouse, Location, Owner, Status |
-| allocation policy | chỉ status nào được allocate |
-| phase boundary | statuses nào Phase 2 |
-
-### 16.4 Output
-
-| Output | Mô tả |
-|---|---|
-| inventory status master | 4 status go-live |
-| dimension value baseline | danh sách values đầu vào cho inventory |
-| allocation eligibility | rule AVAILABLE-only |
-
-### 16.5 Cases điển hình
-
-#### Case 1 — Allocate outbound từ AVAILABLE
-- **Input:** stock status = AVAILABLE
-- **Output:** hợp lệ để allocate
-
-#### Case 2 — Allocate outbound từ DAMAGED
-- **Input:** stock status = DAMAGED
-- **Output:** bị chặn
-
-#### Case 3 — Đề xuất status mới WET
-- **Input:** yêu cầu mở rộng ngoài go-live
-- **Output:** đánh dấu `[PHASE 2]`, không cho build vào Phase 1 nếu chưa chốt
-
-### 16.6 Quy tắc bắt buộc
-
-- Go-live chỉ có 4 statuses: AVAILABLE, BLOCKED, DAMAGED, IN_TRANSIT.
-- Chỉ AVAILABLE được allocate outbound.
-- Status change trong giao dịch phải có reason code theo governance của M1.
-- Batch/Lot/Serial không phải dimension go-live Phase 1.
-
----
-
-## 17. Sub-module 7 — Billing Reference Master
-
-### 17.1 Mục đích
-
-Quản lý dữ liệu nền phục vụ Billing để M10 có thể tính phí đúng theo loại dịch vụ, ngày tính phí, rate reference và đặc tính item/location.
-
-### 17.2 Mô tả nghiệp vụ
-
-Module này không phát hành debit note, nhưng phải sở hữu hoặc chuẩn hóa các master tham chiếu để Billing không tự hard-code logic riêng.
-
-### 17.3 Input
-
-| Input | Mô tả |
-|---|---|
-| service_code | mã dịch vụ |
-| rate_reference | tham chiếu rate / contract |
-| day_type | weekday / weekend / holiday |
-| billing_uom | đơn vị tính phí |
-| storage flag | vị trí/kho có tính phí hay không |
-| cargo_form mapping | form hàng ảnh hưởng rate |
-| rate_group | nhóm rate để map từ cargo_form |
-| effective_from / effective_to | ngày hiệu lực của cấu hình rate |
-
-### 17.4 Output
-
-| Output | Mô tả |
-|---|---|
-| service master | danh mục dịch vụ |
-| day type calendar | lịch tính phí |
-| rate reference | liên kết chuẩn tới logic pricing |
-| billing attribute baseline | thuộc tính item/location phục vụ billing |
-
-### 17.5 Cases điển hình
-
-#### Case 1 — cargo_form map rate
-- **Input:** item cargo_form = BULK hoặc BAGGED_50KG
-- **Output:** billing đọc đúng rate reference tương ứng theo baseline
-
-#### Case 2 — storage billing location
-- **Input:** hàng nằm ở location có billing flag
-- **Output:** M10 có đủ điều kiện master để capture storage charge
-
-### 17.6 Quy tắc bắt buộc
-
-- Billing không được hard-code cargo_form mapping ngoài master baseline nếu đã có cấu hình.
-- Day type calendar phải là nguồn tham chiếu chuẩn cho logic ngày tính phí nếu go-live dùng.
-- Mọi thay đổi rate reference master phải trace được và có hiệu lực rõ ràng.
-- cargo_form phải map được sang `rate_group` hoặc `rate_reference` theo bảng baseline của M2 trước khi M10 thiết kế pricing contract chi tiết. `[CONFIRMED]`
-
-### 17.7 Bảng baseline cargo_form -> rate group/reference
-
-| cargo_form | rate_group tối thiểu phải có | Tác động |
-|---|---|---|
-| BULK | BULK_RATE | dùng cho dịch vụ hàng xá |
-| BAGGED_25KG | BAG_25_RATE | dùng cho hàng bao 25kg |
-| BAGGED_40KG | BAG_40_RATE | dùng cho hàng bao 40kg |
-| BAGGED_50KG | BAG_50_RATE | dùng cho hàng bao 50kg |
-| JUMBO | JUMBO_RATE | dùng cho jumbo bag |
-| PACKAGING | PACKAGING_RATE | dùng cho vật tư/bao bì |
-
-Nếu thương mại yêu cầu nhiều mức giá theo owner hoặc contract, `rate_group` vẫn là baseline master để tránh hard-code logic trong Billing.
-
----
-
-## 18. Sub-module 8 — Master Data Import, Validation & Readiness Control
-
-### 18.1 Mục đích
-
-Cho phép nạp dữ liệu master hàng loạt nhanh, có kiểm lỗi, có preview và có báo cáo lỗi rõ ràng để phục vụ go-live.
-
-### 18.2 Mô tả nghiệp vụ
-
-Đây là năng lực rất quan trọng vì TVL có khối lượng master data đầu kỳ lớn. Nếu không có import + validation tốt, đội dự án sẽ nhập tay chậm, sai và khó đối soát.
-
-### 18.3 Input
-
-| Input | Mô tả |
-|---|---|
-| import file | file Excel theo template chuẩn |
-| target entity | Owner / Vendor / Item / Warehouse / Location / Vehicle Type / Rate Card |
-| validation rules | required field, duplicate, format, cross-reference |
-| preview mode | kiểm tra trước commit |
-| idempotency policy | không tạo trùng khi import lại file cũ |
-
-### 18.4 Output
-
-| Output | Mô tả |
-|---|---|
-| preview result | số dòng hợp lệ / lỗi |
-| import batch log | log mỗi batch import |
-| row-level errors | lỗi chi tiết từng dòng |
-| success result | số record được tạo/cập nhật |
-| readiness report | báo cáo dữ liệu đã sẵn sàng go-live |
-
-### 18.5 Cases điển hình
-
-#### Case 1 — Import owner file hợp lệ
-- **Input:** file đúng template, không trùng mã
-- **Output:** preview pass, commit thành công
-
-#### Case 2 — Import item file có owner không tồn tại
-- **Input:** item tham chiếu owner_code sai
-- **Output:** dòng lỗi, không được import
-
-#### Case 3 — Import lại cùng file
-- **Input:** cùng file hoặc cùng records đã tồn tại
-- **Output:** không tạo duplicate; xử lý theo policy idempotent/upsert đã chốt
-
-### 18.6 Quy tắc bắt buộc
-
-- Chỉ chấp nhận import theo template chuẩn.
-- Phải có preview trước commit.
-- Phải có error report theo dòng và theo cột lỗi.
-- Phải kiểm tra cross-reference trước khi commit.
-- Import lại file cũ không được làm phát sinh duplicate record mới nếu khóa unique không đổi.
-
----
-
-## 19. Danh sách case tổng hợp theo module
-
-| Case ID | Tên case | Input | Output |
-|---|---|---|---|
-| MD-01 | Tạo owner mới | owner data | owner active |
-| MD-02 | Deactivate owner | owner active có lịch sử | chặn giao dịch mới, giữ lịch sử |
-| MD-03 | Cùng SKU khác owner | item + owner A/B | inventory segregation đúng |
-| MD-04 | Tạo item bulk catch-weight | cargo_form BULK | dùng actual weight |
-| MD-05 | Putaway vào location sai type | location type STAGING | bị chặn |
-| MD-06 | Allocate từ DAMAGED | status DAMAGED | bị chặn |
-| MD-07 | cargo_form map rate | item cargo_form | billing reference đúng |
-| MD-08 | Import item file lỗi owner | import file | row error report |
-| MD-09 | Import lại file cũ | same codes | không duplicate |
-| MD-10 | Inactive item dùng cho receipt mới | item inactive | bị chặn |
-
----
-
-## 20. Ma trận input / output / case theo sub-module
-
-| Sub-module | Input chính | Output chính | Case tiêu biểu |
-|---|---|---|---|
-| Owner | owner code, tax, contact | owner master | segregated owner stock |
-| Vendor | vendor group, vessel | vendor master | vessel agent |
-| Item | cargo_form, tolerance, density | item master | bulk catch-weight |
-| Warehouse/Location | type, area, capacity | structure master | STORAGE-only putaway |
-| Vehicle Type | code, load | vehicle type master | planning reference |
-| Inventory Status | 4 statuses, dimension baseline | status master | AVAILABLE-only allocation |
-| Billing Reference | service/day type/rate | billing references | cargo_form mapping |
-| Import & Validation | excel template, rules | preview/error report | idempotent re-import |
-
----
-
-## 21. Business rules của riêng module Master Data
-
-| Rule ID | Rule | Mô tả | BRD Reference |
-|---|---|---|---|
-| MD-BR-001 | Unique master code | Các mã master trọng yếu phải unique theo policy | BR-MD-001 |
-| MD-BR-002 | Owner-based segregation | Cùng item nhưng owner khác nhau phải tách tồn kho | BR-INV-005 |
-| MD-BR-003 | Phase-1 dimensions only | Phase 1 dimensions = Site + Warehouse + Location + Owner + Status | BR-INV-001 |
-| MD-BR-004 | Fixed go-live inventory statuses | Go-live chỉ có AVAILABLE, BLOCKED, DAMAGED, IN_TRANSIT | BR-INV-006 |
-| MD-BR-005 | AVAILABLE-only allocation | Chỉ stock AVAILABLE được allocate outbound | BR-INV-006, BR-OUT-003 |
-| MD-BR-006 | Valid location-type usage | Putaway/pick phải tôn trọng type của location | BR-MD-002 |
-| MD-BR-007 | Inactive master no new transaction | Master inactive không dùng cho giao dịch mới | BR-MD-003 |
-| MD-BR-008 | Catch-weight priority | Item catch-weight phải dùng actual weight nếu flow yêu cầu | BR-MD-004 |
-| MD-BR-009 | Tolerance hierarchy | owner+item override > item default > owner default | BR-IN-006, BR-OUT-005 |
-| MD-BR-010 | Billing master traceability | Thuộc tính billing phải truy ngược được về master | BR-BIL-006 |
-| MD-BR-011 | cargo_form billing mapping | Mỗi cargo_form go-live phải map được sang rate_group/rate_reference | BR-BIL-006, BR-MD-004 |
-| MD-BR-012 | Capacity policy clarity | Capacity phải có policy rõ: manual, formula hay hybrid | BR-MD-007 |
-| MD-BR-013 | Import row validation | Import phải validate theo dòng trước commit | — (M2 internal) |
-| MD-BR-014 | Cross-reference integrity | Không cho import/commit nếu reference master sai | — (M2 internal) |
-| MD-BR-015 | Re-import duplicate safe | Import lại không tạo trùng theo khóa unique | — (M2 internal) |
-| MD-BR-016 | Historical continuity | Deactivate không được phá lịch sử | BR-MD-003 |
-| MD-BR-017 | Owner-item override support | Nếu owner có policy riêng cho item thì phải lưu được bằng schema rõ ràng | BR-IN-006 |
-| MD-BR-018 | DPM dual-tracking support | Hệ thống phải support cờ/policy dual-tracking nếu TVL chốt dùng | — (CFM-12) |
-
----
-
-## 22. Yêu cầu phi chức năng áp cho module
-
-| Nhóm | Yêu cầu |
-|---|---|
-| Data Quality | required field, unique, format, reference integrity |
-| Security | CRUD master phải theo RBAC của M1 |
-| Traceability | create/update/deactivate/import phải audit được |
-| Performance | import preview và validation phải đủ nhanh cho go-live load |
-| Reliability | import lỗi không được tạo dữ liệu nửa vời |
-| Extensibility | mở rộng được batch/lot/LPN cho Phase 2 |
-| Operability | dễ export danh sách master để kiểm tra và đối soát |
-
----
-
-## 23. Data model khái niệm đề xuất
-
-### 23.1 Các bảng lõi
-
-- `owner`
-- `vendor`
-- `item`
-- `warehouse`
-- `location`
-- `vehicle_type`
-- `inventory_status`
-- `service_code`
-- `day_type_calendar`
+- `day_type`
 - `rate_reference`
 - `owner_item_policy`
 - `master_import_batch`
+- `master_import_batch_line`
 - `master_import_error`
 
-### 23.1A Schema khái niệm đề xuất cho owner_item_policy
+### 9.2 Object chi phối dữ liệu đầu vào cho module khác
+- `invent_dim` thông qua dimension values
+- `receipt` / `shipment` / `work` thông qua master references
+- `billing_event` / `charge_candidate` / `debit_note` thông qua billing master
 
+---
+
+## 10. Quyết định baseline dùng để đóng các blocker của bản v1.0
+
+Các điểm sau được chốt để bản v2.0 đủ điều kiện build, trừ khi TVL yêu cầu thay đổi qua change request.
+
+### 10.1 Mô hình Item key
+- `item_code` / `sku` là **global key trong toàn hệ thống**. `[BUILD-BASELINE]`
+- Quan hệ riêng của từng owner với item sẽ được cấu hình ở bảng `owner_item_policy`. `[BUILD-BASELINE]`
+- Lý do chọn:
+  - tránh trùng SKU logic ở nhiều owner,
+  - downstream dễ reuse item master chung,
+  - override đặc thù owner vẫn được xử lý riêng mà không phá cấu trúc item.
+
+### 10.2 Tolerance hierarchy
+Thứ tự ưu tiên tolerance dùng trong runtime như sau:  
+`transaction override (nếu được phép) > owner_item_policy > item master > owner default > system default`. `[BUILD-BASELINE]`
+
+### 10.3 Cargo form go-live list
+Danh sách `cargo_form` go-live Phase 1:  
+`BULK`, `BAGGED_25KG`, `BAGGED_40KG`, `BAGGED_50KG`, `JUMBO`, `PACKAGING`. `[BUILD-BASELINE]`
+
+### 10.4 Import existing-record policy
+- Import hỗ trợ 3 chế độ: `INSERT_ONLY`, `UPSERT`, `VALIDATE_ONLY`. `[BUILD-BASELINE]`
+- Go-live migration mặc định dùng `UPSERT`. `[BUILD-BASELINE]`
+- Nếu record đang inactive và import lại hợp lệ với mode `UPSERT`, hệ thống cho phép cập nhật nhưng **không tự động active lại** nếu không có cờ `reactivate_flag = true`. `[BUILD-BASELINE]`
+
+### 10.5 Billing rate reference baseline
+- `rate_reference` là bảng tham chiếu commercial, không phải engine tính phí. `[CONFIRMED]`
+- Một dòng rate reference phải được xác định tối thiểu bởi:  
+  `owner_code + service_code + cargo_form + billing_uom + effective_from + warehouse_scope(optional) + day_type(optional)` `[BUILD-BASELINE]`
+- Không cho phép 2 dòng active bị overlap cùng tổ hợp khóa lookup. `[BUILD-BASELINE]`
+
+### 10.6 Owner-item policy placement
+- Mọi override theo từng owner cho item như tolerance, billing_uom override, storage flag override, preferred warehouse, handling note sẽ đặt ở `owner_item_policy`. `[BUILD-BASELINE]`
+
+---
+
+## 11. Danh sách sub-modules
+
+1. Owner & Customer Master  
+2. Vendor & Counterparty Master  
+3. Item / SKU & Product Attributes  
+4. Warehouse Master  
+5. Zone & Location Master  
+6. Vehicle Type Master  
+7. UOM / Conversion / Inventory Status Baseline  
+8. Billing Reference Baseline  
+9. Owner-Item Policy & Override Baseline  
+10. Master Data Import, Validation & Readiness
+
+---
+
+## 12. Sub-module 1 — Owner & Customer Master
+
+### 12.1 Mục tiêu
+Quản lý chủ hàng là entity gốc của bài toán 3PL, phục vụ ownership, billing, reporting, owner scope security và default policies.
+
+### 12.2 Dữ liệu cốt lõi
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `owner_code` | Yes | Mã chủ hàng duy nhất |
+| `owner_name` | Yes | Tên chủ hàng |
+| `short_name` | Yes | Tên viết tắt hiển thị |
+| `owner_group` | Yes | Nhóm khách hàng |
+| `owner_type` | Yes | `DIRECT` / `CONSIGNED` / `OTHER` |
+| `tax_code` | Yes | MST phục vụ chứng từ/billing |
+| `address` | Yes | Địa chỉ chính |
+| `billing_email` | No | Email nhận debit note/thông báo billing |
+| `billing_contact` | No | Người phụ trách billing |
+| `payment_terms` | No | `NET30`, `NET60`, `COD`... |
+| `default_tolerance_pct` | No | Dùng làm fallback tolerance |
+| `default_warehouse_code` | No | Kho mặc định ưu tiên |
+| `is_active` | Yes | Trạng thái hoạt động |
+
+### 12.3 Business rules
+1. `owner_code` là unique toàn hệ thống. `[CONFIRMED]`
+2. Owner inactive không được dùng cho receipt/shipment/work mới. `[CONFIRMED]`
+3. Owner đã từng phát sinh giao dịch không được hard delete. `[CONFIRMED]`
+4. Customer Viewer chỉ được xem dữ liệu thuộc owner scope được cấp. `[CONFIRMED]`
+5. `default_tolerance_pct` chỉ là fallback, không override item/owner-item policy khi đã có cấu hình cụ thể. `[BUILD-BASELINE]`
+
+### 12.4 Use cases
+- Tạo mới owner
+- Cập nhật thông tin pháp nhân/billing
+- Deactivate owner
+- Reactivate owner
+- Import danh sách owner đầu kỳ
+- Xem owner usage impact trước khi deactivate
+
+### 12.5 Input/Output
+**Input:** thông tin pháp nhân, contact, billing, default operational policy  
+**Output:** owner master hợp lệ để downstream sử dụng trong inventory, inbound, outbound, billing
+
+---
+
+## 13. Sub-module 2 — Vendor & Counterparty Master
+
+### 13.1 Mục tiêu
+Quản lý nhà cung cấp, đại lý tàu, trader, counterparty giao nhận đầu vào cho inbound.
+
+### 13.2 Dữ liệu cốt lõi
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `vendor_code` | Yes | Mã vendor duy nhất |
+| `vendor_name` | Yes | Tên vendor |
+| `supplier_group` | Yes | `DOMESTIC`, `OVERSEAS`, `VESSEL_AGENT`, `TRADER` |
+| `country_region` | No | Mã quốc gia |
+| `vessel_name` | No | Tên tàu nếu là agency liên quan vessel |
+| `contact_name` | No | Người liên hệ |
+| `phone` | No | Số điện thoại |
+| `email` | No | Email |
+| `tax_code` | No | MST |
+| `is_active` | Yes | Trạng thái |
+
+### 13.3 Business rules
+1. Vendor inactive không được chọn cho inbound mới. `[CONFIRMED]`
+2. Vendor có thể không gắn owner cố định. `[CONFIRMED]`
+3. Một vendor có thể được dùng bởi nhiều owner. `[CONFIRMED]`
+4. Nếu `supplier_group = VESSEL_AGENT` thì cho phép lưu `vessel_name`; các nhóm khác để optional. `[BUILD-BASELINE]`
+
+---
+
+## 14. Sub-module 3 — Item / SKU & Product Attributes
+
+### 14.1 Mục tiêu
+Quản lý danh mục hàng hóa và vật tư bao bì để downstream modules hiểu bản chất hàng, quy đổi, tolerance, billing, bagging và putaway.
+
+### 14.2 Dữ liệu cốt lõi
+| Nhóm field | Field chính |
+|---|---|
+| Identification | `item_code`, `item_name`, `item_name_en`, `alt_item_code` |
+| Classification | `product_group`, `cargo_form`, `category`, `is_packaging` |
+| UOM | `base_uom`, `billing_uom`, `catch_weight_uom` |
+| Weight/Volume | `std_gross_weight`, `std_net_weight`, `density_mt_per_m3`, `std_cube_m3` |
+| Tolerance | `tolerance_pct_inbound`, `tolerance_pct_outbound`, `shrinkage_rate_pct` |
+| Rotation | `rotate_by`, `shelf_life_days` |
+| Putaway | `default_zone`, `putaway_strategy_key` |
+| Bagging/VAS | `default_bag_weight_kg`, `packaging_material_item_code`, `nominal_qty_per_unit` |
+| Customs | `hs_code`, `country_of_origin` |
+| Flags | `is_catch_weight`, `is_storage_billable`, `is_active` |
+
+### 14.3 Business rules
+1. `item_code` là unique toàn hệ thống. `[BUILD-BASELINE]`
+2. `cargo_form` là bắt buộc. `[CONFIRMED]`
+3. Với `cargo_form = BULK`, `is_catch_weight = true` là mặc định khuyến nghị. `[BUILD-BASELINE]`
+4. Với `is_packaging = true`, item không được dùng như hàng tồn thương mại của owner nếu không có use case VAS rõ. `[BUILD-BASELINE]`
+5. `billing_uom` phải tồn tại trong `uom`. `[CONFIRMED]`
+6. `tolerance_pct_inbound` và `tolerance_pct_outbound` không được âm. `[CONFIRMED]`
+7. `default_bag_weight_kg` chỉ bắt buộc khi cargo form là loại bagged hoặc item là packaging. `[BUILD-BASELINE]`
+8. Item inactive không được dùng cho giao dịch mới. `[CONFIRMED]`
+9. Không cho phép đổi `cargo_form` sau khi item đã phát sinh giao dịch, trừ change request và migration riêng. `[BUILD-BASELINE]`
+10. Không cho phép đổi `billing_uom` nếu đã có transaction trừ khi đi qua quy trình controlled change. `[BUILD-BASELINE]`
+
+### 14.4 Quy tắc cho bài toán bulk/bagged
+- `density_mt_per_m3` rất quan trọng cho capacity planning bulk. `[CONFIRMED]`
+- `nominal_qty_per_unit` phục vụ bagging / packing scenario. `[BUILD-BASELINE]`
+- `shrinkage_rate_pct` không tự động tạo transaction; chỉ là baseline tham chiếu cho exception / analytics / billing. `[BUILD-BASELINE]`
+
+---
+
+## 15. Sub-module 4 — Warehouse Master
+
+### 15.1 Mục tiêu
+Quản lý kho như đơn vị vận hành logic để phục vụ sequence scope, capacity baseline, weighbridge baseline, reporting và ownership của location/zone.
+
+### 15.2 Dữ liệu cốt lõi
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `warehouse_code` | Yes | Mã kho duy nhất |
+| `warehouse_name` | Yes | Tên kho |
+| `site_id` | Yes | Mặc định `TVL-SITE` Phase 1 |
+| `warehouse_type` | Yes | `COVERED`, `OPEN_YARD`, `MIXED` |
+| `total_area_m2` | Yes | Tổng diện tích |
+| `usable_area_m2` | No | Diện tích khả dụng |
+| `max_height_m` | Yes | Cao tối đa |
+| `max_capacity_mt` | Yes | Sức chứa mt |
+| `address` | No | Địa chỉ |
+| `has_weighbridge` | Yes | Có trạm cân hay không |
+| `weighbridge_count` | No | Số trạm cân |
+| `is_bonded` | Yes | Cờ kho ngoại quan |
+| `capacity_warning_pct` | Yes | Ngưỡng cảnh báo |
+| `default_receiving_location` | No | Location mặc định nhận |
+| `default_staging_location` | No | Location mặc định staging |
+| `default_shipping_location` | No | Location mặc định xuất |
+| `is_active` | Yes | Trạng thái |
+
+### 15.3 Business rules
+1. `warehouse_code` unique toàn hệ thống. `[CONFIRMED]`
+2. Number sequence scope là **PER_WAREHOUSE**. `[CONFIRMED]`
+3. Không cho deactivate warehouse nếu còn location active hoặc còn dữ liệu on-hand active reference mà chưa xử lý. `[BUILD-BASELINE]`
+4. `default_*_location` nếu khai báo thì phải thuộc chính warehouse đó. `[CONFIRMED]`
+5. `capacity_warning_pct` nằm trong khoảng 1–100. `[BUILD-BASELINE]`
+
+---
+
+## 16. Sub-module 5 — Zone & Location Master
+
+### 16.1 Mục tiêu
+Định nghĩa cấu trúc không gian kho ở mức zone/location để phục vụ receiving, storage, staging, shipping, billing zoning, capacity và rules vận hành.
+
+### 16.2 Zone master
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `zone_code` | Yes | Mã zone duy nhất trong warehouse |
+| `warehouse_code` | Yes | Thuộc kho nào |
+| `zone_name` | Yes | Tên/mô tả |
+| `zone_type` | Yes | `RECEIVING`, `STORAGE`, `STAGING`, `SHIPPING`, `YARD`, `QC` |
+| `is_billing_zone` | Yes | Có tính billing storage/handling theo zone hay không |
+| `billing_rate_zone` | No | Nhóm zone dùng billing |
+| `max_capacity_mt` | No | Sức chứa zone |
+| `is_active` | Yes | Trạng thái |
+
+### 16.3 Location master
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `location_code` | Yes | Mã location |
+| `warehouse_code` | Yes | Thuộc kho nào |
+| `zone_code` | Yes | Thuộc zone nào |
+| `location_type` | Yes | `RECEIVING`, `STORAGE`, `STAGING`, `SHIPPING`, `BULK_FLOOR`, `QC`, `TRANSIT` |
+| `location_profile` | Yes | Profile vận hành |
+| `status` | Yes | `OK`, `HOLD`, `BLOCKED` |
+| `area_m2` | No | Diện tích |
+| `max_height_m` | No | Cao tối đa |
+| `stack_limit_kg` | No | Giới hạn chất tải |
+| `is_mixed_owner` | Yes | Có cho mix owner không |
+| `is_mixed_product` | Yes | Có cho mix product không |
+| `is_billing_location` | Yes | Có dùng làm location tính billing không |
+| `stacking_rule` | No | `FLOOR`, `RACK`, `PALLET` |
+| `x_coord`,`y_coord` | No | Dùng cho sơ đồ/điều hướng |
+| `is_active` | Yes | Trạng thái |
+
+### 16.4 Business rules
+1. Zone unique theo `warehouse_code + zone_code`. `[BUILD-BASELINE]`
+2. Location unique theo `warehouse_code + location_code`. `[CONFIRMED]`
+3. Putaway chỉ vào location có `is_active = true`, `status = OK` và type/profile hợp lệ. `[CONFIRMED]`
+4. Location `RECEIVING` hoặc `STAGING` mặc định không dùng làm long-term storage billing nếu không bật `is_billing_location`. `[BUILD-BASELINE]`
+5. Nếu `is_mixed_owner = false` thì downstream không được trộn owner trong cùng location/on-hand logic. `[BUILD-BASELINE]`
+6. Không cho deactivate zone nếu còn location active trong zone đó. `[BUILD-BASELINE]`
+7. Không cho đổi `warehouse_code` của zone/location sau khi đã phát sinh giao dịch. `[BUILD-BASELINE]`
+8. `location_type = SHIPPING` không được làm putaway target. `[BUILD-BASELINE]`
+
+---
+
+## 17. Sub-module 6 — Vehicle Type Master
+
+### 17.1 Mục tiêu
+Định nghĩa loại phương tiện phục vụ inbound/outbound planning, weighbridge validation và billing linkage.
+
+### 17.2 Dữ liệu cốt lõi
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `vehicle_type_code` | Yes | Mã loại xe |
+| `vehicle_type_name` | Yes | Tên loại xe |
+| `category` | Yes | `TRUCK`, `CONTAINER`, `TRAILER`, `BARGE`, `VESSEL_SUPPORT` |
+| `default_tare_weight_kg` | Yes | Khối lượng bì mặc định |
+| `max_payload_kg` | Yes | Tải trọng tối đa |
+| `teu_equivalent` | No | Dùng cho container |
+| `handling_fee_group` | No | Link billing baseline |
+| `is_active` | Yes | Trạng thái |
+
+### 17.3 Business rules
+1. `default_tare_weight_kg` phải lớn hơn 0. `[CONFIRMED]`
+2. `max_payload_kg` phải lớn hơn 0 và lớn hơn tare logic hợp lý. `[BUILD-BASELINE]`
+3. Vehicle type inactive không được chọn cho transaction mới. `[CONFIRMED]`
+
+---
+
+## 18. Sub-module 7 — UOM / Conversion / Inventory Status Baseline
+
+### 18.1 UOM master
+Mục tiêu là chuẩn hóa đơn vị dùng trong item, transaction, billing và report.
+
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `uom_code` | Yes | Mã đơn vị |
+| `description` | Yes | Mô tả |
+| `uom_class` | Yes | `WEIGHT`, `VOLUME`, `QUANTITY`, `AREA`, `LENGTH` |
+| `is_base_uom` | Yes | Có phải đơn vị cơ sở không |
+| `decimal_precision` | Yes | Số chữ số thập phân |
+| `is_active` | Yes | Trạng thái |
+
+### 18.2 UOM conversion
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `from_uom` | Yes | UOM nguồn |
+| `to_uom` | Yes | UOM đích |
+| `conversion_factor` | Yes | to = from x factor |
+| `item_code` | No | Null = dùng chung; có giá trị = áp dụng riêng item |
+| `is_active` | Yes | Trạng thái |
+
+### 18.3 Inventory status
+Go-live Phase 1 cố định 4 giá trị:
+- `AVAILABLE`
+- `DAMAGED`
+- `BLOCKED`
+- `IN_TRANSIT`
+
+### 18.4 Business rules
+1. `AVAILABLE` là status duy nhất được allocate. `[CONFIRMED]`
+2. Status master Phase 1 không cho user thêm mới tùy ý qua UI. `[BUILD-BASELINE]`
+3. Có thể cho phép update description/display order nhưng không cho sửa semantics của status code. `[BUILD-BASELINE]`
+4. UOM conversion không được tạo vòng lặp xung đột cho cùng cặp `from/to/item`. `[BUILD-BASELINE]`
+
+---
+
+## 19. Sub-module 8 — Billing Reference Baseline
+
+### 19.1 Mục tiêu
+Quản lý baseline tham chiếu commercial để M10 sử dụng khi lookup charge rule, nhưng Module 2 không thực hiện charge calculation runtime.
+
+### 19.2 Entity trong scope
+- `service_code`
+- `day_type`
+- `rate_reference`
+
+### 19.3 Service code
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `service_code` | Yes | Mã dịch vụ |
+| `service_name` | Yes | Tên dịch vụ |
+| `service_group` | Yes | `STORAGE`, `HANDLING`, `WEIGHBRIDGE`, `BAGGING`, `INBOUND`, `OUTBOUND`, `OTHER` |
+| `default_uom` | Yes | UOM mặc định |
+| `is_active` | Yes | Trạng thái |
+
+### 19.4 Day type
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `day_type_code` | Yes | `NORMAL`, `WEEKEND`, `HOLIDAY`... |
+| `description` | Yes | Mô tả |
+| `calendar_date` | No | Nếu là calendar cụ thể |
+| `is_active` | Yes | Trạng thái |
+
+### 19.5 Rate reference
+| Field | Bắt buộc | Mô tả |
+|---|---|---|
+| `rate_reference_code` | Yes | Mã dòng tham chiếu |
+| `owner_code` | Yes | Chủ hàng |
+| `service_code` | Yes | Dịch vụ |
+| `cargo_form` | Yes | Dạng hàng |
+| `billing_uom` | Yes | UOM tính phí |
+| `warehouse_code` | No | Scope theo kho nếu có |
+| `day_type_code` | No | Scope theo ngày nếu có |
+| `effective_from` | Yes | Hiệu lực từ |
+| `effective_to` | No | Hiệu lực đến |
+| `is_taxable` | No | Có VAT hay không |
+| `is_active` | Yes | Trạng thái |
+
+### 19.6 Business rules
+1. `service_code` unique toàn hệ thống. `[CONFIRMED]`
+2. Không cho overlap `rate_reference` active trên cùng tổ hợp lookup khóa. `[BUILD-BASELINE]`
+3. `effective_to` nếu có phải lớn hơn hoặc bằng `effective_from`. `[CONFIRMED]`
+4. Billing module được quyền tham chiếu, không được tự tạo nghĩa mới cho service/day type ngoài baseline đã quản lý. `[BUILD-BASELINE]`
+
+---
+
+## 20. Sub-module 9 — Owner-Item Policy & Override Baseline
+
+### 20.1 Mục tiêu
+Cho phép cấu hình riêng theo cặp owner + item mà không phá vỡ global item master.
+
+### 20.2 Thuộc tính gợi ý trong scope Phase 1
 | Field | Mô tả |
 |---|---|
-| id | khóa chính |
-| owner_id | tham chiếu owner |
-| item_id | tham chiếu item |
-| tolerance_pct_inbound_override | override dung sai nhập |
-| tolerance_pct_outbound_override | override dung sai xuất |
-| dpm_dual_tracking_flag | cờ dual-tracking nếu áp dụng riêng cho owner-item |
-| billing_rate_override_ref | override rate nếu chính sách thương mại cho phép |
-| effective_from | ngày bắt đầu hiệu lực |
-| effective_to | ngày hết hiệu lực |
-| active_flag | còn hiệu lực hay không |
-| created_at / created_by | audit tạo |
-| updated_at / updated_by | audit sửa |
+| `owner_code` | Chủ hàng |
+| `item_code` | Mặt hàng |
+| `tolerance_pct_inbound_override` | Override tolerance nhập |
+| `tolerance_pct_outbound_override` | Override tolerance xuất |
+| `billing_uom_override` | Override đơn vị billing |
+| `is_storage_billable_override` | Override cờ billing lưu kho |
+| `preferred_warehouse_code` | Kho ưu tiên |
+| `handling_note` | Ghi chú vận hành |
+| `is_active` | Trạng thái |
 
-> Ghi chú: nếu team chốt item là global SKU, `owner_item_policy` càng quan trọng để chứa các khác biệt theo owner thay vì bẻ item master thành nhiều record.
-
-### 23.1B Tolerance Lookup Algorithm (cho Dev implement)
-
-Khi M4/M5 cần kiểm tra tolerance cho một cặp (owner, item), logic lookup như sau:
-
-```
-function getTolerance(owner_id, item_id, direction):
-    // direction = 'INBOUND' hoặc 'OUTBOUND'
-    field = direction == 'INBOUND' ? 'tolerance_pct_inbound_override' : 'tolerance_pct_outbound_override'
-
-    // Step 1: Tìm owner_item_policy active, trong effective date
-    policy = SELECT * FROM owner_item_policy
-             WHERE owner_id = :owner_id
-               AND item_id = :item_id
-               AND active_flag = TRUE
-               AND effective_from <= NOW()
-               AND (effective_to IS NULL OR effective_to >= NOW())
-             ORDER BY effective_from DESC
-             LIMIT 1
-
-    IF policy EXISTS AND policy[field] IS NOT NULL:
-        RETURN policy[field]          // → Ưu tiên 1: owner+item override
-
-    // Step 2: Lấy từ item master
-    item = SELECT * FROM item WHERE id = :item_id
-    item_field = direction == 'INBOUND' ? 'tolerance_pct_inbound' : 'tolerance_pct_outbound'
-
-    IF item[item_field] IS NOT NULL:
-        RETURN item[item_field]       // → Ưu tiên 2: item default
-
-    // Step 3: Lấy từ owner master
-    owner = SELECT * FROM owner WHERE id = :owner_id
-
-    IF owner.default_tolerance_pct IS NOT NULL:
-        RETURN owner.default_tolerance_pct  // → Ưu tiên 3: owner default
-
-    // Step 4: System default
-    RETURN SYSTEM_DEFAULT_TOLERANCE   // → 0.5% [TO-CONFIRM giá trị chính thức]
-```
-
-**Thứ tự ưu tiên (MD-BR-009):**
-1. `owner_item_policy` (owner + item) → cao nhất
-2. `item.tolerance_pct_*` → mức item
-3. `owner.default_tolerance_pct` → mức owner
-4. System default (0.5%) → thấp nhất
-
-### 23.2 Quan hệ khái niệm
-
-- `item.owner_id` hoặc quan hệ `owner_item_policy` để cho phép owner-specific setup
-- `warehouse` 1-n `location`
-- `inventory_status` được dùng làm dimension value đầu vào cho `invent_dim`
-- `location.warehouse_id` phải bắt buộc
-- `rate_reference` có thể liên kết theo owner / cargo_form / service_code tùy baseline cuối cùng
-
-### 23.3 Ghi chú ownership
-
-- M2 sở hữu **master definitions**.
-- M3 sở hữu **InventDim / InventTrans / OnHand runtime records**.
-- M10 sở hữu **billing event / debit note runtime records**.
+### 20.3 Business rules
+1. Unique theo `owner_code + item_code`. `[BUILD-BASELINE]`
+2. Không tạo record nếu owner hoặc item không tồn tại/không active. `[CONFIRMED]`
+3. Owner-item policy inactive thì runtime fallback về item/owner default. `[BUILD-BASELINE]`
 
 ---
 
-## 24. Dependencies liên module
+## 21. Sub-module 10 — Master Data Import, Validation & Readiness
 
-### 24.1 Module phụ thuộc vào M2
+### 21.1 Mục tiêu
+Cho phép nhập dữ liệu nền hàng loạt có kiểm soát, an toàn, truy vết được và đủ dùng cho cutover/go-live.
 
-- M3 Inventory Core Engine
-- M4 Inbound Operations
-- M5 Outbound Operations
-- M6 Inventory Control
-- M7 Work Execution & Mobile
-- M9 VAS / Bagging
-- M10 Billing & Commercial Control
-- M11 Reporting
+### 21.2 Import entities trong Phase 1
+- Owner
+- Vendor
+- Item
+- Warehouse
+- Zone
+- Location
+- Vehicle Type
+- UOM
+- UOM Conversion
+- Rate Reference
+- Owner-Item Policy
 
-### 24.2 Module M2 phụ thuộc vào
+### 21.3 Import lifecycle
+1. Upload file
+2. Parse template và kiểm version/template type
+3. Validate header
+4. Validate từng dòng
+5. Validate cross-reference
+6. Preview kết quả `insert / update / reject`
+7. Commit theo mode đã chọn
+8. Ghi batch log + line log + error log
+9. Cho phép export error report
 
-- M1 để enforce RBAC, audit, reason code nếu thay đổi nhạy cảm
-- Baseline business rules đã chốt trong PRD/Blueprint/BRD
+### 21.4 Chế độ xử lý
+- `VALIDATE_ONLY`: chỉ kiểm lỗi, không commit. `[BUILD-BASELINE]`
+- `INSERT_ONLY`: record đã tồn tại sẽ reject. `[BUILD-BASELINE]`
+- `UPSERT`: record tồn tại sẽ update các field cho phép update. `[BUILD-BASELINE]`
 
----
+### 21.5 Transaction behavior
+- Mặc định commit theo **partial success by row**. `[BUILD-BASELINE]`
+- Mỗi dòng hợp lệ được commit độc lập trong cùng batch. `[BUILD-BASELINE]`
+- Batch phải lưu summary: tổng dòng, thành công, thất bại, skipped. `[CONFIRMED]`
+- Có thể bật option `all_or_nothing = true` cho migration controlled batch nếu cần. `[TO-CONFIRM]`
 
-## 25. Acceptance criteria ở mức module
+### 21.6 Validation categories
+- Format validation
+- Required field validation
+- Enum/domain validation
+- Duplicate-in-file validation
+- Existing master validation
+- Cross-reference validation
+- Immutable-field-after-use validation
+- Active/inactive usage validation
 
-Module Master Data Management được xem là đạt khi tối thiểu thỏa các điều kiện sau:
+### 21.7 Cross-reference bắt buộc
+- Item phải tham chiếu UOM hợp lệ
+- Warehouse default locations phải tồn tại trong chính warehouse đó
+- Location phải tham chiếu warehouse và zone hợp lệ
+- Zone phải tham chiếu warehouse hợp lệ
+- Rate reference phải tham chiếu owner/service_code/billing_uom/day_type hợp lệ
+- Owner-item policy phải tham chiếu owner/item hợp lệ
 
-1. Có đầy đủ master records cho Owner, Vendor, Item, Warehouse, Location, Vehicle Type, Inventory Status.
-2. Inventory status go-live chỉ có 4 status và chỉ AVAILABLE được allocate.
-3. Putaway bị chặn nếu location type không hợp lệ.
-4. Item master hỗ trợ đủ cargo_form, catch weight, tolerance và billing attributes cho Phase 1.
-5. Owner khác nhau phải dẫn đến inventory segregation đúng ở downstream logic.
-6. Master inactive không được dùng cho giao dịch mới nhưng lịch sử không mất.
-7. Có import template chuẩn và preview trước commit.
-8. Import có row-level validation, error report và không tạo duplicate khi re-import.
-9. Billing reference master đủ để M10 không phải hard-code baseline pricing inputs.
-10. Có checklist xác nhận data readiness trước SIT/UAT/go-live.
-
-### 25.1 Acceptance Criteria chi tiết theo sub-module (testable)
-
-**Sub-module 1 — Owner & Customer Master**
-- AC-1.1: Tạo owner với owner_code trùng → API reject 409 Conflict
-- AC-1.2: Deactivate owner có lịch sử tồn kho → receipt/shipment mới cho owner này bị reject; lịch sử vẫn query được
-- AC-1.3: CUST_VIEWER login gắn owner_id = CUST001 → chỉ thấy inventory/report/billing của CUST001, kể cả qua API direct call
-- AC-1.4: Tạo owner thiếu required field (owner_code, company) → reject 400 với field-level error
-
-**Sub-module 2 — Vendor & Counterparty Master**
-- AC-2.1: Tạo vendor với supplier_group = VESSEL_AGENT, vessel_name = NULL → reject (vessel_name bắt buộc khi VESSEL_AGENT)
-- AC-2.2: Vendor inactive → tạo receipt mới gắn vendor này bị reject
-
-**Sub-module 3 — Item / SKU & Product Attribute Master**
-- AC-3.1: Tạo item cargo_form = BULK, is_catch_weight = TRUE → downstream M4/M5 dùng actual weight từ cân
-- AC-3.2: Có owner_item_policy (owner A, item X, tolerance_inbound = 1.0%) → M4 kiểm tolerance dùng 1.0%, KHÔNG dùng item default
-- AC-3.3: Không có owner_item_policy → M4 fallback sang item.tolerance_pct_inbound → owner.default_tolerance_pct → system default 0.5%
-- AC-3.4: Item inactive → tạo receipt/shipment mới cho item này bị reject 400
-- AC-3.5: DPM flag = TRUE trên owner_item_policy → M5 outbound ghi InventTrans.qty = actual_net; M10 billing dùng bag_count × nominal
-
-**Sub-module 4 — Warehouse & Location Structure Master**
-- AC-4.1: Putaway vào location_type = STAGING → reject (chỉ cho STORAGE) `[CONFIRMED]`
-- AC-4.2: Location utilization >= 85% → dashboard hiện yellow warning
-- AC-4.3: Location utilization >= 100% → dashboard hiện red alert
-- AC-4.4: QR code generate cho mỗi location → WH_KEEPER scan được bằng mobile app
-- AC-4.5: Tạo location thiếu warehouse_id → reject 400
-
-**Sub-module 6 — Inventory Status & Dimension Baseline**
-- AC-6.1: Allocate outbound từ stock DAMAGED → reject
-- AC-6.2: Allocate outbound từ stock AVAILABLE → success
-- AC-6.3: Status change từ AVAILABLE → BLOCKED → bắt buộc reason_code; audit log ghi đầy đủ (user, role, old/new, reason, timestamp)
-- AC-6.4: Tạo status mới ngoài 4 go-live → reject ở Phase 1
-
-**Sub-module 7 — Billing Reference Master**
-- AC-7.1: Item cargo_form = BULK → billing lookup trả rate_group = BULK_RATE
-- AC-7.2: Thay đổi rate_reference effective_date → rate mới chỉ áp dụng từ ngày hiệu lực, không hồi tố
-- AC-7.3: Day type calendar: ngày 01/05 = HOLIDAY → storage fee tính theo holiday rate nếu có
-
-**Sub-module 8 — Master Data Import & Validation**
-- AC-8.1: Import file 100 dòng, 5 dòng lỗi → 95 dòng import thành công; error report liệt kê 5 dòng lỗi với chi tiết cột + lý do
-- AC-8.2: Import lại cùng file → không tạo duplicate (match theo unique key)
-- AC-8.3: Import item có owner_code không tồn tại → dòng lỗi với message "owner_code not found"
-- AC-8.4: Preview mode → hiển thị số dòng pass/fail TRƯỚC KHI commit; user chọn commit hoặc cancel
-
----
-
-## 26. Rủi ro nếu module làm không đủ
-
-| Rủi ro | Hậu quả |
+### 21.8 Import audit objects
+| Object | Mục đích |
 |---|---|
-| Owner setup sai | gộp nhầm tồn kho giữa các chủ hàng |
-| Item attributes sai | tolerance, billing, bagging xử lý sai |
-| Location type sai | putaway/pick sai vị trí |
-| Status master sai | allocate nhầm hàng blocked/damaged |
-| Billing reference yếu | tính phí sai hoặc hard-code tạm |
-| Import validation yếu | dữ liệu đầu kỳ lỗi lan sang toàn hệ thống |
-| Inactive policy không rõ | user tiếp tục dùng master hết hiệu lực |
+| `master_import_batch` | Header của batch import |
+| `master_import_batch_line` | Dòng parse + trạng thái xử lý |
+| `master_import_error` | Danh sách lỗi chi tiết |
+
+### 21.9 Batch statuses
+`UPLOADED`, `VALIDATING`, `VALIDATED`, `PARTIALLY_COMMITTED`, `COMMITTED`, `FAILED`, `CANCELLED`. `[BUILD-BASELINE]`
 
 ---
 
-## 27. Khuyến nghị cho Dev Team
+## 22. Field-level governance policy
 
-1. Thiết kế M2 như **source of truth cho master definitions**, không để module downstream tự khai báo lại thuộc tính.
-2. Tách rõ **master record**, **reference lookup** và **import batch logs**.
-3. Chuẩn hóa khóa unique cho từng entity từ đầu để tránh migration/import conflict.
-4. Dùng validation service dùng chung cho create/edit/import.
-5. Không để M3/M4/M5 hard-code inventory statuses hay location type rules ngoài M2 baseline.
-6. Tách `active/inactive` khỏi soft delete; không xóa master đã phát sinh lịch sử.
+### 22.1 Nhóm field được phép update sau khi đã phát sinh giao dịch
+- display name / description
+- contact info
+- non-critical note fields
+- billing email
+- status active/inactive (nếu thỏa policy)
 
----
+### 22.2 Nhóm field hạn chế update sau khi đã phát sinh giao dịch
+Các field sau phải khóa mềm hoặc đi qua controlled change:
+- `item.cargo_form`
+- `item.billing_uom`
+- `warehouse_code`
+- `zone.warehouse_code`
+- `location.warehouse_code`
+- `location.zone_code`
+- `inventory_status.code`
+- `rate_reference` key fields đang active
 
-## 28. Khuyến nghị cho QA Team
-
-1. Test create/edit/deactivate cho từng loại master.
-2. Test cross-reference validation: item-owner, location-warehouse, rate reference dependencies.
-3. Test downstream enforcement: allocate chỉ AVAILABLE, putaway chỉ STORAGE.
-4. Test import preview, partial lỗi, row-level report và re-import duplicate-safe.
-5. Test inactive master bị chặn ở transaction create.
-6. Test audit trail cho create/update/deactivate/import.
-
----
-
-## 29. Điểm cần chốt thêm trước khi thiết kế FS/API chi tiết
-
-| # | Nội dung cần chốt | Tình trạng | Priority | Impact nếu chưa chốt |
-|---|---|---|---|---|
-| 1 | Khóa unique cuối cùng của item là global SKU hay owner + SKU | `[TO-CONFIRM]` | P1 | BLOCK: item schema, import logic, duplicate handling |
-| 2 | Hierarchy tolerance chính thức: owner default, item default, owner+item override | `[TO-CONFIRM]` | P1 | BLOCK: owner_item_policy design, validation, downstream exception logic |
-| 3 | Danh sách cargo_form go-live cuối cùng và mapping sang billing rate/rate group | `[TO-CONFIRM]` | P1 | BLOCK: Billing reference design, M10 pricing input baseline |
-| 4 | Công thức capacity chính thức có dùng density theo item hay theo zone/kho | `[TO-CONFIRM]` | P1 | BLOCK: warehouse/location capacity behavior |
-| 5 | Danh sách service_code / rate_reference / day_type cần go-live | `[TO-CONFIRM]` | P1 | BLOCK: billing master setup và SIT cho billing |
-| 6 | Vehicle type attributes nào là bắt buộc thật sự trong Phase 1 | `[TO-CONFIRM]` | P3 | IMPACT: import template và màn hình master |
-| 7 | Chính sách import khi record đã tồn tại là reject hay update/upsert | `[TO-CONFIRM]` | P1 | BLOCK: import service contract và duplicate-safe behavior |
-| 8 | Danh sách field bắt buộc cuối cùng cho từng template import | `[TO-CONFIRM]` | P2 | IMPACT: migration prep, UAT data readiness |
-| 9 | Có cần approval cho thay đổi master data ảnh hưởng billing/commercial hay không | `[TO-CONFIRM]` | P2 | IMPACT: RBAC/workflow và audit expectation |
-| 10 | owner-item tolerance override sẽ là bảng riêng hay field trực tiếp trên item | `[TO-CONFIRM]` | P1 | BLOCK: DB design, API contract, QA scenarios |
-| 11 | DPM dual-tracking sẽ đặt ở item master hay owner_item_policy | `[TO-CONFIRM]` | P1 | BLOCK: schema và special-case support cho owner-specific flow |
-| 12 | BRD / source mapping sẽ được lưu ở bảng rule nào trong spec | `[TO-CONFIRM]` | P3 | IMPACT: traceability cho BA/QA/UAT |
+### 22.3 Hard delete policy
+- Không hard delete nếu record đã từng được tham chiếu bởi transaction/log/import history. `[CONFIRMED]`
+- Chỉ cho hard delete nếu record chưa từng được dùng và user có quyền system admin. `[BUILD-BASELINE]`
 
 ---
 
-## 29A. Gợi ý mapping traceability cho rule catalog
+## 23. API capability baseline cho Module 2
 
-Để QA tránh viết test trùng và để BA trace ngược dễ hơn, nên bổ sung cột `BRD Reference` hoặc `Maps To` trong bảng Business Rules.
+### 23.1 Nguyên tắc API
+- Mọi command API có side effect phải nhận `external_id` hoặc idempotency key. `[CONFIRMED]`
+- Mọi response lỗi validation phải trả được lỗi theo field hoặc theo dòng import. `[BUILD-BASELINE]`
+- Mọi list API phải hỗ trợ filter theo `is_active`, search keyword và pagination. `[BUILD-BASELINE]`
 
-| Rule ID | Rule | Maps To |
-|---|---|---|
-| MD-BR-003 | Phase-1 dimensions only | Inventory baseline / PRD / Blueprint |
-| MD-BR-004 | Fixed go-live inventory statuses | Business rules inventory status |
-| MD-BR-011 | cargo_form billing mapping | Billing baseline / commercial rule |
-| MD-BR-012 | Capacity policy clarity | Warehouse capacity baseline |
-| MD-BR-017 | Owner-item override support | Master data override policy |
-| MD-BR-018 | DPM dual-tracking support | DPM special business rule |
+### 23.2 Nhóm API tối thiểu
+- Create / Update / Get / List / Deactivate / Reactivate cho từng master chính
+- Import preview
+- Import commit
+- Export error report
+- Usage impact check trước khi deactivate
+- Lookup APIs cho dropdown/reference
+
+### 23.3 Ví dụ capability matrix
+| Entity | Create | Update | Deactivate | Reactivate | Import | Usage Check |
+|---|---:|---:|---:|---:|---:|---:|
+| Owner | Yes | Yes | Yes | Yes | Yes | Yes |
+| Vendor | Yes | Yes | Yes | Yes | Yes | Optional |
+| Item | Yes | Yes | Yes | Yes | Yes | Yes |
+| Warehouse | Yes | Yes | Yes | Yes | Yes | Yes |
+| Zone | Yes | Yes | Yes | Yes | Yes | Yes |
+| Location | Yes | Yes | Yes | Yes | Yes | Yes |
+| Vehicle Type | Yes | Yes | Yes | Yes | Yes | Optional |
+| UOM | Yes | Yes | Yes | Yes | Yes | Yes |
+| Rate Reference | Yes | Yes | Yes | Yes | Yes | Yes |
+| Owner-Item Policy | Yes | Yes | Yes | Yes | Yes | Optional |
 
 ---
 
-## 30. Kết luận
+## 24. RBAC, Audit và Governance mapping với Module 1
 
-Module 2 không phải phần “khai báo danh mục cho có”, mà là **data foundation** để các module Inventory, Inbound, Outbound, Work, Billing vận hành đúng.
+### 24.1 Vai trò tối thiểu
+| Vai trò | Quyền chính |
+|---|---|
+| `System Admin` | Toàn quyền cấu hình master |
+| `Master Data Admin` | Tạo/sửa/import/deactivate master data |
+| `Warehouse Manager` | Xem master và đề xuất/sửa một số operational master trong scope kho |
+| `Billing Lead/Officer` | Xem owner/item/service/rate reference; sửa billing reference nếu được cấp |
+| `Customer Viewer` | Chỉ xem dữ liệu thuộc owner scope |
+| `Auditor` | Chỉ xem và export audit/import logs |
 
-Nếu Module 1 là lớp kỷ luật hệ thống, thì Module 2 là lớp **định nghĩa thực thể và tham số nền**. Build thiếu hoặc build sai module này sẽ làm sai cả tồn kho lẫn billing.
+### 24.2 Action nhạy cảm bắt buộc audit mạnh
+- deactivate/reactivate master
+- update key operational fields
+- import commit
+- sửa billing reference active
+- thay đổi owner-item override
 
-Trạng thái đề xuất hiện tại: **Draft for Review — đủ nền để bóc tiếp FS/API/Import Design/UAT**, nhưng cần chốt thêm các điểm `[TO-CONFIRM]` ở Section 29 trước khi khóa build scope.
+### 24.3 Action bắt buộc reason code
+- deactivate/reactivate record đã từng được dùng
+- sửa controlled fields sau go-live
+- import reactivate record inactive
+- cập nhật rate reference đang active có ảnh hưởng billing
 
+### 24.4 Audit bắt buộc lưu
+- object_type
+- object_id / code
+- action
+- before_value
+- after_value
+- user_id
+- role
+- timestamp
+- external_id / correlation_id
+- source_channel
+- reason_code (nếu có)
+
+---
+
+## 25. Validation rules tổng hợp theo entity
+
+| Entity | Rule chính |
+|---|---|
+| Owner | unique owner_code, tax code format, owner inactive không dùng cho transaction mới |
+| Vendor | unique vendor_code, group enum hợp lệ |
+| Item | unique item_code, cargo_form bắt buộc, billing_uom và base_uom hợp lệ |
+| Warehouse | unique warehouse_code, capacity > 0, default location phải thuộc kho |
+| Zone | unique trong kho, warehouse phải tồn tại |
+| Location | unique trong kho, zone + warehouse phải khớp, type/profile hợp lệ |
+| Vehicle Type | tare/payload > 0 |
+| UOM | unique code, precision hợp lệ |
+| UOM Conversion | factor > 0, không trùng from/to/item |
+| Rate Reference | key lookup không overlap active date range |
+| Owner-Item Policy | unique owner+item, owner/item active |
+
+---
+
+## 26. Downstream dependency mapping
+
+### 26.1 M2 owns
+- nghĩa của owner/vendor/item/warehouse/zone/location/uom/status/service/day-type/rate-reference
+- active/inactive policy cho master
+- field semantics và validation
+- import baseline
+
+### 26.2 M2 enables downstream behavior
+- M3 dùng dimension/status/warehouse/location để tạo ledger & on-hand
+- M4 dùng owner/vendor/item/tolerance/vehicle type cho receiving
+- M5 dùng owner/item/location/status cho allocation & shipping
+- M7 dùng warehouse/zone/location/profile cho execution
+- M9 dùng item packaging / nominal bag weight / cargo form cho bagging
+- M10 dùng service/day type/rate reference / billing_uom / billing flags cho charge lookup
+
+### 26.3 M2 does not own
+- posting logic
+- allocation logic runtime
+- shipment/receipt lifecycle
+- charge calculation runtime
+- reconciliation engine
+
+---
+
+## 27. Data readiness checklist cho SIT/UAT/Go-live
+
+### 27.1 Checklist tối thiểu trước SIT
+- Có ít nhất 100% owner trong scope SIT
+- Có ít nhất 100% warehouse/zone/location trong scope SIT
+- Có đầy đủ 4 inventory statuses go-live
+- Có item master cho toàn bộ luồng test chính
+- Có vehicle type cho luồng weighbridge test
+- Có service code / rate reference baseline đủ cho billing SIT
+
+### 27.2 Checklist tối thiểu trước UAT
+- Dữ liệu owner, item, warehouse, location đạt sign-off từ business owner
+- Không còn duplicate key trong master chính
+- Tỷ lệ lỗi import unresolved = 0 cho dữ liệu UAT baseline
+- Tất cả cross-reference critical pass validate
+
+### 27.3 Checklist tối thiểu trước Go-live
+- Master data cutover file được freeze theo version
+- Import batch cuối pass 100% hoặc có exception sign-off chính thức
+- Tất cả owner active có item/warehouse/location hợp lệ trong scope thực tế
+- Billing reference active không overlap
+- Audit trail và import logs kiểm tra đọc được
+
+---
+
+## 28. Acceptance Criteria tổng hợp
+
+1. User có quyền phù hợp có thể tạo/sửa/xem/deactivate/reactivate từng master entity theo scope.  
+2. Hệ thống chặn transaction mới nếu master reference không tồn tại hoặc inactive.  
+3. Cùng item nhưng owner khác nhau được downstream tách tồn đúng qua dimension owner.  
+4. Chỉ status `AVAILABLE` được allocate.  
+5. Putaway chỉ vào location active, status OK, type/profile hợp lệ.  
+6. Import hỗ trợ preview và trả lỗi chi tiết theo dòng.  
+7. Import mode `UPSERT` cập nhật record hiện có nhưng không phá immutable controlled fields.  
+8. Deactivate record đã từng được dùng không làm mất lịch sử cũ.  
+9. Billing reference không cho phép overlap active date range trên cùng tổ hợp lookup.  
+10. Owner-item policy override có hiệu lực đúng thứ tự fallback đã định.  
+11. Mọi thay đổi nhạy cảm đều có audit log.  
+12. Mọi API side effect đều retry-safe theo idempotency policy.  
+13. Customer Viewer chỉ xem được dữ liệu thuộc owner scope.  
+14. Data readiness report có thể xác nhận số lượng record hợp lệ theo từng entity trước go-live.
+
+---
+
+## 29. Rủi ro và lưu ý triển khai
+
+1. Nếu chưa thống nhất naming convention giữa legacy TVL và SWM canonical codes, import sẽ sinh nhiều duplicate logic.  
+2. Nếu item master không chuẩn hóa `cargo_form`, billing và bagging sẽ lệch semantics.  
+3. Nếu location/zone không thiết kế đúng từ đầu, downstream putaway/pick/work sẽ phát sinh nhiều ngoại lệ khó sửa.  
+4. Nếu rate reference cho phép overlap, M10 sẽ lookup không deterministic.  
+5. Nếu governance của Module 1 không áp vào import/update master, go-live sẽ rất khó truy vết lỗi dữ liệu.
+
+---
+
+## 30. Đề xuất thiết kế dữ liệu mức implementation-ready
+
+### 30.1 Quy tắc khóa chính/khóa duy nhất khuyến nghị
+- Mỗi entity có `id` UUID làm PK kỹ thuật. `[BUILD-BASELINE]`
+- Mỗi mã nghiệp vụ (`owner_code`, `item_code`, `warehouse_code`...) là unique business key. `[CONFIRMED]`
+- Quan hệ owner-item, zone, location, uom conversion, rate reference dùng composite unique key đúng ngữ nghĩa. `[BUILD-BASELINE]`
+
+### 30.2 Audit fields chuẩn cho mọi master
+- `created_at`, `created_by`
+- `updated_at`, `updated_by`
+- `is_active`
+- `deactivated_at`, `deactivated_by` (nếu inactive)
+- `row_version` để chống lost update `[BUILD-BASELINE]`
+
+### 30.3 Khuyến nghị soft delete
+Tất cả master trong Module 2 nên dùng **soft delete / inactive flag**, không hard delete theo mặc định. `[BUILD-BASELINE]`
+
+---
+
+## 31. Phần cần theo dõi sau build review
+
+Các mục sau không chặn build v2.0 nhưng cần theo dõi trong design workshop:
+- Có cần `all_or_nothing` import batch làm option chính thức hay chỉ dùng cho migration script. `[TO-CONFIRM]`
+- Có cần tách `carrier` thành entity độc lập của M4 thay vì M2 hay không. `[TO-CONFIRM]`
+- Có cần mở rộng `day_type` thành calendar engine riêng ở M10 hay không. `[TO-CONFIRM]`
+- Có cần governance approval flow nhiều cấp cho thay đổi billing master sau go-live hay không. `[PHASE 2]`
+
+---
+
+## 32. Kết luận
+
+Module 2 không chỉ là nơi “khai báo danh mục”, mà là **nền dữ liệu điều khiển toàn bộ hoạt động inventory, inbound, outbound, warehouse execution, bagging và billing**. Vì vậy, tiêu chuẩn của module này phải đủ chặt để:
+- business hiểu và sign-off được,
+- dev có thể thiết kế DB/API/import logic mà không mơ hồ,
+- QA có thể viết test case rõ ràng,
+- team cutover có thể import và kiểm dữ liệu an toàn,
+- downstream modules dùng cùng một nghĩa dữ liệu, không tự phát sinh định nghĩa riêng.
+
+Bản v2.0 này được chỉnh để từ mức “module spec tốt” tiến gần hơn tới mức **build-ready BA specification** cho Module 2 của SWM.

@@ -7,6 +7,7 @@ import { AuthGuard } from './common/guards/auth.guard';
 import { PermissionGuard } from './common/guards/permission.guard';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { FoundationModule } from './modules/foundation/foundation.module';
+import { MasterDataModule } from './modules/master-data/master-data.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { FoundationModule } from './modules/foundation/foundation.module';
       envFilePath: ['.env', '.env.local'],
     }),
     FoundationModule,
+    MasterDataModule,
   ],
   controllers: [HealthController],
   providers: [
