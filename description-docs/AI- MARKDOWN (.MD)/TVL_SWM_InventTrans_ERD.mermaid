@@ -1,0 +1,168 @@
+erDiagram
+    INVENT_TRANS {
+        UUID id PK
+        VARCHAR trans_id UK
+        TIMESTAMPTZ posted_at
+        ENUM ref_type
+        VARCHAR ref_id
+        VARCHAR ref_line_id
+        VARCHAR external_id
+        VARCHAR item_id FK
+        DECIMAL qty
+        VARCHAR uom FK
+        UUID dim_from_id FK
+        UUID dim_to_id FK
+        ENUM status_from
+        ENUM status_to
+        ENUM stage
+        VARCHAR reason_code FK
+        VARCHAR owner_id FK
+        VARCHAR weighbridge_ticket_id
+        VARCHAR notes
+        UUID created_by FK
+        BOOLEAN is_reversed
+        VARCHAR reversed_by_trans_id
+    }
+
+    ON_HAND {
+        UUID id PK
+        VARCHAR item_id FK
+        UUID invent_dim_id FK
+        DECIMAL physical_qty
+        DECIMAL reserved_qty
+        DECIMAL available_qty
+        DECIMAL ordered_qty
+        VARCHAR uom FK
+        TIMESTAMPTZ last_movement_at
+        TIMESTAMPTZ last_count_at
+        TIMESTAMPTZ updated_at
+    }
+
+    INVENT_DIM {
+        UUID id PK
+        VARCHAR dim_hash UK
+        VARCHAR site_id
+        VARCHAR warehouse_id FK
+        VARCHAR location_id FK
+        VARCHAR batch_id
+        VARCHAR serial_id
+        ENUM inventory_status
+        VARCHAR owner_id FK
+        VARCHAR config_id
+        TIMESTAMPTZ created_at
+    }
+
+    AUDIT_LOG {
+        UUID id PK
+        ENUM entity_type
+        VARCHAR entity_id
+        ENUM action
+        VARCHAR field_name
+        TEXT old_value
+        TEXT new_value
+        UUID user_id FK
+        VARCHAR user_role
+        VARCHAR ip_address
+        ENUM device_type
+        TIMESTAMPTZ timestamp
+        VARCHAR reason_code
+        VARCHAR notes
+        VARCHAR correlation_id
+    }
+
+    DAILY_SNAPSHOT {
+        UUID id PK
+        DATE snapshot_date
+        VARCHAR item_id FK
+        UUID invent_dim_id FK
+        DECIMAL physical_qty
+        VARCHAR owner_id FK
+        VARCHAR warehouse_id FK
+        BOOLEAN is_billing_location
+        TIMESTAMPTZ created_at
+    }
+
+    RECON_VARIANCE {
+        UUID id PK
+        VARCHAR run_id
+        VARCHAR item_id FK
+        UUID invent_dim_id FK
+        DECIMAL expected_qty
+        DECIMAL actual_qty
+        DECIMAL variance
+        ENUM severity
+        BOOLEAN resolved
+        UUID resolved_by FK
+        TIMESTAMPTZ created_at
+    }
+
+    ITEM {
+        VARCHAR sku PK
+        VARCHAR description
+    }
+
+    WAREHOUSE {
+        VARCHAR code PK
+        VARCHAR name
+    }
+
+    LOCATION {
+        VARCHAR loc PK
+        VARCHAR warehouse_id FK
+        ENUM location_type
+        BOOLEAN is_billing_location
+    }
+
+    OWNER {
+        VARCHAR storerkey PK
+        VARCHAR name
+    }
+
+    REASON_CODE {
+        VARCHAR code PK
+        VARCHAR description
+    }
+
+    USERS {
+        UUID id PK
+        VARCHAR username
+    }
+
+    WORK_LINE {
+        UUID id PK
+        UUID work_header_id FK
+        UUID invent_trans_id FK
+    }
+
+    RECEIPT_HEADER {
+        VARCHAR receipt_id PK
+        ENUM status
+    }
+
+    SHIPMENT_HEADER {
+        VARCHAR shipment_id PK
+        ENUM status
+    }
+
+    INVENT_TRANS ||--o{ ITEM : "item_id"
+    INVENT_TRANS }o--o| INVENT_DIM : "dim_from_id"
+    INVENT_TRANS }o--o| INVENT_DIM : "dim_to_id"
+    INVENT_TRANS ||--o{ OWNER : "owner_id"
+    INVENT_TRANS }o--o| REASON_CODE : "reason_code"
+    INVENT_TRANS ||--o{ USERS : "created_by"
+
+    ON_HAND ||--o{ ITEM : "item_id"
+    ON_HAND ||--|| INVENT_DIM : "invent_dim_id"
+
+    INVENT_DIM ||--o{ WAREHOUSE : "warehouse_id"
+    INVENT_DIM }o--o| LOCATION : "location_id"
+    INVENT_DIM ||--o{ OWNER : "owner_id"
+
+    DAILY_SNAPSHOT ||--o{ ITEM : "item_id"
+    DAILY_SNAPSHOT ||--o{ INVENT_DIM : "invent_dim_id"
+
+    WORK_LINE ||--|| INVENT_TRANS : "invent_trans_id"
+
+    AUDIT_LOG }o--o{ USERS : "user_id"
+
+    LOCATION ||--o{ WAREHOUSE : "warehouse_id"
