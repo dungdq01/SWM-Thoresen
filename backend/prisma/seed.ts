@@ -9,11 +9,18 @@ import {
   RolePermissionEffect,
   SequenceResetPolicy,
   SequenceScopeType,
+  UomClass,
+  WarehouseType,
+  ZoneType,
+  LocationType,
+  LocationStatus,
+  ServiceGroup,
 } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 const permissionSeeds: Array<[string, string, string, string, boolean]> = [
+  // Foundation permissions
   ['foundation.roles.view', 'FOUNDATION', 'ROLE', 'VIEW', false],
   ['foundation.roles.create', 'FOUNDATION', 'ROLE', 'CREATE', true],
   ['foundation.roles.update', 'FOUNDATION', 'ROLE', 'UPDATE', true],
@@ -39,6 +46,61 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['foundation.exception_logs.view', 'FOUNDATION', 'EXCEPTION_LOG', 'VIEW', true],
   ['foundation.exception_logs.resolve', 'FOUNDATION', 'EXCEPTION_LOG', 'RESOLVE', true],
   ['foundation.idempotency.view', 'FOUNDATION', 'IDEMPOTENCY', 'VIEW', true],
+  // Module 2: Master Data permissions
+  ['master_data.lookup.view', 'MASTER_DATA', 'LOOKUP', 'VIEW', false],
+  ['master_data.owner.view', 'MASTER_DATA', 'OWNER', 'VIEW', false],
+  ['master_data.owner.create', 'MASTER_DATA', 'OWNER', 'CREATE', true],
+  ['master_data.owner.update', 'MASTER_DATA', 'OWNER', 'UPDATE', true],
+  ['master_data.owner.deactivate', 'MASTER_DATA', 'OWNER', 'DEACTIVATE', true],
+  ['master_data.owner.reactivate', 'MASTER_DATA', 'OWNER', 'REACTIVATE', true],
+  ['master_data.vendor.view', 'MASTER_DATA', 'VENDOR', 'VIEW', false],
+  ['master_data.vendor.create', 'MASTER_DATA', 'VENDOR', 'CREATE', true],
+  ['master_data.vendor.update', 'MASTER_DATA', 'VENDOR', 'UPDATE', true],
+  ['master_data.vendor.deactivate', 'MASTER_DATA', 'VENDOR', 'DEACTIVATE', true],
+  ['master_data.vendor.reactivate', 'MASTER_DATA', 'VENDOR', 'REACTIVATE', true],
+  ['master_data.item.view', 'MASTER_DATA', 'ITEM', 'VIEW', false],
+  ['master_data.item.create', 'MASTER_DATA', 'ITEM', 'CREATE', true],
+  ['master_data.item.update', 'MASTER_DATA', 'ITEM', 'UPDATE', true],
+  ['master_data.item.deactivate', 'MASTER_DATA', 'ITEM', 'DEACTIVATE', true],
+  ['master_data.item.reactivate', 'MASTER_DATA', 'ITEM', 'REACTIVATE', true],
+  ['master_data.warehouse.view', 'MASTER_DATA', 'WAREHOUSE', 'VIEW', false],
+  ['master_data.warehouse.create', 'MASTER_DATA', 'WAREHOUSE', 'CREATE', true],
+  ['master_data.warehouse.update', 'MASTER_DATA', 'WAREHOUSE', 'UPDATE', true],
+  ['master_data.warehouse.deactivate', 'MASTER_DATA', 'WAREHOUSE', 'DEACTIVATE', true],
+  ['master_data.zone.view', 'MASTER_DATA', 'ZONE', 'VIEW', false],
+  ['master_data.zone.create', 'MASTER_DATA', 'ZONE', 'CREATE', true],
+  ['master_data.zone.update', 'MASTER_DATA', 'ZONE', 'UPDATE', true],
+  ['master_data.zone.deactivate', 'MASTER_DATA', 'ZONE', 'DEACTIVATE', true],
+  ['master_data.location.view', 'MASTER_DATA', 'LOCATION', 'VIEW', false],
+  ['master_data.location.create', 'MASTER_DATA', 'LOCATION', 'CREATE', true],
+  ['master_data.location.update', 'MASTER_DATA', 'LOCATION', 'UPDATE', true],
+  ['master_data.location.deactivate', 'MASTER_DATA', 'LOCATION', 'DEACTIVATE', true],
+  ['master_data.uom.view', 'MASTER_DATA', 'UOM', 'VIEW', false],
+  ['master_data.uom.create', 'MASTER_DATA', 'UOM', 'CREATE', true],
+  ['master_data.uom.update', 'MASTER_DATA', 'UOM', 'UPDATE', true],
+  ['master_data.uom.deactivate', 'MASTER_DATA', 'UOM', 'DEACTIVATE', true],
+  ['master_data.vehicle_type.view', 'MASTER_DATA', 'VEHICLE_TYPE', 'VIEW', false],
+  ['master_data.vehicle_type.create', 'MASTER_DATA', 'VEHICLE_TYPE', 'CREATE', true],
+  ['master_data.vehicle_type.update', 'MASTER_DATA', 'VEHICLE_TYPE', 'UPDATE', true],
+  ['master_data.vehicle_type.deactivate', 'MASTER_DATA', 'VEHICLE_TYPE', 'DEACTIVATE', true],
+  ['master_data.inventory_status.view', 'MASTER_DATA', 'INVENTORY_STATUS', 'VIEW', false],
+  ['master_data.inventory_status.update', 'MASTER_DATA', 'INVENTORY_STATUS', 'UPDATE', true],
+  ['master_data.service_code.view', 'MASTER_DATA', 'SERVICE_CODE', 'VIEW', false],
+  ['master_data.service_code.create', 'MASTER_DATA', 'SERVICE_CODE', 'CREATE', true],
+  ['master_data.service_code.update', 'MASTER_DATA', 'SERVICE_CODE', 'UPDATE', true],
+  ['master_data.day_type.view', 'MASTER_DATA', 'DAY_TYPE', 'VIEW', false],
+  ['master_data.day_type.create', 'MASTER_DATA', 'DAY_TYPE', 'CREATE', true],
+  ['master_data.day_type.update', 'MASTER_DATA', 'DAY_TYPE', 'UPDATE', true],
+  ['master_data.rate_reference.view', 'MASTER_DATA', 'RATE_REFERENCE', 'VIEW', false],
+  ['master_data.rate_reference.create', 'MASTER_DATA', 'RATE_REFERENCE', 'CREATE', true],
+  ['master_data.rate_reference.update', 'MASTER_DATA', 'RATE_REFERENCE', 'UPDATE', true],
+  ['master_data.rate_reference.deactivate', 'MASTER_DATA', 'RATE_REFERENCE', 'DEACTIVATE', true],
+  ['master_data.owner_item_policy.view', 'MASTER_DATA', 'OWNER_ITEM_POLICY', 'VIEW', false],
+  ['master_data.owner_item_policy.create', 'MASTER_DATA', 'OWNER_ITEM_POLICY', 'CREATE', true],
+  ['master_data.owner_item_policy.update', 'MASTER_DATA', 'OWNER_ITEM_POLICY', 'UPDATE', true],
+  ['master_data.import.preview', 'MASTER_DATA', 'IMPORT', 'PREVIEW', true],
+  ['master_data.import.commit', 'MASTER_DATA', 'IMPORT', 'COMMIT', true],
+  ['master_data.import.view', 'MASTER_DATA', 'IMPORT', 'VIEW', false],
 ];
 
 async function main() {
@@ -415,6 +477,161 @@ async function main() {
       impactedModules: ['M1'],
     },
   });
+
+  // ========== Module 2: Master Data Seed ==========
+
+  // Seed UOMs
+  const uomSeeds = [
+    { uomCode: 'KG', description: 'Kilogram', uomClass: UomClass.WEIGHT, isBaseUom: true, decimalPrecision: 3 },
+    { uomCode: 'MT', description: 'Metric Ton', uomClass: UomClass.WEIGHT, isBaseUom: false, decimalPrecision: 6 },
+    { uomCode: 'BAG', description: 'Bag', uomClass: UomClass.QUANTITY, isBaseUom: false, decimalPrecision: 0 },
+    { uomCode: 'M3', description: 'Cubic Meter', uomClass: UomClass.VOLUME, isBaseUom: true, decimalPrecision: 4 },
+    { uomCode: 'UNIT', description: 'Unit/Piece', uomClass: UomClass.QUANTITY, isBaseUom: true, decimalPrecision: 0 },
+    { uomCode: 'PALLET', description: 'Pallet', uomClass: UomClass.QUANTITY, isBaseUom: false, decimalPrecision: 0 },
+    { uomCode: 'CONTAINER', description: 'Container', uomClass: UomClass.QUANTITY, isBaseUom: false, decimalPrecision: 0 },
+    { uomCode: 'DAY', description: 'Day', uomClass: UomClass.QUANTITY, isBaseUom: false, decimalPrecision: 0 },
+  ];
+
+  const uomMap: Record<string, string> = {};
+  for (const uom of uomSeeds) {
+    const created = await prisma.mdUom.upsert({
+      where: { uomCode: uom.uomCode },
+      update: { description: uom.description, uomClass: uom.uomClass, isBaseUom: uom.isBaseUom, decimalPrecision: uom.decimalPrecision, updatedBy: admin.id },
+      create: { ...uom, createdBy: admin.id, updatedBy: admin.id },
+    });
+    uomMap[uom.uomCode] = created.id;
+  }
+
+  // Seed UOM Conversions (use findFirst + create pattern for null itemId)
+  const existingConversion = await prisma.mdUomConversion.findFirst({
+    where: { fromUomId: uomMap['MT'], toUomId: uomMap['KG'], itemId: null },
+  });
+  if (!existingConversion) {
+    await prisma.mdUomConversion.create({
+      data: { fromUomId: uomMap['MT'], toUomId: uomMap['KG'], conversionFactor: 1000, createdBy: admin.id, updatedBy: admin.id },
+    });
+  }
+
+  // Seed Inventory Statuses (Go-live: 4 statuses)
+  const inventoryStatuses = [
+    { statusCode: 'AVAILABLE', description: 'Sẵn sàng để phân bổ', displayOrder: 1, isAllocatable: true, isSystemLocked: true },
+    { statusCode: 'DAMAGED', description: 'Hư hỏng', displayOrder: 2, isAllocatable: false, isSystemLocked: true },
+    { statusCode: 'BLOCKED', description: 'Đã khóa', displayOrder: 3, isAllocatable: false, isSystemLocked: true },
+    { statusCode: 'IN_TRANSIT', description: 'Đang vận chuyển', displayOrder: 4, isAllocatable: false, isSystemLocked: true },
+  ];
+
+  for (const status of inventoryStatuses) {
+    await prisma.mdInventoryStatus.upsert({
+      where: { statusCode: status.statusCode },
+      update: { description: status.description, displayOrder: status.displayOrder, isAllocatable: status.isAllocatable, updatedBy: admin.id },
+      create: { ...status, createdBy: admin.id, updatedBy: admin.id },
+    });
+  }
+
+  // Seed Sample Warehouse
+  const warehouse = await prisma.mdWarehouse.upsert({
+    where: { warehouseCode: 'WH5.1' },
+    update: { warehouseName: 'Kho 5.1 - Phú Mỹ', updatedBy: admin.id },
+    create: {
+      warehouseCode: 'WH5.1',
+      warehouseName: 'Kho 5.1 - Phú Mỹ',
+      siteId: 'TVL-SITE',
+      warehouseType: WarehouseType.COVERED,
+      totalAreaM2: 50000,
+      usableAreaM2: 45000,
+      maxHeightM: 12,
+      maxCapacityMt: 100000,
+      address: 'Khu công nghiệp Phú Mỹ, Tân Thành, Bà Rịa - Vũng Tàu',
+      hasWeighbridge: true,
+      weighbridgeCount: 2,
+      isBonded: false,
+      capacityWarningPct: 85,
+      createdBy: admin.id,
+      updatedBy: admin.id,
+    },
+  });
+
+  // Seed Sample Zones
+  const zoneSeeds = [
+    { zoneCode: 'RCV-01', zoneName: 'Khu tiếp nhận 01', zoneType: ZoneType.RECEIVING, isBillingZone: false },
+    { zoneCode: 'STG-01', zoneName: 'Khu staging 01', zoneType: ZoneType.STAGING, isBillingZone: false },
+    { zoneCode: 'STR-A', zoneName: 'Khu lưu trữ A', zoneType: ZoneType.STORAGE, isBillingZone: true, billingRateZone: 'ZONE_A' },
+    { zoneCode: 'STR-B', zoneName: 'Khu lưu trữ B', zoneType: ZoneType.STORAGE, isBillingZone: true, billingRateZone: 'ZONE_B' },
+    { zoneCode: 'SHP-01', zoneName: 'Khu xuất hàng 01', zoneType: ZoneType.SHIPPING, isBillingZone: false },
+  ];
+
+  const zoneMap: Record<string, string> = {};
+  for (const zone of zoneSeeds) {
+    const created = await prisma.mdZone.upsert({
+      where: { warehouseId_zoneCode: { warehouseId: warehouse.id, zoneCode: zone.zoneCode } },
+      update: { zoneName: zone.zoneName, zoneType: zone.zoneType, updatedBy: admin.id },
+      create: { warehouseId: warehouse.id, ...zone, createdBy: admin.id, updatedBy: admin.id },
+    });
+    zoneMap[zone.zoneCode] = created.id;
+  }
+
+  // Seed Sample Locations
+  const locationSeeds = [
+    { locationCode: 'RCV-01-001', zoneCode: 'RCV-01', locationType: LocationType.RECEIVING, locationProfile: 'RECEIVING', isMixedOwner: true, isMixedProduct: true },
+    { locationCode: 'STG-01-001', zoneCode: 'STG-01', locationType: LocationType.STAGING, locationProfile: 'STAGING', isMixedOwner: false, isMixedProduct: true },
+    { locationCode: 'STR-A-001', zoneCode: 'STR-A', locationType: LocationType.STORAGE, locationProfile: 'BULK_STORAGE', isMixedOwner: false, isMixedProduct: false },
+    { locationCode: 'STR-A-002', zoneCode: 'STR-A', locationType: LocationType.STORAGE, locationProfile: 'BULK_STORAGE', isMixedOwner: false, isMixedProduct: false },
+    { locationCode: 'STR-B-001', zoneCode: 'STR-B', locationType: LocationType.STORAGE, locationProfile: 'BAGGED_STORAGE', isMixedOwner: false, isMixedProduct: false },
+    { locationCode: 'SHP-01-001', zoneCode: 'SHP-01', locationType: LocationType.SHIPPING, locationProfile: 'SHIPPING', isMixedOwner: true, isMixedProduct: true },
+  ];
+
+  for (const loc of locationSeeds) {
+    await prisma.mdLocation.upsert({
+      where: { warehouseId_locationCode: { warehouseId: warehouse.id, locationCode: loc.locationCode } },
+      update: { locationType: loc.locationType, locationProfile: loc.locationProfile, updatedBy: admin.id },
+      create: {
+        warehouseId: warehouse.id,
+        zoneId: zoneMap[loc.zoneCode],
+        locationCode: loc.locationCode,
+        locationType: loc.locationType,
+        locationProfile: loc.locationProfile,
+        status: LocationStatus.OK,
+        isMixedOwner: loc.isMixedOwner,
+        isMixedProduct: loc.isMixedProduct,
+        createdBy: admin.id,
+        updatedBy: admin.id,
+      },
+    });
+  }
+
+  // Seed Service Codes
+  const serviceCodes = [
+    { serviceCode: 'STORAGE', serviceName: 'Phí lưu kho', serviceGroup: ServiceGroup.STORAGE },
+    { serviceCode: 'HANDLING_IN', serviceName: 'Phí xếp dỡ nhập', serviceGroup: ServiceGroup.HANDLING },
+    { serviceCode: 'HANDLING_OUT', serviceName: 'Phí xếp dỡ xuất', serviceGroup: ServiceGroup.HANDLING },
+    { serviceCode: 'BAGGING', serviceName: 'Phí đóng bao', serviceGroup: ServiceGroup.VAS },
+    { serviceCode: 'WEIGHING', serviceName: 'Phí cân', serviceGroup: ServiceGroup.HANDLING },
+  ];
+
+  for (const sc of serviceCodes) {
+    await prisma.mdServiceCode.upsert({
+      where: { serviceCode: sc.serviceCode },
+      update: { serviceName: sc.serviceName, serviceGroup: sc.serviceGroup, updatedBy: admin.id },
+      create: { ...sc, defaultUomId: uomMap['MT'], createdBy: admin.id, updatedBy: admin.id },
+    });
+  }
+
+  // Seed Day Types
+  const dayTypes = [
+    { dayTypeCode: 'NORMAL', description: 'Ngày thường' },
+    { dayTypeCode: 'WEEKEND', description: 'Cuối tuần' },
+    { dayTypeCode: 'HOLIDAY', description: 'Ngày lễ' },
+  ];
+
+  for (const dt of dayTypes) {
+    await prisma.mdDayType.upsert({
+      where: { dayTypeCode: dt.dayTypeCode },
+      update: { description: dt.description, updatedBy: admin.id },
+      create: { ...dt, createdBy: admin.id, updatedBy: admin.id },
+    });
+  }
+
+  console.log('✅ Module 2 Master Data seeded successfully');
 }
 
 main()

@@ -1,0 +1,594 @@
+# Module 2 - Master Data Management
+
+## 1. Module này để làm gì?
+`master-data` là module quản lý dữ liệu nền tảng cho toàn bộ hoạt động kho.
+
+Module này cung cấp các năng lực:
+- Quản lý Owner (chủ hàng)
+- Quản lý Vendor (nhà cung cấp / tàu)
+- Quản lý Item (mặt hàng)
+- Quản lý Warehouse (kho)
+- Quản lý Zone (vùng trong kho)
+- Quản lý Location (vị trí trong zone)
+- Quản lý UOM (đơn vị tính) và quy đổi
+- Quản lý Vehicle Type (loại phương tiện)
+- Quản lý Inventory Status (trạng thái tồn kho)
+- Cung cấp Lookup endpoints cho dropdown UI
+
+## 2. Folder code chính của module
+```text
+backend/src/modules/master-data/
+├── controllers/
+│   ├── owner.controller.ts
+│   ├── vendor.controller.ts
+│   ├── item.controller.ts
+│   ├── warehouse.controller.ts
+│   ├── zone.controller.ts
+│   ├── location.controller.ts
+│   ├── uom.controller.ts
+│   ├── vehicle-type.controller.ts
+│   ├── inventory-status.controller.ts
+│   └── lookup.controller.ts
+├── dto/
+│   ├── common.dto.ts
+│   ├── owner.dto.ts
+│   ├── vendor.dto.ts
+│   ├── item.dto.ts
+│   ├── warehouse.dto.ts
+│   ├── zone.dto.ts
+│   ├── location.dto.ts
+│   ├── uom.dto.ts
+│   ├── vehicle-type.dto.ts
+│   └── inventory-status.dto.ts
+├── repositories/
+│   ├── owner.repository.ts
+│   ├── vendor.repository.ts
+│   ├── item.repository.ts
+│   ├── warehouse.repository.ts
+│   ├── zone.repository.ts
+│   ├── location.repository.ts
+│   ├── uom.repository.ts
+│   ├── vehicle-type.repository.ts
+│   └── inventory-status.repository.ts
+├── services/
+│   ├── owner.service.ts
+│   ├── vendor.service.ts
+│   ├── item.service.ts
+│   ├── warehouse.service.ts
+│   ├── zone.service.ts
+│   ├── location.service.ts
+│   ├── uom.service.ts
+│   ├── vehicle-type.service.ts
+│   ├── inventory-status.service.ts
+│   └── lookup.service.ts
+└── master-data.module.ts
+```
+
+## 3. Các thành phần dùng chung mà module dựa vào
+- `backend/src/common/guards/auth.guard.ts`
+- `backend/src/common/guards/permission.guard.ts`
+- `backend/src/common/decorators/permission.decorator.ts`
+- `backend/src/common/decorators/current-user.decorator.ts`
+- `backend/src/common/filters/http-exception.filter.ts`
+- `backend/src/common/interceptors/response.interceptor.ts`
+- `backend/src/infrastructure/prisma/prisma.module.ts`
+- `backend/src/infrastructure/prisma/prisma.service.ts`
+
+## 4. Nguyên tắc response chung
+Tất cả API thành công đều được wrap bởi `ResponseInterceptor` theo dạng:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "meta": {
+    "timestamp": "2026-03-08T03:00:00.000Z",
+    "requestId": "..."
+  }
+}
+```
+
+Lỗi được wrap bởi `HttpExceptionFilter` theo dạng:
+
+```json
+{
+  "success": false,
+  "error": {
+    "statusCode": 404,
+    "message": "Owner not found"
+  },
+  "meta": {
+    "timestamp": "2026-03-08T03:00:00.000Z",
+    "path": "/api/v1/master-data/owners/...",
+    "requestId": "..."
+  }
+}
+```
+
+## 5. Soft delete và optimistic locking
+### Soft Delete
+- Tất cả entity master data dùng soft delete với field `isActive` và `deactivatedAt`.
+- Deactivate: set `isActive = false`, `deactivatedAt = now()`, `deactivatedBy = userId`.
+- Reactivate: set `isActive = true`, `deactivatedAt = null`, `deactivatedBy = null`.
+
+### Optimistic Locking
+- Tất cả entity có field `rowVersion` (BigInt).
+- Mỗi lần update thành công, `rowVersion` được tăng lên 1.
+- Client phải gửi `rowVersion` hiện tại khi update, nếu không khớp sẽ trả `409 Conflict`.
+
+## 6. Danh sách API thực tế
+
+---
+
+## 6.1 Owner APIs
+
+### `POST /api/v1/master-data/owners`
+- **Để làm gì**
+  - Tạo owner mới.
+- **Body**
+```json
+{
+  "ownerCode": "OWN001",
+  "ownerName": "Công ty ABC",
+  "shortName": "ABC",
+  "ownerGroup": "LOCAL",
+  "ownerType": "DOMESTIC",
+  "taxCode": "0123456789",
+  "address": "123 Nguyễn Văn A, Q.1, TP.HCM",
+  "billingEmail": "billing@abc.com",
+  "billingContact": "Nguyễn Văn B",
+  "paymentTerms": "NET30"
+}
+```
+- **File code tham gia**
+  - `controllers/owner.controller.ts`
+  - `services/owner.service.ts`
+  - `repositories/owner.repository.ts`
+- **Response data chính**
+```json
+{
+  "id": "uuid",
+  "ownerCode": "OWN001",
+  "ownerName": "Công ty ABC",
+  "isActive": true,
+  "rowVersion": 0
+}
+```
+
+### `GET /api/v1/master-data/owners`
+- **Để làm gì**
+  - Lấy danh sách owner có phân trang.
+- **Query params**
+  - `page` (default: 1)
+  - `pageSize` (default: 20)
+  - `keyword` (search ownerCode, ownerName)
+  - `isActive`
+  - `ownerGroup`
+  - `ownerType`
+- **Response data chính**
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 100,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 5
+  }
+}
+```
+
+### `GET /api/v1/master-data/owners/:id`
+- **Để làm gì**
+  - Lấy chi tiết owner theo ID.
+
+### `PUT /api/v1/master-data/owners/:id`
+- **Để làm gì**
+  - Cập nhật owner.
+- **Body**
+```json
+{
+  "ownerName": "Công ty ABC Updated",
+  "rowVersion": 0
+}
+```
+
+### `POST /api/v1/master-data/owners/:id/deactivate`
+- **Để làm gì**
+  - Soft delete owner.
+- **Body**
+```json
+{
+  "reason": "Không còn hợp tác"
+}
+```
+
+### `POST /api/v1/master-data/owners/:id/reactivate`
+- **Để làm gì**
+  - Kích hoạt lại owner đã bị deactivate.
+
+---
+
+## 6.2 Vendor APIs
+
+### `POST /api/v1/master-data/vendors`
+- **Để làm gì**
+  - Tạo vendor mới.
+- **Body**
+```json
+{
+  "vendorCode": "VND001",
+  "vendorName": "Tàu ABC",
+  "supplierGroup": "VESSEL",
+  "countryRegion": "VN",
+  "vesselName": "MV ABC",
+  "contactName": "Nguyễn Văn C",
+  "phone": "0901234567",
+  "email": "contact@abc.com"
+}
+```
+
+### `GET /api/v1/master-data/vendors`
+- **Để làm gì**
+  - Lấy danh sách vendor có phân trang.
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `supplierGroup`
+
+### `GET /api/v1/master-data/vendors/:id`
+### `PUT /api/v1/master-data/vendors/:id`
+### `POST /api/v1/master-data/vendors/:id/deactivate`
+### `POST /api/v1/master-data/vendors/:id/reactivate`
+
+---
+
+## 6.3 Item APIs
+
+### `POST /api/v1/master-data/items`
+- **Để làm gì**
+  - Tạo item mới.
+- **Body**
+```json
+{
+  "itemCode": "RICE001",
+  "itemName": "Gạo ST25",
+  "itemNameEn": "ST25 Rice",
+  "cargoForm": "BULK",
+  "productGroup": "AGRICULTURAL",
+  "baseUomId": "uuid-of-kg",
+  "billingUomId": "uuid-of-mt",
+  "stdGrossWeight": 50,
+  "stdNetWeight": 49.5,
+  "tolerancePctInbound": 2,
+  "tolerancePctOutbound": 1.5
+}
+```
+
+### `GET /api/v1/master-data/items`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `cargoForm`, `productGroup`
+
+### `GET /api/v1/master-data/items/:id`
+### `PUT /api/v1/master-data/items/:id`
+### `POST /api/v1/master-data/items/:id/deactivate`
+### `POST /api/v1/master-data/items/:id/reactivate`
+
+---
+
+## 6.4 Warehouse APIs
+
+### `POST /api/v1/master-data/warehouses`
+- **Để làm gì**
+  - Tạo warehouse mới.
+- **Body**
+```json
+{
+  "warehouseCode": "WH5.1",
+  "warehouseName": "Kho 5.1 - Phú Mỹ",
+  "warehouseType": "COVERED",
+  "totalAreaM2": 50000,
+  "usableAreaM2": 45000,
+  "maxHeightM": 12,
+  "maxCapacityMt": 100000,
+  "address": "KCN Phú Mỹ, Bà Rịa - Vũng Tàu",
+  "hasWeighbridge": true,
+  "weighbridgeCount": 2,
+  "capacityWarningPct": 85
+}
+```
+
+### `GET /api/v1/master-data/warehouses`
+### `GET /api/v1/master-data/warehouses/:id`
+### `PUT /api/v1/master-data/warehouses/:id`
+### `POST /api/v1/master-data/warehouses/:id/deactivate`
+### `POST /api/v1/master-data/warehouses/:id/reactivate`
+
+---
+
+## 6.5 Zone APIs
+
+### `POST /api/v1/master-data/zones`
+- **Body**
+```json
+{
+  "warehouseId": "uuid",
+  "zoneCode": "ZONE-A",
+  "zoneName": "Zone A - Bulk Storage",
+  "zoneType": "BULK_STORAGE",
+  "isBillingZone": true,
+  "maxCapacityMt": 20000
+}
+```
+
+### `GET /api/v1/master-data/zones`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `warehouseId`, `zoneType`
+
+### `GET /api/v1/master-data/zones/:id`
+### `PUT /api/v1/master-data/zones/:id`
+### `POST /api/v1/master-data/zones/:id/deactivate`
+### `POST /api/v1/master-data/zones/:id/reactivate`
+
+---
+
+## 6.6 Location APIs
+
+### `POST /api/v1/master-data/locations`
+- **Body**
+```json
+{
+  "warehouseId": "uuid",
+  "zoneId": "uuid",
+  "locationCode": "A-01-01",
+  "locationType": "FLOOR",
+  "locationProfile": "STANDARD",
+  "status": "AVAILABLE",
+  "areaM2": 100,
+  "maxHeightM": 5,
+  "stackLimitKg": 50000,
+  "isMixedOwner": false,
+  "isMixedProduct": false
+}
+```
+
+### `GET /api/v1/master-data/locations`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `warehouseId`, `zoneId`, `locationType`
+
+### `GET /api/v1/master-data/locations/:id`
+### `PUT /api/v1/master-data/locations/:id`
+### `POST /api/v1/master-data/locations/:id/deactivate`
+### `POST /api/v1/master-data/locations/:id/reactivate`
+
+---
+
+## 6.7 UOM APIs
+
+### `POST /api/v1/master-data/uoms`
+- **Body**
+```json
+{
+  "uomCode": "MT",
+  "description": "Metric Ton",
+  "uomClass": "WEIGHT",
+  "isBaseUom": false,
+  "decimalPrecision": 3
+}
+```
+
+### `GET /api/v1/master-data/uoms`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `uomClass`
+
+### `GET /api/v1/master-data/uoms/:id`
+### `PUT /api/v1/master-data/uoms/:id`
+### `POST /api/v1/master-data/uoms/:id/deactivate`
+
+---
+
+## 6.8 Vehicle Type APIs
+
+### `POST /api/v1/master-data/vehicle-types`
+- **Body**
+```json
+{
+  "vehicleTypeCode": "TRUCK-20T",
+  "vehicleTypeName": "Xe tải 20 tấn",
+  "category": "TRUCK",
+  "defaultTareWeightKg": 8000,
+  "maxPayloadKg": 20000,
+  "teuEquivalent": 1
+}
+```
+
+### `GET /api/v1/master-data/vehicle-types`
+### `GET /api/v1/master-data/vehicle-types/:id`
+### `PUT /api/v1/master-data/vehicle-types/:id`
+### `POST /api/v1/master-data/vehicle-types/:id/deactivate`
+
+---
+
+## 6.9 Inventory Status APIs
+
+### `GET /api/v1/master-data/inventory-statuses`
+- **Để làm gì**
+  - Lấy danh sách inventory status (không tạo mới, chỉ seed sẵn).
+
+### `GET /api/v1/master-data/inventory-statuses/:id`
+### `PUT /api/v1/master-data/inventory-statuses/:id`
+- **Lưu ý**
+  - Không thể sửa status có `isSystemLocked = true`.
+
+---
+
+## 6.10 Lookup APIs
+
+Các endpoint này trả về dữ liệu đơn giản cho dropdown/autocomplete.
+
+### `GET /api/v1/master-data/lookups/owners`
+### `GET /api/v1/master-data/lookups/vendors`
+### `GET /api/v1/master-data/lookups/items`
+### `GET /api/v1/master-data/lookups/warehouses`
+### `GET /api/v1/master-data/lookups/zones`
+- **Query params**: `warehouseId` (optional)
+
+### `GET /api/v1/master-data/lookups/locations`
+- **Query params**: `warehouseId`, `zoneId` (optional)
+
+### `GET /api/v1/master-data/lookups/uoms`
+### `GET /api/v1/master-data/lookups/vehicle-types`
+### `GET /api/v1/master-data/lookups/inventory-statuses`
+
+**Response format chung:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "code": "WH5.1",
+      "name": "Kho 5.1 - Phú Mỹ",
+      "extra": { "warehouseType": "COVERED" }
+    }
+  ]
+}
+```
+
+---
+
+## 7. Seed data hiện có
+Seed đang tạo sẵn:
+
+### UOMs (8 records)
+| Code | Description | Class | Is Base |
+|------|-------------|-------|---------|
+| MT | Metric Ton | WEIGHT | No |
+| KG | Kilogram | WEIGHT | Yes |
+| M3 | Cubic Meter | VOLUME | Yes |
+| UNIT | Unit/Piece | QUANTITY | Yes |
+| BAG | Bag | QUANTITY | No |
+| PALLET | Pallet | QUANTITY | No |
+| CONTAINER | Container | QUANTITY | No |
+| DAY | Day | QUANTITY | No |
+
+### UOM Conversions
+- MT → KG = 1000
+
+### Inventory Statuses (4 records)
+| Code | Description | Is Allocatable |
+|------|-------------|----------------|
+| AVAILABLE | Sẵn sàng để phân bổ | Yes |
+| DAMAGED | Hư hỏng | No |
+| BLOCKED | Đã khóa | No |
+| IN_TRANSIT | Đang vận chuyển | No |
+
+### Warehouse
+- `WH5.1` - Kho 5.1 - Phú Mỹ
+
+### Zones (3 records)
+- `ZONE-A` - Zone A - Bulk Storage
+- `ZONE-B` - Zone B - Bagged Storage
+- `ZONE-C` - Zone C - Container Yard
+
+### Locations (6 records)
+- 2 locations per zone
+
+### Service Codes (5 records)
+- Handling, Storage, Weighing, Documentation, Fumigation
+
+### Day Types (3 records)
+- WORKDAY, WEEKEND, HOLIDAY
+
+---
+
+## 8. Internal shared services cho module khác
+
+Các module nghiệp vụ (Inbound, Outbound, Inventory, Billing) có thể inject và sử dụng các service sau từ `MasterDataModule`:
+
+### `OwnerService`
+```typescript
+// Validate owner tồn tại và active
+const owner = await ownerService.findById(ownerId);
+// Lấy danh sách owner cho dropdown
+const owners = await ownerService.findAllActive();
+```
+
+### `ItemService`
+```typescript
+// Validate item tồn tại
+const item = await itemService.findById(itemId);
+// Lấy item với UOM info
+const items = await itemService.findAllActive();
+```
+
+### `WarehouseService`
+```typescript
+// Validate warehouse
+const warehouse = await warehouseService.findById(warehouseId);
+```
+
+### `LocationService`
+```typescript
+// Validate location
+const location = await locationService.findById(locationId);
+// Check location availability
+const locations = await locationService.findAllActive();
+```
+
+### `UomService`
+```typescript
+// Get UOM for conversion
+const uom = await uomService.findById(uomId);
+```
+
+### `InventoryStatusService`
+```typescript
+// Get allocatable statuses
+const statuses = await inventoryStatusService.findAllocatable();
+```
+
+### `LookupService`
+```typescript
+// Get lookup data for dropdowns
+const owners = await lookupService.getOwners();
+const items = await lookupService.getItems();
+const warehouses = await lookupService.getWarehouses();
+const zones = await lookupService.getZones(warehouseId);
+const locations = await lookupService.getLocations(warehouseId, zoneId);
+```
+
+---
+
+## 9. Những điểm FE / dev mới cần lưu ý
+- Tất cả entity dùng soft delete, không có hard delete.
+- Update API yêu cầu `rowVersion` để optimistic locking.
+- Lookup endpoints không phân trang, chỉ trả về active records.
+- Zone và Location có cascade filter theo `warehouseId`.
+- Inventory Status không cho tạo mới, chỉ seed sẵn 4 status chuẩn.
+- Item có nhiều field optional liên quan đến catch weight, shelf life, tolerance.
+
+---
+
+## 10. Hướng dẫn test API
+
+### Test với curl/PowerShell
+
+```powershell
+# Lấy danh sách warehouses
+Invoke-RestMethod -Uri "http://localhost:3000/api/v1/master-data/lookups/warehouses" -Method GET
+
+# Lấy danh sách UOMs
+Invoke-RestMethod -Uri "http://localhost:3000/api/v1/master-data/lookups/uoms" -Method GET
+
+# Lấy danh sách inventory statuses
+Invoke-RestMethod -Uri "http://localhost:3000/api/v1/master-data/lookups/inventory-statuses" -Method GET
+```
+
+### Với cURL (Git Bash / Linux)
+
+```bash
+# Lấy danh sách warehouses
+curl http://localhost:3000/api/v1/master-data/lookups/warehouses
+
+# Lấy zones của warehouse cụ thể
+curl "http://localhost:3000/api/v1/master-data/lookups/zones?warehouseId=<uuid>"
+```

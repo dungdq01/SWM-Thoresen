@@ -70,6 +70,119 @@ enum IdempotencyStatus {
   FAILED
 }
 
+// ========== Module 2: Master Data Management Enums ==========
+
+enum OwnerType {
+  DIRECT
+  CONSIGNED
+  OTHER
+}
+
+enum SupplierGroup {
+  DOMESTIC
+  OVERSEAS
+  VESSEL_AGENT
+  TRADER
+}
+
+enum CargoForm {
+  BULK
+  BAGGED_25KG
+  BAGGED_50KG
+  BAGGED_1000KG
+  CONTAINER
+  DRUM
+  PALLET
+  OTHER
+}
+
+enum WarehouseType {
+  COVERED
+  OPEN_YARD
+  MIXED
+}
+
+enum ZoneType {
+  RECEIVING
+  STORAGE
+  STAGING
+  SHIPPING
+  QC
+  DAMAGED
+  RETURNS
+}
+
+enum LocationType {
+  RECEIVING
+  STORAGE
+  STAGING
+  SHIPPING
+  QC
+  DAMAGED
+  RETURNS
+  VIRTUAL
+}
+
+enum LocationStatus {
+  OK
+  HOLD
+  BLOCKED
+}
+
+enum UomClass {
+  WEIGHT
+  VOLUME
+  QUANTITY
+  LENGTH
+  AREA
+}
+
+enum VehicleCategory {
+  TRUCK
+  CONTAINER
+  VESSEL
+  OTHER
+}
+
+enum ServiceGroup {
+  STORAGE
+  HANDLING
+  VAS
+  TRANSPORT
+  OTHER
+}
+
+enum ImportBatchStatus {
+  UPLOADED
+  VALIDATING
+  VALIDATED
+  PARTIALLY_COMMITTED
+  COMMITTED
+  FAILED
+  CANCELLED
+}
+
+enum ImportActionType {
+  INSERT
+  UPDATE
+  SKIP
+  REJECT
+}
+
+enum ImportProcessingStatus {
+  PENDING
+  VALID
+  INVALID
+  COMMITTED
+  SKIPPED
+}
+
+enum ImportErrorLevel {
+  WARNING
+  ERROR
+  CRITICAL
+}
+
 model AppUser {
   id          String     @id @default(uuid()) @db.Uuid
   userCode    String     @unique @map("user_code") @db.VarChar(50)
@@ -352,4 +465,467 @@ model IdempotencyRecord {
   @@index([commandName, sourceModule])
   @@index([expiredAt])
   @@map("idempotency_record")
+}
+
+// ========== Module 2: Master Data Management Models ==========
+
+model MdUom {
+  id               String    @id @default(uuid()) @db.Uuid
+  uomCode          String    @unique @map("uom_code") @db.VarChar(20)
+  description      String    @db.VarChar(255)
+  uomClass         UomClass  @map("uom_class")
+  isBaseUom        Boolean   @default(false) @map("is_base_uom")
+  decimalPrecision Int       @default(2) @map("decimal_precision") @db.SmallInt
+  isActive         Boolean   @default(true) @map("is_active")
+  rowVersion       BigInt    @default(0) @map("row_version")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  createdBy        String?   @map("created_by") @db.Uuid
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  updatedBy        String?   @map("updated_by") @db.Uuid
+  deactivatedAt    DateTime? @map("deactivated_at")
+  deactivatedBy    String?   @map("deactivated_by") @db.Uuid
+
+  itemsBaseUom       MdItem[]          @relation("ItemBaseUom")
+  itemsBillingUom    MdItem[]          @relation("ItemBillingUom")
+  itemsCatchWeightUom MdItem[]         @relation("ItemCatchWeightUom")
+  serviceCodes       MdServiceCode[]
+  rateReferences     MdRateReference[]
+  ownerItemPolicies  MdOwnerItemPolicy[]
+  conversionsFrom    MdUomConversion[] @relation("ConversionFrom")
+  conversionsTo      MdUomConversion[] @relation("ConversionTo")
+
+  @@map("md_uom")
+}
+
+model MdInventoryStatus {
+  id             String   @id @default(uuid()) @db.Uuid
+  statusCode     String   @unique @map("status_code") @db.VarChar(30)
+  description    String   @db.VarChar(255)
+  displayOrder   Int      @default(0) @map("display_order") @db.SmallInt
+  isAllocatable  Boolean  @default(false) @map("is_allocatable")
+  isSystemLocked Boolean  @default(true) @map("is_system_locked")
+  isActive       Boolean  @default(true) @map("is_active")
+  rowVersion     BigInt   @default(0) @map("row_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+  createdBy      String?  @map("created_by") @db.Uuid
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  updatedBy      String?  @map("updated_by") @db.Uuid
+
+  @@map("md_inventory_status")
+}
+
+model MdWarehouse {
+  id                        String    @id @default(uuid()) @db.Uuid
+  warehouseCode             String    @unique @map("warehouse_code") @db.VarChar(50)
+  warehouseName             String    @map("warehouse_name") @db.VarChar(255)
+  siteId                    String    @default("TVL-SITE") @map("site_id") @db.VarChar(50)
+  warehouseType             WarehouseType @map("warehouse_type")
+  totalAreaM2               Decimal   @map("total_area_m2") @db.Decimal(18, 2)
+  usableAreaM2              Decimal?  @map("usable_area_m2") @db.Decimal(18, 2)
+  maxHeightM                Decimal   @map("max_height_m") @db.Decimal(18, 2)
+  maxCapacityMt             Decimal   @map("max_capacity_mt") @db.Decimal(18, 3)
+  address                   String?   @db.Text
+  hasWeighbridge            Boolean   @default(false) @map("has_weighbridge")
+  weighbridgeCount          Int?      @map("weighbridge_count")
+  isBonded                  Boolean   @default(false) @map("is_bonded")
+  capacityWarningPct        Decimal   @map("capacity_warning_pct") @db.Decimal(5, 2)
+  defaultReceivingLocationId String?  @map("default_receiving_location_id") @db.Uuid
+  defaultStagingLocationId  String?   @map("default_staging_location_id") @db.Uuid
+  defaultShippingLocationId String?   @map("default_shipping_location_id") @db.Uuid
+  isActive                  Boolean   @default(true) @map("is_active")
+  rowVersion                BigInt    @default(0) @map("row_version")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  createdBy                 String?   @map("created_by") @db.Uuid
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  updatedBy                 String?   @map("updated_by") @db.Uuid
+  deactivatedAt             DateTime? @map("deactivated_at")
+  deactivatedBy             String?   @map("deactivated_by") @db.Uuid
+
+  zones                     MdZone[]
+  locations                 MdLocation[]
+  owners                    MdOwner[]
+  rateReferences            MdRateReference[]
+  ownerItemPolicies         MdOwnerItemPolicy[]
+
+  @@map("md_warehouse")
+}
+
+model MdZone {
+  id              String    @id @default(uuid()) @db.Uuid
+  warehouseId     String    @map("warehouse_id") @db.Uuid
+  zoneCode        String    @map("zone_code") @db.VarChar(50)
+  zoneName        String    @map("zone_name") @db.VarChar(255)
+  zoneType        ZoneType  @map("zone_type")
+  isBillingZone   Boolean   @default(false) @map("is_billing_zone")
+  billingRateZone String?   @map("billing_rate_zone") @db.VarChar(100)
+  maxCapacityMt   Decimal?  @map("max_capacity_mt") @db.Decimal(18, 3)
+  isActive        Boolean   @default(true) @map("is_active")
+  rowVersion      BigInt    @default(0) @map("row_version")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  createdBy       String?   @map("created_by") @db.Uuid
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  updatedBy       String?   @map("updated_by") @db.Uuid
+  deactivatedAt   DateTime? @map("deactivated_at")
+  deactivatedBy   String?   @map("deactivated_by") @db.Uuid
+
+  warehouse       MdWarehouse @relation(fields: [warehouseId], references: [id])
+  locations       MdLocation[]
+  items           MdItem[]
+
+  @@unique([warehouseId, zoneCode])
+  @@map("md_zone")
+}
+
+model MdLocation {
+  id                String         @id @default(uuid()) @db.Uuid
+  warehouseId       String         @map("warehouse_id") @db.Uuid
+  zoneId            String         @map("zone_id") @db.Uuid
+  locationCode      String         @map("location_code") @db.VarChar(50)
+  locationType      LocationType   @map("location_type")
+  locationProfile   String         @map("location_profile") @db.VarChar(50)
+  status            LocationStatus @default(OK)
+  areaM2            Decimal?       @map("area_m2") @db.Decimal(18, 2)
+  maxHeightM        Decimal?       @map("max_height_m") @db.Decimal(18, 2)
+  stackLimitKg      Decimal?       @map("stack_limit_kg") @db.Decimal(18, 3)
+  isMixedOwner      Boolean        @default(false) @map("is_mixed_owner")
+  isMixedProduct    Boolean        @default(false) @map("is_mixed_product")
+  isBillingLocation Boolean        @default(false) @map("is_billing_location")
+  stackingRule      String?        @map("stacking_rule") @db.VarChar(30)
+  xCoord            Decimal?       @map("x_coord") @db.Decimal(18, 6)
+  yCoord            Decimal?       @map("y_coord") @db.Decimal(18, 6)
+  isActive          Boolean        @default(true) @map("is_active")
+  rowVersion        BigInt         @default(0) @map("row_version")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  createdBy         String?        @map("created_by") @db.Uuid
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  updatedBy         String?        @map("updated_by") @db.Uuid
+  deactivatedAt     DateTime?      @map("deactivated_at")
+  deactivatedBy     String?        @map("deactivated_by") @db.Uuid
+
+  warehouse         MdWarehouse    @relation(fields: [warehouseId], references: [id])
+  zone              MdZone         @relation(fields: [zoneId], references: [id])
+
+  @@unique([warehouseId, locationCode])
+  @@index([zoneId, isActive])
+  @@map("md_location")
+}
+
+model MdOwner {
+  id                   String    @id @default(uuid()) @db.Uuid
+  ownerCode            String    @unique @map("owner_code") @db.VarChar(50)
+  ownerName            String    @map("owner_name") @db.VarChar(255)
+  shortName            String    @map("short_name") @db.VarChar(100)
+  ownerGroup           String    @map("owner_group") @db.VarChar(100)
+  ownerType            OwnerType @map("owner_type")
+  taxCode              String    @map("tax_code") @db.VarChar(50)
+  address              String    @db.Text
+  billingEmail         String?   @map("billing_email") @db.VarChar(255)
+  billingContact       String?   @map("billing_contact") @db.VarChar(255)
+  paymentTerms         String?   @map("payment_terms") @db.VarChar(30)
+  defaultTolerancePct  Decimal?  @map("default_tolerance_pct") @db.Decimal(8, 4)
+  defaultWarehouseId   String?   @map("default_warehouse_id") @db.Uuid
+  isActive             Boolean   @default(true) @map("is_active")
+  rowVersion           BigInt    @default(0) @map("row_version")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  createdBy            String?   @map("created_by") @db.Uuid
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  updatedBy            String?   @map("updated_by") @db.Uuid
+  deactivatedAt        DateTime? @map("deactivated_at")
+  deactivatedBy        String?   @map("deactivated_by") @db.Uuid
+
+  defaultWarehouse     MdWarehouse?       @relation(fields: [defaultWarehouseId], references: [id])
+  rateReferences       MdRateReference[]
+  ownerItemPolicies    MdOwnerItemPolicy[]
+
+  @@index([ownerGroup, isActive])
+  @@map("md_owner")
+}
+
+model MdVendor {
+  id            String        @id @default(uuid()) @db.Uuid
+  vendorCode    String        @unique @map("vendor_code") @db.VarChar(50)
+  vendorName    String        @map("vendor_name") @db.VarChar(255)
+  supplierGroup SupplierGroup @map("supplier_group")
+  countryRegion String?       @map("country_region") @db.VarChar(50)
+  vesselName    String?       @map("vessel_name") @db.VarChar(255)
+  contactName   String?       @map("contact_name") @db.VarChar(255)
+  phone         String?       @db.VarChar(50)
+  email         String?       @db.VarChar(255)
+  taxCode       String?       @map("tax_code") @db.VarChar(50)
+  isActive      Boolean       @default(true) @map("is_active")
+  rowVersion    BigInt        @default(0) @map("row_version")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  createdBy     String?       @map("created_by") @db.Uuid
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  updatedBy     String?       @map("updated_by") @db.Uuid
+  deactivatedAt DateTime?     @map("deactivated_at")
+  deactivatedBy String?       @map("deactivated_by") @db.Uuid
+
+  @@index([supplierGroup, isActive])
+  @@map("md_vendor")
+}
+
+model MdItem {
+  id                      String    @id @default(uuid()) @db.Uuid
+  itemCode                String    @unique @map("item_code") @db.VarChar(50)
+  itemName                String    @map("item_name") @db.VarChar(255)
+  itemNameEn              String?   @map("item_name_en") @db.VarChar(255)
+  altItemCode             String?   @map("alt_item_code") @db.VarChar(100)
+  productGroup            String?   @map("product_group") @db.VarChar(100)
+  cargoForm               CargoForm @map("cargo_form")
+  category                String?   @db.VarChar(100)
+  isPackaging             Boolean   @default(false) @map("is_packaging")
+  baseUomId               String    @map("base_uom_id") @db.Uuid
+  billingUomId            String    @map("billing_uom_id") @db.Uuid
+  catchWeightUomId        String?   @map("catch_weight_uom_id") @db.Uuid
+  stdGrossWeight          Decimal?  @map("std_gross_weight") @db.Decimal(18, 6)
+  stdNetWeight            Decimal?  @map("std_net_weight") @db.Decimal(18, 6)
+  densityMtPerM3          Decimal?  @map("density_mt_per_m3") @db.Decimal(18, 6)
+  stdCubeM3               Decimal?  @map("std_cube_m3") @db.Decimal(18, 6)
+  tolerancePctInbound     Decimal?  @map("tolerance_pct_inbound") @db.Decimal(8, 4)
+  tolerancePctOutbound    Decimal?  @map("tolerance_pct_outbound") @db.Decimal(8, 4)
+  shrinkageRatePct        Decimal?  @map("shrinkage_rate_pct") @db.Decimal(8, 4)
+  rotateBy                String?   @map("rotate_by") @db.VarChar(30)
+  shelfLifeDays           Int?      @map("shelf_life_days")
+  defaultZoneId           String?   @map("default_zone_id") @db.Uuid
+  putawayStrategyKey      String?   @map("putaway_strategy_key") @db.VarChar(100)
+  defaultBagWeightKg      Decimal?  @map("default_bag_weight_kg") @db.Decimal(18, 6)
+  packagingMaterialItemId String?   @map("packaging_material_item_id") @db.Uuid
+  nominalQtyPerUnit       Decimal?  @map("nominal_qty_per_unit") @db.Decimal(18, 6)
+  hsCode                  String?   @map("hs_code") @db.VarChar(50)
+  countryOfOrigin         String?   @map("country_of_origin") @db.VarChar(50)
+  isCatchWeight           Boolean   @default(false) @map("is_catch_weight")
+  isStorageBillable       Boolean   @default(true) @map("is_storage_billable")
+  isActive                Boolean   @default(true) @map("is_active")
+  rowVersion              BigInt    @default(0) @map("row_version")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  createdBy               String?   @map("created_by") @db.Uuid
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+  updatedBy               String?   @map("updated_by") @db.Uuid
+  deactivatedAt           DateTime? @map("deactivated_at")
+  deactivatedBy           String?   @map("deactivated_by") @db.Uuid
+
+  baseUom                 MdUom     @relation("ItemBaseUom", fields: [baseUomId], references: [id])
+  billingUom              MdUom     @relation("ItemBillingUom", fields: [billingUomId], references: [id])
+  catchWeightUom          MdUom?    @relation("ItemCatchWeightUom", fields: [catchWeightUomId], references: [id])
+  defaultZone             MdZone?   @relation(fields: [defaultZoneId], references: [id])
+  packagingMaterialItem   MdItem?   @relation("PackagingMaterial", fields: [packagingMaterialItemId], references: [id])
+  packagingItems          MdItem[]  @relation("PackagingMaterial")
+  uomConversions          MdUomConversion[]
+  ownerItemPolicies       MdOwnerItemPolicy[]
+
+  @@index([cargoForm, isActive])
+  @@index([productGroup, isActive])
+  @@index([isPackaging, isActive])
+  @@map("md_item")
+}
+
+model MdVehicleType {
+  id                  String          @id @default(uuid()) @db.Uuid
+  vehicleTypeCode     String          @unique @map("vehicle_type_code") @db.VarChar(50)
+  vehicleTypeName     String          @map("vehicle_type_name") @db.VarChar(255)
+  category            VehicleCategory
+  defaultTareWeightKg Decimal         @map("default_tare_weight_kg") @db.Decimal(18, 3)
+  maxPayloadKg        Decimal         @map("max_payload_kg") @db.Decimal(18, 3)
+  teuEquivalent       Decimal?        @map("teu_equivalent") @db.Decimal(18, 3)
+  handlingFeeGroup    String?         @map("handling_fee_group") @db.VarChar(50)
+  isActive            Boolean         @default(true) @map("is_active")
+  rowVersion          BigInt          @default(0) @map("row_version")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  createdBy           String?         @map("created_by") @db.Uuid
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  updatedBy           String?         @map("updated_by") @db.Uuid
+  deactivatedAt       DateTime?       @map("deactivated_at")
+  deactivatedBy       String?         @map("deactivated_by") @db.Uuid
+
+  @@map("md_vehicle_type")
+}
+
+model MdUomConversion {
+  id               String    @id @default(uuid()) @db.Uuid
+  fromUomId        String    @map("from_uom_id") @db.Uuid
+  toUomId          String    @map("to_uom_id") @db.Uuid
+  conversionFactor Decimal   @map("conversion_factor") @db.Decimal(24, 12)
+  itemId           String?   @map("item_id") @db.Uuid
+  isActive         Boolean   @default(true) @map("is_active")
+  rowVersion       BigInt    @default(0) @map("row_version")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  createdBy        String?   @map("created_by") @db.Uuid
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  updatedBy        String?   @map("updated_by") @db.Uuid
+  deactivatedAt    DateTime? @map("deactivated_at")
+  deactivatedBy    String?   @map("deactivated_by") @db.Uuid
+
+  fromUom          MdUom     @relation("ConversionFrom", fields: [fromUomId], references: [id])
+  toUom            MdUom     @relation("ConversionTo", fields: [toUomId], references: [id])
+  item             MdItem?   @relation(fields: [itemId], references: [id])
+
+  @@unique([fromUomId, toUomId, itemId])
+  @@map("md_uom_conversion")
+}
+
+model MdServiceCode {
+  id            String       @id @default(uuid()) @db.Uuid
+  serviceCode   String       @unique @map("service_code") @db.VarChar(50)
+  serviceName   String       @map("service_name") @db.VarChar(255)
+  serviceGroup  ServiceGroup @map("service_group")
+  defaultUomId  String       @map("default_uom_id") @db.Uuid
+  isActive      Boolean      @default(true) @map("is_active")
+  rowVersion    BigInt       @default(0) @map("row_version")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  createdBy     String?      @map("created_by") @db.Uuid
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  updatedBy     String?      @map("updated_by") @db.Uuid
+
+  defaultUom    MdUom        @relation(fields: [defaultUomId], references: [id])
+  rateReferences MdRateReference[]
+
+  @@map("md_service_code")
+}
+
+model MdDayType {
+  id           String    @id @default(uuid()) @db.Uuid
+  dayTypeCode  String    @unique @map("day_type_code") @db.VarChar(50)
+  description  String    @db.VarChar(255)
+  calendarDate DateTime? @map("calendar_date") @db.Date
+  isActive     Boolean   @default(true) @map("is_active")
+  rowVersion   BigInt    @default(0) @map("row_version")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  createdBy    String?   @map("created_by") @db.Uuid
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  updatedBy    String?   @map("updated_by") @db.Uuid
+
+  rateReferences MdRateReference[]
+
+  @@map("md_day_type")
+}
+
+model MdRateReference {
+  id                String    @id @default(uuid()) @db.Uuid
+  rateReferenceCode String    @unique @map("rate_reference_code") @db.VarChar(50)
+  ownerId           String    @map("owner_id") @db.Uuid
+  serviceCodeId     String    @map("service_code_id") @db.Uuid
+  cargoForm         CargoForm @map("cargo_form")
+  billingUomId      String    @map("billing_uom_id") @db.Uuid
+  warehouseId       String?   @map("warehouse_id") @db.Uuid
+  dayTypeId         String?   @map("day_type_id") @db.Uuid
+  effectiveFrom     DateTime  @map("effective_from") @db.Date
+  effectiveTo       DateTime? @map("effective_to") @db.Date
+  isTaxable         Boolean   @default(true) @map("is_taxable")
+  isActive          Boolean   @default(true) @map("is_active")
+  rowVersion        BigInt    @default(0) @map("row_version")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  createdBy         String?   @map("created_by") @db.Uuid
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  updatedBy         String?   @map("updated_by") @db.Uuid
+  deactivatedAt     DateTime? @map("deactivated_at")
+  deactivatedBy     String?   @map("deactivated_by") @db.Uuid
+
+  owner             MdOwner       @relation(fields: [ownerId], references: [id])
+  serviceCode       MdServiceCode @relation(fields: [serviceCodeId], references: [id])
+  billingUom        MdUom         @relation(fields: [billingUomId], references: [id])
+  warehouse         MdWarehouse?  @relation(fields: [warehouseId], references: [id])
+  dayType           MdDayType?    @relation(fields: [dayTypeId], references: [id])
+
+  @@index([ownerId, serviceCodeId, isActive])
+  @@index([effectiveFrom, effectiveTo])
+  @@map("md_rate_reference")
+}
+
+model MdOwnerItemPolicy {
+  id                          String    @id @default(uuid()) @db.Uuid
+  ownerId                     String    @map("owner_id") @db.Uuid
+  itemId                      String    @map("item_id") @db.Uuid
+  tolerancePctInboundOverride Decimal?  @map("tolerance_pct_inbound_override") @db.Decimal(8, 4)
+  tolerancePctOutboundOverride Decimal? @map("tolerance_pct_outbound_override") @db.Decimal(8, 4)
+  billingUomOverrideId        String?   @map("billing_uom_override_id") @db.Uuid
+  isStorageBillableOverride   Boolean?  @map("is_storage_billable_override")
+  preferredWarehouseId        String?   @map("preferred_warehouse_id") @db.Uuid
+  handlingNote                String?   @map("handling_note") @db.Text
+  isActive                    Boolean   @default(true) @map("is_active")
+  rowVersion                  BigInt    @default(0) @map("row_version")
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  createdBy                   String?   @map("created_by") @db.Uuid
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+  updatedBy                   String?   @map("updated_by") @db.Uuid
+  deactivatedAt               DateTime? @map("deactivated_at")
+  deactivatedBy               String?   @map("deactivated_by") @db.Uuid
+
+  owner                       MdOwner      @relation(fields: [ownerId], references: [id])
+  item                        MdItem       @relation(fields: [itemId], references: [id])
+  billingUomOverride          MdUom?       @relation(fields: [billingUomOverrideId], references: [id])
+  preferredWarehouse          MdWarehouse? @relation(fields: [preferredWarehouseId], references: [id])
+
+  @@unique([ownerId, itemId])
+  @@map("md_owner_item_policy")
+}
+
+model MdImportBatch {
+  id              String            @id @default(uuid()) @db.Uuid
+  batchNo         String            @unique @map("batch_no") @db.VarChar(50)
+  entityName      String            @map("entity_name") @db.VarChar(50)
+  templateVersion String            @map("template_version") @db.VarChar(20)
+  fileName        String            @map("file_name") @db.VarChar(255)
+  fileStorageKey  String?           @map("file_storage_key") @db.VarChar(255)
+  importMode      String            @map("import_mode") @db.VarChar(20)
+  allOrNothing    Boolean           @default(false) @map("all_or_nothing")
+  status          ImportBatchStatus
+  totalRows       Int               @default(0) @map("total_rows")
+  successRows     Int               @default(0) @map("success_rows")
+  failedRows      Int               @default(0) @map("failed_rows")
+  skippedRows     Int               @default(0) @map("skipped_rows")
+  startedAt       DateTime?         @map("started_at")
+  completedAt     DateTime?         @map("completed_at")
+  requestedBy     String?           @map("requested_by") @db.Uuid
+  correlationId   String?           @map("correlation_id") @db.VarChar(100)
+  externalId      String?           @map("external_id") @db.VarChar(120)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  lines           MdImportBatchLine[]
+  errors          MdImportError[]
+
+  @@index([entityName, status])
+  @@index([requestedBy, createdAt])
+  @@map("md_import_batch")
+}
+
+model MdImportBatchLine {
+  id                String                  @id @default(uuid()) @db.Uuid
+  batchId           String                  @map("batch_id") @db.Uuid
+  rowNo             Int                     @map("row_no")
+  rowPayload        Json                    @map("row_payload")
+  actionType        ImportActionType?       @map("action_type")
+  processingStatus  ImportProcessingStatus  @map("processing_status")
+  targetEntityId    String?                 @map("target_entity_id") @db.Uuid
+  targetBusinessKey String?                 @map("target_business_key") @db.VarChar(100)
+  validationSummary Json?                   @map("validation_summary")
+  committedAt       DateTime?               @map("committed_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  batch             MdImportBatch           @relation(fields: [batchId], references: [id])
+  errors            MdImportError[]
+
+  @@unique([batchId, rowNo])
+  @@map("md_import_batch_line")
+}
+
+model MdImportError {
+  id           String           @id @default(uuid()) @db.Uuid
+  batchId      String           @map("batch_id") @db.Uuid
+  batchLineId  String?          @map("batch_line_id") @db.Uuid
+  rowNo        Int?             @map("row_no")
+  fieldName    String?          @map("field_name") @db.VarChar(100)
+  errorCode    String           @map("error_code") @db.VarChar(50)
+  errorMessage String           @map("error_message") @db.Text
+  errorLevel   ImportErrorLevel @map("error_level")
+  details      Json?
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  batch        MdImportBatch      @relation(fields: [batchId], references: [id])
+  batchLine    MdImportBatchLine? @relation(fields: [batchLineId], references: [id])
+
+  @@index([batchId, rowNo])
+  @@map("md_import_error")
 }
