@@ -910,7 +910,517 @@ Module Inventory Core Engine được xem là đạt khi tối thiểu thỏa c�
 
 ---
 
-## 26. Điểm cần chốt thêm trước khi bóc FS/API chi tiết
+
+---
+
+# PHỤ LỤC BỔ SUNG BUILD-READY — MODULE 3 INVENTORY CORE ENGINE (v1.1)
+
+> Phần bổ sung này được thêm để nâng tài liệu từ mức **directionally correct** lên mức **build-ready hơn cho BA / Tech Lead / Dev / QA**.  
+> Các nội dung dưới đây **không thay thế** các nguyên tắc đã chốt ở phần trên, mà làm rõ thêm contract, matrix nghiệp vụ, exception handling, hold model, reconciliation policy và data dictionary runtime.
+
+## 25A. Event-to-Transaction Mapping Matrix (đề xuất chốt cho Phase 1)
+
+| Event Code | Source Module | Source Object | Trigger State / Action | Posting Allowed When | Trans Type | Qty Sign / Logic | Dim From | Dim To | Affects Physical | Affects Hold | Reason Code Required | Reversible | Ghi chú |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| EVT-REC-RECEIVED | M4 | Receipt Line | Receipt = `RECEIVED` | receipt line valid, item/owner/location/status hợp lệ | RECEIPT_IN | `+qty` | null | receiving dim | Yes | No | No | Yes | Điểm post inbound chính thức |
+| EVT-WORK-PUTAWAY-COMPLETE | M7 | Work Line | WorkLine type = PUTAWAY, state = `COMPLETED` | stock tồn tại tại dim nguồn | MOVE | from `-qty`, to `+qty` | receiving dim | storage dim | No net change | No | No | Yes | Là movement nội bộ sau inbound |
+| EVT-SHIP-SHIPPED | M5 | Shipment Line | Shipment = `SHIPPED` | shipment line đã allocate/confirm theo rule M5 | SHIPMENT_OUT | `-qty` | ship-from dim | null | Yes | Release hold | No | Yes | Chỉ lúc ship thực tế mới trừ physical |
+| EVT-MOVE-COMPLETE | M6/M7 | Move Order / Work Line | Move complete | dim_from có đủ physical phù hợp | MOVE | from `-qty`, to `+qty` | current dim | target dim | No net change | No | No | Yes | Áp cho move nội bộ |
+| EVT-TRANSFER-RECEIVED | M6 | Transfer Line | transfer received | transfer document hợp lệ | MOVE | from `-qty`, to `+qty` | transfer from dim | transfer to dim | No net change | No | No | Yes | Phase 1 xem như movement paired |
+| EVT-STATUS-CHANGE-CONFIRMED | M6 | Status Change Line | approved/confirmed | status from/to hợp lệ | STATUS_CHANGE | from `-qty`, to `+qty` | current status dim | target status dim | No net change | No | Yes | Yes | Ví dụ AVAILABLE → DAMAGED |
+| EVT-ADJ-APPROVED-PLUS | M6 | Adjustment Line | approved | reason code hợp lệ | ADJUSTMENT_PLUS | `+qty` | null | target dim | Yes | No | Yes | Yes | Dùng cho tăng tồn |
+| EVT-ADJ-APPROVED-MINUS | M6 | Adjustment Line | approved | reason code hợp lệ, đủ stock theo policy | ADJUSTMENT_MINUS | `-qty` | source dim | null | Yes | No | Yes | Yes | Dùng cho giảm tồn |
+| EVT-COUNT-RECONCILED-GAIN | M6 | Cycle Count Line | reconciliation approved | variance > 0 | COUNT_GAIN | `+delta` | null | counted dim | Yes | No | Yes | Yes | Delta-based, không overwrite absolute |
+| EVT-COUNT-RECONCILED-LOSS | M6 | Cycle Count Line | reconciliation approved | variance < 0 | COUNT_LOSS | `-delta` | counted dim | null | Yes | No | Yes | Yes | Delta-based |
+| EVT-VAS-CONSUME | M9 | VAS WO Line | VAS consume confirmed | source stock đủ và hợp lệ | VAS_CONSUME | `-qty` | source bulk dim | null | Yes | No | Yes | Yes | Tiêu hao nguyên liệu |
+| EVT-VAS-PRODUCE | M9 | VAS WO Line | VAS produce confirmed | output item/dim hợp lệ | VAS_PRODUCE | `+qty` | null | output bagged dim | Yes | No | Yes | Yes | Sinh thành phẩm |
+| EVT-HOLD-CREATE | M5 | Shipment Allocation | allocation confirmed | available đủ | HOLD_CREATE | không tạo ledger | n/a | n/a | No | Increase hold | No | N/A | Xử lý ở hold engine, không phải InventTrans |
+| EVT-HOLD-RELEASE | M5 | Shipment Allocation | unallocate/cancel/ship | có hold tồn tại | HOLD_RELEASE | không tạo ledger | n/a | n/a | No | Decrease hold | No | N/A | Ship thành công phải release hold liên quan |
+
+### 25A.1 Quy tắc bắt buộc cho mapping matrix
+
+- Chỉ các event có trong bảng mapping này mới được đi qua inventory posting engine.
+- Event nghiệp vụ được gửi sang M3 phải kèm `event_code`, `source_module`, `ref_type`, `ref_id`, `ref_line_id`, `external_id`, `correlation_id`.
+- `HOLD_CREATE` và `HOLD_RELEASE` là inventory-side operational actions nhưng **không phải ledger posting**.
+- Với movement / status change, hệ thống phải bảo đảm luôn có **đủ cả `dim_from` và `dim_to`**.
+- Với adjustment / count / reversal, `reason_code` là bắt buộc.
+
+## 25B. Transaction Type Rule Matrix (đề xuất chốt cho Phase 1)
+
+| Trans Type | Mô tả | Ledger Rows | Dim From | Dim To | Qty Rule | Physical Impact | Reserved/Hold Impact | Partial Reverse | Reason Code | Ghi chú triển khai |
+|---|---|---:|---|---|---|---|---|---|---|---|
+| RECEIPT_IN | Nhập kho chính thức | 1 | No | Yes | `+qty` | Increase | No | Yes | Optional | post khi Receipt = RECEIVED |
+| SHIPMENT_OUT | Xuất kho chính thức | 1 | Yes | No | `-qty` | Decrease | Release hold | Yes | Optional | post khi Shipment = SHIPPED |
+| MOVE | Di chuyển nội bộ | 2 logic impacts / 1 business action | Yes | Yes | from `-qty`, to `+qty` | Net 0 | No | Yes | Optional | có thể persist 2 ledger rows linked cùng action |
+| STATUS_CHANGE | Đổi trạng thái tồn | 2 logic impacts / 1 business action | Yes | Yes | from `-qty`, to `+qty` | Net 0 | No | Yes | Mandatory | from_status != to_status |
+| ADJUSTMENT_PLUS | Điều chỉnh tăng | 1 | No | Yes | `+qty` | Increase | No | Yes | Mandatory | sai lệch/nhập bổ sung |
+| ADJUSTMENT_MINUS | Điều chỉnh giảm | 1 | Yes | No | `-qty` | Decrease | No | Yes | Mandatory | hao hụt/mất mát |
+| COUNT_GAIN | Chênh lệch kiểm kê tăng | 1 | No | Yes | `+delta` | Increase | No | Yes | Mandatory | delta-based |
+| COUNT_LOSS | Chênh lệch kiểm kê giảm | 1 | Yes | No | `-delta` | Decrease | No | Yes | Mandatory | delta-based |
+| VAS_CONSUME | Tiêu hao đầu vào VAS | 1 | Yes | No | `-qty` | Decrease | No | Yes | Mandatory | có thể nhiều lines |
+| VAS_PRODUCE | Sinh đầu ra VAS | 1 | No | Yes | `+qty` | Increase | No | Yes | Mandatory | output item có thể khác item input |
+| REVERSAL | Giao dịch đảo chiều | 1 hoặc cặp tương ứng trans gốc | Theo trans gốc | Theo trans gốc | đảo dấu / đảo dim | Mirror original | Mirror original if needed | No reverse-of-reversal by default | Mandatory | reverse-only correction |
+
+### 25B.1 Chuẩn lưu ledger cho MOVE và STATUS_CHANGE
+
+Để dễ scale, reconcile và drill-down, khuyến nghị Phase 1 lưu theo cách:
+
+- **1 business action** có thể sinh **2 ledger rows liên kết cùng `action_group_id`**:
+  - Row 1: `qty âm` tại `dim_from`
+  - Row 2: `qty dương` tại `dim_to`
+- Ưu điểm:
+  - công thức tổng hợp `on_hand` đơn giản hơn
+  - drill-down ledger rõ chiều biến động
+  - reversal dễ mirror từng row
+  - reconciliation không cần logic đặc biệt cho “from/to nằm cùng 1 row”
+
+> Nếu Tech Lead chọn persist 1 row có cả `dim_from_id` + `dim_to_id`, phải có ADR riêng và phải bảo đảm aggregator/reversal/query vẫn thống nhất một cách duy nhất.
+
+## 25C. Availability & Hold Model (đề xuất chốt cho Phase 1)
+
+### 25C.1 Quyết định thiết kế đề xuất
+
+- `on_hand` giữ số tổng hợp vận hành:
+  - `physical_qty`
+  - `reserved_qty`
+  - `available_qty`
+  - `last_posted_at`
+- Tạo **bảng riêng `allocation_hold`** để lưu chi tiết từng hold theo shipment/work context.
+- Công thức baseline:
+  - `available_qty = physical_qty - reserved_qty`
+- Chỉ stock có `inventory_status = AVAILABLE` mới được allocate.
+- `DAMAGED`, `BLOCKED`, `IN_TRANSIT` luôn có `eligible_for_allocation = false`.
+
+### 25C.2 Bảng `allocation_hold` đề xuất
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| hold_id | varchar / uuid | Yes | mã hold |
+| shipment_id | varchar | Conditional | shipment header |
+| shipment_line_id | varchar | Conditional | shipment line |
+| item_id | varchar | Yes | mã hàng |
+| dim_id | bigint / uuid | Yes | dim đang giữ |
+| hold_qty | decimal(18,3) | Yes | số lượng hold |
+| hold_status | varchar | Yes | ACTIVE / RELEASED / CONSUMED / CANCELLED |
+| reason_code | varchar | Conditional | nếu forced release / manual override |
+| external_id | varchar | Yes | idempotency của action hold |
+| correlation_id | varchar | Yes | trace |
+| created_at | datetime | Yes | thời điểm tạo |
+| created_by | varchar | Yes | actor |
+| released_at | datetime | Conditional | thời điểm release |
+| released_by | varchar | Conditional | actor release |
+
+### 25C.3 Hold lifecycle
+
+| Action | Điều kiện | Hệ quả |
+|---|---|---|
+| CREATE_HOLD | available đủ, status = AVAILABLE | tăng `reserved_qty`, tạo `allocation_hold.ACTIVE` |
+| INCREASE_HOLD | hold đang ACTIVE và stock đủ | tăng `hold_qty`, tăng `reserved_qty` |
+| DECREASE_HOLD | hold đang ACTIVE | giảm `hold_qty`, giảm `reserved_qty` |
+| RELEASE_HOLD | shipment cancel / unallocate / replace | giảm `reserved_qty`, hold -> `RELEASED` |
+| CONSUME_HOLD | shipment shipped | release/consume hold liên quan trước hoặc cùng transaction ship |
+| FORCE_RELEASE_HOLD | role được phép + reason code | giảm reserved, log audit bắt buộc |
+
+### 25C.4 Concurrent allocation rule
+
+- Allocation confirm phải dùng **pessimistic locking** tại row `on_hand` liên quan.
+- Chỉ sau khi lock thành công mới tính `available_qty`.
+- Không cho phép 2 request cùng commit làm `reserved_qty` vượt `physical_qty`.
+- Nếu không đủ available:
+  - trả lỗi nghiệp vụ rõ ràng
+  - không retry mù
+  - không tạo partial hold ngầm nếu user không yêu cầu
+
+## 25D. Reversal Policy (đề xuất chốt cho Phase 1)
+
+### 25D.1 Nguyên tắc
+
+- Không update/delete trans đã post.
+- Correction sau post = `reverse trans gốc` + `post lại trans đúng` nếu cần.
+- Reverse phải giữ:
+  - `reversal_of_trans_id`
+  - `reversal_reason_code`
+  - `reversal_action_group_id`
+  - `reversed_by`
+  - `reversed_at`
+
+### 25D.2 Rule chi tiết
+
+| Tình huống | Cho reverse? | Ghi chú |
+|---|---|---|
+| Receipt post sai qty | Yes | reverse receipt_in cũ, post receipt_in mới |
+| Shipment post sai qty | Yes | reverse shipment_out cũ, post shipment_out mới |
+| Move nhầm location | Yes | reverse cặp move cũ, post move mới |
+| Status change sai | Yes | reverse cặp status change cũ |
+| Adjustment sai reason/qty | Yes | reverse adjustment cũ rồi post mới |
+| Reverse-of-reversal | Chỉ cho phép theo role đặc biệt / không khuyến nghị | cần approval + reason + audit tăng cường |
+| Partial reverse | Yes nếu domain cho phép | phải truyền `reverse_qty <= original_open_qty` |
+| Reverse khi trans đã vào snapshot billing | Yes | snapshot policy phải hỗ trợ rerun/version |
+
+### 25D.3 Chống reverse trùng
+
+- Không cho reverse toàn phần cùng một trans nhiều lần nếu `remaining_reversible_qty = 0`.
+- Với partial reverse, hệ thống phải theo dõi:
+  - `original_qty`
+  - `reversed_qty_accumulated`
+  - `remaining_reversible_qty`
+
+## 25E. Reconciliation Policy (đề xuất chốt cho Phase 1)
+
+### 25E.1 Mục tiêu
+
+Đảm bảo `on_hand` chỉ là read model đúng với transaction truth.
+
+### 25E.2 Loại reconciliation
+
+| Loại | Tần suất | Mục đích |
+|---|---|---|
+| Realtime lightweight check | synchronous trên một số posting path trọng yếu | phát hiện sai lệch ngay tại transaction boundary |
+| Scheduled reconciliation | định kỳ (ví dụ mỗi 15/30/60 phút hoặc cuối ngày) | phát hiện lệch rộng trên phạm vi warehouse/item |
+| Manual reconciliation | theo yêu cầu support/admin | điều tra sự cố hoặc rerun sau correction |
+
+### 25E.3 Công thức baseline
+
+- Với mỗi `item_id + dim_id`:
+  - `ledger_balance = SUM(invent_trans.qty_effective)`
+  - `onhand_balance = on_hand.physical_qty`
+- Expected:
+  - `ledger_balance = onhand_balance`
+- `reserved_qty` được đối chiếu với `allocation_hold` active/consumable.
+
+### 25E.4 Output severity
+
+| Severity | Điều kiện | Hành động |
+|---|---|---|
+| INFO | không lệch | log pass |
+| WARNING | lệch nhỏ nhưng trong phạm vi dữ liệu đang xử lý lại có kiểm soát | theo dõi + rerun |
+| CRITICAL | lệch thực sự giữa ledger và on_hand | mở exception record, chặn manual close nếu chưa review |
+
+### 25E.5 Bảng `inventory_reconciliation_result` đề xuất
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| recon_id | varchar / uuid | Yes | mã đợt đối soát |
+| run_type | varchar | Yes | REALTIME / SCHEDULED / MANUAL |
+| run_scope | varchar | Yes | toàn kho / item / owner / location |
+| item_id | varchar | Conditional | nếu theo item |
+| dim_id | bigint / uuid | Conditional | nếu theo dim |
+| ledger_qty | decimal(18,3) | Yes | tổng ledger |
+| onhand_qty | decimal(18,3) | Yes | tổng onhand |
+| diff_qty | decimal(18,3) | Yes | chênh lệch |
+| severity | varchar | Yes | INFO / WARNING / CRITICAL |
+| status | varchar | Yes | OPEN / REVIEWED / RESOLVED |
+| created_at | datetime | Yes | thời điểm ghi nhận |
+| created_by | varchar | Yes | system/job/user |
+
+## 25F. Daily Snapshot Policy (đề xuất chốt cho Phase 1)
+
+### 25F.1 Quy tắc chốt
+
+- Snapshot mặc định chốt theo **local time của warehouse**.
+- Cut-off mặc định: `23:59:59` local warehouse time.
+- Snapshot phải sinh từ **transaction truth đã post** đến cut-off.
+- Snapshot không được sửa tay.
+- Nếu có correction sau cut-off ảnh hưởng ngày cũ:
+  - sinh `snapshot_version` mới hoặc rerun có version
+  - giữ lịch sử version để billing/audit trace được
+
+### 25F.2 Bổ sung field cho `daily_storage_snapshot`
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| snapshot_version | int | Yes | version rerun của snapshot ngày đó |
+| snapshot_status | varchar | Yes | OPEN / FINAL / SUPERSEDED |
+| warehouse_timezone | varchar | Yes | múi giờ kho |
+| rerun_reason | varchar | Conditional | lý do rerun |
+| superseded_by_version | int | Conditional | version thay thế |
+
+### 25F.3 Quy tắc billing-safe
+
+- Billing phải đọc **snapshot FINAL mới nhất** của ngày tính phí.
+- Nếu snapshot version mới sinh ra sau correction:
+  - snapshot cũ -> `SUPERSEDED`
+  - snapshot mới -> `FINAL`
+- Ngày không phát sinh giao dịch vẫn phải có snapshot carry-forward nếu billing cần tính storage theo ngày.
+
+## 25G. API Contract Summary (build-ready baseline)
+
+### 25G.1 `POST /inventory/postings`
+
+**Mục đích:** tạo inventory posting chuẩn hóa từ business event hợp lệ.
+
+**Request tối thiểu:**
+```json
+{
+  "external_id": "string",
+  "correlation_id": "string",
+  "event_code": "EVT-REC-RECEIVED",
+  "ref_type": "RECEIPT",
+  "ref_id": "RCV-0001",
+  "ref_line_id": "1",
+  "item_id": "ITEM001",
+  "qty": 30300,
+  "uom": "KG",
+  "dim_from": null,
+  "dim_to": {
+    "site_id": "SITE01",
+    "warehouse_id": "WH01",
+    "location_id": "RECEIVING-01",
+    "owner_id": "OWNER01",
+    "inventory_status": "AVAILABLE"
+  },
+  "reason_code": null,
+  "posted_by": "u123",
+  "source_app": "weighbridge"
+}
+```
+
+**Success response baseline:**
+```json
+{
+  "status": "SUCCESS",
+  "posting_action_id": "IPA-000001",
+  "trans_ids": ["ITR-000001"],
+  "idempotent_replay": false
+}
+```
+
+**Idempotency behavior:**
+- cùng `external_id` + cùng `action_type/context` + cùng payload canonicalized:
+  - trả kết quả cũ
+  - `idempotent_replay = true`
+- cùng `external_id` nhưng payload khác:
+  - trả `409 CONFLICT_IDEMPOTENCY_PAYLOAD_MISMATCH`
+
+### 25G.2 `POST /inventory/postings/reverse`
+
+**Mục đích:** reverse transaction đã post.
+
+**Request tối thiểu:**
+```json
+{
+  "external_id": "string",
+  "correlation_id": "string",
+  "original_trans_id": "ITR-000001",
+  "reverse_qty": 10000,
+  "reason_code": "WRONG_QTY",
+  "reversed_by": "u999",
+  "source_app": "web"
+}
+```
+
+**Validation bắt buộc:**
+- `original_trans_id` tồn tại
+- trans cho phép reverse
+- `reverse_qty > 0`
+- `reverse_qty <= remaining_reversible_qty`
+- `reason_code` bắt buộc
+
+### 25G.3 `GET /inventory/onhand`
+
+**Mục đích:** query tồn vận hành.
+
+**Filter baseline:**
+- `item_id`
+- `owner_id`
+- `warehouse_id`
+- `location_id`
+- `inventory_status`
+- `include_zero`
+- `page`, `page_size`, `sort`
+
+**Response baseline:**
+- `physical_qty`
+- `reserved_qty`
+- `available_qty`
+- `eligible_for_allocation`
+- `last_posted_at`
+
+### 25G.4 `GET /inventory/onhand/history`
+
+**Mục đích:** drill-down lịch sử biến động.
+
+**Bắt buộc hỗ trợ:**
+- filter theo `item_id`, `owner_id`, `warehouse_id`, `date_from`, `date_to`, `ref_type`, `ref_id`
+- paging
+- sort theo `posted_at desc`
+
+### 25G.5 `POST /inventory/reconciliation/run`
+
+**Mục đích:** chạy đối soát.
+
+**Request baseline:**
+```json
+{
+  "external_id": "string",
+  "run_type": "MANUAL",
+  "scope": {
+    "warehouse_id": "WH01",
+    "item_id": null,
+    "owner_id": null
+  },
+  "requested_by": "admin01"
+}
+```
+
+### 25G.6 `POST /inventory/snapshots/daily`
+
+**Mục đích:** tạo hoặc rerun snapshot cuối ngày.
+
+**Request baseline:**
+```json
+{
+  "external_id": "string",
+  "snapshot_date": "2026-03-08",
+  "warehouse_id": "WH01",
+  "mode": "FINALIZE",
+  "requested_by": "batch_job"
+}
+```
+
+## 25H. Error Code & Exception Matrix
+
+| Error Code | Error Name | Khi xảy ra | Blocking | Hướng xử lý |
+|---|---|---|---|---|
+| INV-400-001 | INVALID_DIMENSION | thiếu hoặc sai dim values | Yes | reject request |
+| INV-400-002 | INVALID_STATUS_FOR_ALLOCATION | status khác AVAILABLE nhưng đòi allocate | Yes | reject |
+| INV-400-003 | REASON_CODE_REQUIRED | flow cần lý do nhưng không truyền | Yes | reject |
+| INV-400-004 | INVALID_POSTING_POINT | event/state không nằm trong posting point hợp lệ | Yes | reject |
+| INV-400-005 | INVALID_REVERSE_QTY | reverse_qty <= 0 hoặc vượt phần còn lại | Yes | reject |
+| INV-404-001 | TRANS_NOT_FOUND | không tìm thấy trans gốc | Yes | reject |
+| INV-409-001 | DUPLICATE_EXTERNAL_ID_REPLAY | retry đúng payload | No | trả kết quả cũ |
+| INV-409-002 | CONFLICT_IDEMPOTENCY_PAYLOAD_MISMATCH | cùng external_id nhưng payload khác | Yes | reject + log |
+| INV-409-003 | INSUFFICIENT_AVAILABLE_QTY | không đủ stock allocate/ship/adjust minus | Yes | reject |
+| INV-409-004 | ALREADY_FULLY_REVERSED | trans đã reverse hết | Yes | reject |
+| INV-409-005 | HOLD_NOT_FOUND_OR_NOT_ACTIVE | release/consume hold không hợp lệ | Yes | reject |
+| INV-423-001 | STOCK_ROW_LOCK_TIMEOUT | lock quá thời gian | Yes | fail gracefully, cho retry có kiểm soát |
+| INV-500-001 | ATOMIC_UPDATE_FAILED | fail giữa trans và on_hand | Yes | rollback / recovery path |
+| INV-500-002 | RECONCILIATION_MISMATCH_FOUND | reconciliation phát hiện lệch | No | mở exception record |
+
+## 25I. Permission Matrix at Inventory Action Level
+
+| Action | Vai trò tối thiểu đề xuất | Approval / Control | Reason Code | Audit bắt buộc |
+|---|---|---|---|---|
+| Post inbound transaction | SYSTEM / WH_CLERK qua module hợp lệ | theo state machine nguồn | No | Yes |
+| Post outbound transaction | SYSTEM / WH_SUPERVISOR qua module hợp lệ | theo shipment flow | No | Yes |
+| Post adjustment | INV_CONTROLLER / WH_MANAGER | có thể yêu cầu dual control theo ngưỡng | Yes | Yes |
+| Reverse transaction | INV_CONTROLLER / WH_MANAGER | role riêng, log tăng cường | Yes | Yes |
+| Run reconciliation | ADMIN / SUPPORT / INV_CONTROLLER | manual run phải log lý do | Optional | Yes |
+| Rerun daily snapshot | BILLING_ADMIN / ADMIN | phải có rerun_reason | Yes | Yes |
+| Force release hold | WH_MANAGER / OPS_MANAGER | high-risk action | Yes | Yes |
+| View cross-owner stock | ADMIN / INTERNAL AUTHORIZED ROLE | không áp cho customer role | No | Yes |
+
+> Enforcement role chi tiết do M1 sở hữu, nhưng M3 phải expose action names rõ ràng để M1 map permission được chính xác.
+
+## 25J. Runtime Data Dictionary bổ sung
+
+### 25J.1 `on_hand`
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| onhand_id | bigint / uuid | Yes | khóa kỹ thuật |
+| item_id | varchar | Yes | mã hàng |
+| dim_id | bigint / uuid | Yes | dimension key |
+| physical_qty | decimal(18,3) | Yes | tồn vật lý |
+| reserved_qty | decimal(18,3) | Yes | lượng đang giữ |
+| available_qty | decimal(18,3) | Yes | physical - reserved |
+| last_posted_at | datetime | Yes | lần update gần nhất |
+| updated_at | datetime | Yes | thời điểm cập nhật |
+| updated_by | varchar | Yes | actor/service |
+| version_no | bigint | Yes | dùng cho optimistic trace nếu cần |
+
+**Unique key đề xuất:** `(item_id, dim_id)`
+
+### 25J.2 `inventory_reversal_link`
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| reversal_link_id | varchar / uuid | Yes | mã link |
+| original_trans_id | varchar | Yes | trans gốc |
+| reversal_trans_id | varchar | Yes | trans reverse |
+| reverse_qty | decimal(18,3) | Yes | lượng đã reverse |
+| reason_code | varchar | Yes | lý do |
+| created_at | datetime | Yes | thời điểm tạo |
+| created_by | varchar | Yes | actor |
+
+### 25J.3 `inventory_event_mapping`
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| event_code | varchar | Yes | mã event |
+| source_module | varchar | Yes | module nguồn |
+| source_object | varchar | Yes | object nguồn |
+| trigger_state | varchar | Yes | state trigger |
+| trans_type | varchar | Yes | loại trans |
+| posting_enabled | boolean | Yes | có bật hay không |
+| requires_reason_code | boolean | Yes | cờ bắt buộc lý do |
+| created_at | datetime | Yes | audit |
+| updated_at | datetime | Yes | audit |
+
+### 25J.4 `idempotency_key` (inventory scope)
+
+| Field | Type gợi ý | Required | Mô tả |
+|---|---|---|---|
+| idempotency_id | varchar / uuid | Yes | khóa |
+| action_type | varchar | Yes | POSTING / REVERSE / HOLD / SNAPSHOT / RECON |
+| external_id | varchar | Yes | khóa client gửi lên |
+| payload_hash | varchar | Yes | hash payload canonical |
+| result_ref | varchar | Conditional | trans_id / action_id / snapshot_id |
+| status | varchar | Yes | PROCESSING / SUCCESS / FAILED |
+| created_at | datetime | Yes | thời điểm tạo |
+| expired_at | datetime | Conditional | nếu có retention policy |
+
+## 25K. UAT / SIT Scenario Pack bổ sung
+
+1. Receive thành công → tạo `RECEIPT_IN`, physical tăng đúng.
+2. Retry cùng `external_id` sau receive → không tạo trans mới.
+3. Putaway complete → stock chuyển receiving sang storage, net physical toàn kho không đổi.
+4. Allocate 2 shipment cùng lúc trên cùng stock pool → chỉ request đủ điều kiện thành công theo available.
+5. Ship thành công → physical giảm, hold được release/consume đúng.
+6. Reverse shipment đã ship → physical hồi lại đúng, trace link đầy đủ.
+7. Owner A và Owner B cùng item cùng location → không gộp on-hand.
+8. Status `DAMAGED` không allocate được.
+9. Adjustment minus không đủ stock theo policy → reject.
+10. Cycle count gain/loss post theo delta, không overwrite absolute.
+11. Move nhầm location → reverse move cũ rồi post move mới.
+12. VAS consume và produce cùng action group → inventory net thay đổi đúng theo input/output.
+13. Reconciliation phát hiện lệch giả lập → tạo `inventory_reconciliation_result` severity phù hợp.
+14. Rerun snapshot sau reversal của ngày cũ → sinh version mới, snapshot cũ bị supersede.
+15. Cùng `external_id` nhưng payload khác → trả conflict, không tạo thêm trans.
+16. Force release hold không có reason code → reject.
+17. Reverse trans đã reverse hết → reject.
+18. Query on-hand history lọc theo owner/date/ref_type trả đúng drill-down.
+19. Partial reverse shipment → remaining reversible qty được cập nhật đúng.
+20. Fail kỹ thuật giữa insert ledger và update on_hand → transaction rollback hoặc recovery path không để data nửa vời.
+
+## 25L. Đề xuất chốt các quyết định quan trọng để giảm ambiguity trước build
+
+Các điểm sau nên xem là **baseline đề xuất đã đủ tốt để team bắt đầu FS/Tech Design**, trừ khi Steering Group có quyết định khác:
+
+1. `allocation_hold` là bảng riêng, không chỉ lưu hold trong `on_hand`.
+2. `on_hand` là read model vận hành; `invent_trans` mới là transaction truth.
+3. MOVE / STATUS_CHANGE nên lưu theo 2 ledger rows logic liên kết cùng `action_group_id`.
+4. Snapshot dùng timezone của kho và có `snapshot_version`.
+5. Idempotency phải so cả `external_id` và `payload_hash`.
+6. Reverse-only correction là bắt buộc cho mọi trans đã post.
+7. Concurrent allocation dùng pessimistic locking tại confirm allocation.
+8. Count reconciliation là delta-based, không set lại tồn tuyệt đối bằng update tay.
+9. Duplicate `external_id` nhưng payload khác là lỗi conflict, không trả kết quả cũ.
+10. Permission ở mức action inventory phải được map rõ giữa M1 và M3.
+
+## 26. Điểm cần chốt thêm trước khi bóc FS/API chi tiết (cập nhật sau bổ sung)
+
+| # | To-Confirm Item | Priority | Tình trạng sau bản bổ sung | Gợi ý tiếp theo |
+|---|---|---|---|---|
+| 1 | Persist MOVE / STATUS_CHANGE theo 2 rows hay 1 row from/to | P1 | Đã có khuyến nghị mạnh: 2 rows logic | Chốt ở ADR Tech |
+| 2 | Reverse-of-reversal có mở cho Phase 1 không | P2 | Khuyến nghị hạn chế tối đa | Chốt với Ops + Internal Control |
+| 3 | Ngưỡng nào yêu cầu dual approval cho adjustment/reverse | P2 | Chưa chốt | Chốt ở M1 governance + SOP |
+| 4 | Tần suất scheduled reconciliation | P2 | Chưa chốt cố định | Chốt theo load/performance test |
+| 5 | Retention policy của `idempotency_key` và `allocation_hold` history | P3 | Chưa chốt | Chốt cùng DevOps/DBA |
+| 6 | Rule billing cuối cùng nếu storage formula thay đổi | P2 | Baseline hiện tại đã đủ dùng | Chốt với M10 trước SIT Billing |
+
+
+## 27. Điểm cần chốt thêm trước khi bóc FS/API chi tiết
 
 | # | To-Confirm Item | Priority | Impact | Deadline đề xuất |
 |---|---|---|---|---|
@@ -926,7 +1436,7 @@ Module Inventory Core Engine được xem là đạt khi tối thiểu thỏa c�
 
 ---
 
-## 27. Khuyến nghị cho Dev Team
+## 28. Khuyến nghị cho Dev Team
 
 1. Không code transaction logic rải rác trong Receipt, Shipment, Work hay Adjustment services. Gom về một posting engine dùng chung.  
 2. Thiết kế theo nguyên tắc ledger-first, on-hand-second.  
@@ -937,7 +1447,7 @@ Module Inventory Core Engine được xem là đạt khi tối thiểu thỏa c�
 
 ---
 
-## 28. Khuyến nghị cho QA Team
+## 29. Khuyến nghị cho QA Team
 
 1. Test posting point đúng/sai theo state machine.  
 2. Test duplicate retry ở cả UI, API và integration boundary.  
@@ -948,7 +1458,7 @@ Module Inventory Core Engine được xem là đạt khi tối thiểu thỏa c�
 
 ---
 
-## 29. Kết luận
+## 30. Kết luận
 
 Module 3 không phải chỉ là “bảng tồn kho” hay “màn hình xem số lượng”. Đây là **engine lõi** quyết định hệ thống SWM của TVL có thật sự đáng tin về tồn kho hay không.
 
@@ -964,7 +1474,7 @@ Nếu build sai hoặc làm nửa vời module này, toàn bộ hệ thống s�
 
 ---
 
-## 30. Baseline source note dùng để biên soạn tài liệu này
+## 31. Baseline source note dùng để biên soạn tài liệu này
 
 Tài liệu này được biên soạn theo baseline mới hơn của bộ tài liệu SWM hiện có. Trong trường hợp các tài liệu cũ và mới mâu thuẫn nhau, ưu tiên đề xuất như sau:
 

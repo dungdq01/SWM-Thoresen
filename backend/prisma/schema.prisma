@@ -498,6 +498,8 @@ model MdUom {
   ownerItemPolicies  MdOwnerItemPolicy[]
   conversionsFrom    MdUomConversion[] @relation("ConversionFrom")
   conversionsTo      MdUomConversion[] @relation("ConversionTo")
+  inventTrans        InventTrans[]
+  onHandRecords      OnHand[]
 
   @@map("md_uom")
 }
@@ -515,6 +517,8 @@ model MdInventoryStatus {
   createdBy      String?  @map("created_by") @db.Uuid
   updatedAt      DateTime @updatedAt @map("updated_at")
   updatedBy      String?  @map("updated_by") @db.Uuid
+
+  inventDims     InventDim[]
 
   @@map("md_inventory_status")
 }
@@ -551,6 +555,10 @@ model MdWarehouse {
   owners                    MdOwner[]
   rateReferences            MdRateReference[]
   ownerItemPolicies         MdOwnerItemPolicy[]
+  inventDims                InventDim[]
+  reconciliationRuns        InventoryReconciliationRun[]
+  snapshotRuns              InventorySnapshotRun[]
+  dailySnapshots            DailyStorageSnapshot[]
 
   @@map("md_warehouse")
 }
@@ -609,6 +617,8 @@ model MdLocation {
 
   warehouse         MdWarehouse    @relation(fields: [warehouseId], references: [id])
   zone              MdZone         @relation(fields: [zoneId], references: [id])
+  inventDims        InventDim[]
+  dailySnapshots    DailyStorageSnapshot[]
 
   @@unique([warehouseId, locationCode])
   @@index([zoneId, isActive])
@@ -641,6 +651,10 @@ model MdOwner {
   defaultWarehouse     MdWarehouse?       @relation(fields: [defaultWarehouseId], references: [id])
   rateReferences       MdRateReference[]
   ownerItemPolicies    MdOwnerItemPolicy[]
+  inventDims           InventDim[]
+  inventTrans          InventTrans[]
+  reconciliationRuns   InventoryReconciliationRun[]
+  dailySnapshots       DailyStorageSnapshot[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -718,6 +732,12 @@ model MdItem {
   packagingItems          MdItem[]  @relation("PackagingMaterial")
   uomConversions          MdUomConversion[]
   ownerItemPolicies       MdOwnerItemPolicy[]
+  inventTrans             InventTrans[]
+  onHandRecords           OnHand[]
+  inventoryHolds          InventoryHold[]
+  reconciliationRuns      InventoryReconciliationRun[]
+  reconciliationResults   InventoryReconciliationResult[]
+  dailySnapshots          DailyStorageSnapshot[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -934,3 +954,356 @@ model MdImportError {
   @@index([batchId, rowNo])
   @@map("md_import_error")
 }
+
+// ========== Module 3: Inventory Core Engine Enums ==========
+
+enum InventoryTransType {
+  RECEIPT_IN
+  SHIPMENT_OUT
+  MOVE
+  STATUS_CHANGE
+  ADJUSTMENT
+  COUNT_GAIN
+  COUNT_LOSS
+  VAS_CONSUME
+  VAS_PRODUCE
+  TRANSFER_OUT
+  TRANSFER_IN
+}
+
+enum InventoryStage {
+  PHYSICAL
+  EXPECTED
+  ORDERED
+}
+
+enum HoldStatus {
+  ACTIVE
+  PARTIALLY_RELEASED
+  RELEASED
+  CONSUMED
+  CANCELLED
+}
+
+enum ReconciliationRunType {
+  SCHEDULED
+  ON_DEMAND
+  SYSTEM
+}
+
+enum ReconciliationScopeType {
+  FULL
+  WAREHOUSE
+  OWNER
+  ITEM
+}
+
+enum ReconciliationSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  INFO
+}
+
+enum ReconciliationResultStatus {
+  MISMATCH
+  OK
+  REVIEWED
+  RESOLVED
+}
+
+enum ReconciliationRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum SnapshotRunMode {
+  SCHEDULED
+  MANUAL
+  RERUN
+}
+
+enum SnapshotRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum SourceApp {
+  WEB
+  MOBILE
+  API
+  INTEGRATION
+  SYSTEM
+}
+
+// ========== Module 3: Inventory Core Engine Models ==========
+
+model InventDim {
+  id                String   @id @default(uuid()) @db.Uuid
+  dimId             String   @unique @map("dim_id") @db.VarChar(40)
+  dimHash           String   @unique @map("dim_hash") @db.VarChar(64)
+  siteId            String   @map("site_id") @db.VarChar(50)
+  warehouseId       String   @map("warehouse_id") @db.Uuid
+  locationId        String   @map("location_id") @db.Uuid
+  ownerId           String   @map("owner_id") @db.Uuid
+  inventoryStatusId String   @map("inventory_status_id") @db.Uuid
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  createdBy         String?  @map("created_by") @db.Uuid
+
+  warehouse       MdWarehouse       @relation(fields: [warehouseId], references: [id])
+  location        MdLocation        @relation(fields: [locationId], references: [id])
+  owner           MdOwner           @relation(fields: [ownerId], references: [id])
+  inventoryStatus MdInventoryStatus @relation(fields: [inventoryStatusId], references: [id])
+
+  transFrom       InventTrans[]     @relation("TransDimFrom")
+  transTo         InventTrans[]     @relation("TransDimTo")
+  onHandRecords   OnHand[]
+  holds           InventoryHold[]
+  reconcileResults InventoryReconciliationResult[]
+  snapshots       DailyStorageSnapshot[]
+
+  @@index([warehouseId, locationId, ownerId, inventoryStatusId])
+  @@map("invent_dim")
+}
+
+model InventTrans {
+  id                 String             @id @default(uuid()) @db.Uuid
+  transId            String             @unique @map("trans_id") @db.VarChar(40)
+  refType            String             @map("ref_type") @db.VarChar(40)
+  refId              String             @map("ref_id") @db.VarChar(50)
+  refLineId          String?            @map("ref_line_id") @db.VarChar(50)
+  transType          InventoryTransType @map("trans_type")
+  itemId             String             @map("item_id") @db.Uuid
+  qty                Decimal            @db.Decimal(18, 3)
+  uomId              String             @map("uom_id") @db.Uuid
+  dimFromId          String?            @map("dim_from_id") @db.Uuid
+  dimToId            String?            @map("dim_to_id") @db.Uuid
+  statusFromCode     String?            @map("status_from_code") @db.VarChar(30)
+  statusToCode       String?            @map("status_to_code") @db.VarChar(30)
+  stage              InventoryStage     @default(PHYSICAL)
+  externalId         String             @map("external_id") @db.VarChar(120)
+  correlationId      String             @map("correlation_id") @db.VarChar(120)
+  reasonCode         String?            @map("reason_code") @db.VarChar(50)
+  sourceApp          SourceApp          @map("source_app")
+  postedBy           String?            @map("posted_by") @db.Uuid
+  postedAt           DateTime           @map("posted_at")
+  ownerId            String             @map("owner_id") @db.Uuid
+  weighbridgeTicketId String?           @map("weighbridge_ticket_id") @db.VarChar(50)
+  isReversal         Boolean            @default(false) @map("is_reversal")
+  reversalOfTransId  String?            @map("reversal_of_trans_id") @db.VarChar(40)
+  createdAt          DateTime           @default(now()) @map("created_at")
+
+  item     MdItem     @relation(fields: [itemId], references: [id])
+  uom      MdUom      @relation(fields: [uomId], references: [id])
+  dimFrom  InventDim? @relation("TransDimFrom", fields: [dimFromId], references: [id])
+  dimTo    InventDim? @relation("TransDimTo", fields: [dimToId], references: [id])
+  owner    MdOwner    @relation(fields: [ownerId], references: [id])
+
+  reversalLinksOriginal InventoryReversalLink[] @relation("OriginalTrans")
+  reversalLinksReversal InventoryReversalLink[] @relation("ReversalTrans")
+
+  @@unique([externalId, transType])
+  @@index([refType, refId, refLineId])
+  @@index([itemId, postedAt(sort: Desc)])
+  @@index([ownerId, postedAt(sort: Desc)])
+  @@index([dimToId, postedAt(sort: Desc)])
+  @@index([dimFromId, postedAt(sort: Desc)])
+  @@index([correlationId])
+  @@map("invent_trans")
+}
+
+model OnHand {
+  id             String    @id @default(uuid()) @db.Uuid
+  itemId         String    @map("item_id") @db.Uuid
+  inventDimId    String    @map("invent_dim_id") @db.Uuid
+  physicalQty    Decimal   @default(0) @map("physical_qty") @db.Decimal(18, 3)
+  reservedQty    Decimal   @default(0) @map("reserved_qty") @db.Decimal(18, 3)
+  availableQty   Decimal   @default(0) @map("available_qty") @db.Decimal(18, 3)
+  orderedQty     Decimal   @default(0) @map("ordered_qty") @db.Decimal(18, 3)
+  uomId          String    @map("uom_id") @db.Uuid
+  lastMovementAt DateTime? @map("last_movement_at")
+  lastCountAt    DateTime? @map("last_count_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  rowVersion     BigInt    @default(0) @map("row_version")
+
+  item      MdItem    @relation(fields: [itemId], references: [id])
+  inventDim InventDim @relation(fields: [inventDimId], references: [id])
+  uom       MdUom     @relation(fields: [uomId], references: [id])
+
+  holds InventoryHold[]
+
+  @@unique([itemId, inventDimId])
+  @@map("on_hand")
+}
+
+model InventoryHold {
+  id             String     @id @default(uuid()) @db.Uuid
+  holdNo         String     @unique @map("hold_no") @db.VarChar(40)
+  shipmentId     String?    @map("shipment_id") @db.VarChar(50)
+  shipmentLineId String?    @map("shipment_line_id") @db.VarChar(50)
+  workHeaderId   String?    @map("work_header_id") @db.VarChar(50)
+  itemId         String     @map("item_id") @db.Uuid
+  inventDimId    String     @map("invent_dim_id") @db.Uuid
+  onHandId       String     @map("on_hand_id") @db.Uuid
+  holdQty        Decimal    @map("hold_qty") @db.Decimal(18, 3)
+  releasedQty    Decimal    @default(0) @map("released_qty") @db.Decimal(18, 3)
+  status         HoldStatus @default(ACTIVE)
+  reasonCode     String?    @map("reason_code") @db.VarChar(50)
+  externalId     String?    @map("external_id") @db.VarChar(120)
+  correlationId  String     @map("correlation_id") @db.VarChar(120)
+  createdBy      String?    @map("created_by") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  releasedAt     DateTime?  @map("released_at")
+  releasedBy     String?    @map("released_by") @db.Uuid
+
+  item      MdItem    @relation(fields: [itemId], references: [id])
+  inventDim InventDim @relation(fields: [inventDimId], references: [id])
+  onHand    OnHand    @relation(fields: [onHandId], references: [id])
+
+  @@index([shipmentId, shipmentLineId])
+  @@index([itemId, inventDimId, status])
+  @@index([externalId])
+  @@map("inventory_hold")
+}
+
+model InventoryReversalLink {
+  id                  String   @id @default(uuid()) @db.Uuid
+  originalTransId     String   @map("original_trans_id") @db.Uuid
+  reversalTransId     String   @map("reversal_trans_id") @db.Uuid
+  reverseReasonCode   String   @map("reverse_reason_code") @db.VarChar(50)
+  reverseNote         String?  @map("reverse_note") @db.Text
+  reversedBy          String?  @map("reversed_by") @db.Uuid
+  reversedAt          DateTime @map("reversed_at")
+  correctionRefType   String?  @map("correction_ref_type") @db.VarChar(40)
+  correctionRefId     String?  @map("correction_ref_id") @db.VarChar(50)
+  correlationId       String   @map("correlation_id") @db.VarChar(120)
+
+  originalTrans InventTrans @relation("OriginalTrans", fields: [originalTransId], references: [id])
+  reversalTrans InventTrans @relation("ReversalTrans", fields: [reversalTransId], references: [id])
+
+  @@unique([originalTransId, reversalTransId])
+  @@map("inventory_reversal_link")
+}
+
+model InventoryReconciliationRun {
+  id            String                   @id @default(uuid()) @db.Uuid
+  runNo         String                   @unique @map("run_no") @db.VarChar(40)
+  runType       ReconciliationRunType    @map("run_type")
+  scopeType     ReconciliationScopeType  @map("scope_type")
+  warehouseId   String?                  @map("warehouse_id") @db.Uuid
+  ownerId       String?                  @map("owner_id") @db.Uuid
+  itemId        String?                  @map("item_id") @db.Uuid
+  startedAt     DateTime                 @map("started_at")
+  completedAt   DateTime?                @map("completed_at")
+  status        ReconciliationRunStatus
+  mismatchCount Int                      @default(0) @map("mismatch_count")
+  requestedBy   String?                  @map("requested_by") @db.Uuid
+  correlationId String                   @map("correlation_id") @db.VarChar(120)
+
+  warehouse MdWarehouse? @relation(fields: [warehouseId], references: [id])
+  owner     MdOwner?     @relation(fields: [ownerId], references: [id])
+  item      MdItem?      @relation(fields: [itemId], references: [id])
+
+  results InventoryReconciliationResult[]
+
+  @@index([status, startedAt])
+  @@map("inventory_reconciliation_run")
+}
+
+model InventoryReconciliationResult {
+  id               String                      @id @default(uuid()) @db.Uuid
+  runId            String                      @map("run_id") @db.Uuid
+  itemId           String                      @map("item_id") @db.Uuid
+  inventDimId      String                      @map("invent_dim_id") @db.Uuid
+  ledgerQty        Decimal                     @map("ledger_qty") @db.Decimal(18, 3)
+  onhandPhysicalQty Decimal                    @map("onhand_physical_qty") @db.Decimal(18, 3)
+  reservedQty      Decimal                     @map("reserved_qty") @db.Decimal(18, 3)
+  availableQty     Decimal                     @map("available_qty") @db.Decimal(18, 3)
+  diffQty          Decimal                     @map("diff_qty") @db.Decimal(18, 3)
+  severity         ReconciliationSeverity
+  ruleCode         String                      @map("rule_code") @db.VarChar(40)
+  resultStatus     ReconciliationResultStatus  @map("result_status")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+
+  run       InventoryReconciliationRun @relation(fields: [runId], references: [id])
+  item      MdItem                     @relation(fields: [itemId], references: [id])
+  inventDim InventDim                  @relation(fields: [inventDimId], references: [id])
+
+  @@index([runId])
+  @@index([itemId, inventDimId])
+  @@index([severity, resultStatus])
+  @@map("inventory_reconciliation_result")
+}
+
+model InventorySnapshotRun {
+  id            String            @id @default(uuid()) @db.Uuid
+  runNo         String            @unique @map("run_no") @db.VarChar(40)
+  snapshotDate  DateTime          @map("snapshot_date") @db.Date
+  warehouseId   String?           @map("warehouse_id") @db.Uuid
+  cutOffTime    DateTime          @map("cut_off_time")
+  runMode       SnapshotRunMode   @map("run_mode")
+  versionNo     Int               @default(1) @map("version_no")
+  status        SnapshotRunStatus
+  startedAt     DateTime          @map("started_at")
+  completedAt   DateTime?         @map("completed_at")
+  requestedBy   String?           @map("requested_by") @db.Uuid
+  correlationId String            @map("correlation_id") @db.VarChar(120)
+
+  warehouse MdWarehouse? @relation(fields: [warehouseId], references: [id])
+
+  snapshots DailyStorageSnapshot[]
+
+  @@unique([snapshotDate, warehouseId, versionNo])
+  @@map("inventory_snapshot_run")
+}
+
+model DailyStorageSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  snapshotRunId   String   @map("snapshot_run_id") @db.Uuid
+  snapshotDate    DateTime @map("snapshot_date") @db.Date
+  warehouseId     String   @map("warehouse_id") @db.Uuid
+  locationId      String   @map("location_id") @db.Uuid
+  ownerId         String   @map("owner_id") @db.Uuid
+  itemId          String   @map("item_id") @db.Uuid
+  inventDimId     String   @map("invent_dim_id") @db.Uuid
+  openingQty      Decimal  @map("opening_qty") @db.Decimal(18, 3)
+  inboundTodayQty Decimal  @map("inbound_today_qty") @db.Decimal(18, 3)
+  outboundTodayQty Decimal @map("outbound_today_qty") @db.Decimal(18, 3)
+  closingQty      Decimal  @map("closing_qty") @db.Decimal(18, 3)
+  cutOffTime      DateTime @map("cut_off_time")
+  snapshotSource  String   @map("snapshot_source") @db.VarChar(50)
+  correlationId   String?  @map("correlation_id") @db.VarChar(120)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  snapshotRun InventorySnapshotRun @relation(fields: [snapshotRunId], references: [id])
+  warehouse   MdWarehouse          @relation(fields: [warehouseId], references: [id])
+  location    MdLocation           @relation(fields: [locationId], references: [id])
+  owner       MdOwner              @relation(fields: [ownerId], references: [id])
+  item        MdItem               @relation(fields: [itemId], references: [id])
+  inventDim   InventDim            @relation(fields: [inventDimId], references: [id])
+
+  @@index([snapshotDate, warehouseId, ownerId])
+  @@index([ownerId, itemId, snapshotDate])
+  @@map("daily_storage_snapshot")
+}
+
+model InventoryEventMapping {
+  id            String  @id @default(uuid()) @db.Uuid
+  eventCode     String  @unique @map("event_code") @db.VarChar(50)
+  sourceModule  String  @map("source_module") @db.VarChar(20)
+  sourceObject  String  @map("source_object") @db.VarChar(40)
+  triggerState  String  @map("trigger_state") @db.VarChar(40)
+  transType     InventoryTransType @map("trans_type")
+  affectPhysical Boolean @map("affect_physical")
+  affectHold    Boolean @map("affect_hold")
+  reversible    Boolean
+  activeFlag    Boolean @default(true) @map("active_flag")
+  notes         String? @db.Text
+
+  @@map("inventory_event_mapping")
+}
+
