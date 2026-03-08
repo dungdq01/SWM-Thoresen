@@ -3,6 +3,7 @@
 **Schema Location:** `prisma/schema.prisma`  
 **Module:** Outbound Operations  
 **Tables:** 10  
+**Last Updated:** 2026-03-08  
 
 ---
 
@@ -554,3 +555,36 @@ shipment_so_link
 ### Partitioning (future):
 - `shipment_status_history` có thể partition theo tháng
 - `shipment_weighing_attempt` có thể partition theo tháng
+
+---
+
+## 7. Tolerance Lookup Priority
+
+Module 5 sử dụng 4-level cascade để lookup tolerance percentage:
+
+| Priority | Source | Field | Description |
+|----------|--------|-------|-------------|
+| 1 | `md_owner_item_policy` | `tolerance_pct` | Owner+Item specific |
+| 2 | `md_item` | `tolerance_pct` | Item default |
+| 3 | `md_owner` | `default_tolerance_pct` | Owner default |
+| 4 | ENV | `OUTBOUND_TOLERANCE_PCT` | System default (2%) |
+
+**Query logic:**
+```typescript
+// Level 1: OwnerItemPolicy
+const policy = await prisma.mdOwnerItemPolicy.findFirst({
+  where: { ownerId, itemId, isActive: true },
+});
+if (policy?.tolerancePct != null) return policy.tolerancePct;
+
+// Level 2: Item
+const item = await prisma.mdItem.findUnique({ where: { id: itemId } });
+if (item?.tolerancePct != null) return item.tolerancePct;
+
+// Level 3: Owner
+const owner = await prisma.mdOwner.findUnique({ where: { id: ownerId } });
+if (owner?.defaultTolerancePct != null) return owner.defaultTolerancePct;
+
+// Level 4: ENV default
+return parseFloat(process.env.OUTBOUND_TOLERANCE_PCT || '2.0');
+```

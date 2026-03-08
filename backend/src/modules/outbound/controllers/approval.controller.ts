@@ -8,6 +8,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ApprovalService } from '../services/approval.service';
@@ -41,14 +42,17 @@ export class ApprovalController {
   async approve(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApprovalDto,
+    @Headers('x-user-id') userId?: string,
   ) {
+    // HI-4: Extract decidedBy from request header (will be from @CurrentUser after RBAC)
+    const decidedBy = userId || '00000000-0000-0000-0000-000000000000';
     return this.approvalService.processApproval({
       shipmentId: id,
       lineId: dto.lineId,
       decision: 'APPROVE',
       reasonCode: dto.reasonCode,
       note: dto.note,
-      decidedBy: '00000000-0000-0000-0000-000000000000',
+      decidedBy,
     });
   }
 
@@ -61,14 +65,17 @@ export class ApprovalController {
   async reject(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApprovalDto,
+    @Headers('x-user-id') userId?: string,
   ) {
+    // HI-4: Extract decidedBy from request header (will be from @CurrentUser after RBAC)
+    const decidedBy = userId || '00000000-0000-0000-0000-000000000000';
     return this.approvalService.processApproval({
       shipmentId: id,
       lineId: dto.lineId,
       decision: 'REJECT',
       reasonCode: dto.reasonCode,
       note: dto.note,
-      decidedBy: '00000000-0000-0000-0000-000000000000',
+      decidedBy,
     });
   }
 }

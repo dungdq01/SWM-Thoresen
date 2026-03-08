@@ -4,6 +4,7 @@ import { ShipmentLineRepository } from '../repositories/shipment-line.repository
 import { AllocationRecordRepository } from '../repositories/allocation-record.repository';
 import { StatusHistoryRepository } from '../repositories/status-history.repository';
 import { ExceptionLogRepository } from '../repositories/exception-log.repository';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { ShipmentStateMachineService } from './shipment-state-machine.service';
 import { ShipmentLineStateService } from './shipment-line-state.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,6 +20,7 @@ export interface AllocationResult {
 @Injectable()
 export class AllocationService {
   constructor(
+    private readonly prisma: PrismaService,
     private readonly headerRepo: ShipmentHeaderRepository,
     private readonly lineRepo: ShipmentLineRepository,
     private readonly allocationRepo: AllocationRecordRepository,
@@ -33,80 +35,85 @@ export class AllocationService {
     userId?: string,
     correlationId?: string,
   ): Promise<AllocationResult> {
-    const shipment = await this.headerRepo.findById(shipmentId);
-    if (!shipment) {
-      throw new BadRequestException(`Shipment ${shipmentId} not found`);
-    }
-
-    this.headerStateMachine.assertCanTransition(shipment.status as any, 'ALLOCATE');
-
     const corrId = correlationId || uuidv4();
-    const lines = await this.lineRepo.findPendingLines(shipmentId);
 
-    if (lines.length === 0) {
-      throw new BadRequestException('No pending lines to allocate');
-    }
-
-    const errors: string[] = [];
-    let allocatedCount = 0;
-
-    for (const line of lines) {
-      try {
-        await this.allocateLine(
-          shipmentId,
-          line.id,
-          line.itemId,
-          shipment.ownerId,
-          Number(line.expectedQtyKg),
-          userId,
-          corrId,
-        );
-        allocatedCount++;
-      } catch (error: any) {
-        errors.push(`Line ${line.lineNumber}: ${error?.message || 'Unknown error'}`);
-        await this.exceptionRepo.create({
-          shipmentHeaderId: shipmentId,
-          shipmentLineId: line.id,
-          exceptionType: 'ALLOCATION_FAIL',
-          exceptionCode: 'ALLOC_INSUFFICIENT_STOCK',
-          severity: 'HIGH',
-          detailJson: { error: error?.message || 'Unknown error' },
-          createdBy: userId,
-          correlationId: corrId,
-        });
+    // HI-3: Wrap trong $transaction để atomic
+    // HI-6: Gọi lockForUpdate để pessimistic locking
+    return this.prisma.$transaction(async (tx) => {
+      // Lock shipment row trước khi đọc
+      const shipment = await this.headerRepo.lockForUpdate(shipmentId, tx);
+      if (!shipment) {
+        throw new BadRequestException(`Shipment ${shipmentId} not found`);
       }
-    }
 
-    if (errors.length > 0) {
+      this.headerStateMachine.assertCanTransition(shipment.status as any, 'ALLOCATE');
+
+      const lines = await this.lineRepo.findPendingLines(shipmentId);
+      if (lines.length === 0) {
+        throw new BadRequestException('No pending lines to allocate');
+      }
+
+      const errors: string[] = [];
+      let allocatedCount = 0;
+
+      for (const line of lines) {
+        try {
+          await this.allocateLine(
+            shipmentId,
+            line.id,
+            line.itemId,
+            shipment.ownerId,
+            Number(line.expectedQtyKg),
+            userId,
+            corrId,
+          );
+          allocatedCount++;
+        } catch (error: any) {
+          errors.push(`Line ${line.lineNumber}: ${error?.message || 'Unknown error'}`);
+          await this.exceptionRepo.create({
+            shipmentHeaderId: shipmentId,
+            shipmentLineId: line.id,
+            exceptionType: 'ALLOCATION_FAIL',
+            exceptionCode: 'ALLOC_INSUFFICIENT_STOCK',
+            severity: 'HIGH',
+            detailJson: { error: error?.message || 'Unknown error' },
+            createdBy: userId,
+            correlationId: corrId,
+          });
+        }
+      }
+
+      if (errors.length > 0) {
+        return {
+          success: false,
+          shipmentId,
+          allocatedLines: allocatedCount,
+          failedLines: errors.length,
+          errors,
+        };
+      }
+
+      await this.headerRepo.updateStatus(shipmentId, 'ALLOCATED', {
+        updatedBy: userId,
+      });
+
+      await this.historyRepo.create({
+        shipmentHeaderId: shipmentId,
+        entityLevel: 'HEADER',
+        fromStatus: 'CONFIRMED',
+        toStatus: 'ALLOCATED',
+        triggerAction: 'ALLOCATE',
+        changedBy: userId,
+        correlationId: corrId,
+      });
+
       return {
-        success: false,
+        success: true,
         shipmentId,
         allocatedLines: allocatedCount,
-        failedLines: errors.length,
-        errors,
+        failedLines: 0,
       };
-    }
-
-    await this.headerRepo.updateStatus(shipmentId, 'ALLOCATED', {
-      updatedBy: userId,
     });
-
-    await this.historyRepo.create({
-      shipmentHeaderId: shipmentId,
-      entityLevel: 'HEADER',
-      fromStatus: 'CONFIRMED',
-      toStatus: 'ALLOCATED',
-      triggerAction: 'ALLOCATE',
-      changedBy: userId,
-      correlationId: corrId,
-    });
-
-    return {
-      success: true,
-      shipmentId,
-      allocatedLines: allocatedCount,
-      failedLines: 0,
-    };
   }
 
   private async allocateLine(

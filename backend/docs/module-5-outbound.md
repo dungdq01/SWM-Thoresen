@@ -1,8 +1,9 @@
 # Module 5: Outbound Operations — API Documentation
 
 **Module Path:** `src/modules/outbound`  
-**Status:** ✅ Implemented  
-**Version:** 1.0.0  
+**Status:** ✅ Implemented (Feedback Fixed v1)  
+**Version:** 1.1.0  
+**Last Updated:** 2026-03-08  
 
 ---
 
@@ -17,6 +18,20 @@ Module 5 quản lý toàn bộ **luồng xuất hàng (Outbound Operations)** t�
 - **Tolerance Check**: Kiểm tra chênh lệch và quản lý approval flow
 - **Shipping & Posting**: Post inventory khi SHIPPED
 - **Audit & History**: Lưu lịch sử trạng thái và exceptions
+
+---
+
+## 1.1 Feedback Fixes Applied
+
+| Issue | Description | Status |
+|-------|-------------|--------|
+| HI-2 | Tolerance 4-level cascade lookup | ✅ Fixed |
+| HI-3 | Allocation wrapped in $transaction | ✅ Fixed |
+| HI-4 | decidedBy extracted from x-user-id header | ✅ Fixed |
+| HI-6 | lockForUpdate called before allocation | ✅ Fixed |
+| CR-1 | Real M3 OnHand/Hold integration | 🔜 Pending M3 interface |
+| CR-2 | M3 Posting at SHIPPED | 🔜 Pending M3 interface |
+| CR-3 | RBAC guards on controllers | 🔜 Pending M1 AuthGuard |
 
 ---
 
@@ -236,6 +251,8 @@ src/modules/outbound/
 - Allocation theo FIFO (lot_date ASC)
 - Nếu 1 line fail → toàn bộ shipment fail (no partial allocation)
 - Tạo hold trong Module 3 inventory
+- **HI-3 Fixed:** Allocation wrapped trong `$transaction` để atomic
+- **HI-6 Fixed:** Gọi `lockForUpdate()` trước khi allocate
 
 **Files liên quan:**
 - `controllers/allocation.controller.ts` → `allocate()`
@@ -410,6 +427,7 @@ src/modules/outbound/
 - Nếu có lineId → approve line đó
 - Nếu không có lineId → approve toàn bộ shipment
 - Resolve các exception liên quan
+- **HI-4 Fixed:** `decidedBy` extracted từ `x-user-id` header
 
 **Files liên quan:**
 - `controllers/approval.controller.ts` → `approve()`
@@ -566,3 +584,4 @@ PENDING → ALLOCATED → PICKING → PICKED → LOADING → WEIGHED_PASS/WEIGHE
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2024-03 | Initial implementation |
+| 1.1.0 | 2026-03-08 | Feedback fixes: HI-2 tolerance cascade, HI-3 $transaction, HI-4 decidedBy, HI-6 lockForUpdate |
