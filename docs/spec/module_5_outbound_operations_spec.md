@@ -1107,3 +1107,459 @@ Tai lieu nay duoc bien soan dua tren 5 check-report documents va Business Rules 
 4. `check-report/TVL_SWM_SystemFlow_EndToEnd.md` — Outbound flow, billing events, DPM
 5. `check-report/TVL_SWM_UserFlow_A_to_Z.md` — Flow 1.4, 2.2, 3.1
 6. `TVL_SWM_Business_Rules_Document.md` — BR-OUT-001..010, BR-WB-005, BR-INV-003
+
+
+---
+
+## 31. Phu luc bo sung BA — Nguyen tac bo sung tai lieu
+
+Phan nay duoc them vao de **mo rong va lam ro spec hien co**, khong thay the va khong xoa noi dung cu. Muc tieu la nang tai lieu tu muc “dac ta nghiep vu tot” len muc “du chat de BA/Dev/QA/Tech Lead boc FS, API, test case va integration contract it phai hoi lai business”.
+
+Nguyen tac su dung phu luc nay:
+- Neu phan cu va phan bo sung khong xung dot, uu tien doc theo huong **ket hop**.
+- Neu phan cu moi dung o muc principle, phu luc nay duoc xem la phan **lam ro chi tiet de build**.
+- Neu co noi dung dang `TO-CONFIRM`, phu luc nay se danh dau ro la **de xuat BA** hay **can TVL chot**.
+
+---
+
+## 32. Role & Permission Matrix bo sung
+
+### 32.1 Dinh nghia vai tro tham gia vao Module 5
+
+| Role | Mo ta | Pham vi trong M5 |
+|---|---|---|
+| WH_MANAGER | Quan ly kho / nguoi phe duyet outbound exception | Tao, sua, confirm, allocate, cancel, approve/reject, close |
+| WH_KEEPER | Nhan vien kho thuc hien pick/load | Xem shipment duoc giao, thuc hien pick, bao short pick |
+| WB_OPERATOR | Nhan vien tram can | Ghi nhan tare/gross, manual fallback khi scale loi |
+| OPS_ADMIN | Van hanh he thong | Ho tro thao tac van hanh cap cao, monitor retry/exceptions |
+| SYSTEM_INTEGRATION | Tich hop he thong | Tao shipment/nhan event theo idempotency contract |
+| VIEW_ONLY_AUDITOR | User xem bao cao/audit | Chi duoc xem |
+
+### 32.2 Action Matrix chi tiet
+
+| Action | WH_MANAGER | WH_KEEPER | WB_OPERATOR | OPS_ADMIN | SYSTEM_INTEGRATION | VIEW_ONLY_AUDITOR |
+|---|---:|---:|---:|---:|---:|---:|
+| Tao shipment | Y | N | N | Y | Y | N |
+| Sua shipment o DRAFT | Y | N | N | Y | Y | N |
+| Confirm shipment | Y | N | N | Y | Y | N |
+| Split shipment | Y | N | N | Y | N | N |
+| Chay allocate | Y | N | N | Y | Y | N |
+| Xem allocation detail | Y | Y | N | Y | Y | Y |
+| Unallocate shipment | Y | N | N | Y | N | N |
+| Nhan/bao short pick | N | Y | N | N | Y | N |
+| Nhap tare | N | N | Y | N | Y | N |
+| Nhap gross | N | N | Y | N | Y | N |
+| Nhap manual weight fallback | N | N | Y | Y | N | N |
+| Resolve PENDING_APPROVAL | Y | N | N | Y | N | N |
+| Cancel shipment truoc SHIPPED | Y | N | N | Y | N | N |
+| Tao reversal request sau SHIPPED | Y | N | N | Y | N | N |
+| Close shipment | Y | N | N | Y | N | N |
+| Xem audit trail | Y | N | N | Y | Y | Y |
+
+### 32.3 Quy tac permission bat buoc
+
+- Manual weight fallback bat buoc co `reason_code`, `performed_by`, `captured_at`, `source_mode = MANUAL`.
+- WB_OPERATOR **khong** duoc approve tolerance fail.
+- WH_KEEPER **khong** duoc thay doi owner, item, expected_qty, tolerance va cac field commercial.
+- VIEW_ONLY_AUDITOR chi duoc xem, khong duoc invoke command.
+- Shipment da `CLOSED` la read-only cho moi role.
+
+---
+
+## 33. Validation Matrix bo sung de build FE/BE/QA dong nhat
+
+### 33.1 Shipment creation validation matrix
+
+| Nhom | Rule | Muc do |
+|---|---|---|
+| Master data | owner_id phai ton tai, active, duoc phep van hanh tai warehouse_id | Blocking |
+| Master data | item_id phai ton tai, active, duoc phep outbound | Blocking |
+| Master data | warehouse_id phai ton tai va dang active | Blocking |
+| Vehicle | vehicle_number bat buoc o luc create hoac truoc luc tare (de xuat: bat buoc ngay luc create) | Blocking |
+| Source | source_type = SO thi so_id bat buoc | Blocking |
+| Source | source_type = STANDALONE thi so_id duoc null, nhung phai co ly do tao shipment standalone | Warning/Config |
+| Shipment scope | 1 shipment chi duoc phep 1 owner_id | Blocking |
+| Shipment scope | 1 shipment chi duoc phep 1 warehouse_id | Blocking |
+| Shipment scope | Cho phep nhieu item trong 1 shipment neu cung 1 xe va cung owner | Allowed |
+| Idempotency | external_id + source_app khong duoc tao duplicate shipment | Blocking |
+| Editability | expected_qty/item/owner/customer/warehouse chi duoc sua khi shipment o DRAFT | Blocking |
+
+### 33.2 Shipment line validation matrix
+
+| Field/Rule | Mo ta | Muc do |
+|---|---|---|
+| expected_qty > 0 | Khong chap nhan 0 hoac am | Blocking |
+| UOM | expected_qty phai quy doi duoc ve KG | Blocking |
+| cargo_form | Phai nam trong danh muc cho phep cua M2 | Blocking |
+| bag_count | Bat buoc voi BAGGED_*; khong cho phep voi BULK neu business khong su dung | Blocking |
+| nominal_weight_per_bag | Bat buoc neu la bagged goods co billing/report theo bao | Blocking |
+| Duplicate line | Khong chan duplicate item, nhung phai phan biet bang line_number | Allowed |
+| Split line | Split chi duoc thuc hien khi shipment o DRAFT/CONFIRMED va split theo qty > 0, < expected_qty con lai | Blocking |
+
+### 33.3 Validation khi confirm/allocate
+
+| Rule | Mo ta | Muc do |
+|---|---|---|
+| Shipment status | Chi shipment `DRAFT` moi duoc confirm | Blocking |
+| Line completeness | Tat ca lines phai co item, expected_qty, cargo_form hop le | Blocking |
+| Allocation scope | Chi allocate stock o trang thai AVAILABLE, khong lay stock BLOCKED / DAMAGED / QUARANTINE | Blocking |
+| Partial allocation | Neu tong available < tong expected cua bat ky line nao -> fail toan bo shipment | Blocking |
+| Concurrency | Khi allocate phai lock cac on_hand row lien quan theo chien luoc da chot | Blocking |
+
+### 33.4 Validation khi weighing
+
+| Rule | Mo ta | Muc do |
+|---|---|---|
+| Tare first | Khong duoc ghi gross neu shipment chua co tare hop le | Blocking |
+| Gross monotonic | gross_N phai > gross_(N-1) trong context can outbound loading | Blocking |
+| Sequence | line_number can la line chua duoc shipped/rejected | Blocking |
+| Duplicate weigh event | Cung `scale_ticket_no` hoac cung fingerprint event tu M8 phai duoc deduplicate | Blocking |
+| Manual fallback | Manual weight bat buoc reason_code + audit + permission hop le | Blocking |
+| Reweigh | Neu line da `WEIGHED_FAIL` hoac `REWEIGH_REQUIRED`, cho phep can lai theo rule reweigh | Configurable |
+
+### 33.5 Validation khi approve/reject/cancel/close
+
+| Action | Rule | Muc do |
+|---|---|---|
+| Approve | Shipment phai o `PENDING_APPROVAL`; reason_code bat buoc | Blocking |
+| Reject | Shipment phai o `PENDING_APPROVAL`; reason_code bat buoc | Blocking |
+| Cancel | Chi cancel o cac state da liet ke trong cancel matrix | Blocking |
+| Close | Chi close shipment da `SHIPPED`; tat ca lines da post xong | Blocking |
+| Reverse | Shipment da `SHIPPED`/`CLOSED` muon dao chieu phai di qua reversal request, khong duoc cancel truc tiep | Blocking |
+
+---
+
+## 34. Data Dictionary bo sung cho nhung object chua duoc lam ro
+
+### 34.1 Bang `weighing_attempt`
+
+| Field | Type | Required | Mo ta |
+|---|---|---:|---|
+| id | UUID | Y | PK |
+| shipment_header_id | UUID | Y | FK shipment_header |
+| shipment_line_id | UUID | N | Null neu la tare |
+| weigh_type | enum | Y | TARE / GROSS |
+| sequence_no | int | Y | 0 = tare; 1..N = gross |
+| source_mode | enum | Y | SCALE_AGENT / MANUAL |
+| raw_weight_kg | decimal(18,3) | Y | Gia tri can goc |
+| calculated_net_kg | decimal(18,3) | N | Net line duoc tinh tu cong thuc |
+| previous_gross_kg | decimal(18,3) | N | Gross truoc do de tinh net |
+| scale_ticket_no | string | N | So phieu can / id tu M8 |
+| is_valid | boolean | Y | Danh dau event hop le |
+| duplicate_of_attempt_id | UUID | N | Event bi duplicate cua event nao |
+| captured_at | timestamp | Y | Thoi diem can |
+| captured_by | UUID | Y | Actor/agent |
+| reason_code | string | N | Bat buoc neu source_mode = MANUAL |
+| remark | string | N | Mo ta bo sung |
+
+### 34.2 Bang `approval_decision_log`
+
+| Field | Type | Required | Mo ta |
+|---|---|---:|---|
+| id | UUID | Y | PK |
+| shipment_header_id | UUID | Y | Shipment dang duoc phe duyet |
+| shipment_line_id | UUID | N | Null neu quyet dinh o cap shipment |
+| decision | enum | Y | APPROVE / REJECT / REPICK |
+| reason_code | string | Y | Bat buoc cho moi quyet dinh |
+| comment | text | N | Dien giai them |
+| decided_by | UUID | Y | User phe duyet |
+| decided_at | timestamp | Y | Thoi diem phe duyet |
+
+### 34.3 Bang `shipment_event_log`
+
+| Field | Type | Required | Mo ta |
+|---|---|---:|---|
+| id | UUID | Y | PK |
+| shipment_header_id | UUID | Y | Shipment |
+| shipment_line_id | UUID | N | Line neu co |
+| event_name | string | Y | CREATED / CONFIRMED / ALLOCATED / PICK_STARTED / TARE_CAPTURED / GROSS_CAPTURED / SHIPPED / CLOSED... |
+| event_source | string | Y | UI / MOBILE / WEIGHBRIDGE / INTEGRATION / SYSTEM |
+| event_payload_json | jsonb | N | Snapshot payload |
+| correlation_id | string | Y | Trace end-to-end |
+| external_id | string | N | Idempotency key neu co |
+| created_at | timestamp | Y | Thoi diem log |
+| created_by | UUID | N | User/agent |
+
+### 34.4 Khuyen nghi mo rong schema shipment_line
+
+Bo sung cac cot sau de dev build de mo rong ve sau:
+- `expected_qty_kg`
+- `so_line_id`
+- `weigh_sequence_no`
+- `reweigh_count`
+- `exception_flag`
+- `billing_qty_kg`
+- `nominal_qty_kg`
+
+---
+
+## 35. Line-level State Machine bo sung
+
+### 35.1 Muc dich
+
+Shipment-level state machine la chua du cho outbound thuc te, vi tolerance fail, reweigh, reject va posting thuong xay ra o cap line. Vi vay can bo sung line-level state machine.
+
+### 35.2 Danh sach line states de xuat
+
+| Line State | Y nghia |
+|---|---|
+| PENDING | Moi tao dong, chua allocate |
+| ALLOCATED | Da giu duoc stock |
+| PICKING | Dang thuc hien pick |
+| PICKED | Da pick xong |
+| LOADING | Dang duoc nap len xe |
+| WEIGHED_PASS | Da can xong line va nam trong tolerance |
+| WEIGHED_FAIL | Da can xong nhung vuot tolerance |
+| REWEIGH_REQUIRED | Can can lai theo quyet dinh nghiep vu |
+| LINE_SHIPPED | Line da du dieu kien post outbound |
+| REJECTED | Line bi tu choi/khong tiep tuc |
+| REVERSED | Line da dao chieu sau posting |
+
+### 35.3 Transition de xuat
+
+| From | To | Trigger | Actor/System | Ghi chu |
+|---|---|---|---|---|
+| PENDING | ALLOCATED | Allocate success | System | Tao allocation_record |
+| ALLOCATED | PICKING | Pick work created | System | Handoff M7 |
+| PICKING | PICKED | Pick work completed | M7 callback | picked_qty xac nhan |
+| PICKED | LOADING | Bat dau can line | WB_OPERATOR/System | Sau tare |
+| LOADING | WEIGHED_PASS | Gross + tolerance pass | System | variance <= tolerance |
+| LOADING | WEIGHED_FAIL | Gross + tolerance fail | System | variance > tolerance |
+| WEIGHED_FAIL | REWEIGH_REQUIRED | Manager/Rule yeu cau can lai | WH_MANAGER/System | Optional path |
+| REWEIGH_REQUIRED | LOADING | Bat dau can lai | WB_OPERATOR | Tang reweigh_count |
+| WEIGHED_PASS | LINE_SHIPPED | Shipment duoc ship / posting success | System | linked posted_trans_id |
+| WEIGHED_FAIL | REJECTED | Manager reject | WH_MANAGER | Neu reject line-level duoc ap dung |
+| LINE_SHIPPED | REVERSED | Reversal success | System/M3 | Tao counter-trans |
+
+### 35.4 Dong bo line state va shipment state
+
+- Shipment `ALLOCATED` chi hop le khi tat ca lines >= `ALLOCATED`.
+- Shipment `PICKED` chi hop le khi tat ca lines >= `PICKED`.
+- Shipment `ALL_WEIGHED` chi hop le khi tat ca lines nam trong `WEIGHED_PASS`, `WEIGHED_FAIL`, `REJECTED` hoac `LINE_SHIPPED`.
+- Shipment `SHIPPED` chi hop le khi tat ca line duoc chap nhan va post outbound thanh cong.
+
+---
+
+## 36. Contract tich hop bo sung va anh xa voi cac module hien co
+
+### 36.1 Anh xa voi Module 1 — Foundation & Governance
+
+M5 phai tai su dung va khong tu phat minh logic cua M1 cho cac thanh phan sau:
+- Number sequence cho `shipment_number`
+- Permission / role / policy
+- Reason code dictionary
+- Audit baseline
+- Idempotency baseline / external_id strategy
+
+**Contract toi thieu:**
+- M5 goi M1 de lay rule permission truoc cac action nhay cam: approve/reject/cancel/manual weight/close.
+- M5 goi M1 number sequence service khi tao shipment.
+- M5 ghi audit event theo format chung cua M1.
+
+### 36.2 Anh xa voi Module 2 — Master Data Management
+
+M5 phu thuoc M2 cho:
+- owner, item, warehouse, location, cargo_form
+- owner_item_policy
+- tolerance lookup
+- DPM flag va nominal weight baseline
+
+**Tolerance lookup order de xuat:**
+1. `owner_item_policy.tolerance_pct_outbound`
+2. `item.tolerance_pct_outbound`
+3. `owner.default_tolerance_pct`
+4. `system_default_tolerance_pct`
+
+**M5 khong duoc hardcode tolerance trong service code.**
+
+### 36.3 Anh xa voi Module 3 — Inventory Core Engine
+
+M5 khong duoc update `OnHand` hay `InventTrans` bang SQL truc tiep. M5 chi lam 3 viec voi M3:
+1. Lay snapshot available/on_hand de allocate
+2. Gui posting command khi shipment `SHIPPED`
+3. Gui reversal command khi can dao chieu sau ship
+
+**Posting contract toi thieu de xuat:**
+- Command level: per shipment line
+- Qty: `-shipped_qty`
+- Dim: owner + warehouse + location + inventory status AVAILABLE + cac dim lien quan
+- Idempotency key: `shipment_id + line_number + posting_type`
+
+### 36.4 Anh xa voi Module 4 — Inbound Operations
+
+M4 la nguon tao `physical_qty`, `lot_date`, `on_hand availability` de M5 allocate. M5 can ton trong du lieu inbound da sinh ra va khong duoc vo hieu hoa traceability inbound.
+
+M5 can map ro:
+- FIFO dua tren `lot_date`/stock layer do M4 + M3 cung cap
+- Khong allocate nham stock dang o receiving/putaway dang do
+- Khi can truy vet outbound, co the drill-down ve GRN/receipt layer nguon neu can audit
+
+### 36.5 Anh xa bo sung voi Module 7, 8, 10, 11
+
+| Module | M5 gui gi | M5 nhan gi | Ownership |
+|---|---|---|---|
+| M7 Work Execution | Pick work request | Pick completion / short pick callback | M5 so huu shipment; M7 so huu work |
+| M8 Weighbridge/OCR | Shipment/line context de can | tare/gross events, ticket no | M8 so huu weight capture; M5 so huu business acceptance |
+| M10 Billing | OUTBOUND_HANDLING event | optional ack/event status | M10 so huu charge calculation |
+| M11 Reporting & Audit | outbound facts | dashboard/report consumption | M11 so huu bao cao |
+
+---
+
+## 37. SO Reconciliation Rules bo sung
+
+### 37.1 Muc dich
+
+Vi shipment co the duoc tao tu SO va mot SO co the bi tach thanh nhieu shipment, M5 can co quy tac reconciliation ro rang de tranh xuat vuot commitment hoac update sai shipped_qty.
+
+### 37.2 Quy tac cap SO line
+
+| Rule | Mo ta |
+|---|---|
+| SO line mapping | Moi shipment_line nen map ve `so_line_id` neu shipment duoc tao tu SO |
+| shipped_qty cap nhat | Chi cap nhat vao SO line khi posting outbound thanh cong |
+| split shipment | Split khong duoc lam mat lien ket `so_id`/`so_line_id` |
+| concurrency | Neu nhieu shipment cung mot SO line, can co co che kiem tra tong allocated/tong shipped |
+| close SO line | SO line chi co the close khi `total_shipped >= ordered_qty` hoac business cho phep under-delivery |
+
+### 37.3 Formula de xuat cho bulk blocking per SO
+
+```text
+current_total_shipped = SUM(shipped_qty cua cac shipment lines da post cho cung so_line_id)
+current_total_allocated_open = SUM(allocated_qty cua cac shipment lines chua ship/cancel cho cung so_line_id)
+
+remaining_so_qty = ordered_qty - current_total_shipped
+allocation_eligibility = requested_qty <= remaining_so_qty
+```
+
+De xuat BA: khi can **block over-commit som**, business nen xem ca `allocated_open` chu khong chi `shipped`, nhat la khi mot SO dang bi tach nhieu shipment song song.
+
+### 37.4 Standalone shipment reconciliation
+
+Neu shipment khong co SO:
+- Phai danh dau `source_type = STANDALONE`
+- Phai co `standalone_reason_code`
+- Billing/report van duoc tao, nhung commercial reconciliation can di theo external reference khac
+
+---
+
+## 38. Exception & Retry Matrix bo sung
+
+### 38.1 Exception matrix
+
+| Scenario | Trigger | He thong xu ly | Co block xe? | Audit |
+|---|---|---|---:|---|
+| Allocation fail | Khong du available | Fail allocation toan bo, tao exception ALLOCATION_FAIL | Y | Co |
+| Short pick | M7 bao picked < allocated | Flag SHORT_PICK, route theo threshold | Co/Khong tuy rule | Co |
+| Duplicate weigh event | M8 gui trung ticket/event | Danh dau duplicate, khong tinh lai net | N | Co |
+| Manual weight | Scale loi / fallback | Ghi MANUAL_WEIGHT, bat buoc reason_code | N | Co |
+| Tolerance fail | variance > tolerance | Danh dau line fail, shipment co the vao PENDING_APPROVAL sau khi can xong | N | Co |
+| SO over-ship block | current + new > SO allowed | Chan posting/chan weighing theo rule da chot | Y | Co |
+| Posting fail | M3 timeout/error | Shipment giu o trang thai cho retry/recovery, khong duplicate post | N | Co |
+| Billing event fail | M10 khong nhan duoc | Retry event, khong rollback inventory neu M3 da thanh cong | N | Co |
+
+### 38.2 Retry rules de xuat
+
+| Process | Idempotency key | Retry rule |
+|---|---|---|
+| Create shipment | external_id + source_app | Tra ve ban ghi da ton tai neu duplicate |
+| Allocate shipment | shipment_id + version | Khong tao duplicate allocation_records |
+| Create pick work | shipment_id + line_number + work_type | Retry an toan, chi 1 bo work hop le |
+| Capture tare | shipment_id + scale_ticket_no + TARE | Duplicate -> ignore/log |
+| Capture gross | shipment_id + line_number + scale_ticket_no | Duplicate -> ignore/log |
+| Post outbound M3 | shipment_id + line_number + POST_OUTBOUND | Retry an toan, khong duplicate InventTrans |
+| Send billing event | shipment_id + line_number + BILLING_OUTBOUND | Co the retry bang outbox/event log |
+
+### 38.3 Recovery path de xuat
+
+- Neu **posting M3 fail tam thoi**: luu event vao outbox, mark shipment `POSTING_PENDING` o tang ky thuat (khong nhat thiet la business state), retry co kiem soat.
+- Neu **billing fail nhung M3 da success**: khong rollback inventory; retry event billing rieng.
+- Neu **M7 callback tre**: idempotent update theo work completion event.
+- Neu **M8 gui gross truoc tare**: tu choi event va log exception.
+
+---
+
+## 39. Reporting & Audit Contract bo sung
+
+### 39.1 KPI definition de xuat
+
+| KPI | Dinh nghia | Grain | Nguon du lieu |
+|---|---|---|---|
+| Shipment count | So shipment tao / shipped / cancelled theo ngay | shipment_header | shipment_header |
+| Allocation fail rate | So shipment allocate fail / tong shipment confirm | shipment_header | shipment_exception_log |
+| Avg allocation-to-shipped time | TB thoi gian tu ALLOCATED den SHIPPED | shipment_header | shipment_status_history |
+| Pending approval rate | So shipment vao PENDING_APPROVAL / tong shipment weighed | shipment_header | shipment_header + exception_log |
+| Short pick rate | So line short pick / tong line duoc pick | shipment_line | M7 callback + shipment_line |
+| DPM variance | |actual - nominal| theo line/shipment | shipment_line | shipment_line + weighing_attempt |
+
+### 39.2 Drill-down audit toi thieu
+
+Moi shipment phai truy vet duoc chuoi sau:
+`shipment_header -> shipment_line -> allocation_record -> pick work ref -> weighing_attempt -> approval_decision_log -> M3 invent_trans ref -> billing_event_ref`
+
+### 39.3 Truong audit bat buoc cho cac hanh dong nhay cam
+
+| Action | Audit fields bat buoc |
+|---|---|
+| Manual weight | performed_by, reason_code, old/new weight, timestamp |
+| Approve/reject | decided_by, decision, reason_code, comment, timestamp |
+| Cancel | cancelled_by, cancel_reason_code, current_state, timestamp |
+| Close | closed_by, close_reason_code, timestamp |
+| Reversal | requested_by, approved_by neu can, reversal_reason_code, trans_ref |
+
+---
+
+## 40. Goi y bo sung API/domain contract o muc BA
+
+Phan 25 cua tai lieu goc da co baseline API. De lam ro hon cho giai doan FS/API, de xuat bo sung them quy uoc sau:
+
+### 40.1 Command APIs nhay cam bat buoc co
+- `external_id`
+- `correlation_id`
+- `source_app`
+- `performed_by`
+- `reason_code` (neu la command exception)
+- `expected_version` (neu ap dung optimistic concurrency o aggregate shipment)
+
+### 40.2 Query APIs toi thieu de van hanh
+- `GET /outbound/shipments/{shipment_id}/allocations`
+- `GET /outbound/shipments/{shipment_id}/weighing-attempts`
+- `GET /outbound/shipments/{shipment_id}/exceptions`
+- `GET /outbound/shipments/{shipment_id}/approval-history`
+- `GET /outbound/shipments/{shipment_id}/integration-status`
+
+### 40.3 Response quy uoc de xuat
+
+Moi command response nen co:
+- `success`
+- `business_state`
+- `technical_state` (neu can)
+- `shipment_id`
+- `correlation_id`
+- `errors[]` gom `code`, `message`, `field`, `severity`
+
+---
+
+## 41. Open decisions de chot truoc FS/API final
+
+| # | Open item | De xuat BA | Muc uu tien |
+|---|---|---|---:|
+| 1 | Tolerance default neu owner/item chua cau hinh | De xuat 0.5% neu TVL chua co rule khac | P1 |
+| 2 | Short pick threshold | De xuat <=2% auto-accept; >2%-<=5% manager review; >5% block | P1 |
+| 3 | Locking strategy allocate | De xuat pessimistic row locking tren on_hand snapshot | P1 |
+| 4 | Standalone shipment use cases | Bat buoc TVL liet ke danh sach tinh huong hop le | P1 |
+| 5 | Co cho reweigh line fail hay khong | De xuat co, gioi han so lan va phai audit | P1 |
+| 6 | Bulk blocking tinh tren shipped hay shipped + allocated_open | De xuat shipped + allocated_open de tranh over-commit | P1 |
+| 7 | Billing event owner | De xuat M5 phat event, M10 tinh phi | P2 |
+| 8 | Container stuffing BR-OUT-009 | Chot Phase 1 hay 2 | P2 |
+
+---
+
+## 42. Ket luan bo sung cua BA
+
+Sau khi bo sung cac phu luc tren, tai lieu Module 5 co the duoc xem la da day hon o 4 lop:
+- **Lop nghiep vu:** shipment, allocation, weighing, tolerance, approval, posting
+- **Lop du lieu:** header/line/allocation/weighing/approval/audit
+- **Lop tich hop:** M1, M2, M3, M4 va cac module lien quan
+- **Lop van hanh & QA:** validation, exception, retry, reporting, audit
+
+Phan noi dung goc van giu nguyen. Phan bo sung nay dong vai tro **appendix dac ta mo rong**, giup team dev intern, QA va Tech Lead giam muc do mo ho khi di vao FS/API/database/backend design.
