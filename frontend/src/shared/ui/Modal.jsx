@@ -62,7 +62,7 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
           onClick={handleOverlayClick}
         >
           <motion.div
@@ -71,25 +71,25 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
-              'relative w-full bg-white rounded-2xl shadow-soft-xl',
+              'relative w-full rounded-lg border border-border bg-card text-card-foreground shadow-lg',
               sizes[size],
               className
             )}
           >
             {(title || showClose) && (
-              <div className="flex items-start justify-between p-5 border-b border-navy-100">
+              <div className="flex items-start justify-between border-b border-border p-6">
                 <div>
                   {title && (
-                    <h2 className="text-lg font-semibold text-navy-900">{title}</h2>
+                    <h2 className="text-lg font-semibold leading-none tracking-tight text-foreground">{title}</h2>
                   )}
                   {description && (
-                    <p className="mt-1 text-sm text-navy-600">{description}</p>
+                    <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
                   )}
                 </div>
                 {showClose && (
                   <button
                     onClick={onClose}
-                    className="p-1.5 rounded-lg text-navy-400 hover:text-navy-600 hover:bg-navy-100 transition-colors"
+                    className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -97,12 +97,12 @@ export function Modal({
               </div>
             )}
 
-            <div className="p-5 max-h-[calc(80vh-120px)] overflow-y-auto">
+            <div className="max-h-[calc(80vh-120px)] overflow-y-auto p-6">
               {children}
             </div>
 
             {footer && (
-              <div className="flex items-center justify-end gap-3 p-5 border-t border-navy-100 bg-navy-50/50 rounded-b-2xl">
+              <div className="flex items-center justify-end gap-3 rounded-b-lg border-t border-border bg-muted/30 p-6">
                 {footer}
               </div>
             )}

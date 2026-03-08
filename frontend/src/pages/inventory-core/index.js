@@ -1,0 +1,5 @@
+export { InventoryCoreLayout } from './InventoryCoreLayout'
+export { InventoryOnHandPage } from './InventoryOnHandPage'
+export { InventoryTransactionsPage } from './InventoryTransactionsPage'
+export { InventoryHoldsPage } from './InventoryHoldsPage'
+export { InventoryPostingWorkbenchPage } from './InventoryPostingWorkbenchPage'

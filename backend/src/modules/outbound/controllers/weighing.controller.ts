@@ -10,7 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { WeighingService, RecordTareParams, RecordGrossParams } from '../services/weighing.service';
+import { IsNumber, IsString, IsEnum, IsOptional, IsUUID, Min } from 'class-validator';
+import { ReceiveOutboundWeightUseCase } from '../application/receiveOutboundWeight.usecase';
 import { ShipmentQueryService } from '../services/shipment-query.service';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
@@ -19,19 +20,47 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
 class RecordTareDto {
+  @IsNumber()
+  @Min(0)
   rawWeightKg!: number;
+
+  @IsEnum(['SCALE_AGENT', 'MANUAL'])
   sourceMode!: 'SCALE_AGENT' | 'MANUAL';
+
+  @IsOptional()
+  @IsString()
   scaleTicketNo?: string;
+
+  @IsOptional()
+  @IsString()
   externalEventId?: string;
+
+  @IsOptional()
+  @IsString()
   reasonCode?: string;
 }
 
 class RecordGrossDto {
+  @IsUUID()
   lineId!: string;
+
+  @IsNumber()
+  @Min(0)
   rawWeightKg!: number;
+
+  @IsEnum(['SCALE_AGENT', 'MANUAL'])
   sourceMode!: 'SCALE_AGENT' | 'MANUAL';
+
+  @IsOptional()
+  @IsString()
   scaleTicketNo?: string;
+
+  @IsOptional()
+  @IsString()
   externalEventId?: string;
+
+  @IsOptional()
+  @IsString()
   reasonCode?: string;
 }
 
@@ -40,7 +69,7 @@ class RecordGrossDto {
 @UseGuards(AuthGuard, PermissionGuard)
 export class WeighingController {
   constructor(
-    private readonly weighingService: WeighingService,
+    private readonly receiveWeightUseCase: ReceiveOutboundWeightUseCase,
     private readonly queryService: ShipmentQueryService,
   ) {}
 
@@ -56,7 +85,7 @@ export class WeighingController {
     @Body() dto: RecordTareDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.weighingService.recordTare({
+    return this.receiveWeightUseCase.recordTare({
       shipmentId: id,
       ...dto,
       capturedBy: user.id,
@@ -75,7 +104,7 @@ export class WeighingController {
     @Body() dto: RecordGrossDto,
     @CurrentUser() user: RequestUser,
   ) {
-    return this.weighingService.recordGross({
+    return this.receiveWeightUseCase.recordGross({
       shipmentId: id,
       lineId: dto.lineId,
       rawWeightKg: dto.rawWeightKg,

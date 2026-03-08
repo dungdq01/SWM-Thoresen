@@ -35,12 +35,12 @@ export function FilterBar({
             variant="outline"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className={cn(hasActiveFilters && 'border-primary-500 text-primary-600')}
+            className={cn(hasActiveFilters && 'border-gold text-gold-dark')}
           >
             <Filter className="w-4 h-4 mr-2" />
             Bộ lọc
             {hasActiveFilters && (
-              <span className="ml-2 w-5 h-5 rounded-full bg-primary-500 text-white text-xs flex items-center justify-center">
+              <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-navy-900">
                 {Object.values(filterValues).filter((v) => v !== '' && v !== undefined).length}
               </span>
             )}
@@ -56,7 +56,7 @@ export function FilterBar({
       </div>
 
       {showFilters && filters.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-navy-50/50 rounded-xl">
+        <div className="wrs-card flex flex-wrap items-center gap-3 p-4">
           {filters.map((filter) => (
             <div key={filter.key} className="min-w-[160px]">
               <Select

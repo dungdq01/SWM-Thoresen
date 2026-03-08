@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Menu, X, Box } from 'lucide-react'
 import { Button } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
@@ -14,6 +15,7 @@ const navLinks = [
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,23 +36,24 @@ export function Header() {
     >
       <div className="container-custom">
         <nav className="flex items-center justify-between">
-          <motion.a 
-            href="#"
+          <motion.div 
             className="flex items-center gap-3"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-              <Box className="w-6 h-6 text-white" />
-            </div>
-            <span className={cn(
-              'text-xl font-bold transition-colors',
-              isScrolled ? 'text-navy-900' : 'text-navy-900'
-            )}>
-              WMS Pro
-            </span>
-          </motion.a>
+            <Link to="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
+                <Box className="w-6 h-6 text-white" />
+              </div>
+              <span className={cn(
+                'text-xl font-bold transition-colors',
+                isScrolled ? 'text-navy-900' : 'text-navy-900'
+              )}>
+                WMS Pro
+              </span>
+            </Link>
+          </motion.div>
 
           <motion.div 
             className="hidden md:flex items-center gap-8"
@@ -78,10 +81,10 @@ export function Header() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <Button variant="primary" size="md">
-              Dùng thử miễn phí
+            <Button variant="gold" size="md" onClick={() => navigate('/app')}>
+              Vào ứng dụng
             </Button>
-            <Button variant="secondary" size="md">
+            <Button variant="secondary" size="md" onClick={() => navigate('/app')}>
               Đăng nhập
             </Button>
           </motion.div>
@@ -115,10 +118,10 @@ export function Header() {
                 </a>
               ))}
               <div className="pt-4 space-y-3 border-t border-navy-100">
-                <Button variant="primary" size="md" className="w-full">
-                  Dùng thử miễn phí
+                <Button variant="gold" size="md" className="w-full" onClick={() => { setIsMobileMenuOpen(false); navigate('/app') }}>
+                  Vào ứng dụng
                 </Button>
-                <Button variant="secondary" size="md" className="w-full">
+                <Button variant="secondary" size="md" className="w-full" onClick={() => { setIsMobileMenuOpen(false); navigate('/app') }}>
                   Đăng nhập
                 </Button>
               </div>

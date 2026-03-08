@@ -83,8 +83,8 @@ export function NumberSequencesPage() {
                 <TableRow key={seq.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
-                        <Hash className="w-4 h-4 text-primary-600" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold/15 text-gold-dark">
+                        <Hash className="w-4 h-4" />
                       </div>
                       <code className="font-mono font-semibold text-navy-900">
                         {seq.sequenceCode}
@@ -117,7 +117,7 @@ export function NumberSequencesPage() {
                   <TableCell align="right">
                     <button
                       onClick={() => openEditModal(seq)}
-                      className="p-2 text-navy-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
                       title="Chỉnh sửa"
                     >
                       <Edit2 className="w-4 h-4" />

@@ -24,6 +24,20 @@ const UomsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m
 const VehicleTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VehicleTypesPage })))
 const InventoryStatusesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.InventoryStatusesPage })))
 
+// Inventory Core Pages
+const InventoryCoreLayout = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryCoreLayout })))
+const InventoryOnHandPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryOnHandPage })))
+const InventoryTransactionsPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryTransactionsPage })))
+const InventoryHoldsPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryHoldsPage })))
+const InventoryPostingWorkbenchPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryPostingWorkbenchPage })))
+
+// Inbound Operations Pages
+const InboundOperationsLayout = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundOperationsLayout })))
+const InboundReceiptsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundReceiptsPage })))
+const InboundExecutionPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExecutionPage })))
+const InboundExceptionsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExceptionsPage })))
+const InboundPutawayPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundPutawayPage })))
+
 const withSuspense = (Component) => (
   <Suspense fallback={<PageLoader />}>
     <Component />
@@ -82,6 +96,7 @@ export const router = createBrowserRouter([
       // Master Data routes
       {
         path: 'master-data',
+        element: withSuspense(MasterDataLayout),
         children: [
           {
             index: true,
@@ -122,6 +137,58 @@ export const router = createBrowserRouter([
           {
             path: 'inventory-statuses',
             element: withSuspense(InventoryStatusesPage),
+          },
+        ],
+      },
+      {
+        path: 'inventory-core',
+        element: withSuspense(InventoryCoreLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/inventory-core/on-hand" replace />,
+          },
+          {
+            path: 'on-hand',
+            element: withSuspense(InventoryOnHandPage),
+          },
+          {
+            path: 'transactions',
+            element: withSuspense(InventoryTransactionsPage),
+          },
+          {
+            path: 'holds',
+            element: withSuspense(InventoryHoldsPage),
+          },
+          {
+            path: 'workbench',
+            element: withSuspense(InventoryPostingWorkbenchPage),
+          },
+        ],
+      },
+      {
+        path: 'inbound-operations',
+        element: withSuspense(InboundOperationsLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/inbound-operations/receipts" replace />,
+          },
+          {
+            path: 'receipts',
+            element: withSuspense(InboundReceiptsPage),
+          },
+          {
+            path: 'execution',
+            element: withSuspense(InboundExecutionPage),
+          },
+          {
+            path: 'exceptions',
+            element: withSuspense(InboundExceptionsPage),
+          },
+          {
+            path: 'putaway',
+            element: withSuspense(InboundPutawayPage),
           },
         ],
       },

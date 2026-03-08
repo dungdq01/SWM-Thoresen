@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { AllocationService } from '../services/allocation.service';
 import { ShipmentQueryService } from '../services/shipment-query.service';
 import { AllocateShipmentUseCase } from '../application/allocateShipment.usecase';
 import { AuthGuard } from '../../../common/guards/auth.guard';
@@ -23,7 +22,6 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 @UseGuards(AuthGuard, PermissionGuard)
 export class AllocationController {
   constructor(
-    private readonly allocationService: AllocationService,
     private readonly queryService: ShipmentQueryService,
     private readonly allocateUseCase: AllocateShipmentUseCase,
   ) {}
@@ -51,7 +49,7 @@ export class AllocationController {
   @ApiResponse({ status: 400, description: 'Cannot unallocate' })
   @Permission('OUTBOUND.ALLOCATION.EXECUTE')
   async unallocate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
-    return this.allocationService.releaseAll(id, user.id);
+    return this.allocateUseCase.releaseAll(id, user.id);
   }
 
   @Get(':id/allocations')

@@ -1,4 +1,4 @@
-import { Package, ArrowDownToLine, ArrowUpFromLine, AlertTriangle } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, AlertTriangle, Package, TrendingDown, TrendingUp } from 'lucide-react'
 
 const stats = [
   { 
@@ -7,8 +7,8 @@ const stats = [
     change: '+2.5%', 
     changeType: 'positive',
     icon: Package,
-    iconBg: 'bg-emerald-50',
-    iconColor: 'text-emerald-600'
+    iconBg: 'bg-navy-800',
+    iconColor: 'text-gold'
   },
   { 
     label: 'Nhập kho hôm nay', 
@@ -16,8 +16,8 @@ const stats = [
     change: '+12.3%', 
     changeType: 'positive',
     icon: ArrowDownToLine,
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-600'
+    iconBg: 'bg-success/10',
+    iconColor: 'text-success'
   },
   { 
     label: 'Xuất kho hôm nay', 
@@ -25,8 +25,8 @@ const stats = [
     change: '-3.1%', 
     changeType: 'negative',
     icon: ArrowUpFromLine,
-    iconBg: 'bg-orange-50',
-    iconColor: 'text-orange-600'
+    iconBg: 'bg-info/10',
+    iconColor: 'text-info'
   },
   { 
     label: 'Cảnh báo tồn kho', 
@@ -34,60 +34,65 @@ const stats = [
     change: '+5 mới', 
     changeType: 'warning',
     icon: AlertTriangle,
-    iconBg: 'bg-amber-50',
-    iconColor: 'text-amber-600'
+    iconBg: 'bg-warning/10',
+    iconColor: 'text-warning'
   },
 ]
 
 export function DashboardPage() {
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Tổng quan</h1>
-        <p className="text-slate-500 text-sm">Dashboard quản lý kho hàng</p>
+    <div className="page-section">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Dashboard vận hành SWM</h1>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className={`w-10 h-10 rounded-lg ${stat.iconBg} flex items-center justify-center`}>
-                <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat, index) => (
+          <div key={stat.label} className={`stat-card animate-slide-up stagger-${Math.min(index + 1, 5)}`}>
+            <div className="stat-card-row">
+              <div className={`stat-card-icon shrink-0 ${stat.iconBg}`}>
+              <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
               </div>
-              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                stat.changeType === 'positive' ? 'bg-emerald-50 text-emerald-600' :
-                stat.changeType === 'negative' ? 'bg-red-50 text-red-600' :
-                'bg-amber-50 text-amber-600'
-              }`}>
-                {stat.change}
-              </span>
-            </div>
-            <div className="mt-4">
-              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-              <p className="text-sm text-slate-500 mt-1">{stat.label}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="kpi-value-sm">{stat.value}</span>
+                  <span className={`ml-auto flex items-center gap-1 text-[11px] font-bold ${
+                    stat.changeType === 'positive' ? 'text-success' : stat.changeType === 'negative' ? 'text-danger' : 'text-warning'
+                  }`}>
+                    {stat.changeType === 'positive' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {stat.change}
+                  </span>
+                </div>
+                <p className="mt-2 kpi-label">{stat.label}</p>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Placeholder content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-          <h2 className="font-semibold text-slate-900 mb-4">Xuất nhập kho</h2>
-          <p className="text-slate-500 text-sm">7 ngày gần nhất</p>
-          <div className="h-64 flex items-center justify-center text-slate-400 mt-4">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="content-section xl:col-span-2">
+          <div className="content-section-header">
+            <div>
+              <h2 className="section-title">Xuất nhập kho</h2>
+              <p className="section-description">7 ngày gần nhất</p>
+            </div>
+          </div>
+          <div className="mt-6 flex h-64 items-center justify-center rounded-2xl border border-dashed border-moon-300 bg-moon-50 text-navy-400">
             <p>Biểu đồ sẽ được hiển thị ở đây</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            <h2 className="font-semibold text-slate-900">Cảnh báo tồn kho thấp</h2>
+        <div className="content-section">
+          <div className="content-section-header">
+            <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-gold" />
+              <h2 className="section-title">Cảnh báo tồn kho thấp</h2>
+            </div>
           </div>
-          <p className="text-slate-500 text-sm mb-4">5 sản phẩm</p>
+          <p className="mb-4 mt-4 section-description">5 sản phẩm</p>
           
           <div className="space-y-4">
             {[
@@ -97,17 +102,17 @@ export function DashboardPage() {
             ].map((item) => (
               <div key={item.name} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700">{item.name}</span>
-                  <span className="text-xs text-slate-500">{item.warehouse}</span>
+                  <span className="text-sm font-semibold text-navy-800">{item.name}</span>
+                  <span className="text-xs text-navy-400">{item.warehouse}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-moon-200">
                     <div 
-                      className="h-full bg-red-500 rounded-full" 
+                      className="h-full rounded-full bg-danger" 
                       style={{ width: `${(item.current / item.min) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs text-slate-500 whitespace-nowrap">
+                  <span className="whitespace-nowrap text-xs text-navy-500">
                     {item.current}/{item.min}
                   </span>
                 </div>

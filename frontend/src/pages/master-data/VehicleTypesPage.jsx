@@ -2,9 +2,14 @@ import { useState, useCallback } from 'react'
 import { Truck } from 'lucide-react'
 import {
   useVehicleTypeList,
+  useCreateVehicleType,
+  useUpdateVehicleType,
+  useDeactivateVehicleType,
   PageHeader,
   FilterBar,
   StatusBadge,
+  ActionMenu,
+  DeactivateModal,
   MasterDataTableWrapper,
   TableHeader,
   TableBody,
@@ -14,6 +19,7 @@ import {
   VEHICLE_CATEGORIES,
 } from '@domains/master-data'
 import { Badge } from '@shared/ui'
+import { VehicleTypeFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
   { value: 'true', label: 'Hoạt động' },
@@ -38,6 +44,8 @@ export function VehicleTypesPage() {
     isActive: '',
     category: '',
   })
+  const [drawerState, setDrawerState] = useState({ isOpen: false, data: null })
+  const [deactivateState, setDeactivateState] = useState({ isOpen: false, data: null })
 
   const { data: response, isLoading, refetch } = useVehicleTypeList({
     page: filters.page,
@@ -46,6 +54,9 @@ export function VehicleTypesPage() {
     isActive: filters.isActive === '' ? undefined : filters.isActive === 'true',
     category: filters.category || undefined,
   })
+  const createMutation = useCreateVehicleType()
+  const updateMutation = useUpdateVehicleType()
+  const deactivateMutation = useDeactivateVehicleType()
 
   const vehicleTypes = response?.data || []
   const meta = response?.meta || { total: 0, page: 1, totalPages: 1 }
@@ -72,6 +83,28 @@ export function VehicleTypesPage() {
     setFilters((prev) => ({ ...prev, page }))
   }, [])
 
+  const handleAdd = () => setDrawerState({ isOpen: true, data: null })
+  const handleEdit = (vehicleType) => setDrawerState({ isOpen: true, data: vehicleType })
+  const handleCloseDrawer = () => setDrawerState({ isOpen: false, data: null })
+
+  const handleSubmit = async (data) => {
+    try {
+      if (drawerState.data) {
+        await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+      } else {
+        await createMutation.mutateAsync(data)
+      }
+      handleCloseDrawer()
+    } catch (error) {}
+  }
+
+  const handleConfirmDeactivate = async (reason) => {
+    try {
+      await deactivateMutation.mutateAsync({ id: deactivateState.data.id, reason })
+      setDeactivateState({ isOpen: false, data: null })
+    } catch (error) {}
+  }
+
   const filterConfig = [
     { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
     { key: 'category', placeholder: 'Loại', options: VEHICLE_CATEGORIES },
@@ -82,6 +115,8 @@ export function VehicleTypesPage() {
       <PageHeader
         title="Quản lý loại phương tiện"
         description="Danh sách các loại phương tiện vận chuyển"
+        onAdd={handleAdd}
+        addLabel="Thêm loại phương tiện"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -105,7 +140,7 @@ export function VehicleTypesPage() {
         isLoading={isLoading}
         isEmpty={vehicleTypes.length === 0}
         emptyMessage="Chưa có loại phương tiện nào"
-        colSpan={6}
+        colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -118,6 +153,7 @@ export function VehicleTypesPage() {
             <TableHead>Tải trọng tối đa</TableHead>
             <TableHead>Tare Weight</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
+            <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
         {!isLoading && vehicleTypes.length > 0 && (
@@ -151,11 +187,34 @@ export function VehicleTypesPage() {
                 <TableCell align="center">
                   <StatusBadge isActive={vt.isActive} />
                 </TableCell>
+                <TableCell align="center">
+                  <ActionMenu
+                    onEdit={() => handleEdit(vt)}
+                    onDeactivate={() => setDeactivateState({ isOpen: true, data: vt })}
+                    isActive={vt.isActive}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         )}
       </MasterDataTableWrapper>
+
+      <VehicleTypeFormDrawer
+        isOpen={drawerState.isOpen}
+        onClose={handleCloseDrawer}
+        onSubmit={handleSubmit}
+        initialData={drawerState.data}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <DeactivateModal
+        isOpen={deactivateState.isOpen}
+        onClose={() => setDeactivateState({ isOpen: false, data: null })}
+        onConfirm={handleConfirmDeactivate}
+        entityName={deactivateState.data?.vehicleTypeName}
+        isLoading={deactivateMutation.isPending}
+      />
     </div>
   )
 }

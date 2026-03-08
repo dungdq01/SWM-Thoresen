@@ -2,9 +2,14 @@ import { useState, useCallback } from 'react'
 import { Scale } from 'lucide-react'
 import {
   useUomList,
+  useCreateUom,
+  useUpdateUom,
+  useDeactivateUom,
   PageHeader,
   FilterBar,
   StatusBadge,
+  ActionMenu,
+  DeactivateModal,
   MasterDataTableWrapper,
   TableHeader,
   TableBody,
@@ -14,6 +19,7 @@ import {
   UOM_CLASSES,
 } from '@domains/master-data'
 import { Badge } from '@shared/ui'
+import { UomFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
   { value: 'true', label: 'Hoạt động' },
@@ -33,6 +39,8 @@ export function UomsPage() {
     isActive: '',
     uomClass: '',
   })
+  const [drawerState, setDrawerState] = useState({ isOpen: false, data: null })
+  const [deactivateState, setDeactivateState] = useState({ isOpen: false, data: null })
 
   const { data: response, isLoading, refetch } = useUomList({
     page: filters.page,
@@ -41,6 +49,9 @@ export function UomsPage() {
     isActive: filters.isActive === '' ? undefined : filters.isActive === 'true',
     uomClass: filters.uomClass || undefined,
   })
+  const createMutation = useCreateUom()
+  const updateMutation = useUpdateUom()
+  const deactivateMutation = useDeactivateUom()
 
   const uoms = response?.data || []
   const meta = response?.meta || { total: 0, page: 1, totalPages: 1 }
@@ -67,6 +78,28 @@ export function UomsPage() {
     setFilters((prev) => ({ ...prev, page }))
   }, [])
 
+  const handleAdd = () => setDrawerState({ isOpen: true, data: null })
+  const handleEdit = (uom) => setDrawerState({ isOpen: true, data: uom })
+  const handleCloseDrawer = () => setDrawerState({ isOpen: false, data: null })
+
+  const handleSubmit = async (data) => {
+    try {
+      if (drawerState.data) {
+        await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+      } else {
+        await createMutation.mutateAsync(data)
+      }
+      handleCloseDrawer()
+    } catch (error) {}
+  }
+
+  const handleConfirmDeactivate = async (reason) => {
+    try {
+      await deactivateMutation.mutateAsync({ id: deactivateState.data.id, reason })
+      setDeactivateState({ isOpen: false, data: null })
+    } catch (error) {}
+  }
+
   const filterConfig = [
     { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
     { key: 'uomClass', placeholder: 'Loại đơn vị', options: UOM_CLASSES },
@@ -77,6 +110,8 @@ export function UomsPage() {
       <PageHeader
         title="Quản lý đơn vị tính"
         description="Danh sách các đơn vị tính trong hệ thống"
+        onAdd={handleAdd}
+        addLabel="Thêm đơn vị tính"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -100,7 +135,7 @@ export function UomsPage() {
         isLoading={isLoading}
         isEmpty={uoms.length === 0}
         emptyMessage="Chưa có đơn vị tính nào"
-        colSpan={5}
+        colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -112,6 +147,7 @@ export function UomsPage() {
             <TableHead>Loại</TableHead>
             <TableHead align="center">Đơn vị cơ sở</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
+            <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
         {!isLoading && uoms.length > 0 && (
@@ -142,11 +178,34 @@ export function UomsPage() {
                 <TableCell align="center">
                   <StatusBadge isActive={uom.isActive} />
                 </TableCell>
+                <TableCell align="center">
+                  <ActionMenu
+                    onEdit={() => handleEdit(uom)}
+                    onDeactivate={() => setDeactivateState({ isOpen: true, data: uom })}
+                    isActive={uom.isActive}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         )}
       </MasterDataTableWrapper>
+
+      <UomFormDrawer
+        isOpen={drawerState.isOpen}
+        onClose={handleCloseDrawer}
+        onSubmit={handleSubmit}
+        initialData={drawerState.data}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <DeactivateModal
+        isOpen={deactivateState.isOpen}
+        onClose={() => setDeactivateState({ isOpen: false, data: null })}
+        onConfirm={handleConfirmDeactivate}
+        entityName={deactivateState.data?.uomCode}
+        isLoading={deactivateMutation.isPending}
+      />
     </div>
   )
 }

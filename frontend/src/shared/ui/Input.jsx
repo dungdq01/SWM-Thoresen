@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { AlertCircle } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 export const Input = forwardRef(
@@ -6,9 +7,9 @@ export const Input = forwardRef(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-navy-700 mb-1.5">
+          <label className="mb-1.5 block text-sm font-semibold text-navy-700">
             {label}
-            {required && <span className="text-red-500 ml-0.5">*</span>}
+            {required && <span className="ml-0.5 text-danger">*</span>}
           </label>
         )}
         <div className="relative">
@@ -20,15 +21,13 @@ export const Input = forwardRef(
           <input
             ref={ref}
             className={cn(
-              'w-full px-4 py-2.5 rounded-xl border bg-white text-navy-900 placeholder:text-navy-400',
-              'transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500',
+              'wrs-input flex file:border-0 file:bg-transparent file:text-sm file:font-medium ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
               error
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
-                : 'border-navy-200 hover:border-navy-300',
+                ? 'border-danger/40 focus-visible:ring-danger/20'
+                : 'hover:border-moon-300',
               leftIcon && 'pl-10',
               rightIcon && 'pr-10',
-              props.disabled && 'bg-navy-50 text-navy-500 cursor-not-allowed',
+              props.disabled && 'bg-moon-50 text-navy-300',
               className
             )}
             {...props}
@@ -40,10 +39,13 @@ export const Input = forwardRef(
           )}
         </div>
         {hint && !error && (
-          <p className="mt-1.5 text-sm text-navy-500">{hint}</p>
+          <p className="form-hint">{hint}</p>
         )}
         {error && (
-          <p className="mt-1.5 text-sm text-red-600">{error}</p>
+          <p className="form-error">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </p>
         )}
       </div>
     )

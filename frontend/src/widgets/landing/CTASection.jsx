@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useScrollAnimation } from '@shared/hooks/useScrollAnimation'
 import { Button } from '@shared/ui'
 import { ArrowRight, Phone } from 'lucide-react'
 
 export function CTASection() {
   const { ref, isVisible } = useScrollAnimation(0.2)
+  const navigate = useNavigate()
 
   return (
     <section ref={ref} className="section-padding bg-white">
@@ -45,20 +47,23 @@ export function CTASection() {
               transition={{ duration: 0.5, delay: 0.4 }}
             >
               <Button 
-                variant="primary" 
+                variant="gold" 
                 size="lg"
                 icon={<ArrowRight className="w-5 h-5" />}
                 iconPosition="right"
+                onClick={() => navigate('/app')}
               >
-                Dùng thử miễn phí
+                Đi tới ứng dụng
               </Button>
-              <Button 
-                variant="secondary" 
-                size="lg"
-                icon={<Phone className="w-5 h-5" />}
-              >
-                Liên hệ bộ phận tư vấn
-              </Button>
+              <a href="tel:1900123456">
+                <Button 
+                  variant="secondary" 
+                  size="lg"
+                  icon={<Phone className="w-5 h-5" />}
+                >
+                  Liên hệ bộ phận tư vấn
+                </Button>
+              </a>
             </motion.div>
           </div>
         </motion.div>

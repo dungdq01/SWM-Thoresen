@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Play, Users } from 'lucide-react'
 import { Button } from '@shared/ui'
 
 export function HeroSection() {
+  const navigate = useNavigate()
+
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-primary-50/30" />
@@ -48,17 +51,19 @@ export function HeroSection() {
 
             <div className="flex flex-wrap gap-4 mb-8">
               <Button 
-                variant="primary" 
+                variant="gold" 
                 size="lg"
                 icon={<ArrowRight className="w-5 h-5" />}
                 iconPosition="right"
+                onClick={() => navigate('/app')}
               >
-                Trải nghiệm ngay
+                Vào dashboard
               </Button>
               <Button 
                 variant="ghost" 
                 size="lg"
                 icon={<Play className="w-5 h-5" />}
+                onClick={() => navigate('/app')}
               >
                 Xem bản Demo
               </Button>
@@ -110,12 +115,12 @@ export function HeroSection() {
                   
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { label: 'Tồn kho', value: '12,450', color: 'primary' },
-                      { label: 'Nhập kho', value: '340', color: 'green' },
-                      { label: 'Xuất kho', value: '285', color: 'orange' },
+                      { label: 'Tồn kho', value: '12,450', valueClass: 'text-primary-600' },
+                      { label: 'Nhập kho', value: '340', valueClass: 'text-success' },
+                      { label: 'Xuất kho', value: '285', valueClass: 'text-warning' },
                     ].map((stat) => (
                       <div key={stat.label} className="bg-slate-50 rounded-lg p-3 text-center">
-                        <div className={`text-lg font-bold text-${stat.color === 'primary' ? 'primary' : stat.color}-600`}>
+                        <div className={`text-lg font-bold ${stat.valueClass}`}>
                           {stat.value}
                         </div>
                         <div className="text-xs text-navy-500">{stat.label}</div>

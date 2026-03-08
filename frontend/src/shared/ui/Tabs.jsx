@@ -17,7 +17,7 @@ export function Tabs({ defaultValue, value, onChange, children, className }) {
 
 export function TabsList({ children, className }) {
   return (
-    <div className={cn('flex gap-1 p-1 bg-navy-100 rounded-xl', className)}>
+    <div className={cn('inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground', className)}>
       {children}
     </div>
   )
@@ -33,11 +33,11 @@ export function TabsTrigger({ value, children, className, disabled }) {
       disabled={disabled}
       onClick={() => !disabled && context?.onChange(value)}
       className={cn(
-        'px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+        'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/30 focus-visible:ring-offset-2',
         isActive
-          ? 'bg-white text-navy-900 shadow-sm'
-          : 'text-navy-600 hover:text-navy-900 hover:bg-navy-50',
-        disabled && 'opacity-50 cursor-not-allowed',
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:text-foreground',
+        disabled && 'cursor-not-allowed opacity-50',
         className
       )}
     >
@@ -50,5 +50,5 @@ export function TabsContent({ value, children, className }) {
   const context = useContext(TabsContext)
   if (context?.value !== value) return null
 
-  return <div className={cn('mt-4', className)}>{children}</div>
+  return <div className={cn('mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/30 focus-visible:ring-offset-2', className)}>{children}</div>
 }

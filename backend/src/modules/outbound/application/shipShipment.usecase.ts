@@ -120,8 +120,8 @@ export class ShipShipmentUseCase {
             }
           }
 
-          // Create posting link record
-          await this.postingLinkRepo.create({
+          // Create posting link record and mark success
+          const postingLink = await this.postingLinkRepo.create({
             shipmentHeaderId: input.shipmentId,
             shipmentLineId: line.id,
             postingAction: 'POST',
@@ -132,6 +132,11 @@ export class ShipShipmentUseCase {
               transDbId: postingResult.transDbId,
             },
             correlationId: corrId,
+          });
+
+          await this.postingLinkRepo.markSuccess(postingLink.id, postingResult.transId, {
+            transDbId: postingResult.transDbId,
+            postedAt: new Date().toISOString(),
           });
 
           // Mark allocation as posted

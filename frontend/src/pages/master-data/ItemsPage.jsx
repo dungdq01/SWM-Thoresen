@@ -179,17 +179,17 @@ export function ItemsPage() {
               <TableRow key={item.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                      <Package className="w-4 h-4 text-amber-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold/15 text-gold-dark">
+                      <Package className="h-4 w-4" />
                     </div>
-                    <span className="font-medium text-navy-900">{item.itemCode}</span>
+                    <span className="font-semibold text-navy-900">{item.itemCode}</span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div>
-                    <p className="font-medium text-navy-900">{item.itemName}</p>
+                    <p className="font-semibold text-navy-800">{item.itemName}</p>
                     {item.itemNameEn && (
-                      <p className="text-xs text-navy-500">{item.itemNameEn}</p>
+                      <p className="text-xs text-navy-400">{item.itemNameEn}</p>
                     )}
                   </div>
                 </TableCell>

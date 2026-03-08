@@ -1,17 +1,23 @@
 import { forwardRef } from 'react'
+import { Loader2 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const variants = {
-  primary: 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40',
-  secondary: 'bg-white text-navy-900 border-2 border-navy-200 hover:border-primary-500 hover:text-primary-600',
-  ghost: 'text-navy-700 hover:bg-navy-100 hover:text-navy-900',
-  outline: 'border-2 border-primary-500 text-primary-600 hover:bg-primary-50',
+  primary: 'bg-navy-800 text-moon-100 shadow-sm hover:bg-navy-700',
+  secondary: 'border-2 border-moon-300 bg-white text-navy-800 shadow-sm hover:bg-moon-50',
+  outline: 'border-2 border-moon-300 bg-background text-navy-700 shadow-sm hover:bg-moon-50 hover:text-navy-900',
+  ghost: 'bg-transparent text-navy-600 hover:bg-moon-100 hover:text-navy-900',
+  gold: 'bg-gold text-navy-900 shadow-glow-gold hover:bg-primary-400',
+  danger: 'bg-danger text-white shadow-sm hover:bg-danger/90',
+  destructive: 'bg-danger text-white shadow-sm hover:bg-danger/90',
+  link: 'h-auto p-0 text-gold-dark underline-offset-4 hover:underline',
 }
 
 const sizes = {
-  sm: 'px-4 py-2 text-sm',
-  md: 'px-6 py-3 text-base',
-  lg: 'px-8 py-4 text-lg',
+  sm: 'h-8 rounded-xl px-3 text-xs',
+  md: 'h-10 rounded-xl px-4 text-sm',
+  lg: 'h-12 rounded-xl px-8 text-sm',
+  icon: 'h-10 w-10 rounded-xl p-0',
 }
 
 const Button = forwardRef(({ 
@@ -21,23 +27,27 @@ const Button = forwardRef(({
   className, 
   icon,
   iconPosition = 'left',
+  isLoading = false,
   ...props 
 }, ref) => {
   return (
     <button
+      type={props.type ?? 'button'}
       ref={ref}
       className={cn(
-        'btn-base',
-        variants[variant],
-        sizes[size],
-        'gap-2',
+        'btn-base inline-flex shrink-0 items-center justify-center whitespace-nowrap text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/30 focus-visible:ring-offset-2',
+        variants[variant] ?? variants.primary,
+        sizes[size] ?? sizes.md,
+        isLoading && 'cursor-wait opacity-80',
         className
       )}
+      disabled={props.disabled || isLoading}
       {...props}
     >
-      {icon && iconPosition === 'left' && icon}
-      {children}
-      {icon && iconPosition === 'right' && icon}
+      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      {icon && iconPosition === 'left' ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
+      {children ? <span className="inline-flex items-center">{children}</span> : null}
+      {icon && iconPosition === 'right' ? <span className="inline-flex shrink-0 items-center">{icon}</span> : null}
     </button>
   )
 })

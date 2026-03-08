@@ -139,7 +139,7 @@ export function ReasonCodesPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openEditModal(rc)}
-                        className="p-2 text-navy-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
                         title="Chỉnh sửa"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -147,7 +147,7 @@ export function ReasonCodesPage() {
                       {rc.isActive && (
                         <button
                           onClick={() => handleDeactivate(rc.id)}
-                          className="p-2 text-navy-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-danger/5 hover:text-danger"
                           title="Vô hiệu hóa"
                         >
                           <Power className="w-4 h-4" />

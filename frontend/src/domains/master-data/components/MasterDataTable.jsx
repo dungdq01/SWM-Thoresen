@@ -31,17 +31,17 @@ export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActiv
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-1.5 rounded-lg text-navy-400 hover:text-navy-600 hover:bg-navy-100 transition-colors"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
       >
         <MoreHorizontal className="w-4 h-4" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-soft-lg border border-navy-100 py-1 z-10">
+        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-moon-200 bg-white py-1 text-navy-800 shadow-card-lg">
           {onView && (
             <button
               onClick={() => { onView(); setIsOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-navy-700 hover:bg-navy-50 transition-colors"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors duration-200 hover:bg-moon-50"
             >
               <Eye className="w-4 h-4" />
               Xem chi tiết
@@ -50,7 +50,7 @@ export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActiv
           {onEdit && (
             <button
               onClick={() => { onEdit(); setIsOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-navy-700 hover:bg-navy-50 transition-colors"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors duration-200 hover:bg-moon-50"
             >
               <Edit className="w-4 h-4" />
               Chỉnh sửa
@@ -59,7 +59,7 @@ export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActiv
           {isActive && onDeactivate && (
             <button
               onClick={() => { onDeactivate(); setIsOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger transition-colors duration-200 hover:bg-danger/5"
             >
               <PowerOff className="w-4 h-4" />
               Ngừng hoạt động
@@ -68,7 +68,7 @@ export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActiv
           {!isActive && onReactivate && (
             <button
               onClick={() => { onReactivate(); setIsOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-success transition-colors duration-200 hover:bg-success/5"
             >
               <Power className="w-4 h-4" />
               Kích hoạt lại
@@ -92,7 +92,7 @@ export function MasterDataTableWrapper({
   className,
 }) {
   return (
-    <div className={cn('bg-white rounded-2xl shadow-soft-md overflow-hidden', className)}>
+    <div className={cn('wrs-card overflow-hidden', className)}>
       <Table>
         {children}
         <TableBody>

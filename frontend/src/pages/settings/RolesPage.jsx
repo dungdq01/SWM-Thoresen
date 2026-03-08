@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, Shield, Search } from 'lucide-react'
+import { Plus, Edit2, Shield } from 'lucide-react'
 import {
   Button,
   Table,
@@ -11,7 +11,6 @@ import {
   TableEmpty,
   TableLoading,
   SearchInput,
-  EmptyState,
 } from '@shared/ui'
 import { useRoles, ActiveStatusBadge } from '@domains/auth'
 import { RoleFormModal, AssignPermissionModal } from '@features/settings'
@@ -79,18 +78,18 @@ export function RolesPage() {
               filteredRoles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell>
-                    <span className="font-mono text-sm bg-navy-100 px-2 py-1 rounded">
+                    <span className="inline-flex items-center rounded-xl border border-moon-200 bg-moon-50 px-2.5 py-1 font-mono text-sm font-semibold text-navy-900">
                       {role.roleCode}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium text-navy-900">{role.roleName}</span>
+                    <span className="font-semibold text-navy-800">{role.roleName}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-navy-600 line-clamp-1">{role.description || '—'}</span>
+                    <span className="line-clamp-1 text-sm text-navy-400">{role.description || '—'}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-1 text-primary-600">
+                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-gold-dark">
                       <Shield className="w-4 h-4" />
                       {role.permissions?.length || 0}
                     </span>
@@ -102,14 +101,14 @@ export function RolesPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openPermModal(role)}
-                        className="p-2 text-navy-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-gold-dark"
                         title="Phân quyền"
                       >
                         <Shield className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEditModal(role)}
-                        className="p-2 text-navy-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
                         title="Chỉnh sửa"
                       >
                         <Edit2 className="w-4 h-4" />

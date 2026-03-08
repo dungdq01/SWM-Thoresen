@@ -1,9 +1,8 @@
-import { Plus, Download, RefreshCw } from 'lucide-react'
+import { Download, Plus, RefreshCw } from 'lucide-react'
 import { Button } from '@shared/ui'
 
 export function PageHeader({
   title,
-  description,
   onAdd,
   addLabel = 'Thêm mới',
   onExport,
@@ -12,12 +11,9 @@ export function PageHeader({
   children,
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="page-header">
       <div>
-        <h1 className="text-2xl font-bold text-navy-900">{title}</h1>
-        {description && (
-          <p className="mt-1 text-navy-600">{description}</p>
-        )}
+        <h1 className="page-title">{title}</h1>
       </div>
       <div className="flex items-center gap-3">
         {children}
@@ -27,20 +23,18 @@ export function PageHeader({
             size="sm"
             onClick={onRefresh}
             disabled={isRefreshing}
+            icon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Làm mới
           </Button>
         )}
         {onExport && (
-          <Button variant="outline" size="sm" onClick={onExport}>
-            <Download className="w-4 h-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={onExport} icon={<Download className="h-4 w-4" />}>
             Xuất Excel
           </Button>
         )}
         {onAdd && (
-          <Button onClick={onAdd}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button variant="gold" onClick={onAdd} icon={<Plus className="h-4 w-4" />}>
             {addLabel}
           </Button>
         )}

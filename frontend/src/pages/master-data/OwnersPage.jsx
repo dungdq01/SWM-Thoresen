@@ -128,7 +128,7 @@ export function OwnersPage() {
   ]
 
   return (
-    <div className="p-6">
+    <div className="page-section">
       <PageHeader
         title="Quản lý chủ hàng"
         description="Danh sách các chủ hàng trong hệ thống"
@@ -138,7 +138,7 @@ export function OwnersPage() {
         isRefreshing={isLoading}
       />
 
-      <div className="mb-6">
+      <div>
         <FilterBar
           keyword={filters.keyword}
           onKeywordChange={handleKeywordChange}
@@ -179,17 +179,17 @@ export function OwnersPage() {
               <TableRow key={owner.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
-                      <Building2 className="w-4 h-4 text-primary-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold/15 text-gold-dark">
+                      <Building2 className="h-4 w-4" />
                     </div>
-                    <span className="font-medium text-navy-900">{owner.ownerCode}</span>
+                    <span className="font-semibold text-navy-900">{owner.ownerCode}</span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div>
-                    <p className="font-medium text-navy-900">{owner.ownerName}</p>
+                    <p className="font-semibold text-navy-800">{owner.ownerName}</p>
                     {owner.shortName && (
-                      <p className="text-xs text-navy-500">{owner.shortName}</p>
+                      <p className="text-xs text-navy-400">{owner.shortName}</p>
                     )}
                   </div>
                 </TableCell>
@@ -197,7 +197,7 @@ export function OwnersPage() {
                   <OwnerGroupBadge group={owner.ownerGroup} />
                 </TableCell>
                 <TableCell>
-                  <span className="text-navy-600">{owner.taxCode || '—'}</span>
+                  <span className="text-sm text-navy-400">{owner.taxCode || '—'}</span>
                 </TableCell>
                 <TableCell align="center">
                   <StatusBadge isActive={owner.isActive} />

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { ShipmentHeaderRepository } from '../repositories/shipment-header.repository';
 import { ShipmentLineRepository } from '../repositories/shipment-line.repository';
 import { ApprovalDecisionRepository } from '../repositories/approval-decision.repository';
@@ -19,6 +20,7 @@ export interface ApprovalParams {
 @Injectable()
 export class ApprovalService {
   constructor(
+    private readonly prisma: PrismaService,
     private readonly headerRepo: ShipmentHeaderRepository,
     private readonly lineRepo: ShipmentLineRepository,
     private readonly approvalRepo: ApprovalDecisionRepository,
@@ -27,22 +29,25 @@ export class ApprovalService {
   ) {}
 
   async processApproval(params: ApprovalParams) {
-    const shipment = await this.headerRepo.findById(params.shipmentId);
-    if (!shipment) {
-      throw new NotFoundException(`Shipment ${params.shipmentId} not found`);
-    }
+    return this.prisma.$transaction(async (tx) => {
+      // HI-6 FIX: lockForUpdate to prevent concurrent approval race condition
+      const shipment = await this.headerRepo.lockForUpdate(params.shipmentId, tx);
+      if (!shipment) {
+        throw new NotFoundException(`Shipment ${params.shipmentId} not found`);
+      }
 
-    if (shipment.status !== 'PENDING_APPROVAL') {
-      throw new BadRequestException('Shipment is not pending approval');
-    }
+      if (shipment.status !== 'PENDING_APPROVAL') {
+        throw new BadRequestException('Shipment is not pending approval');
+      }
 
-    const corrId = params.correlationId || uuidv4();
+      const corrId = params.correlationId || uuidv4();
 
-    if (params.lineId) {
-      return this.processLineApproval(params, corrId);
-    } else {
-      return this.processShipmentApproval(params, corrId);
-    }
+      if (params.lineId) {
+        return this.processLineApproval(params, corrId);
+      } else {
+        return this.processShipmentApproval(params, corrId);
+      }
+    });
   }
 
   private async processLineApproval(params: ApprovalParams, correlationId: string) {

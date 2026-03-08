@@ -219,4 +219,68 @@ export class AllocateShipmentUseCase {
 
     await this.lineRepo.updateAllocatedQty(lineId, totalAllocated);
   }
+
+  /**
+   * Release all allocations for a shipment, including M3 hold cancellation
+   */
+  async releaseAll(shipmentId: string, userId?: string, correlationId?: string) {
+    const corrId = correlationId || uuidv4();
+
+    return this.prisma.$transaction(async (tx) => {
+      const shipment = await this.headerRepo.lockForUpdate(shipmentId, tx);
+      if (!shipment) {
+        throw new BadRequestException(`Shipment ${shipmentId} not found`);
+      }
+
+      // Release M3 holds for all allocations
+      const allocations = await this.allocationRepo.findByShipmentId(shipmentId);
+      for (const alloc of allocations) {
+        if (alloc.holdRef) {
+          try {
+            const holds = await this.m3Adapter.getHoldsByShipment(shipmentId, alloc.shipmentLineId);
+            for (const hold of holds) {
+              if (hold.holdNo === alloc.holdRef && hold.status === 'ACTIVE') {
+                await this.m3Adapter.releaseHold(hold.id, null, userId || '', corrId);
+              }
+            }
+          } catch (error: any) {
+            // Log but don't block — hold may already be released
+            await this.exceptionRepo.create({
+              shipmentHeaderId: shipmentId,
+              shipmentLineId: alloc.shipmentLineId,
+              exceptionType: 'HOLD_RELEASE_WARN',
+              exceptionCode: 'HOLD_RELEASE_FAILED',
+              severity: 'LOW',
+              detailJson: { holdRef: alloc.holdRef, error: error?.message },
+              createdBy: userId,
+              correlationId: corrId,
+            });
+          }
+        }
+      }
+
+      await this.allocationRepo.releaseAllByShipment(shipmentId);
+
+      const lines = await this.lineRepo.findAllocatedLines(shipmentId);
+      for (const line of lines) {
+        await this.lineRepo.updateStatus(line.id, 'PENDING');
+      }
+
+      await this.headerRepo.updateStatus(shipmentId, 'CONFIRMED', {
+        updatedBy: userId,
+      });
+
+      await this.historyRepo.create({
+        shipmentHeaderId: shipmentId,
+        entityLevel: 'HEADER',
+        fromStatus: 'ALLOCATED',
+        toStatus: 'CONFIRMED',
+        triggerAction: 'UNALLOCATE',
+        changedBy: userId,
+        correlationId: corrId,
+      });
+
+      return { success: true, shipmentId, releasedCount: allocations.length };
+    });
+  }
 }
