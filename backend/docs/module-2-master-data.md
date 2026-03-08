@@ -129,15 +129,28 @@ await this.logService.createAuditLog({
 
 ## 3.3 Idempotency Support
 
-Create operations hỗ trợ idempotency qua `externalId`:
+> **Lưu ý:** Idempotency cho create operations hiện chưa được triển khai trong Module 2.
+> 
+> Chỉ có `CreateWarehouseDto` có field `externalId`. Các DTO khác (`CreateItemDto`, `CreateZoneDto`, v.v.) chưa có.
+> 
+> Để triển khai idempotency trong tương lai, cần:
+> 1. Thêm `externalId` vào các DTO
+> 2. Sử dụng `IdempotencyService.executeIfKeyProvided()` từ Module 1
 
 ```typescript
-if (dto.externalId) {
-  return this.idempotencyService.executeWithIdempotency(
-    `WAREHOUSE:${dto.externalId}`,
-    doCreate,
-  );
-}
+// Ví dụ triển khai idempotency (chưa áp dụng)
+return this.idempotencyService.executeIfKeyProvided({
+  idempotencyKey: dto.externalId,
+  commandName: 'CREATE_WAREHOUSE',
+  sourceModule: 'MASTER_DATA',
+  payload: dto,
+  correlationId: ctx.correlationId,
+  execute: doCreate,
+  mapSuccess: (result) => ({
+    resourceType: 'WAREHOUSE',
+    resourceId: result.id,
+  }),
+});
 ```
 
 ## 3.4 FK Pre-validation

@@ -52,9 +52,6 @@ export class WarehouseService {
       return result;
     };
 
-    if (dto.externalId) {
-      return this.idempotencyService.executeWithIdempotency(`WAREHOUSE:${dto.externalId}`, doCreate);
-    }
     return doCreate();
   }
 

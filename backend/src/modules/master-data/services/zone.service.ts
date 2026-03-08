@@ -50,9 +50,6 @@ export class ZoneService {
       return result;
     };
 
-    if (dto.externalId) {
-      return this.idempotencyService.executeWithIdempotency(`ZONE:${dto.externalId}`, doCreate);
-    }
     return doCreate();
   }
 
