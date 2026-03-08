@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-08 (FB-v2)
+> **Last Updated:** 2026-03-08 (FB-v3 - CR-1 DONE)
 
 ---
 
@@ -339,10 +339,20 @@ Khi volume tăng, cân nhắc partition theo tháng:
 | HI-1 | BaggedPolicy dead code | Enable `overReceiptBlocked` | Over-receipt prevention |
 | HI-6 | Multi-line assumption | Guard `lines.length > 1` | Explicit constraint |
 
-### 6.3 Pending (Module Dependencies)
+### 6.3 M3 Integration (✅ Fixed v3)
+
+| Issue | Description | Fix | Status |
+|-------|-------------|-----|--------|
+| CR-1 | M3 PostingEngine | `postInventory()` called at RECEIVED | ✅ Fixed |
+| HI-1 | BaggedPolicy expectedBagCount | Calculate from lineData | ✅ Fixed |
+
+**Data Flow (CR-1):**
+- Receipt RECEIVED → `postInventory()` → `InventTrans` created → `OnHand` updated
+- `postedTransId` field populated with M3 transId
+
+### 6.4 Pending (Module Dependencies)
 
 | Issue | Description | Dependency |
 |-------|-------------|------------|
-| CR-1 | M3 PostingEngine | M3 interface ready |
 | HI-2 | Putaway workflow | M7 Work ready |
 | HI-5 | AuditLog integration | M1 LogService ready |
