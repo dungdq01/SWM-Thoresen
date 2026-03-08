@@ -2,8 +2,8 @@
 
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/inventory-core`  
-**Version:** 1.0  
-**Last Updated:** 2026-03-08
+**Version:** 1.1  
+**Last Updated:** 2026-03-09
 
 ---
 
@@ -31,34 +31,68 @@ Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhi�
 ```
 src/modules/inventory-core/
 ├── index.js                          # Main export
-├── inventory-core.routes.js          # Express routes
+├── inventory-core.routes.js          # Express routes (RBAC protected)
 ├── inventory-core.controller.js      # Request handlers
 ├── inventory-core.schema.js          # Joi validation schemas
+├── middleware/
+│   └── auth.middleware.js            # Auth + Permission middleware
 ├── domain/
 │   ├── inventory.types.js            # Enums & constants
 │   ├── inventory.errors.js           # Error definitions
 │   └── inventory.rules.js            # Business rules
 ├── application/
 │   ├── posting-engine.service.js     # Main posting service
-│   ├── reversal-engine.service.js    # Reversal service
+│   ├── reversal-engine.service.js    # Reversal service (idempotent)
 │   ├── hold.service.js               # Hold/allocation service
-│   ├── onhand.service.js             # OnHand query service
+│   ├── onhand.service.js             # OnHand query service (Decimal.js)
 │   ├── transaction-query.service.js  # Transaction query service
 │   └── invent-dim.service.js         # Dimension service
 └── infra/
     ├── invent-dim.repository.js      # InventDim data access
     ├── invent-trans.repository.js    # InventTrans data access
-    ├── onhand.repository.js          # OnHand data access
-    ├── hold.repository.js            # Hold data access
+    ├── onhand.repository.js          # OnHand data access (optimistic lock)
+    ├── hold.repository.js            # Hold data access (NumberSequence)
     ├── reversal-link.repository.js   # ReversalLink data access
     └── event-mapping.repository.js   # EventMapping data access
 ```
 
 ---
 
-## 3. API Endpoints
+## 3. Các thành phần dùng chung mà module dựa vào
 
-### 3.1 POST /api/v1/inventory/postings
+### Guards & Middleware
+- `middleware/auth.middleware.js` - Express middleware wrapper cho authentication
+- `middleware/auth.middleware.js` - Express middleware wrapper cho permission check
+
+### Foundation Services (từ Module 1)
+- `NumberSequenceService` - Sinh transId (TRX-*), holdNo (HLD-*)
+- `ReasonCode` - Validate reason codes cho reversal/adjustment
+
+### Master Data (từ Module 2)
+- `MdWarehouse`, `MdLocation`, `MdOwner`, `MdInventoryStatus` - Dimension validation
+- `MdItem`, `MdUom` - Item và UOM validation
+
+## 3.1 RBAC Protection
+
+Tất cả routes đều được bảo vệ bởi RBAC middleware:
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INVENTORY.POSTING.CREATE` | Tạo inventory transaction |
+| `INVENTORY.POSTING.READ` | Xem inventory transaction |
+| `INVENTORY.REVERSAL.CREATE` | Reverse transaction |
+| `INVENTORY.ONHAND.READ` | Query on-hand |
+| `INVENTORY.HOLD.CREATE` | Tạo hold |
+| `INVENTORY.HOLD.READ` | Xem hold |
+| `INVENTORY.HOLD.RELEASE` | Release hold |
+| `INVENTORY.HOLD.CANCEL` | Cancel hold |
+| `INVENTORY.TRANSACTION.READ` | Xem transaction history |
+
+---
+
+## 4. API Endpoints
+
+### 4.1 POST /api/v1/inventory/postings
 
 **Mục đích:** Tạo inventory transaction từ business event hợp lệ.
 

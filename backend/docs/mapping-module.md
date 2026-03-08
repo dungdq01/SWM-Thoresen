@@ -275,6 +275,44 @@
 | POST | `/api/v1/inventory/holds/:holdId/release` | Release hold |
 | POST | `/api/v1/inventory/holds/:holdId/cancel` | Cancel hold |
 
+## Cross-Module Dependencies
+
+### Module 3 depends on:
+| Source Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 1 | `NumberSequence` | Sinh transId (TRX-*), holdNo (HLD-*) |
+| Module 1 | `ReasonCode` | Validate reason codes cho reversal/adjustment |
+| Module 2 | `MdWarehouse` | Dimension validation |
+| Module 2 | `MdLocation` | Dimension validation |
+| Module 2 | `MdOwner` | Dimension + transaction owner |
+| Module 2 | `MdInventoryStatus` | Dimension + allocatable check |
+| Module 2 | `MdItem` | Item validation |
+| Module 2 | `MdUom` | UOM validation |
+
+### Modules that depend on Module 3:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 4 | `PostingEngineService` | Post receipt inbound |
+| Module 5 | `PostingEngineService`, `HoldService` | Allocate + ship outbound |
+| Module 6 | `PostingEngineService` | Adjustment, status change, count |
+| Module 7 | `PostingEngineService` | Putaway, pick movement |
+| Module 9 | `PostingEngineService` | VAS consume/produce |
+| Module 10 | `DailyStorageSnapshot` | Billing input |
+| Module 11 | `InventTrans`, `OnHand` | Reporting queries |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INVENTORY.POSTING.CREATE` | Tạo inventory transaction |
+| `INVENTORY.REVERSAL.CREATE` | Reverse transaction |
+| `INVENTORY.ONHAND.READ` | Query on-hand |
+| `INVENTORY.HOLD.CREATE` | Tạo hold |
+| `INVENTORY.HOLD.READ` | Xem hold |
+| `INVENTORY.HOLD.RELEASE` | Release hold |
+| `INVENTORY.HOLD.CANCEL` | Cancel hold |
+| `INVENTORY.TRANSACTION.READ` | Xem transaction history |
+
 ---
 
 # Module 4: Inbound Operations

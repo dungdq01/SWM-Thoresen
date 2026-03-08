@@ -8,13 +8,43 @@ class HoldRepository {
   }
 
   /**
-   * Generate hold number
+   * Generate hold number using NumberSequence (MD-3 Fix)
    */
-  generateHoldNo() {
+  async generateHoldNo(tx = null) {
+    const client = tx || this.prisma;
     const date = new Date();
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `HLD-${dateStr}-${random}`;
+
+    const sequence = await client.numberSequence.findFirst({
+      where: { sequenceCode: 'HLD', isActive: true },
+    });
+
+    if (!sequence) {
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      return `HLD-${dateStr}-${random}`;
+    }
+
+    const counter = await client.numberSequenceCounter.upsert({
+      where: {
+        sequenceId_scopeKey_counterDate: {
+          sequenceId: sequence.id,
+          scopeKey: 'GLOBAL',
+          counterDate: new Date(date.toISOString().slice(0, 10)),
+        },
+      },
+      update: {
+        lastNumber: { increment: 1 },
+      },
+      create: {
+        sequenceId: sequence.id,
+        scopeKey: 'GLOBAL',
+        counterDate: new Date(date.toISOString().slice(0, 10)),
+        lastNumber: 1,
+      },
+    });
+
+    const seqNo = String(counter.lastNumber).padStart(sequence.runningNoLength, '0');
+    return `HLD-${dateStr}-${seqNo}`;
   }
 
   /**
@@ -64,9 +94,11 @@ class HoldRepository {
    */
   async create(data, tx = null) {
     const client = tx || this.prisma;
+    const holdNo = data.holdNo || await this.generateHoldNo(tx);
+    
     return client.inventoryHold.create({
       data: {
-        holdNo: data.holdNo || this.generateHoldNo(),
+        holdNo,
         shipmentId: data.shipmentId,
         shipmentLineId: data.shipmentLineId,
         workHeaderId: data.workHeaderId,
