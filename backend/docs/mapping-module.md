@@ -15,6 +15,8 @@
 | Module 5 - Outbound | ✅ Completed | `src/modules/outbound` | 10 tables | ~18 endpoints |
 | Module 6 - Inventory Control | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
 | Module 7 - Work Execution | ✅ Completed | `src/modules/work-execution` | 10 tables | ~20 endpoints |
+| Module 8 - Integration Platform | ✅ Completed | `src/modules/integration` | 12 tables | ~20 endpoints |
+| Module 9 - VAS / Bagging | ✅ Completed | `src/modules/vas` | 5 tables | ~11 endpoints |
 
 ---
 
@@ -1008,5 +1010,82 @@ Module 8 là **integration backbone** của hệ thống SWM, chịu trách nhi�
 | `INTEGRATION.MONITORING.READ` | View dashboard |
 | `INTEGRATION.ALERT.ACKNOWLEDGE` | Acknowledge alert |
 | `INTEGRATION.ALERT.RESOLVE` | Resolve alert |
+
+---
+
+# Module 9: VAS / Bagging Operations
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/vas`  
+**Documentation:** [`docs/module-9-vas.md`](./module-9-vas.md)  
+**Database Docs:** [`prisma/docs/module-9-vas.md`](../prisma/docs/module-9-vas.md)
+
+## Database Tables (5 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `vas_work_order` | Header work order đóng bao | Core |
+| `vas_session` | Session progress theo ca | Core |
+| `vas_state_history` | Lịch sử chuyển trạng thái | Audit |
+| `vas_exception_log` | Log exception nghiệp vụ | Logging |
+| `vas_outbox` | Billing event outbox | Async |
+
+## API Endpoints
+
+### Work Order Command APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/vas-wo` | Create VAS Work Order |
+| PATCH | `/api/v1/vas-wo/:id` | Update Work Order (DRAFT only) |
+| POST | `/api/v1/vas-wo/:id/confirm` | Confirm WO & reserve stock |
+| POST | `/api/v1/vas-wo/:id/complete` | Complete WO & post inventory |
+| POST | `/api/v1/vas-wo/:id/cancel` | Cancel WO & release reservation |
+
+### Work Order Query APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/vas-wo` | List Work Orders |
+| GET | `/api/v1/vas-wo/:id` | Get WO detail with sessions |
+| GET | `/api/v1/vas-wo/:id/sessions` | Get WO sessions |
+| GET | `/api/v1/vas-wo/:id/history` | Get state history |
+
+### Session APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/vas-wo/:id/session` | Add session progress |
+
+## Module Dependencies
+
+### Module 9 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `NumberSequence` | WO number generation |
+| Module 1 | `ReasonCode` | Cancel/variance reasons |
+| Module 1 | `AuditLog` | Audit trail |
+| Module 2 | `MdOwner` | Owner reference |
+| Module 2 | `MdItem` | Bulk/Bagged/Packaging items |
+| Module 2 | `MdWarehouse` | Warehouse reference |
+| Module 3 | `OnHand` | Stock availability check |
+| Module 3 | `InventoryHold` | Reserve bulk stock |
+| Module 3 | `InventTrans` | Post inventory transactions |
+
+### Modules that depend on Module 9:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 5 | `reserved_qty_vas` | Check VAS reservation khi allocate |
+| Module 10 | `BAGGING_FEE_CAPTURE` | Billing event from outbox |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `VAS.WO.CREATE` | Create work order |
+| `VAS.WO.UPDATE` | Update work order |
+| `VAS.WO.CONFIRM` | Confirm work order |
+| `VAS.WO.COMPLETE` | Complete work order |
+| `VAS.WO.CANCEL` | Cancel work order |
+| `VAS.WO.READ` | View work orders |
+| `VAS.SESSION.CREATE` | Add session |
+| `VAS.SESSION.READ` | View sessions |
 
 ---
