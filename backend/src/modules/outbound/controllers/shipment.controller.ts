@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ShipmentService } from '../services/shipment.service';
@@ -16,9 +17,15 @@ import { ShipmentCommandService } from '../services/shipment-command.service';
 import { ShipmentQueryService } from '../services/shipment-query.service';
 import { CreateShipmentDto } from '../dto/create-shipment.dto';
 import { ShipmentHeaderResponseDto, PaginatedShipmentListDto } from '../dto/shipment-response.dto';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
 @ApiTags('Outbound - Shipments')
 @Controller('api/v1/outbound/shipments')
+@UseGuards(AuthGuard, PermissionGuard)
 export class ShipmentController {
   constructor(
     private readonly shipmentService: ShipmentService,
@@ -31,13 +38,15 @@ export class ShipmentController {
   @ApiResponse({ status: 201, description: 'Shipment created', type: ShipmentHeaderResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 409, description: 'Duplicate external ID' })
-  async create(@Body() dto: CreateShipmentDto) {
-    return this.commandService.createShipment(dto);
+  @Permission('OUTBOUND.SHIPMENT.CREATE')
+  async create(@Body() dto: CreateShipmentDto, @CurrentUser() user: RequestUser) {
+    return this.commandService.createShipment(dto, user.id);
   }
 
   @Get()
   @ApiOperation({ summary: 'List shipments with pagination and filters' })
   @ApiResponse({ status: 200, type: PaginatedShipmentListDto })
+  @Permission('OUTBOUND.SHIPMENT.READ')
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'pageSize', required: false, type: Number })
   @ApiQuery({ name: 'shipmentNumber', required: false, type: String })
@@ -73,6 +82,7 @@ export class ShipmentController {
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, type: ShipmentHeaderResponseDto })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
+  @Permission('OUTBOUND.SHIPMENT.READ')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.queryService.findById(id);
   }
@@ -95,8 +105,9 @@ export class ShipmentController {
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, type: ShipmentHeaderResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid state transition' })
-  async confirm(@Param('id', ParseUUIDPipe) id: string) {
-    return this.commandService.confirmShipment(id);
+  @Permission('OUTBOUND.SHIPMENT.CONFIRM')
+  async confirm(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
+    return this.commandService.confirmShipment(id, user.id);
   }
 
   @Post(':id/cancel')
@@ -105,10 +116,12 @@ export class ShipmentController {
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, type: ShipmentHeaderResponseDto })
   @ApiResponse({ status: 400, description: 'Cannot cancel shipment in current status' })
+  @Permission('OUTBOUND.SHIPMENT.CANCEL')
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('reasonCode') reasonCode: string,
+    @CurrentUser() user: RequestUser,
   ) {
-    return this.commandService.cancelShipment(id, reasonCode);
+    return this.commandService.cancelShipment(id, reasonCode, user.id);
   }
 }
