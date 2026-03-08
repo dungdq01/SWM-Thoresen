@@ -564,6 +564,9 @@ model MdWarehouse {
   receiptHeaders     ReceiptHeader[]
   shipmentHeaders    ShipmentHeader[]
   vasWorkOrders      VasWorkOrder[]
+  bilContractFeeLines BilContractFeeLine[]
+  bilEvents          BilEvent[]
+  bilStorageSnapshots BilStorageSnapshot[]
 
   @@map("md_warehouse")
 }
@@ -626,6 +629,7 @@ model MdLocation {
   dailySnapshots    DailyStorageSnapshot[]
   receiptHeaders    ReceiptHeader[]
   allocationRecords ShipmentAllocationRecord[]
+  bilStorageSnapshots BilStorageSnapshot[]
 
   @@unique([warehouseId, locationCode])
   @@index([zoneId, isActive])
@@ -667,6 +671,12 @@ model MdOwner {
   allocationRecords  ShipmentAllocationRecord[]
   vasWorkOrders      VasWorkOrder[]               @relation("VasWoOwner")
   vasPackagingOrders VasWorkOrder[]               @relation("VasPackagingOwner")
+  bilContracts       BilContract[]
+  bilEvents          BilEvent[]
+  bilStorageSnapshots BilStorageSnapshot[]
+  bilDebitNotes      BilDebitNote[]
+  bilDebitNoteLines  BilDebitNoteLine[]
+  bilExceptions      BilException[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -758,6 +768,9 @@ model MdItem {
   vasBulkSourceOrders   VasWorkOrder[]                  @relation("VasBulkSource")
   vasBaggedOutputOrders VasWorkOrder[]                  @relation("VasBaggedOutput")
   vasPackagingOrders    VasWorkOrder[]                  @relation("VasPackaging")
+  bilEvents             BilEvent[]
+  bilStorageSnapshots   BilStorageSnapshot[]
+  bilDebitNoteLines     BilDebitNoteLine[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -3464,5 +3477,438 @@ model VasOutbox {
   @@index([status, nextRetryAt])
   @@index([aggregateId, eventType])
   @@map("vas_outbox")
+}
+
+// ========== Module 10: Billing & Commercial Control Enums ==========
+
+enum BilContractStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+enum BilEventType {
+  INBOUND_HANDLING
+  OUTBOUND_HANDLING
+  BAGGING_FEE
+  STORAGE
+}
+
+enum BilEventRateStatus {
+  UNRESOLVED
+  RESOLVED
+  MISSING
+  BLOCKED
+}
+
+enum BilEventBillingStatus {
+  CAPTURED
+  BILLED
+  UNBILLED
+  IGNORED
+}
+
+enum BilSnapshotRunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum BilDebitNoteStatus {
+  DRAFT
+  REVIEWED
+  APPROVED
+  LOCKED
+}
+
+enum BilErpPushStatus {
+  NOT_SENT
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum BilExceptionType {
+  MISSING_RATE
+  DUP_EVENT
+  ORPHAN_EVENT
+  LATE_EVENT
+  SNAPSHOT_FAIL
+  ERP_FAIL
+  DATA_MISMATCH
+}
+
+enum BilExceptionSeverity {
+  INFO
+  WARN
+  ERROR
+  BLOCKER
+}
+
+enum BilExceptionStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  IGNORED
+}
+
+enum BilOutboxStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+enum BilDayType {
+  WORKING_DAY
+  DAY_OFF
+  HOLIDAY
+}
+
+enum BilFeeType {
+  STORAGE
+  HANDLING_INBOUND
+  HANDLING_OUTBOUND
+  BAGGING
+  STUFFING
+}
+
+// ========== Module 10: Billing & Commercial Control Models ==========
+
+model BilContract {
+  id                   String            @id @default(uuid()) @db.Uuid
+  contractNumber       String            @unique @map("contract_number") @db.VarChar(30)
+  ownerId              String            @map("owner_id") @db.Uuid
+  contractScope        String            @default("OWNER") @map("contract_scope") @db.VarChar(20)
+  effectiveFrom        DateTime          @map("effective_from") @db.Date
+  effectiveTo          DateTime          @map("effective_to") @db.Date
+  currencyCode         String            @default("VND") @map("currency_code") @db.VarChar(10)
+  isDefault            Boolean           @default(false) @map("is_default")
+  status               BilContractStatus @default(DRAFT)
+  notes                String?           @db.Text
+  versionNo            Int               @default(1) @map("version_no")
+  supersededContractId String?           @map("superseded_contract_id") @db.Uuid
+  externalId           String            @unique @map("external_id") @db.VarChar(100)
+  createdBy            String            @map("created_by") @db.Uuid
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedBy            String            @map("updated_by") @db.Uuid
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  owner       MdOwner                @relation(fields: [ownerId], references: [id])
+  superseded  BilContract?           @relation("ContractSupersede", fields: [supersededContractId], references: [id])
+  successors  BilContract[]          @relation("ContractSupersede")
+  feeLines    BilContractFeeLine[]
+  debitNotes  BilDebitNote[]
+
+  @@index([ownerId, effectiveFrom, effectiveTo, status])
+  @@map("bil_contract")
+}
+
+model BilContractFeeLine {
+  id                String     @id @default(uuid()) @db.Uuid
+  contractId        String     @map("contract_id") @db.Uuid
+  feeType           BilFeeType @map("fee_type")
+  cargoForm         CargoForm?  @map("cargo_form")
+  warehouseId       String?    @map("warehouse_id") @db.Uuid
+  dayTypeScope      String?    @map("day_type_scope") @db.VarChar(20)
+  billingUom        String     @default("MT") @map("billing_uom") @db.VarChar(10)
+  unitRate          Decimal    @map("unit_rate") @db.Decimal(18, 2)
+  minimumCharge     Decimal?   @map("minimum_charge") @db.Decimal(18, 2)
+  freeDays          Int?       @map("free_days")
+  materialRatePerBag Decimal?  @map("material_rate_per_bag") @db.Decimal(18, 2)
+  tierRuleCode      String?    @map("tier_rule_code") @db.VarChar(30)
+  priorityRank      Int        @default(100) @map("priority_rank")
+  isActive          Boolean    @default(true) @map("is_active")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  contract  BilContract  @relation(fields: [contractId], references: [id])
+  warehouse MdWarehouse? @relation(fields: [warehouseId], references: [id])
+
+  @@unique([contractId, feeType, cargoForm, warehouseId, priorityRank])
+  @@index([contractId, feeType, isActive])
+  @@map("bil_contract_fee_line")
+}
+
+model BilDayTypeCalendar {
+  id                String     @id @default(uuid()) @db.Uuid
+  calendarDate      DateTime   @unique @map("calendar_date") @db.Date
+  dayType           BilDayType @map("day_type")
+  defaultOtMultiplier Decimal  @map("default_ot_multiplier") @db.Decimal(6, 3)
+  noOtMultiplier    Decimal    @map("no_ot_multiplier") @db.Decimal(6, 3)
+  withOtMultiplier  Decimal    @map("with_ot_multiplier") @db.Decimal(6, 3)
+  notes             String?    @db.Text
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  @@map("bil_day_type_calendar")
+}
+
+model BilEvent {
+  id                  String                @id @default(uuid()) @db.Uuid
+  eventType           BilEventType          @map("event_type")
+  refType             String                @map("ref_type") @db.VarChar(30)
+  refId               String                @map("ref_id") @db.VarChar(50)
+  refLineId           String?               @map("ref_line_id") @db.VarChar(50)
+  ownerId             String                @map("owner_id") @db.Uuid
+  warehouseId         String                @map("warehouse_id") @db.Uuid
+  itemId              String?               @map("item_id") @db.Uuid
+  cargoForm           CargoForm?            @map("cargo_form")
+  billingQtyMt        Decimal               @map("billing_qty_mt") @db.Decimal(18, 3)
+  eventDate           DateTime              @map("event_date") @db.Date
+  operationTimestamp  DateTime              @map("operation_timestamp")
+  dayType             BilDayType            @map("day_type")
+  isOvertime          Boolean               @default(false) @map("is_overtime")
+  combinedMultiplier  Decimal               @map("combined_multiplier") @db.Decimal(6, 3)
+  rateStatus          BilEventRateStatus    @default(UNRESOLVED) @map("rate_status")
+  billingStatus       BilEventBillingStatus @default(CAPTURED) @map("billing_status")
+  sourceModule        String                @map("source_module") @db.VarChar(10)
+  sourcePayloadJson   Json?                 @map("source_payload_json")
+  externalId          String                @unique @map("external_id") @db.VarChar(100)
+  correlationId       String                @map("correlation_id") @db.Uuid
+  deviceOrSourceApp   String?               @map("device_or_source_app") @db.VarChar(30)
+  capturedAt          DateTime              @default(now()) @map("captured_at")
+  debitNoteLineId     String?               @map("debit_note_line_id") @db.Uuid
+
+  owner      MdOwner           @relation(fields: [ownerId], references: [id])
+  warehouse  MdWarehouse       @relation(fields: [warehouseId], references: [id])
+  item       MdItem?           @relation(fields: [itemId], references: [id])
+  debitNoteLine BilDebitNoteLine? @relation(fields: [debitNoteLineId], references: [id])
+  exceptions BilException[]
+
+  @@index([ownerId, eventDate, billingStatus])
+  @@index([sourceModule, refId])
+  @@index([eventType, capturedAt(sort: Desc)])
+  @@map("bil_event")
+}
+
+model BilSnapshotRun {
+  id              String              @id @default(uuid()) @db.Uuid
+  snapshotDate    DateTime            @map("snapshot_date") @db.Date
+  warehouseScope  String?             @map("warehouse_scope") @db.VarChar(50)
+  status          BilSnapshotRunStatus @default(PENDING)
+  startedAt       DateTime            @map("started_at")
+  finishedAt      DateTime?           @map("finished_at")
+  recordCount     Int                 @default(0) @map("record_count")
+  errorCount      Int                 @default(0) @map("error_count")
+  errorSummary    String?             @map("error_summary") @db.Text
+  triggeredBy     String              @map("triggered_by") @db.VarChar(30)
+  externalId      String              @unique @map("external_id") @db.VarChar(100)
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  snapshots  BilStorageSnapshot[]
+  exceptions BilException[]
+
+  @@unique([snapshotDate, warehouseScope])
+  @@index([status, snapshotDate])
+  @@map("bil_snapshot_run")
+}
+
+model BilStorageSnapshot {
+  id                  String   @id @default(uuid()) @db.Uuid
+  snapshotRunId       String   @map("snapshot_run_id") @db.Uuid
+  snapshotDate        DateTime @map("snapshot_date") @db.Date
+  cutOffTime          DateTime @map("cut_off_time")
+  warehouseId         String   @map("warehouse_id") @db.Uuid
+  locationId          String   @map("location_id") @db.Uuid
+  ownerId             String   @map("owner_id") @db.Uuid
+  itemId              String   @map("item_id") @db.Uuid
+  receiptLineId       String?  @map("receipt_line_id") @db.Uuid
+  inventoryStatus     String   @map("inventory_status") @db.VarChar(20)
+  isBillableStatus    Boolean  @map("is_billable_status")
+  firstPutawayDate    DateTime? @map("first_putaway_date") @db.Date
+  daysInStorage       Int?     @map("days_in_storage")
+  openingQtyMt        Decimal  @map("opening_qty_mt") @db.Decimal(18, 3)
+  inboundTodayMt      Decimal  @map("inbound_today_mt") @db.Decimal(18, 3)
+  outboundTodayMt     Decimal  @map("outbound_today_mt") @db.Decimal(18, 3)
+  closingQtyMt        Decimal  @map("closing_qty_mt") @db.Decimal(18, 3)
+  billableQtyMt       Decimal  @map("billable_qty_mt") @db.Decimal(18, 3)
+  freeDaysAllowed     Int?     @map("free_days_allowed")
+  isFreeDay           Boolean  @map("is_free_day")
+  appliedRatePerMtDay Decimal? @map("applied_rate_per_mt_day") @db.Decimal(18, 2)
+  dailyAmountVnd      Decimal? @map("daily_amount_vnd") @db.Decimal(18, 2)
+  traceJson           Json?    @map("trace_json")
+  createdAt           DateTime @default(now()) @map("created_at")
+  debitNoteLineId     String?  @map("debit_note_line_id") @db.Uuid
+
+  snapshotRun   BilSnapshotRun    @relation(fields: [snapshotRunId], references: [id])
+  warehouse     MdWarehouse       @relation(fields: [warehouseId], references: [id])
+  location      MdLocation        @relation(fields: [locationId], references: [id])
+  owner         MdOwner           @relation(fields: [ownerId], references: [id])
+  item          MdItem            @relation(fields: [itemId], references: [id])
+  debitNoteLine BilDebitNoteLine? @relation(fields: [debitNoteLineId], references: [id])
+
+  @@index([ownerId, snapshotDate])
+  @@index([snapshotRunId])
+  @@map("bil_storage_snapshot")
+}
+
+model BilDebitNote {
+  id                 String             @id @default(uuid()) @db.Uuid
+  dnNumber           String             @unique @map("dn_number") @db.VarChar(30)
+  ownerId            String             @map("owner_id") @db.Uuid
+  contractId         String?            @map("contract_id") @db.Uuid
+  billingPeriodStart DateTime           @map("billing_period_start") @db.Date
+  billingPeriodEnd   DateTime           @map("billing_period_end") @db.Date
+  generationBasis    String             @default("PERIOD") @map("generation_basis") @db.VarChar(20)
+  status             BilDebitNoteStatus @default(DRAFT)
+  totalBeforeVat     Decimal            @map("total_before_vat") @db.Decimal(18, 2)
+  vatRate            Decimal            @default(0.10) @map("vat_rate") @db.Decimal(6, 3)
+  vatAmount          Decimal            @map("vat_amount") @db.Decimal(18, 2)
+  grandTotal         Decimal            @map("grand_total") @db.Decimal(18, 2)
+  currencyCode       String             @default("VND") @map("currency_code") @db.VarChar(10)
+  contractVersionJson Json?             @map("contract_version_json")
+  reviewedBy         String?            @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?          @map("reviewed_at")
+  approvedBy         String?            @map("approved_by") @db.Uuid
+  approvedAt         DateTime?          @map("approved_at")
+  lockedBy           String?            @map("locked_by") @db.Uuid
+  lockedAt           DateTime?          @map("locked_at")
+  erpPushStatus      BilErpPushStatus   @default(NOT_SENT) @map("erp_push_status")
+  externalId         String             @unique @map("external_id") @db.VarChar(100)
+  correlationId      String             @map("correlation_id") @db.Uuid
+  createdBy          String             @map("created_by") @db.Uuid
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedBy          String             @map("updated_by") @db.Uuid
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  owner      MdOwner              @relation(fields: [ownerId], references: [id])
+  contract   BilContract?         @relation(fields: [contractId], references: [id])
+  lines      BilDebitNoteLine[]
+  history    BilDebitNoteHistory[]
+  exceptions BilException[]
+  outbox     BilErpPushOutbox[]
+  pushLogs   BilErpPushLog[]
+
+  @@index([ownerId, billingPeriodStart, billingPeriodEnd])
+  @@index([status, lockedAt])
+  @@map("bil_debit_note")
+}
+
+model BilDebitNoteLine {
+  id                   String    @id @default(uuid()) @db.Uuid
+  debitNoteId          String    @map("debit_note_id") @db.Uuid
+  lineSeq              Int       @map("line_seq")
+  chargeCode           String    @map("charge_code") @db.VarChar(30)
+  description          String    @db.VarChar(500)
+  feeType              BilFeeType @map("fee_type")
+  sourceType           String    @map("source_type") @db.VarChar(30)
+  sourceRefId          String?   @map("source_ref_id") @db.VarChar(50)
+  ownerId              String    @map("owner_id") @db.Uuid
+  itemId               String?   @map("item_id") @db.Uuid
+  cargoForm            CargoForm? @map("cargo_form")
+  billingQtyMt         Decimal   @map("billing_qty_mt") @db.Decimal(18, 3)
+  unitRate             Decimal   @map("unit_rate") @db.Decimal(18, 2)
+  combinedMultiplier   Decimal?  @map("combined_multiplier") @db.Decimal(6, 3)
+  amountVnd            Decimal   @map("amount_vnd") @db.Decimal(18, 2)
+  vatIncludedFlag      Boolean   @default(false) @map("vat_included_flag")
+  calculationTraceJson Json      @map("calculation_trace_json")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  debitNote        BilDebitNote         @relation(fields: [debitNoteId], references: [id])
+  owner            MdOwner              @relation(fields: [ownerId], references: [id])
+  item             MdItem?              @relation(fields: [itemId], references: [id])
+  billingEvents    BilEvent[]
+  storageSnapshots BilStorageSnapshot[]
+
+  @@unique([debitNoteId, lineSeq])
+  @@index([debitNoteId])
+  @@map("bil_debit_note_line")
+}
+
+model BilDebitNoteHistory {
+  id          String           @id @default(uuid()) @db.Uuid
+  debitNoteId String           @map("debit_note_id") @db.Uuid
+  actionCode  String           @map("action_code") @db.VarChar(30)
+  fromStatus  BilDebitNoteStatus? @map("from_status")
+  toStatus    BilDebitNoteStatus? @map("to_status")
+  actionBy    String           @map("action_by") @db.Uuid
+  actionAt    DateTime         @default(now()) @map("action_at")
+  reasonCode  String?          @map("reason_code") @db.VarChar(50)
+  remarks     String?          @db.Text
+  beforeJson  Json?            @map("before_json")
+  afterJson   Json?            @map("after_json")
+
+  debitNote BilDebitNote @relation(fields: [debitNoteId], references: [id])
+
+  @@index([debitNoteId, actionAt(sort: Desc)])
+  @@map("bil_debit_note_history")
+}
+
+model BilException {
+  id             String               @id @default(uuid()) @db.Uuid
+  exceptionType  BilExceptionType     @map("exception_type")
+  severity       BilExceptionSeverity
+  status         BilExceptionStatus   @default(OPEN)
+  ownerId        String?              @map("owner_id") @db.Uuid
+  sourceModule   String?              @map("source_module") @db.VarChar(10)
+  sourceRefType  String?              @map("source_ref_type") @db.VarChar(30)
+  sourceRefId    String?              @map("source_ref_id") @db.VarChar(50)
+  billingEventId String?              @map("billing_event_id") @db.Uuid
+  snapshotRunId  String?              @map("snapshot_run_id") @db.Uuid
+  debitNoteId    String?              @map("debit_note_id") @db.Uuid
+  message        String               @db.Text
+  detailJson     Json?                @map("detail_json")
+  assignedTo     String?              @map("assigned_to") @db.Uuid
+  resolvedBy     String?              @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime?            @map("resolved_at")
+  resolutionCode String?              @map("resolution_code") @db.VarChar(50)
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  owner        MdOwner?        @relation(fields: [ownerId], references: [id])
+  billingEvent BilEvent?       @relation(fields: [billingEventId], references: [id])
+  snapshotRun  BilSnapshotRun? @relation(fields: [snapshotRunId], references: [id])
+  debitNote    BilDebitNote?   @relation(fields: [debitNoteId], references: [id])
+
+  @@index([status, exceptionType, createdAt(sort: Desc)])
+  @@index([ownerId, status])
+  @@index([debitNoteId, status])
+  @@map("bil_exception")
+}
+
+model BilErpPushOutbox {
+  id           String          @id @default(uuid()) @db.Uuid
+  debitNoteId  String          @map("debit_note_id") @db.Uuid
+  outboxType   String          @default("ERP_PUSH") @map("outbox_type") @db.VarChar(30)
+  payloadJson  Json            @map("payload_json")
+  status       BilOutboxStatus @default(PENDING)
+  attemptCount Int             @default(0) @map("attempt_count")
+  nextRetryAt  DateTime?       @map("next_retry_at")
+  lastErrorCode String?        @map("last_error_code") @db.VarChar(50)
+  lastErrorMessage String?     @map("last_error_message") @db.Text
+  externalId   String          @unique @map("external_id") @db.VarChar(100)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  debitNote BilDebitNote    @relation(fields: [debitNoteId], references: [id])
+  pushLogs  BilErpPushLog[]
+
+  @@index([status, nextRetryAt])
+  @@index([debitNoteId])
+  @@map("bil_erp_push_outbox")
+}
+
+model BilErpPushLog {
+  id                  String   @id @default(uuid()) @db.Uuid
+  debitNoteId         String   @map("debit_note_id") @db.Uuid
+  outboxId            String   @map("outbox_id") @db.Uuid
+  requestPayloadJson  Json     @map("request_payload_json")
+  responsePayloadJson Json?    @map("response_payload_json")
+  httpStatus          Int?     @map("http_status")
+  resultStatus        String   @map("result_status") @db.VarChar(20)
+  attemptNo           Int      @map("attempt_no")
+  pushedAt            DateTime @map("pushed_at")
+  correlationId       String?  @map("correlation_id") @db.Uuid
+
+  debitNote BilDebitNote     @relation(fields: [debitNoteId], references: [id])
+  outbox    BilErpPushOutbox @relation(fields: [outboxId], references: [id])
+
+  @@index([debitNoteId, pushedAt(sort: Desc)])
+  @@index([outboxId])
+  @@map("bil_erp_push_log")
 }
 
