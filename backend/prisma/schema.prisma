@@ -500,6 +500,7 @@ model MdUom {
   conversionsTo      MdUomConversion[] @relation("ConversionTo")
   inventTrans        InventTrans[]
   onHandRecords      OnHand[]
+  receiptLines       ReceiptLine[]
 
   @@map("md_uom")
 }
@@ -559,6 +560,7 @@ model MdWarehouse {
   reconciliationRuns        InventoryReconciliationRun[]
   snapshotRuns              InventorySnapshotRun[]
   dailySnapshots            DailyStorageSnapshot[]
+  receiptHeaders            ReceiptHeader[]
 
   @@map("md_warehouse")
 }
@@ -619,6 +621,7 @@ model MdLocation {
   zone              MdZone         @relation(fields: [zoneId], references: [id])
   inventDims        InventDim[]
   dailySnapshots    DailyStorageSnapshot[]
+  receiptHeaders    ReceiptHeader[]
 
   @@unique([warehouseId, locationCode])
   @@index([zoneId, isActive])
@@ -655,6 +658,7 @@ model MdOwner {
   inventTrans          InventTrans[]
   reconciliationRuns   InventoryReconciliationRun[]
   dailySnapshots       DailyStorageSnapshot[]
+  receiptHeaders       ReceiptHeader[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -679,6 +683,8 @@ model MdVendor {
   updatedBy     String?       @map("updated_by") @db.Uuid
   deactivatedAt DateTime?     @map("deactivated_at")
   deactivatedBy String?       @map("deactivated_by") @db.Uuid
+
+  receiptHeaders ReceiptHeader[]
 
   @@index([supplierGroup, isActive])
   @@map("md_vendor")
@@ -738,6 +744,7 @@ model MdItem {
   reconciliationRuns      InventoryReconciliationRun[]
   reconciliationResults   InventoryReconciliationResult[]
   dailySnapshots          DailyStorageSnapshot[]
+  receiptLines            ReceiptLine[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -1306,4 +1313,230 @@ model InventoryEventMapping {
 
   @@map("inventory_event_mapping")
 }
+
+// ========== Module 4: Inbound Operations Enums ==========
+
+enum ReceiptType {
+  STANDARD
+  VESSEL
+}
+
+enum ReceiptStatus {
+  DRAFT
+  AWAITING_WEIGHING
+  WEIGHED_IN
+  PROCESSING
+  WEIGHED_OUT
+  RECEIVED
+  PUTAWAY
+  CLOSED
+  REJECTED
+  CANCELLED
+}
+
+enum ReceiptLineStatus {
+  OPEN
+  RECEIVED
+  CANCELLED
+}
+
+enum WeighPhase {
+  IN
+  OUT
+}
+
+enum IntegrationDeliveryStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+}
+
+// ========== Module 4: Inbound Operations Models ==========
+
+model ReceiptHeader {
+  id                    String        @id @default(uuid()) @db.Uuid
+  receiptNumber         String?       @unique @map("receipt_number") @db.VarChar(40)
+  receiptType           ReceiptType   @map("receipt_type")
+  poId                  String        @map("po_id") @db.VarChar(50)
+  asnId                 String?       @map("asn_id") @db.VarChar(50)
+  ownerId               String        @map("owner_id") @db.Uuid
+  vendorId              String        @map("vendor_id") @db.Uuid
+  warehouseId           String        @map("warehouse_id") @db.Uuid
+  receivingLocationId   String        @map("receiving_location_id") @db.Uuid
+  vehicleNumber         String        @map("vehicle_number") @db.VarChar(30)
+  blNumber              String?       @map("bl_number") @db.VarChar(50)
+  expectedQty           Decimal       @map("expected_qty") @db.Decimal(18, 3)
+  grossWeightKg         Decimal?      @map("gross_weight_kg") @db.Decimal(18, 3)
+  tareWeightKg          Decimal?      @map("tare_weight_kg") @db.Decimal(18, 3)
+  netWeightKg           Decimal?      @map("net_weight_kg") @db.Decimal(18, 3)
+  status                ReceiptStatus @default(DRAFT)
+  attemptNumber         Int           @default(1) @map("attempt_number")
+  tolerancePctApplied   Decimal?      @map("tolerance_pct_applied") @db.Decimal(8, 4)
+  variancePct           Decimal?      @map("variance_pct") @db.Decimal(8, 4)
+  isManualEntry         Boolean       @default(false) @map("is_manual_entry")
+  manualEntryReasonCode String?       @map("manual_entry_reason_code") @db.VarChar(50)
+  postedTransId         String?       @map("posted_trans_id") @db.VarChar(40)
+  putawayWorkId         String?       @map("putaway_work_id") @db.VarChar(50)
+  cancelReasonCode      String?       @map("cancel_reason_code") @db.VarChar(50)
+  cancelledBy           String?       @map("cancelled_by") @db.Uuid
+  cancelledAt           DateTime?     @map("cancelled_at")
+  externalId            String        @unique @map("external_id") @db.VarChar(120)
+  correlationId         String        @map("correlation_id") @db.VarChar(120)
+  sourceApp             SourceApp     @map("source_app")
+  rowVersion            BigInt        @default(0) @map("row_version")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  createdBy             String?       @map("created_by") @db.Uuid
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  updatedBy             String?       @map("updated_by") @db.Uuid
+
+  owner              MdOwner      @relation(fields: [ownerId], references: [id])
+  vendor             MdVendor     @relation(fields: [vendorId], references: [id])
+  warehouse          MdWarehouse  @relation(fields: [warehouseId], references: [id])
+  receivingLocation  MdLocation   @relation(fields: [receivingLocationId], references: [id])
+
+  lines              ReceiptLine[]
+  weighingLogs       ReceiptWeighingLog[]
+  statusHistory      ReceiptStatusHistory[]
+  exceptionLogs      ReceiptExceptionLog[]
+  integrationStates  ReceiptIntegrationState[]
+
+  @@index([vehicleNumber, status, createdAt(sort: Desc)])
+  @@index([blNumber, status, createdAt(sort: Desc)])
+  @@index([ownerId, warehouseId, status, createdAt(sort: Desc)])
+  @@index([poId, asnId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([correlationId])
+  @@map("receipt_header")
+}
+
+model ReceiptLine {
+  id                   String            @id @default(uuid()) @db.Uuid
+  receiptHeaderId      String            @map("receipt_header_id") @db.Uuid
+  lineNumber           Int               @map("line_number")
+  itemId               String            @map("item_id") @db.Uuid
+  uomId                String            @map("uom_id") @db.Uuid
+  expectedQty          Decimal           @map("expected_qty") @db.Decimal(18, 3)
+  receivedQty          Decimal?          @map("received_qty") @db.Decimal(18, 3)
+  bagCount             Int?              @map("bag_count")
+  nominalWeightPerBag  Decimal?          @map("nominal_weight_per_bag") @db.Decimal(18, 3)
+  cargoForm            CargoForm         @map("cargo_form")
+  status               ReceiptLineStatus @default(OPEN)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  createdBy            String?           @map("created_by") @db.Uuid
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  updatedBy            String?           @map("updated_by") @db.Uuid
+
+  header        ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
+  item          MdItem        @relation(fields: [itemId], references: [id])
+  uom           MdUom         @relation(fields: [uomId], references: [id])
+
+  @@unique([receiptHeaderId, lineNumber])
+  @@index([itemId, cargoForm])
+  @@index([receiptHeaderId, status])
+  @@map("receipt_line")
+}
+
+model ReceiptWeighingLog {
+  id               String     @id @default(uuid()) @db.Uuid
+  receiptHeaderId  String     @map("receipt_header_id") @db.Uuid
+  attemptNumber    Int        @map("attempt_number")
+  weighPhase       WeighPhase @map("weigh_phase")
+  ticketId         String?    @map("ticket_id") @db.VarChar(80)
+  eventId          String?    @map("event_id") @db.VarChar(120)
+  grossWeightKg    Decimal?   @map("gross_weight_kg") @db.Decimal(18, 3)
+  tareWeightKg     Decimal?   @map("tare_weight_kg") @db.Decimal(18, 3)
+  netWeightKg      Decimal?   @map("net_weight_kg") @db.Decimal(18, 3)
+  isManual         Boolean    @default(false) @map("is_manual")
+  manualReasonCode String?    @map("manual_reason_code") @db.VarChar(50)
+  sourceApp        SourceApp  @map("source_app")
+  eventTimestamp   DateTime   @map("event_timestamp")
+  receivedAt       DateTime   @default(now()) @map("received_at")
+  rawPayload       Json?      @map("raw_payload")
+  createdBy        String?    @map("created_by") @db.Uuid
+  createdAt        DateTime   @default(now()) @map("created_at")
+
+  receiptHeader ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
+
+  @@unique([eventId])
+  @@index([receiptHeaderId, attemptNumber, weighPhase])
+  @@index([ticketId, weighPhase])
+  @@index([eventTimestamp(sort: Desc)])
+  @@map("receipt_weighing_log")
+}
+
+model ReceiptStatusHistory {
+  id               String    @id @default(uuid()) @db.Uuid
+  receiptHeaderId  String    @map("receipt_header_id") @db.Uuid
+  fromStatus       String?   @map("from_status") @db.VarChar(30)
+  toStatus         String    @map("to_status") @db.VarChar(30)
+  transitionCode   String    @map("transition_code") @db.VarChar(30)
+  triggeredBy      String?   @map("triggered_by") @db.Uuid
+  triggerRole      String?   @map("trigger_role") @db.VarChar(50)
+  reasonCode       String?   @map("reason_code") @db.VarChar(50)
+  note             String?   @db.Text
+  correlationId    String    @map("correlation_id") @db.VarChar(120)
+  occurredAt       DateTime  @default(now()) @map("occurred_at")
+  metadata         Json?
+
+  receiptHeader ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
+
+  @@index([receiptHeaderId, occurredAt(sort: Desc)])
+  @@index([toStatus, occurredAt(sort: Desc)])
+  @@map("receipt_status_history")
+}
+
+model ReceiptExceptionLog {
+  id                String            @id @default(uuid()) @db.Uuid
+  receiptHeaderId   String?           @map("receipt_header_id") @db.Uuid
+  exceptionType     String            @map("exception_type") @db.VarChar(50)
+  severity          ExceptionSeverity
+  stage             String            @db.VarChar(30)
+  reasonCode        String?           @map("reason_code") @db.VarChar(50)
+  message           String            @db.Text
+  details           Json?
+  integrationTarget String?           @map("integration_target") @db.VarChar(30)
+  externalId        String?           @map("external_id") @db.VarChar(120)
+  correlationId     String            @map("correlation_id") @db.VarChar(120)
+  occurredBy        String?           @map("occurred_by") @db.Uuid
+  occurredAt        DateTime          @default(now()) @map("occurred_at")
+  isResolved        Boolean           @default(false) @map("is_resolved")
+  resolvedAt        DateTime?         @map("resolved_at")
+  resolvedBy        String?           @map("resolved_by") @db.Uuid
+
+  receiptHeader ReceiptHeader? @relation(fields: [receiptHeaderId], references: [id])
+
+  @@index([receiptHeaderId, occurredAt(sort: Desc)])
+  @@index([exceptionType, severity, occurredAt(sort: Desc)])
+  @@index([integrationTarget, isResolved])
+  @@map("receipt_exception_log")
+}
+
+model ReceiptIntegrationState {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  receiptHeaderId     String                    @map("receipt_header_id") @db.Uuid
+  targetModule        String                    @map("target_module") @db.VarChar(20)
+  actionCode          String                    @map("action_code") @db.VarChar(40)
+  deliveryStatus      IntegrationDeliveryStatus @map("delivery_status")
+  attemptCount        Int                       @default(0) @map("attempt_count")
+  lastRequestPayload  Json?                     @map("last_request_payload")
+  lastResponsePayload Json?                     @map("last_response_payload")
+  lastErrorCode       String?                   @map("last_error_code") @db.VarChar(50)
+  lastErrorMessage    String?                   @map("last_error_message") @db.Text
+  nextRetryAt         DateTime?                 @map("next_retry_at")
+  lastAttemptAt       DateTime?                 @map("last_attempt_at")
+  completedAt         DateTime?                 @map("completed_at")
+  correlationId       String                    @map("correlation_id") @db.VarChar(120)
+  externalId          String                    @map("external_id") @db.VarChar(120)
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+
+  receiptHeader ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
+
+  @@unique([receiptHeaderId, targetModule, actionCode])
+  @@index([deliveryStatus, nextRetryAt])
+  @@map("receipt_integration_state")
+}
+
 
