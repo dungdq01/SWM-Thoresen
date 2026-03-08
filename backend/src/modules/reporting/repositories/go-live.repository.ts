@@ -117,17 +117,37 @@ export class GoLiveRepository {
         throw new Error(`Gate not found: ${params.gateId}`);
       }
 
-      const gateStatus = await this.upsertGateStatus(
-        gate.id,
-        params.snapshotNo,
-        params.status,
-        RptGoLiveGateType.MANUAL,
-        params.signedBy,
-        undefined,
-        params.note,
-        params.evidenceRef,
-        params.waiverReason,
-      );
+      // HI-7 Fix: Inline upsertGateStatus logic inside transaction to avoid tx leak
+      const existingStatus = await tx.rptGoLiveGateStatusRecord.findUnique({
+        where: { gateId_snapshotNo: { gateId: gate.id, snapshotNo: params.snapshotNo } },
+      });
+
+      const gateStatus = existingStatus
+        ? await tx.rptGoLiveGateStatusRecord.update({
+            where: { id: existingStatus.id },
+            data: {
+              status: params.status,
+              lastCheckType: RptGoLiveGateType.MANUAL,
+              effectiveAt: new Date(),
+              effectiveBy: params.signedBy,
+              note: params.note,
+              evidenceRef: params.evidenceRef,
+              waiverReason: params.waiverReason,
+            },
+          })
+        : await tx.rptGoLiveGateStatusRecord.create({
+            data: {
+              gateId: gate.id,
+              snapshotNo: params.snapshotNo,
+              status: params.status,
+              lastCheckType: RptGoLiveGateType.MANUAL,
+              effectiveAt: new Date(),
+              effectiveBy: params.signedBy,
+              note: params.note,
+              evidenceRef: params.evidenceRef,
+              waiverReason: params.waiverReason,
+            },
+          });
 
       await tx.rptGoLiveSignoffHistory.create({
         data: {
