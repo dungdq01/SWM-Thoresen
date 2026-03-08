@@ -41,25 +41,25 @@ export class CreateShipmentLineDto {
 
   @ApiProperty({ description: 'Item ID' })
   @IsUUID()
-  itemId: string;
+  itemId!: string;
 
   @ApiProperty({ description: 'Cargo form', enum: CargoFormDto })
   @IsEnum(CargoFormDto)
-  cargoForm: CargoFormDto;
+  cargoForm!: CargoFormDto;
 
   @ApiProperty({ description: 'UOM ID' })
   @IsUUID()
-  uomId: string;
+  uomId!: string;
 
   @ApiProperty({ description: 'Expected quantity' })
   @IsNumber()
   @IsPositive()
-  expectedQty: number;
+  expectedQty!: number;
 
   @ApiProperty({ description: 'Expected quantity in KG' })
   @IsNumber()
   @IsPositive()
-  expectedQtyKg: number;
+  expectedQtyKg!: number;
 
   @ApiPropertyOptional({ description: 'Bag count for bagged cargo' })
   @IsOptional()
@@ -78,11 +78,11 @@ export class CreateShipmentDto {
   @ApiProperty({ description: 'External ID for idempotency' })
   @IsString()
   @MaxLength(120)
-  externalId: string;
+  externalId!: string;
 
   @ApiProperty({ description: 'Source type', enum: ShipmentSourceTypeDto })
   @IsEnum(ShipmentSourceTypeDto)
-  sourceType: ShipmentSourceTypeDto;
+  sourceType!: ShipmentSourceTypeDto;
 
   @ApiPropertyOptional({ description: 'Sales Order ID' })
   @IsOptional()
@@ -92,7 +92,7 @@ export class CreateShipmentDto {
 
   @ApiProperty({ description: 'Owner ID' })
   @IsUUID()
-  ownerId: string;
+  ownerId!: string;
 
   @ApiPropertyOptional({ description: 'Customer ID' })
   @IsOptional()
@@ -101,12 +101,12 @@ export class CreateShipmentDto {
 
   @ApiProperty({ description: 'Warehouse ID' })
   @IsUUID()
-  warehouseId: string;
+  warehouseId!: string;
 
   @ApiProperty({ description: 'Vehicle number' })
   @IsString()
   @MaxLength(30)
-  vehicleNumber: string;
+  vehicleNumber!: string;
 
   @ApiPropertyOptional({ description: 'Vehicle type ID' })
   @IsOptional()
@@ -117,5 +117,5 @@ export class CreateShipmentDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateShipmentLineDto)
-  lines: CreateShipmentLineDto[];
+  lines!: CreateShipmentLineDto[];
 }

@@ -12,7 +12,8 @@
 | Module 2 - Master Data | ✅ Completed | `src/modules/master-data` | 17 tables | ~55 endpoints |
 | Module 3 - Inventory Core | ✅ Completed | `src/modules/inventory-core` | 10 tables | ~13 endpoints |
 | Module 4 - Inbound | ✅ Completed | `src/modules/inbound` | 6 tables | ~14 endpoints |
-| Module 5 - Outbound | 🔜 Pending | `src/modules/outbound` | - | - |
+| Module 5 - Outbound | ✅ Completed | `src/modules/outbound` | 10 tables | ~18 endpoints |
+| Module 6 - Inventory Control | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
 
 ---
 
@@ -573,5 +574,203 @@ src/modules/outbound/
 | `OUTBOUND.WEIGH.RECORD` | Ghi nhận cân |
 | `OUTBOUND.APPROVAL.DECIDE` | Approve/Reject |
 | `OUTBOUND.DASHBOARD.READ` | Xem dashboard |
+
+---
+
+# Module 6: Inventory Control
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/inventory-control`  
+**Documentation:** [`docs/module-6-inventory-control.md`](./module-6-inventory-control.md)  
+**Database Docs:** [`prisma/docs/module-6-inventory-control.md`](../prisma/docs/module-6-inventory-control.md)
+
+## Database Tables (13 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `ic_move_order` | Header lệnh di chuyển nội bộ | Move |
+| `ic_move_order_line` | Line chi tiết lệnh di chuyển | Move |
+| `ic_transfer_order` | Header lệnh chuyển kho | Transfer |
+| `ic_transfer_order_line` | Line chi tiết chuyển kho | Transfer |
+| `ic_inventory_status_change` | Yêu cầu đổi trạng thái tồn | Status |
+| `ic_cycle_count_plan` | Kế hoạch kiểm kê chu kỳ | Count |
+| `ic_cycle_count_header` | Header đợt kiểm kê | Count |
+| `ic_cycle_count_line` | Line chi tiết kiểm kê | Count |
+| `ic_adjustment_header` | Header điều chỉnh tồn | Adjustment |
+| `ic_adjustment_line` | Line chi tiết điều chỉnh | Adjustment |
+| `ic_reconciliation_review` | Review sai lệch đối chiếu | Reconciliation |
+| `ic_document_status_history` | Lịch sử chuyển trạng thái | Trace |
+| `ic_exception_log` | Log exception nghiệp vụ | Trace |
+
+## API Endpoints
+
+### On-Hand Inquiry
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/inventory-control/on-hand` | Tra cứu tồn kho |
+| GET | `/api/v1/inventory-control/on-hand/:itemId` | Chi tiết tồn theo item |
+| GET | `/api/v1/inventory-control/movement-history` | Lịch sử biến động |
+
+### Move Order
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory-control/moves` | Tạo move order |
+| GET | `/api/v1/inventory-control/moves` | List move orders |
+| GET | `/api/v1/inventory-control/moves/:id` | Chi tiết move order |
+| POST | `/api/v1/inventory-control/moves/:id/confirm` | Confirm move |
+| POST | `/api/v1/inventory-control/moves/:id/execute` | Execute move |
+| POST | `/api/v1/inventory-control/moves/:id/cancel` | Cancel move |
+
+### Transfer Order
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory-control/transfers` | Tạo transfer order |
+| GET | `/api/v1/inventory-control/transfers` | List transfer orders |
+| GET | `/api/v1/inventory-control/transfers/aging` | Transfer aging report |
+| GET | `/api/v1/inventory-control/transfers/:id` | Chi tiết transfer |
+| POST | `/api/v1/inventory-control/transfers/:id/release` | Release transfer |
+| POST | `/api/v1/inventory-control/transfers/:id/ship` | Ship transfer |
+| POST | `/api/v1/inventory-control/transfers/:id/receive` | Receive transfer |
+| POST | `/api/v1/inventory-control/transfers/:id/close` | Close transfer |
+| POST | `/api/v1/inventory-control/transfers/:id/cancel` | Cancel transfer |
+
+### Status Change
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory-control/status-changes` | Tạo status change |
+| GET | `/api/v1/inventory-control/status-changes` | List status changes |
+| GET | `/api/v1/inventory-control/status-changes/:id` | Chi tiết |
+| POST | `/api/v1/inventory-control/status-changes/:id/cancel` | Cancel |
+| POST | `/api/v1/inventory-control/status-changes/:id/reverse` | Reverse |
+
+### Cycle Count
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory-control/cycle-count-plans` | Tạo count plan |
+| POST | `/api/v1/inventory-control/cycle-counts` | Tạo cycle count |
+| GET | `/api/v1/inventory-control/cycle-counts` | List cycle counts |
+| GET | `/api/v1/inventory-control/cycle-counts/:id` | Chi tiết |
+| POST | `/api/v1/inventory-control/cycle-counts/:id/release` | Release count |
+| POST | `/api/v1/inventory-control/cycle-counts/:id/submit` | Submit count |
+| POST | `/api/v1/inventory-control/cycle-counts/:id/recount` | Request recount |
+| POST | `/api/v1/inventory-control/cycle-counts/:id/approve` | Approve variance |
+| POST | `/api/v1/inventory-control/cycle-counts/:id/post` | Post adjustment |
+| POST | `/api/v1/inventory-control/cycle-counts/:id/cancel` | Cancel count |
+
+### Adjustment
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory-control/adjustments` | Tạo adjustment |
+| GET | `/api/v1/inventory-control/adjustments` | List adjustments |
+| GET | `/api/v1/inventory-control/adjustments/:id` | Chi tiết |
+| POST | `/api/v1/inventory-control/adjustments/:id/submit` | Submit adjustment |
+| POST | `/api/v1/inventory-control/adjustments/:id/approve` | Approve adjustment |
+| POST | `/api/v1/inventory-control/adjustments/:id/post` | Post adjustment |
+| POST | `/api/v1/inventory-control/adjustments/:id/cancel` | Cancel adjustment |
+
+### Reconciliation
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory-control/reconciliation-reviews/run` | Run reconciliation |
+| GET | `/api/v1/inventory-control/reconciliation-reviews` | List reviews |
+| GET | `/api/v1/inventory-control/reconciliation-reviews/:id` | Chi tiết |
+| POST | `/api/v1/inventory-control/reconciliation-reviews/:id/assign` | Assign reviewer |
+| POST | `/api/v1/inventory-control/reconciliation-reviews/:id/resolve` | Resolve issue |
+| POST | `/api/v1/inventory-control/reconciliation-reviews/:id/close` | Close review |
+
+## Code Structure
+
+```
+src/modules/inventory-control/
+├── index.js
+├── inventory-control.routes.js
+├── controllers/
+│   ├── onhand-inquiry.controller.js
+│   ├── move-order.controller.js
+│   ├── transfer-order.controller.js
+│   ├── status-change.controller.js
+│   ├── cycle-count.controller.js
+│   ├── adjustment.controller.js
+│   └── reconciliation.controller.js
+├── services/
+│   ├── onhand-inquiry.service.js
+│   ├── move-order.service.js
+│   ├── transfer-order.service.js
+│   ├── status-change.service.js
+│   ├── cycle-count.service.js
+│   ├── adjustment.service.js
+│   ├── reconciliation.service.js
+│   ├── ic-validation.service.js
+│   ├── ic-state-machine.service.js
+│   └── ic-posting-adapter.service.js
+├── infra/
+│   ├── move-order.repository.js
+│   ├── transfer-order.repository.js
+│   ├── status-change.repository.js
+│   ├── cycle-count.repository.js
+│   ├── adjustment.repository.js
+│   ├── reconciliation.repository.js
+│   └── ic-status-history.repository.js
+└── domain/
+    ├── ic.enums.js
+    ├── ic.errors.js
+    └── ic.policy.js
+```
+
+## Module Dependencies
+
+### Module 6 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `NumberSequence` | Sinh document numbers (MOV-*, TRF-*, STC-*, CNT-*, ADJ-*, REC-*) |
+| Module 1 | `ReasonCode` | Validate reason codes |
+| Module 1 | `AuditLog` | Audit trail |
+| Module 1 | `Idempotency` | External ID check |
+| Module 2 | `MdOwner` | Owner validation |
+| Module 2 | `MdItem` | Item validation |
+| Module 2 | `MdWarehouse` | Warehouse validation |
+| Module 2 | `MdLocation` | Location validation |
+| Module 2 | `MdInventoryStatus` | Status allowed matrix |
+| Module 2 | `MdUom` | UOM validation |
+| Module 3 | `PostingEngine` | Post inventory transactions |
+| Module 3 | `OnHandService` | Query available stock |
+| Module 3 | `TransactionQueryService` | Movement history |
+| Module 3 | `ReconciliationService` | Run reconciliation |
+
+### Modules that depend on Module 6:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 7 | `CreateMoveWork` | Tạo work cho move (WORK_BASED mode) |
+| Module 10 | `InventoryControlEvent` | Capture billing events |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `IC.ONHAND.READ` | Tra cứu tồn kho |
+| `IC.MOVEMENT.READ` | Xem lịch sử biến động |
+| `IC.MOVE.CREATE` | Tạo move order |
+| `IC.MOVE.CONFIRM` | Confirm move order |
+| `IC.MOVE.EXECUTE` | Execute move order |
+| `IC.MOVE.CANCEL` | Cancel move order |
+| `IC.TRANSFER.CREATE` | Tạo transfer order |
+| `IC.TRANSFER.RELEASE` | Release transfer |
+| `IC.TRANSFER.SHIP` | Ship transfer |
+| `IC.TRANSFER.RECEIVE` | Receive transfer |
+| `IC.TRANSFER.CANCEL` | Cancel transfer |
+| `IC.STATUS.CREATE` | Tạo status change |
+| `IC.STATUS.REVERSE` | Reverse status change |
+| `IC.COUNT.CREATE` | Tạo cycle count |
+| `IC.COUNT.RELEASE` | Release count |
+| `IC.COUNT.SUBMIT` | Submit count |
+| `IC.COUNT.APPROVE` | Approve variance |
+| `IC.COUNT.POST` | Post count adjustment |
+| `IC.ADJ.CREATE` | Tạo adjustment |
+| `IC.ADJ.SUBMIT` | Submit adjustment |
+| `IC.ADJ.APPROVE` | Approve adjustment |
+| `IC.ADJ.POST` | Post adjustment |
+| `IC.RECON.RUN` | Run reconciliation |
+| `IC.RECON.ASSIGN` | Assign reviewer |
+| `IC.RECON.RESOLVE` | Resolve issue |
 
 ---

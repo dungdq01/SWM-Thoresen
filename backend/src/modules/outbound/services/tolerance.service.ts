@@ -86,19 +86,19 @@ export class ToleranceService {
         itemId,
         isActive: true,
       },
-      select: { tolerancePct: true },
+      select: { tolerancePctOutboundOverride: true },
     });
-    if (ownerItemPolicy?.tolerancePct != null) {
-      return Number(ownerItemPolicy.tolerancePct);
+    if (ownerItemPolicy?.tolerancePctOutboundOverride != null) {
+      return Number(ownerItemPolicy.tolerancePctOutboundOverride);
     }
 
     // Level 2: Check Item default tolerance
     const item = await this.prisma.mdItem.findUnique({
       where: { id: itemId },
-      select: { tolerancePct: true },
+      select: { tolerancePctOutbound: true },
     });
-    if (item?.tolerancePct != null) {
-      return Number(item.tolerancePct);
+    if (item?.tolerancePctOutbound != null) {
+      return Number(item.tolerancePctOutbound);
     }
 
     // Level 3: Check Owner default tolerance

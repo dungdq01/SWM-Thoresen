@@ -15,8 +15,8 @@ import { ApprovalService } from '../services/approval.service';
 
 class ApprovalDto {
   lineId?: string;
-  decision: 'APPROVE' | 'REJECT' | 'REWEIGH';
-  reasonCode: string;
+  decision!: 'APPROVE' | 'REJECT' | 'REWEIGH';
+  reasonCode!: string;
   note?: string;
 }
 
