@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
+import { FoundationModule } from '../foundation/foundation.module';
 
 import { OwnerController } from './controllers/owner.controller';
 import { VendorController } from './controllers/vendor.controller';
@@ -34,7 +35,7 @@ import { InventoryStatusService } from './services/inventory-status.service';
 import { LookupService } from './services/lookup.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, FoundationModule],
   controllers: [
     OwnerController,
     VendorController,

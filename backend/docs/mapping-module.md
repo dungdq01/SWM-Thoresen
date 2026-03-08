@@ -96,7 +96,7 @@
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/master-data`  
 **Documentation:** [`docs/module-2-master-data.md`](./module-2-master-data.md)  
-**Database Docs:** [`prisma/docs/module-2-database.md`](../prisma/docs/module-2-database.md)
+**Database Docs:** [`prisma/docs/module-2-master-data.md`](../prisma/docs/module-2-master-data.md)
 
 ## Database Tables (17 tables)
 
@@ -291,15 +291,15 @@
 | Module 2 | `MdUom` | UOM validation |
 
 ### Modules that depend on Module 3:
-| Target Module | Dependency | Usage |
-|---------------|------------|-------|
-| Module 4 | `PostingEngineService` | Post receipt inbound |
-| Module 5 | `PostingEngineService`, `HoldService` | Allocate + ship outbound |
-| Module 6 | `PostingEngineService` | Adjustment, status change, count |
-| Module 7 | `PostingEngineService` | Putaway, pick movement |
-| Module 9 | `PostingEngineService` | VAS consume/produce |
-| Module 10 | `SnapshotService`, `DailyStorageSnapshot` | Billing input |
-| Module 11 | `ReconciliationService`, `InventTrans`, `OnHand` | Reporting queries |
+| Target Module | Dependency                                       | Usage                            |
+| ---------------| --------------------------------------------------| ----------------------------------|
+| Module 4      | `PostingEngineService`                           | Post receipt inbound             |
+| Module 5      | `PostingEngineService`, `HoldService`            | Allocate + ship outbound         |
+| Module 6      | `PostingEngineService`                           | Adjustment, status change, count |
+| Module 7      | `PostingEngineService`                           | Putaway, pick movement           |
+| Module 9      | `PostingEngineService`                           | VAS consume/produce              |
+| Module 10     | `SnapshotService`, `DailyStorageSnapshot`        | Billing input                    |
+| Module 11     | `ReconciliationService`, `InventTrans`, `OnHand` | Reporting queries                |
 
 ## Backend Services (8 services)
 
