@@ -5,15 +5,15 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PostingAction, Prisma } from '@prisma/client';
 
 export interface CreatePostingLinkInput {
   shipmentHeaderId: string;
-  shipmentLineId?: string;
-  inventTransId: string;
-  eventCode: string;
-  qtyPosted: number;
-  createdBy?: string;
-  correlationId?: string;
+  shipmentLineId: string;
+  postingAction: PostingAction;
+  m3ExternalId: string;
+  requestPayload?: Record<string, unknown>;
+  correlationId: string;
 }
 
 @Injectable()
@@ -25,11 +25,11 @@ export class PostingLinkRepository {
       data: {
         shipmentHeaderId: data.shipmentHeaderId,
         shipmentLineId: data.shipmentLineId,
-        inventTransId: data.inventTransId,
-        eventCode: data.eventCode,
-        qtyPosted: data.qtyPosted,
-        createdBy: data.createdBy,
-        correlationId: data.correlationId || '',
+        postingAction: data.postingAction,
+        m3ExternalId: data.m3ExternalId,
+        status: 'PENDING',
+        requestPayload: data.requestPayload as Prisma.InputJsonValue,
+        correlationId: data.correlationId,
       },
     });
   }
