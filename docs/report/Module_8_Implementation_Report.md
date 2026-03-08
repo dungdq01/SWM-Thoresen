@@ -186,32 +186,68 @@ backend/src/modules/integration-platform/
 
 ---
 
-## 6. Known Issues / Notes
+## 6. Feedback Fixes Applied (2026-03-09)
+
+Sau khi nhận feedback từ code review, các issues sau đã được fix:
+
+### CR-1: RBAC Implementation ✅
+- Thêm `@UseGuards(AuthGuard, PermissionGuard)` cho tất cả 5 controllers
+- Thêm `@Permission()` decorator cho mỗi endpoint
+- Sử dụng `@CurrentUser()` để lấy user từ auth context (thay vì hardcode)
+- **22 permission codes** được định nghĩa cho Module 8
+
+### HI-3: Transaction Atomicity ✅
+- Wrap multi-step operations trong `prisma.$transaction()`
+- `weighbridge-ingest.service.ts`: Log creation + event state creation trong 1 transaction
+
+### HI-4: decimal.js for Weight Calculations ✅
+- Sử dụng `decimal.js` cho tính toán net weight
+- Đảm bảo độ chính xác khi `netWeightKg = grossWeightKg - tareWeightKg`
+
+### HI-5: OCR Confidence Threshold 90% ✅
+- Implement `evaluateConfidence()` method với per-field thresholds
+- BL Number: ≥90%, Vehicle: ≥90%, Product: ≥85%, Vessel: ≥85%, Qty: ≥85%
+- Phải có ít nhất BL hoặc Vehicle đạt threshold
+
+### HI-7: DTO Validation Decorators ✅
+- Thêm `class-validator` decorators cho tất cả inline DTOs
+- OCR, Mobile Sync, ERP Push, Monitoring controllers đã có validation
+
+---
+
+## 7. Known Issues / Notes
 
 ### IDE Lint Errors (Expected)
-- **"Property 'm8...' does not exist on type 'PrismaService'"** - This is due to IDE TypeScript server cache not refreshing after `prisma generate`. Restart TypeScript server or IDE to resolve.
-- **"Cannot find module..."** - Same cause as above, IDE needs refresh.
+- **"Property 'm8...' does not exist on type 'PrismaService'"** - IDE TypeScript server cache chưa refresh sau `prisma generate`. Restart TS server để fix.
+- **"Cannot find module 'decimal.js'"** - Cần install package: `npm install decimal.js`
 
 ### Resolution
 ```bash
+# Install decimal.js
+cd backend && npm install decimal.js
+
+# Generate Prisma client
+cd backend && npx prisma generate
+
 # In VS Code, press Ctrl+Shift+P and run:
 # "TypeScript: Restart TS Server"
-# OR simply close and reopen the IDE
 ```
 
 ---
 
-## 7. Next Steps
+## 8. Next Steps
 
-1. **Register Module** - Add `IntegrationPlatformModule` to `AppModule` imports
-2. **Run Seed** - Execute seed script to populate initial data
-3. **Integration Testing** - Test API endpoints with actual requests
-4. **Frontend Development** - Implement M8 frontend screens
-5. **Queue Integration** - Connect BullMQ for async job processing (ERP push, callbacks)
+1. **Install decimal.js** - `cd backend && npm install decimal.js`
+2. **Generate Prisma** - `cd backend && npx prisma generate`
+3. **Register Module** - Add `IntegrationPlatformModule` to `AppModule` imports
+4. **Run Seed** - Execute seed script to populate initial data
+5. **Integration Testing** - Test API endpoints with actual requests
+6. **Frontend Development** - Implement M8 frontend screens
+7. **Queue Integration** - Connect BullMQ for async job processing
 
 ---
 
-## 8. Documentation Created
+## 9. Documentation Created
 
 | Document | Path |
 |----------|------|
