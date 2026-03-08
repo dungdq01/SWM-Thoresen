@@ -2,9 +2,10 @@
 ## Implementation Report
 
 **Ngày hoàn thành:** 2026-03-08  
-**Phiên bản:** 1.0  
+**Phiên bản:** 2.0 (Feedback Fixes Applied)  
 **Module:** work-execution  
-**Folder:** `backend/src/modules/work-execution`
+**Folder:** `backend/src/modules/work-execution`  
+**Feedback Review:** 2026-03-09
 
 ---
 
@@ -14,11 +15,12 @@ Module 7 đã được triển khai đầy đủ theo plan, bao gồm:
 
 - ✅ Database schema (10 bảng + 18 enums)
 - ✅ Domain layer (types, errors, state machine, policies)
-- ✅ Repository layer (6 repositories)
-- ✅ Application layer (10 usecases)
+- ✅ Repository layer (6 repositories + optimistic locking)
+- ✅ Application layer (11 usecases)
 - ✅ Controller + Routes
 - ✅ Validation schemas
 - ✅ Documentation
+- ✅ **Feedback fixes applied (6 HIGH issues)**
 
 ---
 
@@ -67,18 +69,20 @@ src/modules/work-execution/
 │   ├── startWork.usecase.js       ✅
 │   ├── completeLine.usecase.js    ✅
 │   ├── skipLine.usecase.js        ✅
-│   ├── cancelWork.usecase.js      ✅
+│   ├── cancelWork.usecase.js      ✅ (+ reversal logic)
 │   ├── getWorkList.usecase.js     ✅
 │   ├── syncBatch.usecase.js       ✅
-│   └── validateScan.usecase.js    ✅
+│   ├── validateScan.usecase.js    ✅
+│   └── deliverOutbox.usecase.js   ✅ (NEW - HI-2 fix)
 └── infra/
-    ├── workHeader.repository.js   ✅
-    ├── workLine.repository.js     ✅
+    ├── workHeader.repository.js   ✅ (+ optimistic lock)
+    ├── workLine.repository.js     ✅ (+ optimistic lock)
     ├── workEvent.repository.js    ✅
     ├── workException.repository.js ✅
-    ├── workOutbox.repository.js   ✅
+    ├── workOutbox.repository.js   ✅ (+ delivery methods)
     ├── mobileSync.repository.js   ✅
-    ├── inventoryAdapter.js        ✅
+    ├── inventoryAdapter.js        ✅ (+ reversePosting)
+    ├── auditLogAdapter.js         ✅ (NEW - HI-6 fix)
     └── work.mapper.js             ✅
 ```
 
@@ -162,7 +166,40 @@ src/modules/work-execution/
 
 ---
 
-## 5. Pending Items (Phase 2)
+## 5. Feedback Fixes Applied (v2)
+
+| Issue | Priority | Description | Status |
+|-------|----------|-------------|--------|
+| HI-1 | HIGH | Posting failure does not create exception | ✅ Fixed |
+| HI-2 | HIGH | No outbox consumer/publisher service | ✅ Fixed |
+| HI-3 | HIGH | versionNo (optimistic locking) never checked | ✅ Fixed |
+| HI-4 | HIGH | Cancel does not reverse posted InventTrans | ✅ Fixed |
+| HI-5 | HIGH | Inventory adapter mock fallback | ✅ Fixed |
+| HI-6 | HIGH | No M1 AuditLog integration | ✅ Fixed |
+
+### Fix Details:
+
+**HI-1:** `completeLine.usecase.js` - Tạo `WeWorkException` với type `POSTING_FAILED` khi post thất bại
+
+**HI-2:** Tạo `deliverOutbox.usecase.js` + thêm methods trong `workOutbox.repository.js`:
+- `markAsSent()`, `markAsFailed()`, `findFailedEventsReadyForRetry()`, `incrementRetry()`, `getOutboxStats()`
+
+**HI-3:** Thêm `updateWithOptimisticLock()` trong:
+- `workHeader.repository.js`
+- `workLine.repository.js`
+
+**HI-4:** 
+- Thêm `reversePosting()` trong `inventoryAdapter.js`
+- Cập nhật `cancelWork.usecase.js` để gọi reversal cho completed lines
+- Thêm `POSTING_STATUS.REVERSED` và `EVENT_TYPES.LINE_POSTING_REVERSED`
+
+**HI-5:** Xóa mock fallback trong `inventoryAdapter.js`, trả `success: false` nếu PostingEngine không có
+
+**HI-6:** Tạo `auditLogAdapter.js` integrate với M1 AuditLog service
+
+---
+
+## 6. Pending Items (Phase 2)
 
 | Item | Priority | Description |
 |------|----------|-------------|
@@ -174,7 +211,7 @@ src/modules/work-execution/
 
 ---
 
-## 6. Test Recommendations
+## 7. Test Recommendations
 
 ### 6.1 Unit Tests
 - [ ] State machine transitions
@@ -194,25 +231,28 @@ src/modules/work-execution/
 
 ---
 
-## 7. Metrics
+## 8. Metrics
 
 | Metric | Value |
 |--------|-------|
 | Database tables | 10 |
-| Enums | 18 |
+| Enums | 19 (added REVERSED) |
 | API endpoints | 20 |
-| Usecases | 10 |
+| Usecases | 11 (+deliverOutbox) |
 | Repositories | 6 |
-| Total code files | 18 |
-| Lines of code | ~2,500 |
+| Adapters | 2 (inventory + auditLog) |
+| Total code files | 20 |
+| Lines of code | ~2,800 |
+| Feedback fixes | 6 HIGH issues |
 
 ---
 
-## 8. Sign-off
+## 9. Sign-off
 
 | Role | Status |
 |------|--------|
 | Backend Dev | ✅ Implemented |
+| Feedback Review | ✅ Applied (6 HIGH fixes) |
 | Code Review | 🔜 Pending |
 | QA Test | 🔜 Pending |
 | Documentation | ✅ Complete |

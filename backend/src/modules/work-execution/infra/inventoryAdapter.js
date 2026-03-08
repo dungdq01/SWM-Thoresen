@@ -13,25 +13,68 @@ class InventoryAdapter {
   }
 
   async postMovement(line, header, context, tx = null) {
+    if (!this.postingEngine || typeof this.postingEngine.postMovement !== 'function') {
+      return {
+        success: false,
+        postingRefId: null,
+        postingRefType: null,
+        errorMessage: 'PostingEngine not configured — cannot post inventory',
+      };
+    }
+
     try {
       const postingRequest = this._buildPostingRequest(line, header, context);
-      
-      if (this.postingEngine && typeof this.postingEngine.postMovement === 'function') {
-        const result = await this.postingEngine.postMovement(postingRequest, tx);
-        return {
-          success: true,
-          postingRefId: result.transId || result.id,
-          postingRefType: postingRequest.transType,
-        };
-      }
-      
+      const result = await this.postingEngine.postMovement(postingRequest, tx);
       return {
         success: true,
-        postingRefId: `WE-MOCK-${Date.now()}`,
+        postingRefId: result.transId || result.id,
         postingRefType: postingRequest.transType,
       };
     } catch (error) {
-      throw new InventoryPostingFailedError(line.id, error.message);
+      return {
+        success: false,
+        postingRefId: null,
+        postingRefType: this._getTransType(header.workType),
+        errorMessage: error.message,
+      };
+    }
+  }
+
+  async reversePosting(params, tx = null) {
+    if (!this.postingEngine || typeof this.postingEngine.reverseTransaction !== 'function') {
+      return {
+        success: false,
+        reversalRefId: null,
+        errorMessage: 'PostingEngine reversal not configured',
+      };
+    }
+
+    try {
+      const result = await this.postingEngine.reverseTransaction({
+        originalTransId: params.originalTransId,
+        reasonCode: params.reasonCode,
+        correlationId: params.correlationId,
+        sourceModule: 'M7',
+        createdBy: params.createdBy,
+      }, tx);
+      return {
+        success: true,
+        reversalRefId: result.transId || result.id,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        reversalRefId: null,
+        errorMessage: error.message,
+      };
+    }
+  }
+
+  _getTransType(workType) {
+    switch (workType) {
+      case WORK_TYPES.TRANSFER_PICK: return 'TRANSFER_SHIP';
+      case WORK_TYPES.TRANSFER_PUT: return 'TRANSFER_RECEIVE';
+      default: return 'MOVE';
     }
   }
 

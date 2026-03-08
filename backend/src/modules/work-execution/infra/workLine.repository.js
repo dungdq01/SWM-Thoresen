@@ -64,7 +64,29 @@ class WorkLineRepository {
       data: {
         ...data,
         versionNo: { increment: 1 },
+        updatedAt: new Date(),
       },
+      include: { header: true },
+    });
+  }
+
+  async updateWithOptimisticLock(id, currentVersionNo, data, tx = null) {
+    const db = tx || this.prisma;
+    const result = await db.weWorkLine.updateMany({
+      where: { id, versionNo: currentVersionNo },
+      data: {
+        ...data,
+        versionNo: { increment: 1 },
+        updatedAt: new Date(),
+      },
+    });
+    
+    if (result.count === 0) {
+      throw new Error(`Concurrent modification detected for work line ${id}`);
+    }
+    
+    return db.weWorkLine.findUnique({
+      where: { id },
       include: { header: true },
     });
   }

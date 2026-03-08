@@ -65,7 +65,29 @@ class WorkHeaderRepository {
       data: {
         ...data,
         versionNo: { increment: 1 },
+        updatedAt: new Date(),
       },
+      include: { lines: { orderBy: { lineNum: 'asc' } } },
+    });
+  }
+
+  async updateWithOptimisticLock(id, currentVersionNo, data, tx = null) {
+    const db = tx || this.prisma;
+    const result = await db.weWorkHeader.updateMany({
+      where: { id, versionNo: currentVersionNo },
+      data: {
+        ...data,
+        versionNo: { increment: 1 },
+        updatedAt: new Date(),
+      },
+    });
+    
+    if (result.count === 0) {
+      throw new Error(`Concurrent modification detected for work header ${id}`);
+    }
+    
+    return db.weWorkHeader.findUnique({
+      where: { id },
       include: { lines: { orderBy: { lineNum: 'asc' } } },
     });
   }

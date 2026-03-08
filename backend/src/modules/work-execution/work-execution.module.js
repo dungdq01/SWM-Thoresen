@@ -19,8 +19,10 @@ const { WorkExceptionRepository } = require('./infra/workException.repository');
 const { WorkOutboxRepository } = require('./infra/workOutbox.repository');
 const { MobileSyncRepository } = require('./infra/mobileSync.repository');
 const { InventoryAdapter } = require('./infra/inventoryAdapter');
+const { AuditLogAdapter } = require('./infra/auditLogAdapter');
 
 const { GenerateWorkUseCase } = require('./application/generateWork.usecase');
+const { DeliverOutboxUseCase } = require('./application/deliverOutbox.usecase');
 const { ClaimWorkUseCase, ReleaseWorkUseCase } = require('./application/claimWork.usecase');
 const { StartWorkUseCase, StartLineUseCase } = require('./application/startWork.usecase');
 const { CompleteLineUseCase } = require('./application/completeLine.usecase');
@@ -46,8 +48,10 @@ module.exports = {
   WorkOutboxRepository,
   MobileSyncRepository,
   InventoryAdapter,
+  AuditLogAdapter,
   
   GenerateWorkUseCase,
+  DeliverOutboxUseCase,
   ClaimWorkUseCase,
   ReleaseWorkUseCase,
   StartWorkUseCase,
