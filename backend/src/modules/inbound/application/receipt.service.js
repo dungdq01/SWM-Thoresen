@@ -7,7 +7,7 @@ const { ReceiptRepository } = require('../infra/receipt.repository');
 const { ReceiptStatusHistoryRepository } = require('../infra/receipt-status-history.repository');
 const { ReceiptWeighingRepository } = require('../infra/receipt-weighing.repository');
 const { ReceiptStateMachine, RECEIPT_STATUS, RECEIPT_ACTIONS } = require('../domain/inbound.state-machine');
-const { TolerancePolicy, WeightValidationPolicy, CancelPolicy } = require('../domain/inbound.policy');
+const { TolerancePolicy, WeightValidationPolicy, CancelPolicy, BaggedPolicy } = require('../domain/inbound.policy');
 const {
   InboundError,
   ERROR_CODES,
@@ -32,64 +32,89 @@ class ReceiptService {
 
   /**
    * Tạo receipt mới
+   * CR-2 FIX: Wrapped trong $transaction để tránh race condition
    */
   async createReceipt(data, context = {}) {
     const { externalId, ownerId, vendorId, warehouseId, receivingLocationId, lines } = data;
 
-    // Check idempotency
-    const existing = await this.receiptRepo.findByExternalId(externalId);
-    if (existing) {
-      return { receipt: existing, idempotentReplay: true };
-    }
+    return this.prisma.$transaction(async (tx) => {
+      // Check idempotency (trong transaction để tránh race condition)
+      const existing = await tx.receiptHeader.findUnique({
+        where: { externalId },
+        include: { lines: true },
+      });
+      if (existing) {
+        return { receipt: existing, idempotentReplay: true };
+      }
 
-    // Validate master data references
-    await this.validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId });
+      // Validate master data references
+      await this.validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }, tx);
 
-    // Validate receiving location type
-    const location = await this.prisma.mdLocation.findUnique({
-      where: { id: receivingLocationId },
-      select: { locationType: true },
+      // Validate receiving location type
+      const location = await tx.mdLocation.findUnique({
+        where: { id: receivingLocationId },
+        select: { locationType: true },
+      });
+      if (location.locationType !== 'RECEIVING') {
+        throw createLocationTypeError(location.locationType);
+      }
+
+      // Validate lines
+      if (!lines || lines.length === 0) {
+        throw new InboundError(ERROR_CODES.LINE_REQUIRED, 'Receipt phải có ít nhất 1 line');
+      }
+
+      // HI-6 FIX: Guard single-line assumption in Phase 1
+      if (lines.length > 1) {
+        throw new InboundError(ERROR_CODES.INVALID_STATE, 'Phase 1 chỉ hỗ trợ single-line receipt', { lineCount: lines.length });
+      }
+
+      for (const line of lines) {
+        await this.validateLineItem(line, tx);
+      }
+
+      // Create receipt
+      const receipt = await tx.receiptHeader.create({
+        data: {
+          ...data,
+          status: RECEIPT_STATUS.DRAFT,
+          correlationId: context.correlationId || `corr-${Date.now()}`,
+          sourceApp: data.sourceApp || 'WEB',
+          lines: {
+            create: lines.map((line, index) => ({
+              ...line,
+              lineNumber: index + 1,
+            })),
+          },
+        },
+        include: { lines: true },
+      });
+
+      // Log initial status
+      await tx.receiptStatusHistory.create({
+        data: {
+          receiptHeaderId: receipt.id,
+          fromStatus: null,
+          toStatus: RECEIPT_STATUS.DRAFT,
+          transitionCode: 'CREATE',
+          triggeredBy: context.userId,
+          triggerRole: context.userRole,
+          correlationId: receipt.correlationId,
+        },
+      });
+
+      return { receipt, idempotentReplay: false };
     });
-    if (location.locationType !== 'RECEIVING') {
-      throw createLocationTypeError(location.locationType);
-    }
-
-    // Validate lines
-    if (!lines || lines.length === 0) {
-      throw new InboundError(ERROR_CODES.LINE_REQUIRED, 'Receipt phải có ít nhất 1 line');
-    }
-    for (const line of lines) {
-      await this.validateLineItem(line);
-    }
-
-    // Create receipt
-    const receipt = await this.receiptRepo.createWithLines({
-      ...data,
-      status: RECEIPT_STATUS.DRAFT,
-      correlationId: context.correlationId || `corr-${Date.now()}`,
-      sourceApp: data.sourceApp || 'WEB',
-    });
-
-    // Log initial status
-    await this.historyRepo.create({
-      receiptHeaderId: receipt.id,
-      fromStatus: null,
-      toStatus: RECEIPT_STATUS.DRAFT,
-      transitionCode: 'CREATE',
-      triggeredBy: context.userId,
-      triggerRole: context.userRole,
-      correlationId: receipt.correlationId,
-    });
-
-    return { receipt, idempotentReplay: false };
   }
 
   /**
    * Confirm receipt (DRAFT → AWAITING_WEIGHING)
+   * HI-4 FIX: Gọi lockForUpdate để tránh concurrent updates
    */
   async confirmReceipt(receiptId, data, context = {}) {
     return this.prisma.$transaction(async (tx) => {
-      // Lock receipt
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -109,10 +134,10 @@ class ReceiptService {
         throw createInvalidStateError(receipt.status, RECEIPT_ACTIONS.CONFIRM);
       }
 
-      // Generate receipt number if not exists
+      // HI-3 FIX: Atomic receipt number generation
       let receiptNumber = receipt.receiptNumber;
       if (!receiptNumber) {
-        receiptNumber = await this.generateReceiptNumber(tx);
+        receiptNumber = await this.generateReceiptNumberAtomic(tx);
       }
 
       // Update receipt
@@ -146,6 +171,7 @@ class ReceiptService {
 
   /**
    * Nhận weigh-in event
+   * HI-4 FIX: Gọi lockForUpdate
    */
   async receiveWeighIn(receiptId, data, context = {}) {
     const { eventId, ticketId, grossWeightKg, eventTimestamp, sourceApp, rawPayload } = data;
@@ -157,6 +183,8 @@ class ReceiptService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -221,9 +249,12 @@ class ReceiptService {
 
   /**
    * Start processing (WEIGHED_IN → PROCESSING)
+   * HI-4 FIX: Gọi lockForUpdate
    */
   async startProcessing(receiptId, context = {}) {
     return this.prisma.$transaction(async (tx) => {
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -261,6 +292,8 @@ class ReceiptService {
 
   /**
    * Nhận weigh-out event và check tolerance
+   * HI-4 FIX: Gọi lockForUpdate
+   * HI-1 FIX: Wire BaggedPolicy.checkOverReceipt
    */
   async receiveWeighOut(receiptId, data, context = {}) {
     const { eventId, ticketId, tareWeightKg, eventTimestamp, sourceApp, rawPayload } = data;
@@ -272,6 +305,8 @@ class ReceiptService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -310,8 +345,21 @@ class ReceiptService {
         },
       });
 
+      // HI-6: Guard single-line assumption
+      if (receipt.lines.length > 1) {
+        throw new InboundError(ERROR_CODES.INVALID_STATE, 'Phase 1 chỉ hỗ trợ single-line receipt', { lineCount: receipt.lines.length });
+      }
+
       // Lookup tolerance và check
       const line = receipt.lines[0]; // Phase 1: single line
+
+      // HI-1: Check bagged over-receipt rule
+      if (line.cargoForm && line.cargoForm !== 'BULK' && line.bagCount) {
+        const baggedCheck = await BaggedPolicy.checkOverReceipt(tx, receipt.poId, line.bagCount);
+        if (baggedCheck.overReceiptBlocked) {
+          throw new InboundError(ERROR_CODES.INVALID_STATE, 'Vượt quá số lượng bag cho phép của PO', baggedCheck);
+        }
+      }
       const toleranceLookup = await TolerancePolicy.lookupTolerance(tx, receipt.ownerId, line.itemId);
       
       if (toleranceLookup.tolerance === null) {
@@ -397,9 +445,12 @@ class ReceiptService {
 
   /**
    * Reweigh receipt (REJECTED → AWAITING_WEIGHING)
+   * HI-4 FIX: Gọi lockForUpdate
    */
   async reweighReceipt(receiptId, context = {}) {
     return this.prisma.$transaction(async (tx) => {
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -446,11 +497,14 @@ class ReceiptService {
 
   /**
    * Cancel receipt
+   * HI-4 FIX: Gọi lockForUpdate
    */
   async cancelReceipt(receiptId, data, context = {}) {
     const { reasonCode, note } = data;
 
     return this.prisma.$transaction(async (tx) => {
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -500,9 +554,12 @@ class ReceiptService {
 
   /**
    * Close receipt (PUTAWAY → CLOSED)
+   * HI-4 FIX: Gọi lockForUpdate
    */
   async closeReceipt(receiptId, context = {}) {
     return this.prisma.$transaction(async (tx) => {
+      // HI-4: Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
       const receipt = await this.receiptRepo.findById(receiptId);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
@@ -575,12 +632,13 @@ class ReceiptService {
 
   // === Helper Methods ===
 
-  async validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }) {
+  async validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }, tx = null) {
+    const db = tx || this.prisma;
     const [owner, vendor, warehouse, location] = await Promise.all([
-      this.prisma.mdOwner.findUnique({ where: { id: ownerId }, select: { isActive: true } }),
-      this.prisma.mdVendor.findUnique({ where: { id: vendorId }, select: { isActive: true } }),
-      this.prisma.mdWarehouse.findUnique({ where: { id: warehouseId }, select: { isActive: true } }),
-      this.prisma.mdLocation.findUnique({ where: { id: receivingLocationId }, select: { isActive: true } }),
+      db.mdOwner.findUnique({ where: { id: ownerId }, select: { isActive: true } }),
+      db.mdVendor.findUnique({ where: { id: vendorId }, select: { isActive: true } }),
+      db.mdWarehouse.findUnique({ where: { id: warehouseId }, select: { isActive: true } }),
+      db.mdLocation.findUnique({ where: { id: receivingLocationId }, select: { isActive: true } }),
     ]);
 
     if (!owner?.isActive) throw createMasterReferenceError('Owner', ownerId);
@@ -589,8 +647,9 @@ class ReceiptService {
     if (!location?.isActive) throw createMasterReferenceError('Location', receivingLocationId);
   }
 
-  async validateLineItem(line) {
-    const item = await this.prisma.mdItem.findUnique({
+  async validateLineItem(line, tx = null) {
+    const db = tx || this.prisma;
+    const item = await db.mdItem.findUnique({
       where: { id: line.itemId },
       select: { isActive: true },
     });
@@ -599,19 +658,42 @@ class ReceiptService {
     }
   }
 
-  async generateReceiptNumber(tx) {
+  /**
+   * HI-3 FIX: Atomic receipt number generation using database sequence
+   * Sử dụng advisory lock để tránh race condition
+   */
+  async generateReceiptNumberAtomic(tx) {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+    const prefix = `RCV-${dateStr}`;
     
-    // Get next sequence (simplified - in production use NumberSequence service)
-    const count = await tx.receiptHeader.count({
-      where: {
-        receiptNumber: { startsWith: `RCV-${dateStr}` },
-      },
-    });
+    // Use advisory lock to ensure atomic sequence generation
+    const lockKey = parseInt(dateStr);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
     
-    const seq = String(count + 1).padStart(6, '0');
-    return `RCV-${dateStr}-${seq}`;
+    // Get max sequence for today
+    const result = await tx.$queryRaw`
+      SELECT receipt_number 
+      FROM receipt_header 
+      WHERE receipt_number LIKE ${prefix + '%'}
+      ORDER BY receipt_number DESC 
+      LIMIT 1
+    `;
+    
+    let nextSeq = 1;
+    if (result.length > 0 && result[0].receipt_number) {
+      const lastNum = result[0].receipt_number;
+      const lastSeq = parseInt(lastNum.split('-')[2], 10);
+      nextSeq = lastSeq + 1;
+    }
+    
+    const seq = String(nextSeq).padStart(6, '0');
+    return `${prefix}-${seq}`;
+  }
+
+  // Deprecated: use generateReceiptNumberAtomic instead
+  async generateReceiptNumber(tx) {
+    return this.generateReceiptNumberAtomic(tx);
   }
 }
 
