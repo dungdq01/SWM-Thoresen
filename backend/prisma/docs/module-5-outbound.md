@@ -3,7 +3,8 @@
 **Schema Location:** `prisma/schema.prisma`  
 **Module:** Outbound Operations  
 **Tables:** 10  
-**Last Updated:** 2026-03-08  
+**Last Updated:** 2026-03-09  
+**Architecture:** Clean Architecture (domain/application/infra)  
 
 ---
 
@@ -317,20 +318,20 @@ enum PostingStatus {
 
 **Mục đích:** Lịch sử chuyển trạng thái
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `id` | UUID | No | Primary key |
-| `shipment_header_id` | UUID | No | FK → shipment_header |
-| `shipment_line_id` | UUID | Yes | FK → shipment_line |
-| `entity_level` | VARCHAR(10) | No | HEADER hoặc LINE |
-| `from_status` | VARCHAR(30) | Yes | Trạng thái trước |
-| `to_status` | VARCHAR(30) | No | Trạng thái sau |
-| `trigger_action` | VARCHAR(50) | No | Action gây chuyển |
-| `changed_by` | UUID | Yes | Người thay đổi |
-| `changed_at` | TIMESTAMP | No | Thời điểm |
-| `reason_code` | VARCHAR(50) | Yes | Mã lý do |
-| `note` | TEXT | Yes | Ghi chú |
-| `correlation_id` | VARCHAR(120) | No | Correlation ID |
+| Column               | Type         | Nullable | Description          |
+| ----------------------| --------------| ----------| ----------------------|
+| `id`                 | UUID         | No       | Primary key          |
+| `shipment_header_id` | UUID         | No       | FK → shipment_header |
+| `shipment_line_id`   | UUID         | Yes      | FK → shipment_line   |
+| `entity_level`       | VARCHAR(10)  | No       | HEADER hoặc LINE     |
+| `from_status`        | VARCHAR(30)  | Yes      | Trạng thái trước     |
+| `to_status`          | VARCHAR(30)  | No       | Trạng thái sau       |
+| `trigger_action`     | VARCHAR(50)  | No       | Action gây chuyển    |
+| `changed_by`         | UUID         | Yes      | Người thay đổi       |
+| `changed_at`         | TIMESTAMP    | No       | Thời điểm            |
+| `reason_code`        | VARCHAR(50)  | Yes      | Mã lý do             |
+| `note`               | TEXT         | Yes      | Ghi chú              |
+| `correlation_id`     | VARCHAR(120) | No       | Correlation ID       |
 
 **Indexes:**
 - `(shipment_header_id, changed_at DESC)`

@@ -428,23 +428,33 @@
 
 # Module 5: Outbound Operations
 
-**Status:** ✅ Implemented (Feedback Fixed v1)  
+**Status:** ✅ Implemented (Clean Architecture + RBAC v2)  
 **Code Path:** `src/modules/outbound`  
 **Documentation:** [`docs/module-5-outbound.md`](./module-5-outbound.md)  
 **Database Docs:** [`prisma/docs/module-5-outbound.md`](../prisma/docs/module-5-outbound.md)  
-**Last Updated:** 2026-03-08 (FB-v1)
+**Last Updated:** 2026-03-09 (Clean Architecture + RBAC)
+
+### Architecture
+
+Module 5 đã được cấu trúc lại theo Clean Architecture:
+- **domain/**: State machine, policy, errors
+- **application/**: Use cases (createShipment, allocateShipment, shipShipment, receiveOutboundWeight)
+- **infra/**: Repositories (alternative pattern)
+- **controllers/**: All protected with AuthGuard + PermissionGuard
 
 ### Feedback Fixes Applied
 
 | Issue ID | Description | Status |
 |----------|-------------|--------|
+| HI-1 | Auto-transition to ALL_WEIGHED | ✅ Fixed |
 | HI-2 | Tolerance 4-level cascade lookup | ✅ Fixed |
 | HI-3 | Allocation wrapped in $transaction | ✅ Fixed |
-| HI-4 | decidedBy extracted from x-user-id header | ✅ Fixed |
+| HI-4 | decidedBy from authenticated user | ✅ Fixed |
+| HI-5 | Line-level status history | ✅ Fixed |
 | HI-6 | lockForUpdate called before allocation | ✅ Fixed |
+| CR-3 | RBAC guards on all controllers | ✅ Fixed |
 | CR-1 | Real M3 OnHand/Hold integration | 🔜 Pending M3 interface |
 | CR-2 | M3 Posting at SHIPPED | 🔜 Pending M3 interface |
-| CR-3 | RBAC guards on controllers | 🔜 Pending M1 AuthGuard |
 
 ## Database Tables
 

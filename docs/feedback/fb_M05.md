@@ -145,13 +145,13 @@ export class ShipmentController {
 ```
 
 **Permission codes needed:**
-| Resource | Actions |
-|----------|---------|
-| OUTBOUND.SHIPMENT | CREATE, READ, CONFIRM, CANCEL, CLOSE |
-| OUTBOUND.ALLOCATION | ALLOCATE, UNALLOCATE |
-| OUTBOUND.WEIGHING | RECORD_TARE, RECORD_GROSS |
-| OUTBOUND.APPROVAL | APPROVE, REJECT, REWEIGH |
-| OUTBOUND.SHIP | EXECUTE |
+| Resource            | Actions                              |
+| ---------------------| --------------------------------------|
+| OUTBOUND.SHIPMENT   | CREATE, READ, CONFIRM, CANCEL, CLOSE |
+| OUTBOUND.ALLOCATION | ALLOCATE, UNALLOCATE                 |
+| OUTBOUND.WEIGHING   | RECORD_TARE, RECORD_GROSS            |
+| OUTBOUND.APPROVAL   | APPROVE, REJECT, REWEIGH             |
+| OUTBOUND.SHIP       | EXECUTE                              |
 
 ---
 
