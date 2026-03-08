@@ -17,6 +17,7 @@
 | Module 7 - Work Execution | ✅ Completed | `src/modules/work-execution` | 10 tables | ~20 endpoints |
 | Module 8 - Integration Platform | ✅ Completed | `src/modules/integration` | 12 tables | ~20 endpoints |
 | Module 9 - VAS / Bagging | ✅ Completed | `src/modules/vas` | 5 tables | ~11 endpoints |
+| Module 10 - Billing | ✅ Completed | `src/modules/billing` | 12 tables | ~22 endpoints |
 
 ---
 
@@ -1106,5 +1107,115 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 | `VAS.WO.READ` | View work orders |
 | `VAS.SESSION.CREATE` | Add session |
 | `VAS.SESSION.READ` | View sessions |
+
+---
+
+# Module 10: Billing & Commercial Control
+
+**Status:** ✅ Completed  
+**Version:** 1.0.0  
+**Code Path:** `src/modules/billing`  
+**Documentation:** [`docs/module-10-billing.md`](./module-10-billing.md)  
+**Database Docs:** [`prisma/docs/module-10-billing.md`](../prisma/docs/module-10-billing.md)
+
+## Database Tables (12 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `bil_contract` | Header contract tính phí | Config |
+| `bil_contract_fee_line` | Fee lines theo contract | Config |
+| `bil_day_type_calendar` | Day type + multiplier | Config |
+| `bil_event` | Billing events đã normalize | Runtime |
+| `bil_snapshot_run` | Snapshot run metadata | Runtime |
+| `bil_storage_snapshot` | Daily storage snapshot | Runtime |
+| `bil_debit_note` | DN header | Workflow |
+| `bil_debit_note_line` | DN charge lines | Workflow |
+| `bil_debit_note_history` | DN state history | Workflow |
+| `bil_exception` | Exception queue | Exception |
+| `bil_erp_push_outbox` | ERP push outbox | Integration |
+| `bil_erp_push_log` | ERP push log | Integration |
+
+## API Endpoints
+
+### Contract APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/billing/contracts` | Create contract |
+| GET | `/api/v1/billing/contracts` | List contracts |
+| GET | `/api/v1/billing/contracts/:id` | Get contract detail |
+| PUT | `/api/v1/billing/contracts/:id` | Update contract |
+| POST | `/api/v1/billing/contracts/:id/activate` | Activate contract |
+| POST | `/api/v1/billing/contracts/:id/deactivate` | Deactivate contract |
+| GET | `/api/v1/billing/contracts/:id/fee-lines` | Get fee lines |
+
+### Day Type APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/billing/day-types` | Upsert day type |
+| POST | `/api/v1/billing/day-types/bulk` | Bulk upsert |
+| GET | `/api/v1/billing/day-types` | List day types |
+
+### Billing Event APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/billing/events` | Query events |
+| GET | `/api/v1/billing/events/:id` | Get event detail |
+| POST | `/internal/billing/events/capture` | Internal event capture |
+
+### Debit Note APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/billing/debit-notes` | Generate DN |
+| GET | `/api/v1/billing/debit-notes` | List DNs |
+| GET | `/api/v1/billing/debit-notes/:id` | Get DN detail |
+| PUT | `/api/v1/billing/debit-notes/:id/review` | Review DN |
+| PUT | `/api/v1/billing/debit-notes/:id/approve` | Approve DN |
+| PUT | `/api/v1/billing/debit-notes/:id/lock` | Lock DN |
+| GET | `/api/v1/billing/debit-notes/:id/history` | DN history |
+
+### Exception APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/billing/exceptions` | List exceptions |
+| GET | `/api/v1/billing/exceptions/:id` | Get exception detail |
+| PUT | `/api/v1/billing/exceptions/:id/resolve` | Resolve exception |
+
+## Module Dependencies
+
+### Module 10 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `NumberSequence` | Sinh DN-*, CONTRACT-* |
+| Module 1 | `ReasonCode` | Exception resolution |
+| Module 1 | `AuditLog` | Audit trail |
+| Module 1 | `Idempotency` | Command idempotency |
+| Module 2 | `MdOwner` | Owner reference |
+| Module 2 | `MdItem` | Item/cargo_form |
+| Module 2 | `MdWarehouse` | Warehouse scope |
+| Module 3 | `OnHand` | Storage snapshot |
+
+### Event Sources:
+| Module | Event | Usage |
+|--------|-------|-------|
+| Module 4 | `ReceiptCompleted` | INBOUND_HANDLING event |
+| Module 5 | `ShipmentCompleted` | OUTBOUND_HANDLING event |
+| Module 9 | `VasWoCompleted` | BAGGING_FEE event |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `BILLING.CONTRACT.CREATE` | Create contract |
+| `BILLING.CONTRACT.UPDATE` | Update contract |
+| `BILLING.CONTRACT.READ` | View contracts |
+| `BILLING.DAY_TYPE.MANAGE` | Manage day types |
+| `BILLING.EVENT.READ` | View billing events |
+| `BILLING.DN.GENERATE` | Generate DN |
+| `BILLING.DN.READ` | View DNs |
+| `BILLING.DN.REVIEW` | Review DN |
+| `BILLING.DN.APPROVE` | Approve DN |
+| `BILLING.DN.LOCK` | Lock DN |
+| `BILLING.EXCEPTION.READ` | View exceptions |
+| `BILLING.EXCEPTION.RESOLVE` | Resolve exception |
 
 ---
