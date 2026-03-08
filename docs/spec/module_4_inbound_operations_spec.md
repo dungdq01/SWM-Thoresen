@@ -3,9 +3,9 @@
 
 **Dự án:** Thoresen Vinama Logistics (TVL) — Smart Warehouse Management (SWM)  
 **Góc nhìn:** Product Owner + Business Analyst  
-**Phiên bản:** 1.0  
+**Phiên bản:** 2.0  
 **Ngày:** 08/03/2026  
-**Trạng thái:** Draft for Review  
+**Trạng thái:** Final Draft for Dev/QA Alignment  
 **Đối tượng đọc:** Sponsor, PM, BA, Tech Lead, Dev, QA, Solution Architect, Ops Lead, Key User  
 
 ---
@@ -238,6 +238,48 @@ Module này không sở hữu nhưng tham chiếu trực tiếp tới:
 - `invent_trans`, `invent_dim`, `on_hand` từ M3
 - `work_header`, `work_line` từ M7
 - `billing_event` từ M10
+
+### 8.4 Ownership summary (bản chốt để tránh chồng trách nhiệm)
+
+| Nhóm đối tượng / quyết định | Module sở hữu | Module chỉ tham chiếu / tích hợp | Ghi chú chốt |
+|---|---|---|---|
+| Receipt lifecycle | **M4** | M1, M2, M8, M3, M7 | M4 quyết định trạng thái nghiệp vụ của receipt |
+| Weigh data capture / OCR raw result | **M8** | M4 | M8 cung cấp dữ liệu; M4 quyết định accept/reject |
+| Tolerance master / lookup | **M2** | M4 | M4 gọi service lookup, không hard-code |
+| Inbound inventory posting truth | **M3** | M4 | M4 chỉ phát command/event hợp lệ tại `RECEIVED` |
+| Putaway work execution | **M7** | M4 | M4 tạo handoff; M7 sở hữu work execution |
+| Billing calculation | **M10** | M4, M3 | M4 capture event; M10 tính charge |
+| Number sequence / reason code / audit policy / idempotency baseline | **M1** | M4 | M4 phải reuse governance pattern của M1 |
+
+### 8.5 Field mutability rule (baseline cho FS/UI/QA)
+
+| Field | Tạo lúc nào | Được sửa đến state nào | Sau state nào phải immutable | Ghi chú |
+|---|---|---|---|---|
+| receipt_number | khi confirm/create receipt | Không cho sửa | ngay sau khi sinh | do M1 Number Sequence cấp |
+| receipt_type | create | trước `AWAITING_WEIGHING` | từ `AWAITING_WEIGHING` | tránh đổi flow giữa STANDARD/VESSEL |
+| owner_id / vendor_id / warehouse_id | create | trước `AWAITING_WEIGHING` | từ `AWAITING_WEIGHING` | chỉ manager được chỉnh nếu cho phép |
+| item_id / cargo_form / line context | create | trước `WEIGHED_IN` | từ `WEIGHED_IN` | để tránh sai tolerance/posting |
+| vehicle_number | create/match | trước `WEIGHED_IN` | từ `WEIGHED_IN` | sửa tay phải audit |
+| bl_number | vessel match | trước `WEIGHED_IN` | từ `WEIGHED_IN` | OCR/manual override phải audit |
+| expected_qty | create | trước `WEIGHED_OUT` nếu policy cho phép | từ `WEIGHED_OUT` | thay đổi phải lưu before/after |
+| gross_weight_kg | weigh-in | không sửa trực tiếp, chỉ qua manual override flow | ngay sau xác nhận cân vào | mọi override phải reason code |
+| tare_weight_kg | weigh-out | không sửa trực tiếp, chỉ qua manual override flow | ngay sau xác nhận cân ra | tương tự gross |
+| net_weight_kg | system calculated | Không cho sửa tay | luôn immutable ngoài recalculation có audit | = gross - tare |
+| tolerance_pct_applied / variance_pct | system decision | Không cho sửa tay | luôn immutable | snapshot tại thời điểm decision |
+| posted_trans_id | sau posting thành công | Không cho sửa tay | luôn immutable | chỉ set bởi integration success |
+| putaway_work_id | sau create work thành công | Không cho sửa tay | luôn immutable | chỉ set bởi M7 handoff success |
+
+### 8.6 Receipt granularity policy (bản chốt Phase 1)
+
+1. **Phase 1 áp dụng nguyên tắc chuẩn:** `1 receipt = 1 trip = 1 xe`.
+2. **Khuyến nghị go-live:** mỗi receipt chỉ nên có **1 line hàng chính** để giảm rủi ro sai match, sai tolerance và sai posting.
+3. Nếu business bắt buộc multi-line trên cùng 1 xe, hệ thống vẫn phải:
+   - dùng **1 receipt_header** cho toàn trip,
+   - mỗi line phải cùng owner + warehouse,
+   - tolerance decision ở Phase 1 nên áp dụng theo **line chính / item chính** được chốt trước;
+   - nếu chưa chốt được logic multi-line đầy đủ thì **không mở cho go-live**.
+4. Vessel/B/L có thể gộp nhiều trip về cùng một B/L ở mức reporting, nhưng **receipt runtime vẫn theo từng trip/xe**.
+
 
 ---
 
@@ -497,6 +539,16 @@ function getInboundTolerance(owner_id, item_id):
 
 > **Lưu ý:** M4 KHÔNG tự query database trực tiếp cho tolerance. M4 gọi M2 tolerance service/function.
 
+
+### 13.5C Guard rules bổ sung cho tolerance decision
+
+- `expected_qty` phải > 0. Nếu `expected_qty <= 0` thì không được chạy tolerance; receipt vào luồng exception để manager xử lý.
+- `gross_weight_kg` và `tare_weight_kg` phải > 0, đồng thời `gross_weight_kg > tare_weight_kg`.
+- `net_weight_kg` phải được system tính, không nhận từ client như source of truth cuối cùng.
+- Hệ thống phải snapshot `tolerance_pct_applied` tại thời điểm decision để tránh thay đổi master data làm lệch lịch sử.
+- Khi re-weigh, tolerance lookup được gọi lại; tuy nhiên nếu business cần “đóng băng tolerance theo receipt”, phải chốt ở FS. Khuyến nghị Phase 1: **snapshot tolerance tại lần weigh-out quyết định cuối cùng**.
+- Với bagged inbound, nếu có cả `bag_count` và `net_weight_kg`, hai giá trị này không được mâu thuẫn vượt ngưỡng cấu hình; nếu mâu thuẫn phải vào exception review path.
+
 ### 13.6 Cases điển hình
 
 #### Case 1 — Pass tolerance
@@ -684,6 +736,21 @@ Inbound thực tế luôn có lỗi vận hành: scale không đọc được, O
 
 ---
 
+
+### 16.7 Exception & recovery matrix chi tiết
+
+| Scenario | Điều kiện | System behavior | User-facing outcome | Audit bắt buộc |
+|---|---|---|---|---|
+| Duplicate create receipt | cùng `external_id` | trả lại kết quả cũ | không tạo duplicate | correlation + external_id |
+| Duplicate weigh-in event | cùng scale ticket/event key | bỏ qua hoặc trả kết quả cũ | không tăng attempt sai | weigh event dedupe key |
+| OCR không match | confidence thấp / không ra candidate | chuyển manual select flow | operator chọn thủ công | lưu OCR result + selected receipt |
+| Scale timeout | chưa đọc được gross/tare | cho retry hoặc manual fallback theo quyền | chưa đổi state sai | technical log |
+| Manual weight override | role đủ quyền + reason code | set `is_manual_entry=TRUE` | tiếp tục flow nếu hợp lệ | before/after + reason |
+| Cancel tại `WEIGHED_OUT` | policy normal path không khuyến khích | mặc định block ở Phase 1, trừ khi WH_MANAGER có policy exception đã chốt | thông báo không cho cancel thường | bắt buộc nếu có exception approval |
+| Receipt đã `RECEIVED` nhưng M7 chưa tạo work | giữ receipt ở trạng thái business đã nhận + technical pending | cho retry create work | user thấy pending handoff | trace retry |
+| Re-weigh lần 4 | attempt đã = 3 và fail | block thao tác re-weigh | yêu cầu manager quyết định cancel/exception | action denied log |
+
+
 ## 17. Sub-module 8 — Inbound Auditability, Idempotency & Operational Reporting Hooks
 
 ### 17.1 Mục đích
@@ -821,6 +888,20 @@ Inbound chạm nhiều boundary dễ lỗi: web UI, local weighbridge agent, OCR
 
 ---
 
+
+### 21.3 Integration contract matrix (baseline để bóc FS)
+
+| Producer | Consumer | Message / API | Trigger | Key payload tối thiểu | Idempotency / dedupe |
+|---|---|---|---|---|---|
+| M8 | M4 | `WeightCaptured` / weigh-in | scale đọc gross | receipt_ref hoặc candidate_ref, gross_weight, ticket_id, timestamp, source_app | `ticket_id` hoặc event_id |
+| M8 | M4 | `WeightCaptured` / weigh-out | scale đọc tare | receipt_id, tare_weight, ticket_id, timestamp | `ticket_id` hoặc event_id |
+| M8 | M4 | `OCRMatched` / OCR result | scan B/L | bl_number, confidence, candidates, scan_time | `ocr_job_id` |
+| M4 | M3 | `PostInboundReceipt` | receipt sang `RECEIVED` | receipt_id, line_id, owner_id, item_id, net_weight, receiving_location_id, external_id, correlation_id | `external_id` |
+| M4 | M7 | `CreatePutawayWork` | posting/handoff sau `RECEIVED` | receipt_id, source_location_id, destination_rule, qty, owner_id, correlation_id | `receipt_id + work_type` |
+| M4 | M10 | `InboundHandlingCaptured` | receipt `RECEIVED` | receipt_id, owner_id, item_id, cargo_form, warehouse_id, net_weight_mt, event_timestamp | `receipt_id + event_type` |
+| M7 | M4 | `PutawayCompleted` | work hoàn tất | work_id, receipt_id, completed_at | `work_id + status` |
+
+
 ## 22. Yêu cầu phi chức năng áp cho module
 
 | Nhóm | Yêu cầu |
@@ -896,6 +977,32 @@ Module Inbound Operations được xem là đạt khi tối thiểu thỏa các 
 - AC-8.3: Dashboard hook đọc được reject count, re-weigh count, pending putaway aging
 
 ---
+
+
+### 23.2 Validation matrix theo action (bản chốt cho FS/UI/API)
+
+| Action | Required fields | Preconditions | Blocking conditions | Result |
+|---|---|---|---|---|
+| Create receipt | owner_id, item_id, warehouse_id, vehicle_number, expected_qty, receipt_type, external_id | master data active | owner/item/warehouse invalid; expected_qty <= 0 | tạo `DRAFT` hoặc context sẵn sàng confirm |
+| Confirm receipt | receipt_id | receipt đang `DRAFT`; data bắt buộc đủ | thiếu planning context; duplicate confirm | `AWAITING_WEIGHING` |
+| Match vessel | receipt_id hoặc B/L context | receipt chưa closed/cancelled | OCR candidate invalid; BL không thuộc owner/warehouse hợp lệ | receipt context được xác nhận |
+| Weigh-in | receipt_id, gross_weight hoặc scale event, ticket_id/external_id | receipt `AWAITING_WEIGHING` | gross <= 0; duplicate event | `WEIGHED_IN` |
+| Weigh-out | receipt_id, tare_weight hoặc scale event, ticket_id/external_id | receipt `PROCESSING`; đã có gross | tare <= 0; tare >= gross; duplicate event | `WEIGHED_OUT` rồi auto decision |
+| Re-weigh | receipt_id, external_id | receipt `REJECTED`; attempt < 3 | attempt >= 3 | `AWAITING_WEIGHING` |
+| Cancel receipt | receipt_id, reason_code | state nằm trong allow-list | state blocked theo policy; đã immutable | `CANCELLED` |
+| Close receipt | receipt_id | putaway đã hoàn tất; không pending work | work chưa done; receipt chưa `PUTAWAY`/`RECEIVED` path xong | `CLOSED` |
+
+### 23.3 Error code catalog (baseline nhóm lỗi)
+
+| Error group | Ý nghĩa | Ví dụ |
+|---|---|---|
+| `INB-VAL-*` | validation error | missing field, expected_qty invalid |
+| `INB-STA-*` | state transition invalid | weigh-out trước weigh-in |
+| `INB-PER-*` | permission denied | manual weight không đủ quyền |
+| `INB-DUP-*` | duplicate / idempotency | duplicate external_id, duplicate ticket |
+| `INB-INT-*` | integration failure | M3 timeout, M7 create work fail |
+| `INB-BIZ-*` | business rule violation | over-receipt bagged, tolerance fail, cancel blocked |
+
 
 ## 24. User stories cốt lõi theo góc nhìn BA/PO
 
@@ -1027,19 +1134,90 @@ Module Inbound Operations được xem là đạt khi tối thiểu thỏa các 
 
 ---
 
+
+### 25.1 Nguyên tắc API bắt buộc
+
+- Mọi command có side effect phải nhận `external_id` và `correlation_id`.
+- Backend phải enforce state guard ở domain layer, không chỉ ở controller/UI.
+- Với command retry cùng `external_id`, API phải trả response idempotent thay vì tạo hành động mới.
+- Client không được gửi `net_weight_kg` như nguồn thật; backend tính từ gross/tare hoặc từ source cân đã chuẩn hóa.
+- Mọi exception command (`manual weight`, `cancel`, `override`) phải có `reason_code`.
+
+### 25.2 Contract chi tiết đề xuất cho API trọng yếu
+
+#### `POST /inbound/receipts`
+**Mục đích:** tạo receipt runtime cho 1 trip/xe.  
+**Request tối thiểu:** `external_id`, `correlation_id`, `receipt_type`, `owner_id`, `vendor_id`, `warehouse_id`, `vehicle_number`, `expected_qty`, `item_id`/`lines[]`.  
+**Response:** `receipt_id`, `receipt_number`, `status`, `created_at`.  
+**Idempotency:** theo `external_id`.  
+**Lỗi chính:** `INB-VAL-001`, `INB-DUP-001`.
+
+#### `POST /inbound/receipts/{receipt_id}/weigh-in`
+**Mục đích:** ghi nhận gross weight.  
+**Request tối thiểu:** `external_id`, `correlation_id`, `gross_weight_kg` hoặc `ticket_id`, `source_app`, `performed_by`.  
+**Precondition:** receipt đang `AWAITING_WEIGHING`.  
+**Response:** `receipt_id`, `status=WEIGHED_IN`, `gross_weight_kg`, `attempt_number`.  
+**Idempotency / dedupe:** `external_id` và/hoặc `ticket_id`.  
+**Lỗi chính:** `INB-STA-001`, `INB-DUP-002`.
+
+#### `POST /inbound/receipts/{receipt_id}/weigh-out`
+**Mục đích:** ghi nhận tare, tính net, tự chạy tolerance decision.  
+**Request tối thiểu:** `external_id`, `correlation_id`, `tare_weight_kg` hoặc `ticket_id`, `source_app`, `performed_by`.  
+**Precondition:** receipt đang `PROCESSING`.  
+**Response:** `status` cuối cùng phải phản ánh **kết quả decision thực**: `RECEIVED` hoặc `REJECTED`; đồng thời trả `net_weight_kg`, `variance_pct`, `tolerance_pct_applied`.  
+**Lỗi chính:** `INB-STA-002`, `INB-BIZ-001`, `INB-DUP-003`.
+
+#### `POST /inbound/receipts/{receipt_id}/reweigh`
+**Mục đích:** mở attempt mới sau khi reject.  
+**Request tối thiểu:** `external_id`, `correlation_id`, `reason_code`, `performed_by`.  
+**Precondition:** receipt đang `REJECTED`, `attempt_number < 3`.  
+**Response:** `status=AWAITING_WEIGHING`, `attempt_number`.  
+**Lỗi chính:** `INB-BIZ-002` khi vượt max attempt.
+
+#### `POST /inbound/receipts/{receipt_id}/cancel`
+**Mục đích:** hủy receipt tại các state hợp lệ.  
+**Request tối thiểu:** `external_id`, `correlation_id`, `reason_code`, `performed_by`.  
+**Precondition:** state nằm trong allow-list.  
+**Response:** `status=CANCELLED`, `cancelled_at`, `cancelled_by`.  
+**Lỗi chính:** `INB-STA-003`, `INB-PER-001`.
+
+#### `POST /inbound/receipts/{receipt_id}/close`
+**Mục đích:** đóng receipt khi putaway đã hoàn tất.  
+**Request tối thiểu:** `external_id`, `correlation_id`, `performed_by`.  
+**Precondition:** không còn pending work; state phù hợp.  
+**Response:** `status=CLOSED`.  
+**Lỗi chính:** `INB-BIZ-003`.
+
+### 25.3 API response envelope khuyến nghị
+
+```json
+{
+  "success": true,
+  "data": {},
+  "error": null,
+  "meta": {
+    "correlation_id": "string",
+    "external_id": "string",
+    "timestamp": "ISO-8601"
+  }
+}
+```
+
+
 ## 26. Điểm cần chốt thêm trước khi bóc FS/API chi tiết
 
-| # | To-Confirm Item | Priority | Impact | Deadline đề xuất |
-|---|---|---|---|---|
-| 1 | Tolerance default nếu owner+item chưa cấu hình sẽ là bao nhiêu | P1 | Ảnh hưởng auto accept/reject behavior | Trước FS M4 |
-| 2 | Putaway split: 1 receipt có hỗ trợ nhiều destination locations trong Phase 1 không | P1 | Ảnh hưởng work generation và UI close path | Trước FS M4/M7 |
-| 3 | Cancel ở `WEIGHED_IN` và `WEIGHED_OUT` chốt chính thức thế nào | P1 | Ảnh hưởng state machine và exception policy | Trước SIT |
-| 4 | Với vessel flow, OCR mismatch được phép manual override ở mức nào | P2 | Ảnh hưởng UX + audit + permission | Trước UX sign-off |
-| 5 | Bulk auto-transition nếu destination đã là storage sẽ áp dụng đúng các case nào | P2 | Ảnh hưởng state trace và M7 integration | Trước FS M7 |
-| 6 | Blocking hàng bao dùng `bag_count` đơn thuần hay cần thêm UOM conversion cases | P2 | Ảnh hưởng validation logic | Trước FS bagged flow |
-| 7 | Billing event capture nằm ở M4 event hay M3/M10 subscriber là source of truth cuối cùng | P2 | Ảnh hưởng integration contract | Trước FS M10 |
+> Bản 2.0 chuyển phần này từ “to-confirm mở hoàn toàn” sang “đề xuất chốt để team có baseline build”. Nếu sponsor/business chốt khác, chỉ cần update decision log.
 
----
+| # | Decision Item | Đề xuất chốt cho bản hiện tại | Priority | Impact |
+|---|---|---|---|---|
+| 1 | Tolerance default nếu owner+item chưa cấu hình | **0.5%** ở `system_config.default_tolerance_pct` | P1 | quyết định auto accept/reject |
+| 2 | Putaway split nhiều destination ở Phase 1 | **Không mở mặc định**; 1 receipt → 1 putaway work template chính | P1 | giảm phức tạp M4/M7 |
+| 3 | Cancel ở `WEIGHED_IN` | **Cho phép** với manager role + reason + audit | P1 | rõ exception path |
+| 4 | Cancel ở `WEIGHED_OUT` | **Block theo normal path** ở Phase 1; chỉ xử lý qua exception policy nếu được phê duyệt riêng | P1 | tránh xung đột tolerance/posting |
+| 5 | OCR mismatch override | **Cho phép manual select** bởi WB_OPERATOR; **manual override candidate** bởi WH_MANAGER nếu vượt boundary cho phép | P2 | cân bằng tốc độ và kiểm soát |
+| 6 | Bulk auto-transition nếu destination đã là storage | **Không nuốt trạng thái**; vẫn phải lưu trace `PUTAWAY`/auto-complete rõ ràng | P2 | rõ audit |
+| 7 | Bagged blocking | **Dùng `bag_count` là baseline chính**; UOM conversion là extension nếu business yêu cầu | P2 | đơn giản hóa Phase 1 |
+| 8 | Billing event source of truth | **M4 capture event**, M10 sở hữu tính phí và lưu charge truth | P2 | rõ ownership |
 
 ## 27. Khuyến nghị cho Dev Team
 
@@ -1093,3 +1271,38 @@ Tài liệu này được biên soạn theo baseline mới hơn của bộ tài 
 4. Business Rules Document để tham chiếu rule code chi tiết  
 5. Project Charter dùng cho governance dự án, cadence, RACI và change control
 
+
+
+
+## 31. Phụ lục A — Role x Action matrix
+
+| Action | WB_OPERATOR | WH_KEEPER | WH_MANAGER | WH_ADMIN | SYSTEM |
+|---|---|---|---|---|---|
+| Create receipt | Theo policy | Không | Có | Có | Có qua integration |
+| Confirm receipt | Không | Không | Có | Có | Không |
+| Search / match receipt | Có | Không | Có | Có | — |
+| Weigh-in / Weigh-out từ scale | Có | Không | Có | Có | Có qua event |
+| Manual weight entry | Không mặc định | Không | Có | Có | Không |
+| Re-weigh | Có khi attempt < 3 | Không | Có | Có | Không |
+| Cancel trước `RECEIVED` | Không | Không | Có | Có | Không |
+| Close receipt | Không | Không | Có | Có | Không |
+| Manual override OCR / exception | Không mặc định | Không | Có | Có | Không |
+
+## 32. Phụ lục B — UAT scenario matrix tối thiểu
+
+| UAT ID     | Scenario                         | Precondition                            | Expected result                                        |
+| ------------| ----------------------------------| -----------------------------------------| --------------------------------------------------------|
+| UAT-M4-001 | Standard inbound happy path      | ASN/PO hợp lệ, vehicle match đúng       | receipt đi `DRAFT → ... → RECEIVED → PUTAWAY → CLOSED` |
+| UAT-M4-002 | Vessel OCR match happy path      | OCR trả đúng B/L candidate              | operator confirm nhanh, flow tiếp tục bình thường      |
+| UAT-M4-003 | OCR fail manual select           | OCR confidence thấp                     | operator chọn thủ công, audit đầy đủ                   |
+| UAT-M4-004 | Tolerance pass                   | variance <= tolerance                   | auto `RECEIVED`, post M3 đúng 1 lần                    |
+| UAT-M4-005 | Tolerance fail                   | variance > tolerance                    | `REJECTED`, chưa post M3                               |
+| UAT-M4-006 | Re-weigh lần 1..3                | receipt `REJECTED`                      | quay về `AWAITING_WEIGHING`, giữ nguyên receipt number |
+| UAT-M4-007 | Re-weigh lần 4                   | attempt = 3 và vẫn fail                 | block thao tác, yêu cầu manager                        |
+| UAT-M4-008 | Duplicate weigh-in event         | cùng ticket/event                       | không tạo duplicate log/transition sai                 |
+| UAT-M4-009 | Posting retry idempotent         | M3 timeout rồi retry cùng `external_id` | chỉ có 1 inbound trans                                 |
+| UAT-M4-010 | Putaway create retry idempotent  | M7 lỗi lần đầu                          | retry không tạo nhiều work cho cùng receipt            |
+| UAT-M4-011 | Cancel tại `WEIGHED_IN`          | manager + reason code                   | `CANCELLED`, không reverse                             |
+| UAT-M4-012 | Close bị chặn khi work chưa done | putaway chưa hoàn tất                   | API/UI từ chối close                                   |
+| UAT-M4-013 | Bagged over-receipt blocked      | tổng bag_count vượt PO                  | chặn `RECEIVED`, trả lỗi business                      |
+| UAT-M4-014 | Manual weight without permission | user không đủ quyền                     | reject với lỗi permission                              |
