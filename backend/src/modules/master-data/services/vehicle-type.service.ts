@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { VehicleTypeRepository } from '../repositories/vehicle-type.repository';
-import { DeactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
+import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { CreateVehicleTypeDto, UpdateVehicleTypeDto, ListVehicleTypeDto } from '../dto/vehicle-type.dto';
 import { MdVehicleType } from '@prisma/client';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 export { CreateVehicleTypeDto, UpdateVehicleTypeDto, ListVehicleTypeDto };
 
 @Injectable()
 export class VehicleTypeService {
-  constructor(private readonly vehicleTypeRepository: VehicleTypeRepository) {}
+  constructor(
+    private readonly vehicleTypeRepository: VehicleTypeRepository,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateVehicleTypeDto, ctx: RequestContext): Promise<MdVehicleType> {
     const existing = await this.vehicleTypeRepository.findByCode(dto.vehicleTypeCode);
@@ -58,7 +64,7 @@ export class VehicleTypeService {
     return this.vehicleTypeRepository.deactivate(id, ctx.userId!, vehicleType.rowVersion);
   }
 
-  async reactivate(id: string, dto: any, ctx: RequestContext): Promise<MdVehicleType> {
+  async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdVehicleType> {
     const vehicleType = await this.findById(id);
     if (vehicleType.isActive) throw new BadRequestException('Vehicle type is already active');
     return this.vehicleTypeRepository.reactivate(id, ctx.userId!, vehicleType.rowVersion);

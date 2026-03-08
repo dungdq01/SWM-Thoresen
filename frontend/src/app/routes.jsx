@@ -11,6 +11,18 @@ const NumberSequencesPage = lazy(() => import('@pages/settings').then(m => ({ de
 const GovernancePage = lazy(() => import('@pages/settings').then(m => ({ default: m.GovernancePage })))
 const LogsPage = lazy(() => import('@pages/settings').then(m => ({ default: m.LogsPage })))
 
+// Master Data Pages
+const MasterDataLayout = lazy(() => import('@pages/master-data').then(m => ({ default: m.MasterDataLayout })))
+const OwnersPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnersPage })))
+const VendorsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VendorsPage })))
+const ItemsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemsPage })))
+const WarehousesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.WarehousesPage })))
+const ZonesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ZonesPage })))
+const LocationsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationsPage })))
+const UomsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.UomsPage })))
+const VehicleTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VehicleTypesPage })))
+const InventoryStatusesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.InventoryStatusesPage })))
+
 const withSuspense = (Component) => (
   <Suspense fallback={<PageLoader />}>
     <Component />
@@ -53,6 +65,52 @@ export const router = createBrowserRouter([
       {
         path: 'logs',
         element: withSuspense(LogsPage),
+      },
+    ],
+  },
+  {
+    path: '/master-data',
+    element: withSuspense(MasterDataLayout),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/master-data/owners" replace />,
+      },
+      {
+        path: 'owners',
+        element: withSuspense(OwnersPage),
+      },
+      {
+        path: 'vendors',
+        element: withSuspense(VendorsPage),
+      },
+      {
+        path: 'items',
+        element: withSuspense(ItemsPage),
+      },
+      {
+        path: 'warehouses',
+        element: withSuspense(WarehousesPage),
+      },
+      {
+        path: 'zones',
+        element: withSuspense(ZonesPage),
+      },
+      {
+        path: 'locations',
+        element: withSuspense(LocationsPage),
+      },
+      {
+        path: 'uoms',
+        element: withSuspense(UomsPage),
+      },
+      {
+        path: 'vehicle-types',
+        element: withSuspense(VehicleTypesPage),
+      },
+      {
+        path: 'inventory-statuses',
+        element: withSuspense(InventoryStatusesPage),
       },
     ],
   },

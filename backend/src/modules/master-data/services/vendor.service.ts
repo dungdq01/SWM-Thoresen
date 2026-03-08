@@ -3,12 +3,20 @@ import { VendorRepository } from '../repositories/vendor.repository';
 import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { CreateVendorDto, UpdateVendorDto, ListVendorDto } from '../dto/vendor.dto';
 import { MdVendor } from '@prisma/client';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { LogService } from '../../foundation/services/log.service';
+import { IdempotencyService } from '../../foundation/services/idempotency.service';
 
 export { CreateVendorDto, UpdateVendorDto, ListVendorDto };
 
 @Injectable()
 export class VendorService {
-  constructor(private readonly vendorRepository: VendorRepository) {}
+  constructor(
+    private readonly vendorRepository: VendorRepository,
+    private readonly prisma: PrismaService,
+    private readonly logService: LogService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   async create(dto: CreateVendorDto, ctx: RequestContext): Promise<MdVendor> {
     const existing = await this.vendorRepository.findByCode(dto.vendorCode);
