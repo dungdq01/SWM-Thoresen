@@ -1029,9 +1029,15 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 # Module 9: VAS / Bagging Operations
 
 **Status:** ✅ Completed  
+**Version:** 1.1.0  
 **Code Path:** `src/modules/vas`  
 **Documentation:** [`docs/module-9-vas.md`](./module-9-vas.md)  
 **Database Docs:** [`prisma/docs/module-9-vas.md`](../prisma/docs/module-9-vas.md)
+
+### Key Features (v1.1.0)
+- ✅ Real M3 PostingEngine + HoldService integration via `InventoryCoreAdapter`
+- ✅ RBAC with `VasAuthGuard` + `VasPermissionGuard` on all endpoints
+- ✅ Packaging availability check before each session
 
 ## Database Tables (5 tables)
 

@@ -23,6 +23,8 @@ import { VasOutboxRepository } from './repositories/vas-outbox.repository';
 import { VasInventoryFacade } from './facades/vas-inventory.facade';
 import { VasBillingFacade } from './facades/vas-billing.facade';
 import { VasValidationService } from './services/vas-validation.service';
+import { InventoryCoreAdapter } from './adapters/inventory-core.adapter';
+import { VasAuthGuard, VasPermissionGuard } from './guards/vas-auth.guard';
 
 @Module({
   imports: [PrismaModule],
@@ -32,6 +34,11 @@ import { VasValidationService } from './services/vas-validation.service';
     VasSessionController,
   ],
   providers: [
+    // Guards
+    VasAuthGuard,
+    VasPermissionGuard,
+    // Adapters
+    InventoryCoreAdapter,
     // Services
     CreateVasWoService,
     UpdateVasWoService,

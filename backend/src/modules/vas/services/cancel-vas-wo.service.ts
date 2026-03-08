@@ -34,7 +34,7 @@ export class CancelVasWoService {
       this.stateMachine.assertCanCancel(wo.status);
 
       if (wo.status === VasWoStatus.CONFIRMED || wo.status === VasWoStatus.IN_PROGRESS) {
-        await this.inventoryFacade.releaseVasReservation(wo.id, tx);
+        await this.inventoryFacade.releaseVasReservation(wo.id, actor.userId, wo.correlationId, tx);
       }
 
       const cancelled = await this.woRepo.markCancelled(wo.id, actor.userId, dto.reasonCode, tx);

@@ -46,6 +46,18 @@ export class VasSessionRepository {
     return (result._max.sessionNum || 0) + 1;
   }
 
+  async getCumulativeBagCount(
+    woId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const client = tx || this.prisma;
+    const result = await client.vasSession.aggregate({
+      where: { woId },
+      _sum: { sessionBagCount: true },
+    });
+    return result._sum.sessionBagCount || 0;
+  }
+
   async getSessionSummary(
     woId: string,
     tx?: Prisma.TransactionClient,
