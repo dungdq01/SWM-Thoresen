@@ -1,10 +1,10 @@
 # Module 4: Inbound Operations — Backend Documentation
 
 > **Module:** M4 - Inbound Operations  
-> **Status:** ✅ Implemented (Feedback Fixed)  
+> **Status:** ✅ Implemented (Feedback Fixed v2)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-03-08 (FB-v2)
 
 ---
 
@@ -418,6 +418,9 @@ Any cancellable state ──cancel──> CANCELLED
 - **Policy:** `BaggedPolicy.checkOverReceipt()`
 - **Trigger:** Khi `cargoForm !== 'BULK'` và có `bagCount`
 - **Location:** `receiveWeighOut()` trước khi set RECEIVED
+- **Status:** ✅ Fixed (v2) - `overReceiptBlocked` now returns proper value
+- **Phase 1:** Returns `false` (no PO table yet)
+- **Phase 2+:** Will lookup `expectedBagCount` from PO and compare
 
 ### 9.4 Idempotency Keys
 

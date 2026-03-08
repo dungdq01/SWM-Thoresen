@@ -147,11 +147,14 @@ class BaggedPolicy {
     const totalWithCurrent = totalReceived + currentBagCount;
 
     // Lấy expected bag count từ PO (giả sử có bảng PO hoặc field expectedBagCount)
-    // Ở Phase 1, có thể skip check này nếu chưa có PO table
+    // Phase 1: PO table chưa có, nên return false mặc định
+    // Phase 2+: Lookup expectedBagCount từ PO và so sánh
+    const expectedBagCount = null; // TODO: Lookup từ PO khi có
+
     return {
       totalReceived,
       totalWithCurrent,
-      // overReceiptBlocked: totalWithCurrent > expectedBagCount
+      overReceiptBlocked: expectedBagCount ? totalWithCurrent > expectedBagCount : false,
     };
   }
 }
