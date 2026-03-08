@@ -10,7 +10,7 @@
 |--------|--------|-----------|-----------|---------------|
 | Module 1 - Foundation | ✅ Completed | `src/modules/foundation` | 14 tables | ~25 endpoints |
 | Module 2 - Master Data | ✅ Completed | `src/modules/master-data` | 17 tables | ~55 endpoints |
-| Module 3 - Inventory | 🔜 Pending | `src/modules/inventory` | - | - |
+| Module 3 - Inventory Core | ✅ Completed | `src/modules/inventory-core` | 10 tables | ~13 endpoints |
 | Module 4 - Inbound | 🔜 Pending | `src/modules/inbound` | - | - |
 | Module 5 - Outbound | 🔜 Pending | `src/modules/outbound` | - | - |
 
@@ -226,8 +226,54 @@
 
 # Module 3: Inventory Core Engine
 
-**Status:** 🔜 Pending  
-**Code Path:** `src/modules/inventory` (planned)
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/inventory-core`  
+**Documentation:** [`docs/module-3-inventory-core.md`](./module-3-inventory-core.md)  
+**Database Docs:** [`prisma/docs/module-3-inventory-core.md`](../prisma/docs/module-3-inventory-core.md)
+
+## Database Tables (10 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `invent_dim` | Dimension combination registry | Core |
+| `invent_trans` | Immutable ledger transactions | Core |
+| `on_hand` | Current balance projection | Core |
+| `inventory_hold` | Allocation-based holds | Core |
+| `inventory_reversal_link` | Link original ↔ reversal trans | Core |
+| `inventory_reconciliation_run` | Reconciliation run header | Control |
+| `inventory_reconciliation_result` | Reconciliation mismatch details | Control |
+| `inventory_snapshot_run` | Snapshot run header | Control |
+| `daily_storage_snapshot` | Daily snapshot data | Control |
+| `inventory_event_mapping` | Event-to-transaction mapping | Config |
+
+## API Endpoints
+
+### Posting APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory/postings` | Create inventory transaction |
+| POST | `/api/v1/inventory/postings/reverse` | Reverse a transaction |
+
+### On-Hand Query APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/inventory/onhand` | Query current stock |
+| GET | `/api/v1/inventory/onhand/availability` | Check stock availability |
+
+### Transaction Query APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/inventory/transactions` | Query transaction history |
+| GET | `/api/v1/inventory/transactions/:transId` | Get transaction detail |
+
+### Hold APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory/holds` | Create hold/allocation |
+| GET | `/api/v1/inventory/holds` | List holds |
+| GET | `/api/v1/inventory/holds/:holdId` | Get hold detail |
+| POST | `/api/v1/inventory/holds/:holdId/release` | Release hold |
+| POST | `/api/v1/inventory/holds/:holdId/cancel` | Cancel hold |
 
 ---
 
