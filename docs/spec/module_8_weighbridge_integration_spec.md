@@ -1,11 +1,12 @@
 # Module 8 — Weighbridge, OCR & Integration: Functional Specification
 
-**Version:** 1.1
+**Version:** 1.2
 **Created:** 2026-03-08
 **Revised:** 2026-03-08
-**Status:** DRAFT — Pending Senior Manager Review
+**Status:** DRAFT — Enhanced for BA completeness review
 **Source:** 5 Check-Report Documents + BRD
 **Changelog v1.1:** Add ownership boundary per sub-capability, retry policy matrix, OCR→M4 handoff contract, correlation_id rule, manual weight governance clarification. Per Senior Manager review against M4/M5 baseline.
+**Changelog v1.2:** Bo sung state machine cho object integration, DB schema toi thieu cho mobile sync va alert, exception/retry matrix chi tiet theo channel, weighbridge local agent contract, OCR governance, ERP push contract baseline, RBAC + reason code matrix, monitoring KPI, UAT scenarios, API contract notes. Uu tien bo sung, han che xoa noi dung goc.
 
 ---
 
@@ -197,6 +198,60 @@ M8 chua 3 bounded contexts khac nhau. De tranh nham ownership giua backend/mobil
 | created_at | TIMESTAMPTZ | Y | |
 | updated_at | TIMESTAMPTZ | Y | |
 
+
+### 9.4 mobile_sync_batch Schema
+
+| Field | Type | Required | Note |
+|-------|------|----------|------|
+| id | UUID | Y | PK |
+| batch_id | VARCHAR(50) | Y | UNIQUE — id batch tu mobile |
+| device_id | VARCHAR(50) | Y | Mobile device identifier |
+| keeper_user_id | UUID FK | Y | Nguoi gui batch |
+| event_count | INT | Y | So event trong batch |
+| payload | JSON | Y | Nguyen batch payload |
+| status | ENUM | Y | QUEUED / SENDING / PARTIAL_SUCCESS / SUCCESS / FAILED / CONFLICTED |
+| success_count | INT | Y | Default 0 |
+| failed_count | INT | Y | Default 0 |
+| conflict_count | INT | Y | Default 0 |
+| first_sent_at | TIMESTAMPTZ | N | Lan gui dau |
+| last_sent_at | TIMESTAMPTZ | N | Lan gui gan nhat |
+| last_error_code | VARCHAR(50) | N | Technical/business error code |
+| last_error_message | TEXT | N | Noi dung loi |
+| external_id | VARCHAR(100) | Y | = batch_id |
+| correlation_id | UUID | Y | Correlation chain cua session cong viec / work execution |
+| source_channel | VARCHAR(20) | Y | Default: MOBILE_SYNC |
+| created_at | TIMESTAMPTZ | Y | |
+| updated_at | TIMESTAMPTZ | Y | |
+
+### 9.5 integration_alert Schema
+
+| Field | Type | Required | Note |
+|-------|------|----------|------|
+| id | UUID | Y | PK |
+| alert_code | VARCHAR(50) | Y | DEVICE_DISCONNECT / ERP_PUSH_FAILED / MOBILE_SYNC_CONFLICT / OCR_REVIEW_REQUIRED |
+| severity | ENUM | Y | INFO / WARN / HIGH / CRITICAL |
+| source_object_type | VARCHAR(50) | Y | WEIGHBRIDGE_DEVICE / ERP_PUSH_LOG / MOBILE_SYNC_BATCH / OCR_RESULT |
+| source_object_id | UUID | Y | FK logic reference |
+| correlation_id | UUID | N | Neu co correlation chain |
+| status | ENUM | Y | OPEN / ACKNOWLEDGED / RESOLVED / CLOSED |
+| assigned_role | VARCHAR(50) | Y | WB_OPERATOR / WH_MANAGER / BILLING_OFC / ADMIN |
+| first_raised_at | TIMESTAMPTZ | Y | |
+| last_raised_at | TIMESTAMPTZ | Y | |
+| occurrence_count | INT | Y | Default 1 |
+| resolution_note | TEXT | N | Manual action / root cause |
+| created_at | TIMESTAMPTZ | Y | |
+| updated_at | TIMESTAMPTZ | Y | |
+
+### 9.6 Main Integration Objects & State Machine Catalog (v1.2 — NEW)
+
+| Object | Purpose | Key States | Notes |
+|--------|---------|------------|-------|
+| weighbridge_event | 1 lan nhan du lieu can tu scale/manual | RECEIVED / VALIDATED / LINKED / CONSUMED / REJECTED / DUPLICATE | Event runtime state; log record van immutable sau khi tao |
+| ocr_result | Ket qua OCR cho 1 image upload | UPLOADED / EXTRACTED / REVIEW_REQUIRED / CONFIRMED / LINKED / REJECTED | REVIEW_REQUIRED khi confidence thap hoac multiple candidates |
+| mobile_sync_batch | 1 batch sync tu mobile app | QUEUED / SENDING / PARTIAL_SUCCESS / SUCCESS / FAILED / CONFLICTED | Server la source of truth sau khi consume |
+| erp_push_log | 1 lenh push DN sang ERP | PENDING / SENT / ACK_SUCCESS / ACK_FAILED / RETRY_SCHEDULED / DEAD_LETTER | DEAD_LETTER = fail sau max attempts, can manual retry |
+| integration_alert | Canh bao van hanh / reliability | OPEN / ACKNOWLEDGED / RESOLVED / CLOSED | Theo doi tren dashboard |
+
 ---
 
 ## 10. Sub-Module 1: Weighbridge Local Agent
@@ -235,6 +290,32 @@ M8 chi capture manual weight event. Business authorization do M4/M5 enforce:
 - M4/M5 se validate: approved_by co role WH_MANAGER, reason_code hop le, state cho phep manual
 
 **M8 KHONG tu quyet dinh khi nao cho phep manual weight. M8 chi la channel ghi nhan.**
+
+### 10.2.1 Weighbridge Local Agent Contract Baseline (v1.2 — NEW)
+
+| Aspect | Requirement |
+|--------|-------------|
+| Supported input mode | COM port serial read la baseline Phase 1. TCP/IP scale protocol co the mo rong sau neu hardware support. |
+| Device abstraction | Local Agent PHAI tach driver/parser theo `scale_device_type` de support nhieu frame format khac nhau ma khong doi backend API. |
+| Stable weight rule | Chi gui event khi gia tri can on dinh trong it nhat 3 lan doc lien tiep trong cua so 1-2 giay. Neu dao dong > nguong config thi tiep tuc cho on dinh. |
+| Raw payload retention | Agent va backend luu `raw_payload` / raw frame string de debug va audit. |
+| Device timestamp | Neu hardware khong tin cay thi server timestamp la source of truth; device timestamp luu de doi chieu. |
+| Duplicate protection | 1 event duoc xem la duplicate neu cung `scale_device_id + stable_weight + weighing_timestamp bucket + vehicle_number` trong cua so config. |
+| Offline buffering | Agent PHAI co local buffer toi thieu 500 event hoac 24h (lay gia tri nao den truoc) khi mat ket noi backend. |
+| Reconnect resend | Sau khi co mang lai, agent resend theo thu tu FIFO; moi event giu nguyen `external_id` de backend idempotent. |
+| Heartbeat | Agent gui heartbeat dinh ky ve backend; neu mat heartbeat > nguong config thi sinh alert device disconnect. |
+| Security | Agent phai dang ky `device_id` hop le; backend tu choi event tu device khong duoc whitelist. |
+
+### 10.2.2 Weighbridge Exception Matrix (v1.2 — NEW)
+
+| Failure Case | Detect By | Auto Action | Manual Action | Owner | Final Status |
+|-------------|-----------|-------------|---------------|-------|-------------|
+| COM port khong doc duoc | Local agent | Retry 3x30s | Kiem tra day/port, neu van fail thi manual weight workflow | WB_OPERATOR | OPEN alert / manual fallback |
+| Weight dao dong lien tuc | Local agent stable rule | Chua gui event den backend | Kiem tra xe da dung yen chua | WB_OPERATOR | Waiting stable |
+| Duplicate signal do operator bam nhieu lan | Backend idempotency | Reject duplicate, ghi audit | Xem log neu can | Backend | DUPLICATE |
+| Backend timeout | Agent | Retry theo matrix Section 6 | Theo doi dashboard | WB_OPERATOR | RESENT / FAILED |
+| Orphan weigh log (chua link receipt/shipment) | Backend validation | Tao orphan log, hien dashboard | Retrolink voi audit trail | WH_MANAGER | LINKED / CLOSED |
+| Device disconnect > threshold | Monitoring | Tao alert | Ops kiem tra local agent/hardware | WH_MANAGER | RESOLVED / CLOSED |
 
 ### 10.3 Acceptance Criteria
 - **AC-1.1**: Scale read → SWM response <= 2 seconds.
@@ -290,6 +371,33 @@ M8 chi capture manual weight event. Business authorization do M4/M5 enforce:
 | **Corrections flow** | Operator co the correct bat ky field nao. Corrections saved in operator_corrections JSON. |
 | **Handoff trigger** | operator_confirmed = TRUE → M4 co the consume OCR data de populate receipt fields. |
 
+### 12.2.1 OCR Governance Rules (v1.2 — NEW)
+
+| OCR Field | Required de confirm? | Editable by operator? | Confidence threshold baseline | Source priority khi handoff M4 |
+|-----------|----------------------|----------------------|------------------------------|-------------------------------|
+| bl_number | Y | Y | 90% | Neu operator sua, gia tri operator_confirmed uu tien cao nhat |
+| vehicle_number | Y | Y | 90% | Operator confirmed > OCR raw |
+| product_name | Y | Y | 85% | Operator confirmed > OCR raw |
+| vessel_name | N | Y | 85% | Operator confirmed > OCR raw |
+| qty_extracted | N | Y | 85% | Operator confirmed > OCR raw |
+
+**Quy tac bo sung:**
+- Neu co >1 receipt candidate, M8 KHONG duoc auto-link. Bat buoc operator select 1 candidate.
+- Sau khi `operator_confirmed = TRUE`, M8 luu ca 2 lop du lieu: OCR raw va confirmed snapshot.
+- M8 KHONG overwrite receipt da posting / da qua state ma M4 danh dau la khoa; khi do chi duoc tao exception / yeu cau relink theo rule cua M4.
+- Moi sua doi field OCR PHAI ghi vao `operator_corrections` (field cu, field moi, user, timestamp).
+- Attachment image giu lai de audit; khong cho xoa file neu OCR result da duoc link.
+
+### 12.2.2 OCR Exception Matrix (v1.2 — NEW)
+
+| Failure Case | Auto Action | Manual Action | Owner | Result |
+|-------------|-------------|---------------|-------|--------|
+| OCR engine error | Tra error cho UI | Re-upload / doi anh ro hon | WB_OPERATOR | FAILED |
+| Confidence thap < threshold | Mark REVIEW_REQUIRED | Operator review/sua field | WB_OPERATOR | CONFIRMED / REJECTED |
+| Multiple receipt candidates | Khong auto-link | Operator select dung receipt | WB_OPERATOR | LINKED |
+| Khong co candidate | Tao receipt candidate hoac de chua linked | Operator tao moi / bo qua | WB_OPERATOR | LINKED / REJECTED |
+| OCR linked nham | Tao audit exception | WH_MANAGER relink theo policy | WH_MANAGER | LINKED lai / CLOSED |
+
 ### 12.3 Acceptance Criteria
 - **AC-3.1**: OCR extract fields voi confidence score per field.
 - **AC-3.2**: Confidence >=90% va 1 match → auto-suggest link. link_method = AUTO_MATCHED.
@@ -307,6 +415,37 @@ M8 chi capture manual weight event. Business authorization do M4/M5 enforce:
 - Conflict detection: flag conflict, khong auto-overwrite (server data wins)
 - Sync status visible (pending sync count)
 - Retry: background auto-retry, unlimited until success (xem Retry Matrix Section 6)
+
+### 13.1.1 Mobile Offline / Sync Rules (v1.2 — NEW)
+
+| Rule Area | Baseline Rule |
+|-----------|---------------|
+| Event duoc offline | Putaway completion, pick completion, count capture, exception note, photo upload metadata. |
+| Event khong duoc offline | Login/auth refresh, permission change, master data publish, force override can manager approval real-time. |
+| Replay order | FIFO theo `client_event_time`; trong cung 1 work task phai giu thu tu thao tac. |
+| Partial success | Batch status = PARTIAL_SUCCESS; chi resend lai event fail, event thanh cong khong gui lai. |
+| Conflict policy | Server data wins; mobile hien conflict de user / manager xem. Khong auto-merge. |
+| Duplicate policy | Cung `external_id` thi backend bo qua event duplicate va tra ket qua idempotent. |
+| Local retention | Batch offline giu toi thieu 7 ngay hoac den khi sync thanh cong. |
+| Sync after long offline | Neu >24h chua sync, sinh canh bao cho supervisor/WH_MANAGER tren dashboard. |
+
+### 13.1.2 Mobile Sync API Baseline (v1.2 — NEW)
+
+Request batch toi thieu gom: `batch_id`, `device_id`, `keeper_user_id`, `events[]`, `client_created_at`, `external_id`, `correlation_id`.
+
+Moi event trong `events[]` nen co:
+- `event_type`
+- `event_id` / `external_id`
+- `work_reference_id`
+- `client_event_time`
+- `payload`
+- `photo_refs[]` (neu co)
+
+Response batch toi thieu:
+- `batch_status`
+- `accepted_event_ids[]`
+- `conflict_event_ids[]`
+- `failed_events[]` gom `external_id`, `error_code`, `error_message`
 
 ### 13.2 Acceptance Criteria
 - **AC-4.1**: Offline operations queued locally voi external_id + correlation_id.
@@ -350,6 +489,25 @@ Khi ERP push FAILED sau 10 attempts:
 
 **Day la P1 blocker. Khong the build ERP push cho den khi co API spec tu ERP team.**
 
+### 14.2.1 ERP Push Contract Baseline (v1.2 — NEW)
+
+| ERP API | Trigger | Request Key Fields | Success Criteria | Retryable Errors | Non-Retryable Errors | Idempotency Key |
+|---------|---------|-------------------|------------------|------------------|----------------------|-----------------|
+| Push Debit Note | Debit Note state = LOCKED (M10) | debit_note_number, customer_code, posting_date, line_items, total_amount, tax_amount | ERP tra ACK thanh cong va luu duoc so chung tu / transaction ref | Timeout, 429, 5xx, network error | 400 mapping error, 401/403 auth config loi, 422 validation fail | debit_note_number |
+
+**Quy tac:**
+- Chi object o state LOCKED moi duoc push.
+- `erp_push_log.status` chi chuyen SUCCESS khi nhan ACK thanh cong tu ERP.
+- Loi non-retryable PHAI dua vao DEAD_LETTER/FAILED va can BILLING_OFC xu ly thu cong.
+- Loi retryable theo exponential backoff, toi da 10 lan.
+- Manual retry van dung cung idempotency key cu.
+
+### 14.2.2 ERP Push Failure / Reconciliation Rules (v1.2 — NEW)
+
+- M8 can luu du `request_payload_snapshot` va `response_snapshot` de doi chieu sau nay.
+- Neu ERP tra thanh cong nhung timeout tai SWM client, batch can vao trang thai `ACK_UNKNOWN`/can verify bang reconciliation (neu team ky thuat muon mo rong trang thai nay). Trong pham vi spec hien tai, toi thieu phai co co che check lai truoc khi manual re-push de tranh trung chung tu.
+- Can co bao cao reconciliation hang ngay: DN LOCKED da push thanh cong, DN fail, DN cho xu ly. Bao cao nay phuc vu BILLING_OFC va ke toan.
+
 ### 14.3 Acceptance Criteria
 - **AC-5.1**: Chi push Locked Debit Notes.
 - **AC-5.2**: Re-push cung debit_note_number → skip (idempotent).
@@ -366,6 +524,27 @@ Khi ERP push FAILED sau 10 attempts:
 - Weighbridge connection status per device (heartbeat)
 - Mobile sync status: pending sync count per keeper
 - Alert escalation khi repeated failure
+
+### 15.1.1 Monitoring KPI & Alert Policy (v1.2 — NEW)
+
+| KPI / Alert | Definition | Threshold / SLA | Owner |
+|-------------|------------|-----------------|-------|
+| Weighbridge latency | Tu stable read den backend ack | <= 2 giay | WH_MANAGER / Ops |
+| Device heartbeat missing | Khong nhan heartbeat tu device | > 5 phut (to-confirm) | WH_MANAGER |
+| Orphan weigh logs | Log chua link receipt/shipment | Hien real-time tren dashboard | WH_MANAGER |
+| OCR review required count | So OCR ket qua can user review | Dashboard by shift/day | WB_OPERATOR |
+| Mobile pending sync >24h | Device/keeper chua sync qua 24h | Alert WARN | WH_MANAGER |
+| ERP push failure rate | % push FAILED / total push | Dashboard by day | BILLING_OFC |
+| ERP push dead-letter count | So DN fail sau max attempts | Alert HIGH/CRITICAL | BILLING_OFC / ADMIN |
+
+### 15.1.2 Dashboard Minimum Widgets (v1.2 — NEW)
+
+- Weighbridge device status theo tung can / local agent
+- Danh sach orphan weigh logs cho phep retrolink
+- OCR queue: review_required / confirmed / rejected
+- Mobile sync: pending, conflicted, last sync by device/user
+- ERP push queue: pending, retry_scheduled, success, failed, dead-letter
+- Alert inbox: severity, assigned_role, opened_at, last_raised_at
 
 ### 15.2 Acceptance Criteria
 - **AC-6.1**: Integration dashboard hien thi push status per DN.
@@ -423,6 +602,23 @@ End-to-end: tu scale reading → ERP push, traceable qua 1 correlation_id chain.
 
 ---
 
+## 17A. Reason Code & Audit Policy (v1.2 — NEW)
+
+| Action | Role duoc phep | Reason code bat buoc | Evidence / audit toi thieu |
+|--------|----------------|----------------------|----------------------------|
+| Manual weight entry | WH_MANAGER | Y | approved_by, manual_reason_code, timestamp, lien ket receipt/shipment |
+| Retrolink orphan weigh log | WH_MANAGER | Y | old link/new link, comment, user, timestamp |
+| OCR relink / force correction sau confirm | WH_MANAGER | Y | truoc/sau correction, image ref, affected receipt |
+| ERP manual retry | BILLING_OFC | N (khuyen nghi co note) | error snapshot, user, retry time |
+| Mark false duplicate / dong alert | WH_MANAGER / ADMIN | Y | root cause + resolution note |
+
+**Nguyen tac audit:**
+- M1 AuditLog la noi luu audit chuan.
+- M8 phai gui audit event cho cac thao tac manual/override neu co.
+- Cac field `external_id`, `correlation_id`, `source_channel` phai xuat hien trong audit payload de truy vet lien module.
+
+---
+
 ## 18. Business Rules
 
 | Rule ID | Rule | BRD Reference |
@@ -457,6 +653,29 @@ End-to-end: tu scale reading → ERP push, traceable qua 1 correlation_id chain.
 | 11 | POST | /api/v1/erp/retry/{id} | BILLING_OFC | Retry failed push |
 | 12 | POST | /api/v1/mobile/sync | WH_KEEPER | Batch sync offline ops |
 | 13 | GET | /api/v1/integration/monitor | WH_MANAGER, BILLING_OFC | Integration dashboard |
+
+### 19.1 API Contract Notes (v1.2 — NEW)
+
+**Yeu cau chung cho tat ca API M8:**
+- Header idempotency: event tao moi nen mang `external_id` / `Idempotency-Key` neu actor la system/mobile/agent.
+- Tat ca response loi can co: `error_code`, `error_message`, `correlation_id`, `timestamp`.
+- Cac API thao tac manual (manual-entry, retrolink, ERP retry) phai ghi audit trail.
+- API list/detail dashboard can support filter theo `status`, `device_id`, `date_from`, `date_to`, `correlation_id`.
+
+### 19.2 Endpoint Behavioral Notes (v1.2 — NEW)
+
+| Endpoint | Behavioral Note |
+|----------|-----------------|
+| POST /api/v1/weighbridge/weigh-event | Idempotent theo `weighbridge_event_id/external_id`; duplicate request tra ket qua da ton tai. |
+| POST /api/v1/weighbridge/manual-entry | Chi duoc goi boi WH_MANAGER; backend M8 chi capture, M4/M5 validate state cho phep. |
+| PATCH /api/v1/weighbridge/logs/{id}/link | Retrolink orphan log; bat buoc audit trail, reason code, role check. |
+| POST /api/v1/ocr/extract | Upload image, tra ve OCR result va confidence. |
+| POST /api/v1/ocr/{id}/confirm | Luu confirmed snapshot + corrections + linked_receipt_id. |
+| POST /api/v1/mobile/sync | Consume batch; support partial success va idempotent event-level. |
+| POST /api/v1/erp/push-debit-note | Chi cho object state LOCKED; neu da push thanh cong thi tra status idempotent. |
+| POST /api/v1/erp/retry/{id} | Chi retry khi status FAILED / DEAD_LETTER, phai luu user trigger. |
+
+---
 
 ---
 
@@ -512,6 +731,30 @@ End-to-end: tu scale reading → ERP push, traceable qua 1 correlation_id chain.
 
 ---
 
+## 22A. UAT Scenario Matrix (v1.2 — NEW)
+
+| UAT ID | Scenario | Expected Result |
+|--------|----------|----------------|
+| UAT-M8-001 | Scale doc du lieu binh thuong | weighbridge_log tao thanh cong <= 2s, status linked/orphan dung context |
+| UAT-M8-002 | Backend tam thoi khong phan hoi | Agent retry 3x30s, sau do alert operator |
+| UAT-M8-003 | Manual weight sau khi scale fail | Bat buoc WH_MANAGER + reason_code, audit day du |
+| UAT-M8-004 | Operator quen chon receipt truoc khi can | Tao orphan log, hien dashboard cho retrolink |
+| UAT-M8-005 | Multi-trip outbound weighing | Net_N tinh dung, tong net cross-check dung |
+| UAT-M8-006 | OCR confidence cao va 1 candidate | Auto-suggest / auto-link theo rule |
+| UAT-M8-007 | OCR confidence thap | REVIEW_REQUIRED, operator sua roi confirm |
+| UAT-M8-008 | OCR co nhieu receipt candidate | Khong auto-link, operator phai chon |
+| UAT-M8-009 | Mobile app offline -> online sync | Batch sync thanh cong, khong tao duplicate |
+| UAT-M8-010 | Mobile batch partial success | Event thanh cong khong gui lai, event fail duoc danh dau resend |
+| UAT-M8-011 | Mobile conflict voi server data | Conflict duoc flag, server wins |
+| UAT-M8-012 | Locked DN push ERP thanh cong | erp_push_log = SUCCESS, luu response snapshot |
+| UAT-M8-013 | ERP push timeout / 5xx | Retry theo exponential backoff toi da 10 lan |
+| UAT-M8-014 | ERP push 400 mapping error | Fail non-retryable, BILLING_OFC xu ly thu cong |
+| UAT-M8-015 | Manual ERP retry sau khi ERP fix | Retry thanh cong, van giu idempotency key cu |
+| UAT-M8-016 | Device disconnect > threshold | Dashboard sinh alert va phan role xu ly |
+| UAT-M8-017 | Full trace weigh -> receipt/shipment -> DN -> ERP | Tra cuu duoc bang correlation_id |
+
+---
+
 ## 23. Baseline Source Documents
 
 | # | Document | Key Content Used |
@@ -523,3 +766,18 @@ End-to-end: tu scale reading → ERP push, traceable qua 1 correlation_id chain.
 | 5 | TVL_SWM_SystemControlMap.md | M8 ownership boundaries |
 | 6 | Module 4 Inbound Spec | Manual weight authorization, OCR handoff, receipt states |
 | 7 | Module 5 Outbound Spec | Manual weight authorization, multi-trip weighing |
+| 8 | Module 7 Work Execution Spec | Mobile offline/sync baseline, conflict handling |
+| 9 | TVL_SWM_overview_spec_module.md | Cross-module dependency, traceability, spec completeness checklist |
+| 10 | TVL_SWM_Business_Rules_Document.md | Weighbridge / billing rules baseline |
+
+
+---
+
+## 24. BA Completion Notes (v1.2 — NEW)
+
+Tai lieu v1.2 nay uu tien **bo sung** de lam day hon ban goc, khong thay doi ban chat pham vi Module 8.
+
+**Ket luan BA:**
+- M8 van la lop data acquisition + integration, khong giu business rules cua inbound/outbound/billing.
+- Cac phan da du muc build FS/tech spec hon truoc: object/state, schema, exception matrix, OCR governance, mobile sync baseline, ERP retry contract, monitoring KPI, UAT.
+- Van con cac muc `[TO-CONFIRM]` can khoa voi stakeholder/ERP team truoc khi chot FS va design ky thuat cuoi cung.

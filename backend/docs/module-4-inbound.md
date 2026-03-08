@@ -1,10 +1,10 @@
 # Module 4: Inbound Operations — Backend Documentation
 
 > **Module:** M4 - Inbound Operations  
-> **Status:** ✅ Implemented (Feedback Fixed v2)  
+> **Status:** ✅ Implemented (Feedback Fixed v3 - CR-1 DONE)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-08 (FB-v2)
+> **Last Updated:** 2026-03-08 (FB-v3)
 
 ---
 
@@ -18,7 +18,8 @@ Module 4 quản lý toàn bộ **lifecycle của Receipt** (phiếu nhận hàng
 - **Weighing Flow**: Nhận dữ liệu cân gross/tare từ weighbridge
 - **Tolerance Check**: Tự động kiểm tra variance so với expected quantity
 - **State Machine**: Quản lý trạng thái receipt theo business rules
-- **Integration Ready**: Interface để gọi M3 (post inventory), M7 (putaway work)
+- **M3 Integration**: Gọi PostingEngine khi RECEIVED để tạo InventTrans và tăng OnHand
+- **Integration Ready**: Interface để gọi M7 (putaway work)
 
 ### 1.2 Nguyên tắc quan trọng
 
@@ -367,13 +368,29 @@ Any cancellable state ──cancel──> CANCELLED
 | M2 - Master Data | `MdOwner`, `MdVendor`, `MdItem`, `MdWarehouse`, `MdLocation` | Validate master references |
 | M2 - Master Data | `MdOwnerItemPolicy` | Lookup tolerance |
 
-### 7.2 Integration Points (Future)
+### 7.2 M3 Integration (✅ Implemented - FB-v3)
 
-| Target | Event/Command | Description |
-|--------|---------------|-------------|
-| M3 - Inventory Core | `PostInboundReceipt` | Post inventory khi RECEIVED |
-| M7 - Work | `CreatePutawayWork` | Tạo putaway work |
-| M10 - Billing | `InboundHandlingCaptured` | Capture billing event |
+| Target | Event/Command | Description | Status |
+|--------|---------------|-------------|--------|
+| M3 - Inventory Core | `postInventory()` | Post inventory khi RECEIVED | ✅ Done |
+| M3 - Inventory Core | `RECEIPT_RECEIVED` event | Event code cho inbound | ✅ Done |
+
+**Flow:**
+1. `receiveWeighOut()` tính net weight và check tolerance
+2. Nếu tolerance pass → status = RECEIVED
+3. Gọi `PostingEngineService.postInventory()` với:
+   - `eventCode: 'RECEIPT_RECEIVED'`
+   - `refType: 'RECEIPT'`
+   - `dimTo: { warehouseCode, locationCode, ownerCode, statusCode: 'AVAILABLE' }`
+4. Lưu `postedTransId` vào `receipt_header`
+5. Kết quả: `InventTrans` được tạo, `OnHand` tăng
+
+### 7.3 Integration Points (Future)
+
+| Target | Event/Command | Description | Status |
+|--------|---------------|-------------|--------|
+| M7 - Work | `CreatePutawayWork` | Tạo putaway work | 🔜 Pending |
+| M10 - Billing | `InboundHandlingCaptured` | Capture billing event | 🔜 Pending |
 
 ---
 
@@ -413,14 +430,14 @@ Any cancellable state ──cancel──> CANCELLED
 - **Location:** `createReceipt()` và `receiveWeighOut()`
 - **Reason:** Multi-line receipt chưa được support trong Phase 1
 
-### 9.3 Bagged Over-Receipt Check
+### 9.3 Bagged Over-Receipt Check (✅ Fixed v3)
 
-- **Policy:** `BaggedPolicy.checkOverReceipt()`
+- **Policy:** `BaggedPolicy.checkOverReceipt(prisma, poId, bagCount, lineData)`
 - **Trigger:** Khi `cargoForm !== 'BULK'` và có `bagCount`
 - **Location:** `receiveWeighOut()` trước khi set RECEIVED
-- **Status:** ✅ Fixed (v2) - `overReceiptBlocked` now returns proper value
-- **Phase 1:** Returns `false` (no PO table yet)
-- **Phase 2+:** Will lookup `expectedBagCount` from PO and compare
+- **Status:** ✅ Fixed (v3) - `expectedBagCount` tính từ lineData
+- **Logic:** `expectedBagCount = Math.ceil(expectedQty / nominalWeightPerBag)`
+- **Blocking:** `overReceiptBlocked = totalWithCurrent > expectedBagCount`
 
 ### 9.4 Idempotency Keys
 

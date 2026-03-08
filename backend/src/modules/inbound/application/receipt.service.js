@@ -7,6 +7,8 @@ const { ReceiptRepository } = require('../infra/receipt.repository');
 const { ReceiptStatusHistoryRepository } = require('../infra/receipt-status-history.repository');
 const { ReceiptWeighingRepository } = require('../infra/receipt-weighing.repository');
 const { ReceiptStateMachine, RECEIPT_STATUS, RECEIPT_ACTIONS } = require('../domain/inbound.state-machine');
+// CR-1 FIX: Import M3 PostingEngine for inventory posting
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
 const { TolerancePolicy, WeightValidationPolicy, CancelPolicy, BaggedPolicy } = require('../domain/inbound.policy');
 const {
   InboundError,
@@ -23,11 +25,17 @@ const {
 } = require('../domain/inbound.errors');
 
 class ReceiptService {
-  constructor(prisma) {
+  /**
+   * @param {PrismaClient} prisma
+   * @param {PostingEngineService} postingEngine - Optional, defaults to new instance
+   */
+  constructor(prisma, postingEngine = null) {
     this.prisma = prisma;
     this.receiptRepo = new ReceiptRepository(prisma);
     this.historyRepo = new ReceiptStatusHistoryRepository(prisma);
     this.weighingRepo = new ReceiptWeighingRepository(prisma);
+    // CR-1 FIX: Inject M3 PostingEngine
+    this.postingEngine = postingEngine || new PostingEngineService(prisma);
   }
 
   /**
@@ -353,9 +361,13 @@ class ReceiptService {
       // Lookup tolerance và check
       const line = receipt.lines[0]; // Phase 1: single line
 
-      // HI-1: Check bagged over-receipt rule
+      // HI-1 FIX: Check bagged over-receipt rule with line data for expectedBagCount calculation
       if (line.cargoForm && line.cargoForm !== 'BULK' && line.bagCount) {
-        const baggedCheck = await BaggedPolicy.checkOverReceipt(tx, receipt.poId, line.bagCount);
+        const lineData = {
+          expectedQty: line.expectedQty,
+          nominalWeightPerBag: line.nominalWeightPerBag,
+        };
+        const baggedCheck = await BaggedPolicy.checkOverReceipt(tx, receipt.poId, line.bagCount, lineData);
         if (baggedCheck.overReceiptBlocked) {
           throw new InboundError(ERROR_CODES.INVALID_STATE, 'Vượt quá số lượng bag cho phép của PO', baggedCheck);
         }
@@ -384,12 +396,36 @@ class ReceiptService {
         updatedBy: context.userId,
       };
 
-      // If accepted, update received qty on lines
+      // If accepted, update received qty on lines and post inventory
       if (toleranceResult.pass) {
         await tx.receiptLine.updateMany({
           where: { receiptHeaderId: receiptId },
           data: { receivedQty: netWeightKg, status: 'RECEIVED' },
         });
+
+        // CR-1 FIX: Post inventory to M3 when RECEIVED
+        const postingResult = await this.postingEngine.postInventory({
+          externalId: `RCPT-${receipt.id}-${line.id}`,
+          correlationId: receipt.correlationId,
+          eventCode: 'RECEIPT_RECEIVED',
+          refType: 'RECEIPT',
+          refId: receipt.id,
+          refLineId: line.id,
+          itemId: line.itemId,
+          qty: String(netWeightKg),
+          uomCode: line.uom?.uomCode || 'KG',
+          dimTo: {
+            warehouseCode: receipt.warehouse?.warehouseCode,
+            locationCode: receipt.receivingLocation?.locationCode,
+            ownerCode: receipt.owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: context.sourceApp || 'WEB',
+          postedBy: context.userId,
+        });
+
+        // Save posting reference to receipt header
+        updateData.postedTransId = postingResult.transId;
       }
 
       const updated = await tx.receiptHeader.update({
