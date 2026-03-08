@@ -501,6 +501,7 @@ model MdUom {
   inventTrans        InventTrans[]
   onHandRecords      OnHand[]
   receiptLines       ReceiptLine[]
+  shipmentLines      ShipmentLine[]
 
   @@map("md_uom")
 }
@@ -561,6 +562,7 @@ model MdWarehouse {
   snapshotRuns              InventorySnapshotRun[]
   dailySnapshots            DailyStorageSnapshot[]
   receiptHeaders            ReceiptHeader[]
+  shipmentHeaders           ShipmentHeader[]
 
   @@map("md_warehouse")
 }
@@ -622,6 +624,7 @@ model MdLocation {
   inventDims        InventDim[]
   dailySnapshots    DailyStorageSnapshot[]
   receiptHeaders    ReceiptHeader[]
+  allocationRecords ShipmentAllocationRecord[]
 
   @@unique([warehouseId, locationCode])
   @@index([zoneId, isActive])
@@ -659,6 +662,8 @@ model MdOwner {
   reconciliationRuns   InventoryReconciliationRun[]
   dailySnapshots       DailyStorageSnapshot[]
   receiptHeaders       ReceiptHeader[]
+  shipmentHeaders      ShipmentHeader[]
+  allocationRecords    ShipmentAllocationRecord[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -745,6 +750,8 @@ model MdItem {
   reconciliationResults   InventoryReconciliationResult[]
   dailySnapshots          DailyStorageSnapshot[]
   receiptLines            ReceiptLine[]
+  shipmentLines           ShipmentLine[]
+  allocationRecords       ShipmentAllocationRecord[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -769,6 +776,8 @@ model MdVehicleType {
   updatedBy           String?         @map("updated_by") @db.Uuid
   deactivatedAt       DateTime?       @map("deactivated_at")
   deactivatedBy       String?         @map("deactivated_by") @db.Uuid
+
+  shipmentHeaders     ShipmentHeader[]
 
   @@map("md_vehicle_type")
 }
@@ -1071,6 +1080,7 @@ model InventDim {
   holds           InventoryHold[]
   reconcileResults InventoryReconciliationResult[]
   snapshots       DailyStorageSnapshot[]
+  allocationRecords ShipmentAllocationRecord[]
 
   @@index([warehouseId, locationId, ownerId, inventoryStatusId])
   @@map("invent_dim")
@@ -1539,4 +1549,411 @@ model ReceiptIntegrationState {
   @@map("receipt_integration_state")
 }
 
+// ========== Module 5: Outbound Operations Enums ==========
+
+enum ShipmentStatus {
+  DRAFT
+  CONFIRMED
+  ALLOCATED
+  PICKING
+  PICKED
+  WEIGHING_TARE
+  LOADING
+  ALL_WEIGHED
+  PENDING_APPROVAL
+  SHIPPED
+  CLOSED
+  CANCELLED
+}
+
+enum ShipmentLineStatus {
+  PENDING
+  ALLOCATED
+  PICKING
+  PICKED
+  LOADING
+  WEIGHED_PASS
+  WEIGHED_FAIL
+  LINE_SHIPPED
+  CANCELLED
+}
+
+enum ShipmentSourceType {
+  SO
+  DELIVERY_REQUEST
+  STANDALONE
+}
+
+enum AllocationStatus {
+  ALLOCATED
+  PICKED
+  RELEASED
+  POSTED
+  CANCELLED
+}
+
+enum WeighType {
+  TARE
+  GROSS
+}
+
+enum WeighSourceMode {
+  SCALE_AGENT
+  MANUAL
+}
+
+enum ShipmentExceptionType {
+  ALLOCATION_FAIL
+  TOLERANCE_FAIL
+  SO_BLOCK
+  DUPLICATE_WEIGHT
+  POSTING_FAIL
+  SHORT_PICK
+  WORK_CREATE_FAIL
+  INTEGRATION_FAIL
+}
+
+enum ShipmentExceptionStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+enum ApprovalDecisionType {
+  APPROVE
+  REJECT
+  REWEIGH_REQUEST
+}
+
+enum ApprovalScope {
+  LINE
+  SHIPMENT
+}
+
+enum WorkLinkType {
+  PICK
+  LOAD
+}
+
+enum WorkLinkStatus {
+  REQUESTED
+  CREATED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum PostingAction {
+  POST
+  REVERSE
+}
+
+enum PostingStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ========== Module 5: Outbound Operations Models ==========
+
+model ShipmentHeader {
+  id                    String           @id @default(uuid()) @db.Uuid
+  shipmentNumber        String?          @unique @map("shipment_number") @db.VarChar(40)
+  soId                  String?          @map("so_id") @db.VarChar(50)
+  sourceType            ShipmentSourceType @map("source_type")
+  ownerId               String           @map("owner_id") @db.Uuid
+  customerId            String?          @map("customer_id") @db.Uuid
+  warehouseId           String           @map("warehouse_id") @db.Uuid
+  vehicleNumber         String           @map("vehicle_number") @db.VarChar(30)
+  vehicleTypeId         String?          @map("vehicle_type_id") @db.Uuid
+  status                ShipmentStatus   @default(DRAFT)
+  tareWeightKg          Decimal?         @map("tare_weight_kg") @db.Decimal(18, 3)
+  totalGrossKg          Decimal?         @map("total_gross_kg") @db.Decimal(18, 3)
+  totalNetKg            Decimal?         @map("total_net_kg") @db.Decimal(18, 3)
+  allLinesPassed        Boolean          @default(false) @map("all_lines_passed")
+  pendingApprovalCount  Int              @default(0) @map("pending_approval_count")
+  isDpmShipment         Boolean          @default(false) @map("is_dpm_shipment")
+  cancelReasonCode      String?          @map("cancel_reason_code") @db.VarChar(50)
+  closeReasonCode       String?          @map("close_reason_code") @db.VarChar(50)
+  shippedAt             DateTime?        @map("shipped_at")
+  closedAt              DateTime?        @map("closed_at")
+  externalId            String           @unique @map("external_id") @db.VarChar(120)
+  correlationId         String           @map("correlation_id") @db.VarChar(120)
+  sourceApp             SourceApp        @map("source_app")
+  rowVersion            BigInt           @default(0) @map("row_version")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  createdBy             String?          @map("created_by") @db.Uuid
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  updatedBy             String?          @map("updated_by") @db.Uuid
+
+  owner                 MdOwner          @relation(fields: [ownerId], references: [id])
+  warehouse             MdWarehouse      @relation(fields: [warehouseId], references: [id])
+  vehicleType           MdVehicleType?   @relation(fields: [vehicleTypeId], references: [id])
+
+  lines                 ShipmentLine[]
+  allocationRecords     ShipmentAllocationRecord[]
+  weighingAttempts      ShipmentWeighingAttempt[]
+  statusHistory         ShipmentStatusHistory[]
+  exceptionLogs         ShipmentExceptionLog[]
+  approvalDecisions     ShipmentApprovalDecision[]
+  pickWorkLinks         ShipmentPickWorkLink[]
+  postingLinks          ShipmentPostingLink[]
+  soLinks               ShipmentSoLink[]
+
+  @@index([vehicleNumber, status, createdAt(sort: Desc)])
+  @@index([soId, status, createdAt(sort: Desc)])
+  @@index([ownerId, warehouseId, status, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([correlationId])
+  @@map("shipment_header")
+}
+
+model ShipmentLine {
+  id                    String              @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String              @map("shipment_header_id") @db.Uuid
+  lineNumber            Int                 @map("line_number")
+  soLineId              String?             @map("so_line_id") @db.VarChar(50)
+  itemId                String              @map("item_id") @db.Uuid
+  cargoForm             CargoForm           @map("cargo_form")
+  uomId                 String              @map("uom_id") @db.Uuid
+  expectedQty           Decimal             @map("expected_qty") @db.Decimal(18, 3)
+  expectedQtyKg         Decimal             @map("expected_qty_kg") @db.Decimal(18, 3)
+  allocatedQty          Decimal             @default(0) @map("allocated_qty") @db.Decimal(18, 3)
+  pickedQty             Decimal             @default(0) @map("picked_qty") @db.Decimal(18, 3)
+  loadedQty             Decimal             @default(0) @map("loaded_qty") @db.Decimal(18, 3)
+  shippedQty            Decimal?            @map("shipped_qty") @db.Decimal(18, 3)
+  bagCount              Int?                @map("bag_count")
+  nominalWeightPerBag   Decimal?            @map("nominal_weight_per_bag") @db.Decimal(18, 3)
+  tolerancePctApplied   Decimal?            @map("tolerance_pct_applied") @db.Decimal(8, 4)
+  variancePct           Decimal?            @map("variance_pct") @db.Decimal(8, 4)
+  grossWeightKg         Decimal?            @map("gross_weight_kg") @db.Decimal(18, 3)
+  netWeightKg           Decimal?            @map("net_weight_kg") @db.Decimal(18, 3)
+  weighSequenceNo       Int?                @map("weigh_sequence_no")
+  lineStatus            ShipmentLineStatus  @default(PENDING) @map("line_status")
+  postedTransId         String?             @map("posted_trans_id") @db.VarChar(40)
+  isDpmLine             Boolean             @default(false) @map("is_dpm_line")
+  dpmNominalQtyKg       Decimal?            @map("dpm_nominal_qty_kg") @db.Decimal(18, 3)
+  createdAt             DateTime            @default(now()) @map("created_at")
+  createdBy             String?             @map("created_by") @db.Uuid
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  updatedBy             String?             @map("updated_by") @db.Uuid
+
+  header                ShipmentHeader      @relation(fields: [shipmentHeaderId], references: [id])
+  item                  MdItem              @relation(fields: [itemId], references: [id])
+  uom                   MdUom               @relation(fields: [uomId], references: [id])
+
+  allocationRecords     ShipmentAllocationRecord[]
+  weighingAttempts      ShipmentWeighingAttempt[]
+  approvalDecisions     ShipmentApprovalDecision[]
+  pickWorkLinks         ShipmentPickWorkLink[]
+  postingLinks          ShipmentPostingLink[]
+
+  @@unique([shipmentHeaderId, lineNumber])
+  @@index([itemId, cargoForm])
+  @@index([shipmentHeaderId, lineStatus])
+  @@index([soLineId])
+  @@map("shipment_line")
+}
+
+model ShipmentAllocationRecord {
+  id                    String           @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String           @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String           @map("shipment_line_id") @db.Uuid
+  locationId            String           @map("location_id") @db.Uuid
+  inventDimId           String           @map("invent_dim_id") @db.Uuid
+  itemId                String           @map("item_id") @db.Uuid
+  ownerId               String           @map("owner_id") @db.Uuid
+  allocatedQty          Decimal          @map("allocated_qty") @db.Decimal(18, 3)
+  pickedQty             Decimal          @default(0) @map("picked_qty") @db.Decimal(18, 3)
+  releasedQty           Decimal          @default(0) @map("released_qty") @db.Decimal(18, 3)
+  postedQty             Decimal          @default(0) @map("posted_qty") @db.Decimal(18, 3)
+  lotDate               DateTime         @map("lot_date") @db.Date
+  fifoRank              Int?             @map("fifo_rank")
+  status                AllocationStatus @default(ALLOCATED)
+  holdRef               String?          @map("hold_ref") @db.VarChar(50)
+  externalId            String?          @map("external_id") @db.VarChar(120)
+  correlationId         String           @map("correlation_id") @db.VarChar(120)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  createdBy             String?          @map("created_by") @db.Uuid
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  updatedBy             String?          @map("updated_by") @db.Uuid
+
+  header                ShipmentHeader   @relation(fields: [shipmentHeaderId], references: [id])
+  line                  ShipmentLine     @relation(fields: [shipmentLineId], references: [id])
+  location              MdLocation       @relation(fields: [locationId], references: [id])
+  inventDim             InventDim        @relation(fields: [inventDimId], references: [id])
+  item                  MdItem           @relation(fields: [itemId], references: [id])
+  owner                 MdOwner          @relation(fields: [ownerId], references: [id])
+
+  @@index([shipmentLineId, status])
+  @@index([shipmentHeaderId, status])
+  @@index([inventDimId, status])
+  @@index([itemId, ownerId, lotDate, status])
+  @@index([holdRef])
+  @@map("shipment_allocation_record")
+}
+
+model ShipmentWeighingAttempt {
+  id                    String           @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String           @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String?          @map("shipment_line_id") @db.Uuid
+  weighType             WeighType        @map("weigh_type")
+  sequenceNo            Int              @map("sequence_no")
+  sourceMode            WeighSourceMode  @map("source_mode")
+  rawWeightKg           Decimal          @map("raw_weight_kg") @db.Decimal(18, 3)
+  calculatedNetKg       Decimal?         @map("calculated_net_kg") @db.Decimal(18, 3)
+  scaleTicketNo         String?          @map("scale_ticket_no") @db.VarChar(80)
+  externalEventId       String?          @map("external_event_id") @db.VarChar(120)
+  capturedAt            DateTime         @map("captured_at")
+  capturedBy            String?          @map("captured_by") @db.Uuid
+  duplicateOfAttemptId  String?          @map("duplicate_of_attempt_id") @db.Uuid
+  isValid               Boolean          @default(true) @map("is_valid")
+  reasonCode            String?          @map("reason_code") @db.VarChar(50)
+  remark                String?          @db.Text
+  correlationId         String           @map("correlation_id") @db.VarChar(120)
+  createdAt             DateTime         @default(now()) @map("created_at")
+
+  header                ShipmentHeader   @relation(fields: [shipmentHeaderId], references: [id])
+  line                  ShipmentLine?    @relation(fields: [shipmentLineId], references: [id])
+
+  @@index([shipmentHeaderId, capturedAt(sort: Desc)])
+  @@index([shipmentLineId, capturedAt(sort: Desc)])
+  @@index([scaleTicketNo])
+  @@index([externalEventId])
+  @@map("shipment_weighing_attempt")
+}
+
+model ShipmentStatusHistory {
+  id                    String       @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String       @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String?      @map("shipment_line_id") @db.Uuid
+  entityLevel           String       @map("entity_level") @db.VarChar(10)
+  fromStatus            String?      @map("from_status") @db.VarChar(30)
+  toStatus              String       @map("to_status") @db.VarChar(30)
+  triggerAction         String       @map("trigger_action") @db.VarChar(50)
+  changedBy             String?      @map("changed_by") @db.Uuid
+  changedAt             DateTime     @default(now()) @map("changed_at")
+  reasonCode            String?      @map("reason_code") @db.VarChar(50)
+  note                  String?      @db.Text
+  correlationId         String       @map("correlation_id") @db.VarChar(120)
+
+  header                ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+
+  @@index([shipmentHeaderId, changedAt(sort: Desc)])
+  @@index([shipmentLineId, changedAt(sort: Desc)])
+  @@index([toStatus, changedAt(sort: Desc)])
+  @@map("shipment_status_history")
+}
+
+model ShipmentExceptionLog {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String                   @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String?                  @map("shipment_line_id") @db.Uuid
+  exceptionType         ShipmentExceptionType    @map("exception_type")
+  exceptionCode         String                   @map("exception_code") @db.VarChar(50)
+  severity              ExceptionSeverity
+  status                ShipmentExceptionStatus  @default(OPEN)
+  reasonCode            String?                  @map("reason_code") @db.VarChar(50)
+  detailJson            Json?                    @map("detail_json")
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  createdBy             String?                  @map("created_by") @db.Uuid
+  resolvedAt            DateTime?                @map("resolved_at")
+  resolvedBy            String?                  @map("resolved_by") @db.Uuid
+  correlationId         String                   @map("correlation_id") @db.VarChar(120)
+
+  header                ShipmentHeader           @relation(fields: [shipmentHeaderId], references: [id])
+
+  @@index([shipmentHeaderId, status, createdAt(sort: Desc)])
+  @@index([exceptionType, status, createdAt(sort: Desc)])
+  @@map("shipment_exception_log")
+}
+
+model ShipmentApprovalDecision {
+  id                    String               @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String               @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String?              @map("shipment_line_id") @db.Uuid
+  decisionType          ApprovalDecisionType @map("decision_type")
+  approvalScope         ApprovalScope        @map("approval_scope")
+  reasonCode            String               @map("reason_code") @db.VarChar(50)
+  note                  String?              @db.Text
+  decidedBy             String               @map("decided_by") @db.Uuid
+  decidedAt             DateTime             @default(now()) @map("decided_at")
+  beforeSnapshot        Json?                @map("before_snapshot")
+  afterSnapshot         Json?                @map("after_snapshot")
+  correlationId         String               @map("correlation_id") @db.VarChar(120)
+
+  header                ShipmentHeader       @relation(fields: [shipmentHeaderId], references: [id])
+  line                  ShipmentLine?        @relation(fields: [shipmentLineId], references: [id])
+
+  @@index([shipmentHeaderId, decidedAt(sort: Desc)])
+  @@index([shipmentLineId, decidedAt(sort: Desc)])
+  @@map("shipment_approval_decision")
+}
+
+model ShipmentPickWorkLink {
+  id                    String           @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String           @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String?          @map("shipment_line_id") @db.Uuid
+  workType              WorkLinkType     @map("work_type")
+  workHeaderId          String           @map("work_header_id") @db.VarChar(50)
+  workLineId            String?          @map("work_line_id") @db.VarChar(50)
+  status                WorkLinkStatus   @default(REQUESTED)
+  externalId            String           @map("external_id") @db.VarChar(120)
+  correlationId         String           @map("correlation_id") @db.VarChar(120)
+  requestedAt           DateTime         @default(now()) @map("requested_at")
+  completedAt           DateTime?        @map("completed_at")
+  payloadJson           Json?            @map("payload_json")
+
+  header                ShipmentHeader   @relation(fields: [shipmentHeaderId], references: [id])
+  line                  ShipmentLine?    @relation(fields: [shipmentLineId], references: [id])
+
+  @@unique([externalId])
+  @@index([shipmentHeaderId, status])
+  @@index([shipmentLineId, workType, status])
+  @@map("shipment_pick_work_link")
+}
+
+model ShipmentPostingLink {
+  id                    String         @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String         @map("shipment_header_id") @db.Uuid
+  shipmentLineId        String         @map("shipment_line_id") @db.Uuid
+  postingAction         PostingAction  @map("posting_action")
+  m3ExternalId          String         @map("m3_external_id") @db.VarChar(120)
+  m3TransId             String?        @map("m3_trans_id") @db.VarChar(40)
+  status                PostingStatus  @default(PENDING)
+  requestPayload        Json?          @map("request_payload")
+  responsePayload       Json?          @map("response_payload")
+  requestedAt           DateTime       @default(now()) @map("requested_at")
+  finishedAt            DateTime?      @map("finished_at")
+  correlationId         String         @map("correlation_id") @db.VarChar(120)
+
+  header                ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  line                  ShipmentLine   @relation(fields: [shipmentLineId], references: [id])
+
+  @@unique([m3ExternalId])
+  @@index([shipmentHeaderId, status])
+  @@index([shipmentLineId, postingAction, status])
+  @@map("shipment_posting_link")
+}
+
+model ShipmentSoLink {
+  id                    String         @id @default(uuid()) @db.Uuid
+  shipmentHeaderId      String         @map("shipment_header_id") @db.Uuid
+  soId                  String         @map("so_id") @db.VarChar(50)
+  soLineId              String?        @map("so_line_id") @db.VarChar(50)
+  expectedQtyKg         Decimal        @map("expected_qty_kg") @db.Decimal(18, 3)
+  allocatedQtyKg        Decimal        @default(0) @map("allocated_qty_kg") @db.Decimal(18, 3)
+  shippedQtyKg          Decimal        @default(0) @map("shipped_qty_kg") @db.Decimal(18, 3)
+  isReconciled          Boolean        @default(false) @map("is_reconciled")
+  reconciledAt          DateTime?      @map("reconciled_at")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  header                ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+
+  @@unique([shipmentHeaderId, soId, soLineId])
+  @@index([soId, soLineId])
+  @@map("shipment_so_link")
+}
 

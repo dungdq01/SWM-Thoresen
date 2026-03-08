@@ -425,5 +425,138 @@
 
 # Module 5: Outbound Operations
 
-**Status:** 🔜 Pending  
-**Code Path:** `src/modules/outbound` (planned)
+**Status:** ✅ Implemented  
+**Code Path:** `src/modules/outbound`
+
+## Database Tables
+
+| Table Name | Description |
+|------------|-------------|
+| `shipment_header` | Header nghiệp vụ cho trip outbound |
+| `shipment_line` | Dòng hàng trong shipment |
+| `shipment_allocation_record` | Trace allocation từ stock source |
+| `shipment_weighing_attempt` | Log tare/gross/manual override |
+| `shipment_status_history` | Lịch sử chuyển trạng thái |
+| `shipment_exception_log` | Log exception nghiệp vụ |
+| `shipment_approval_decision` | Quyết định approve/reject |
+| `shipment_pick_work_link` | Mapping với work từ M7 |
+| `shipment_posting_link` | Mapping với posting sang M3 |
+| `shipment_so_link` | Link shipment với SO |
+
+## API Endpoints
+
+### Shipment Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/outbound/shipments` | Tạo shipment mới |
+| GET | `/api/v1/outbound/shipments` | List shipments (paginated) |
+| GET | `/api/v1/outbound/shipments/:id` | Get shipment detail |
+| PATCH | `/api/v1/outbound/shipments/:id` | Update shipment (DRAFT only) |
+| POST | `/api/v1/outbound/shipments/:id/confirm` | Confirm shipment |
+| POST | `/api/v1/outbound/shipments/:id/cancel` | Cancel shipment |
+
+### Allocation
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/outbound/shipments/:id/allocate` | Allocate shipment |
+| POST | `/api/v1/outbound/shipments/:id/unallocate` | Release allocation |
+| GET | `/api/v1/outbound/shipments/:id/allocations` | View allocations |
+
+### Weighing
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/outbound/shipments/:id/weigh/tare` | Record tare |
+| POST | `/api/v1/outbound/shipments/:id/weigh/gross` | Record gross |
+| GET | `/api/v1/outbound/shipments/:id/weighing-history` | View weigh history |
+
+### Approval
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/outbound/approvals/pending` | List pending approvals |
+| POST | `/api/v1/outbound/shipments/:id/approve` | Approve shipment/line |
+| POST | `/api/v1/outbound/shipments/:id/reject` | Reject shipment/line |
+
+### Query & Dashboard
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/outbound/shipments/:id/history` | Status history |
+| GET | `/api/v1/outbound/shipments/:id/exceptions` | Exceptions |
+| GET | `/api/v1/outbound/dashboard/summary` | Dashboard summary |
+| GET | `/api/v1/outbound/dashboard/kpis` | KPI metrics |
+
+## Code Structure
+
+```
+src/modules/outbound/
+├── outbound.module.ts
+├── controllers/
+│   ├── shipment.controller.ts
+│   ├── allocation.controller.ts
+│   ├── weighing.controller.ts
+│   ├── approval.controller.ts
+│   └── outbound-query.controller.ts
+├── services/
+│   ├── shipment.service.ts
+│   ├── shipment-command.service.ts
+│   ├── shipment-query.service.ts
+│   ├── shipment-state-machine.service.ts
+│   ├── shipment-line-state.service.ts
+│   ├── allocation.service.ts
+│   ├── weighing.service.ts
+│   ├── tolerance.service.ts
+│   └── approval.service.ts
+├── repositories/
+│   ├── shipment-header.repository.ts
+│   ├── shipment-line.repository.ts
+│   ├── allocation-record.repository.ts
+│   ├── weighing-attempt.repository.ts
+│   ├── status-history.repository.ts
+│   ├── exception-log.repository.ts
+│   ├── approval-decision.repository.ts
+│   ├── pick-work-link.repository.ts
+│   └── posting-link.repository.ts
+└── dto/
+    ├── create-shipment.dto.ts
+    └── shipment-response.dto.ts
+```
+
+## Module Dependencies
+
+### Module 5 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `NumberSequence` | Sinh shipment_number (SHP-*) |
+| Module 1 | `ReasonCode` | Validate reason codes |
+| Module 1 | `AuditLog` | Audit trail |
+| Module 1 | `Idempotency` | External ID check |
+| Module 2 | `MdOwner` | Owner validation |
+| Module 2 | `MdItem` | Item validation + tolerance |
+| Module 2 | `MdWarehouse` | Warehouse validation |
+| Module 2 | `MdLocation` | Location validation |
+| Module 2 | `MdInventoryStatus` | Status check (AVAILABLE) |
+| Module 2 | `MdVehicleType` | Vehicle type lookup |
+| Module 3 | `OnHandService` | Query available stock |
+| Module 3 | `HoldService` | Create/release allocation holds |
+| Module 3 | `PostingEngine` | Post outbound transaction |
+
+### Modules that depend on Module 5:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 7 | `CreatePickWork` | Tạo pick work khi ALLOCATED |
+| Module 10 | `OutboundHandlingCaptured` | Capture billing event |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `OUTBOUND.SHIPMENT.CREATE` | Tạo shipment |
+| `OUTBOUND.SHIPMENT.READ` | Xem shipment |
+| `OUTBOUND.SHIPMENT.CONFIRM` | Confirm shipment |
+| `OUTBOUND.SHIPMENT.CANCEL` | Cancel shipment |
+| `OUTBOUND.SHIPMENT.ALLOCATE` | Allocate shipment |
+| `OUTBOUND.SHIPMENT.SHIP` | Ship shipment |
+| `OUTBOUND.WEIGH.RECORD` | Ghi nhận cân |
+| `OUTBOUND.APPROVAL.DECIDE` | Approve/Reject |
+| `OUTBOUND.DASHBOARD.READ` | Xem dashboard |
+
+---
