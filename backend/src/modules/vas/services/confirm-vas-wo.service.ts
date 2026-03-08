@@ -93,13 +93,23 @@ export class ConfirmVasWoService {
         throw new VasInsufficientPackagingError(packagingAvailable, wo.packagingQtyPlanned);
       }
 
+      // Fetch codes for M3 hold
+      const [owner, warehouse] = await Promise.all([
+        tx.mdOwner.findUnique({ where: { id: wo.ownerId }, select: { ownerCode: true } }),
+        tx.mdWarehouse.findUnique({ where: { id: wo.warehouseId }, select: { warehouseCode: true } }),
+      ]);
+
       await this.inventoryFacade.reserveVasBulk(
         wo.id,
         {
           ownerId: wo.ownerId,
+          ownerCode: owner?.ownerCode || '',
           warehouseId: wo.warehouseId,
+          warehouseCode: warehouse?.warehouseCode || '',
           itemId: wo.bulkSourceItemId,
           qtyKg: wo.plannedQtyKg,
+          correlationId: wo.correlationId,
+          actorId: actor.userId,
         },
         tx,
       );
