@@ -539,3 +539,39 @@ OCR extraction sử dụng per-field confidence thresholds theo spec:
 - Nếu tất cả fields đạt threshold → Status: `EXTRACTED`
 - Nếu bất kỳ field nào dưới threshold → Status: `REVIEW_REQUIRED`
 - Phải có ít nhất BL hoặc Vehicle với confidence đạt threshold
+
+---
+
+## 11. Transaction Boundaries
+
+Các operations sau sử dụng `$transaction` để đảm bảo atomicity:
+
+| Service | Operation | Tables Affected |
+|---------|-----------|-----------------|
+| `weighbridge-ingest.service.ts` | `ingestWeighEvent()` | `m8_weighbridge_log` + `m8_weighbridge_event_state` |
+| `mobile-sync-batch.service.ts` | `submitBatch()` | `m8_mobile_sync_batch` + `m8_mobile_sync_event` |
+| `ocr-confirmation.service.ts` | `confirmOcrResult()` | `m8_ocr_confirmed_snapshot` + `m8_ocr_result` |
+
+**Pattern:**
+```typescript
+await this.prisma.$transaction(async (tx) => {
+  // All writes within transaction
+  const record1 = await tx.model1.create({...});
+  await tx.model2.create({...});
+  return record1;
+});
+```
+
+---
+
+## 12. Known Limitations (Phase 1)
+
+| Item | Status | Note |
+|------|--------|------|
+| OCR extraction | **MOCK** | Trả về mock data, chưa integrate real OCR provider |
+| ERP push | **MOCK** | Trả về mock response, chưa integrate real ERP |
+| Callback dispatch | **STUB** | Chỉ log, chưa có BullMQ/HTTP call đến M4/M5 |
+| Mobile sync dispatch | **STUB** | `mockDispatchToModule()`, chưa call M6/M7 |
+| M1 AuditLog | **NOT INTEGRATED** | Chưa gọi AuditLog service |
+
+Các items này sẽ được implement trong Sprint 5.

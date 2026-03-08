@@ -199,6 +199,8 @@ Sau khi nhận feedback từ code review, các issues sau đã được fix:
 ### HI-3: Transaction Atomicity ✅
 - Wrap multi-step operations trong `prisma.$transaction()`
 - `weighbridge-ingest.service.ts`: Log creation + event state creation trong 1 transaction
+- `mobile-sync-batch.service.ts`: Batch + events creation trong 1 transaction
+- `ocr-confirmation.service.ts`: Snapshot + result status update trong 1 transaction
 
 ### HI-4: decimal.js for Weight Calculations ✅
 - Sử dụng `decimal.js` cho tính toán net weight
