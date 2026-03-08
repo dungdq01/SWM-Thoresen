@@ -129,8 +129,13 @@ class CancelPolicy {
 class BaggedPolicy {
   /**
    * Kiểm tra over-receipt rule cho bagged cargo
+   * HI-1 FIX: Calculate expectedBagCount from receipt data instead of hardcoded null
+   * @param {PrismaClient} prisma - Prisma transaction client
+   * @param {string} poId - PO ID to check
+   * @param {number} currentBagCount - Bag count being received
+   * @param {Object} lineData - Optional line data with expectedQty and nominalWeightPerBag
    */
-  static async checkOverReceipt(prisma, poId, currentBagCount) {
+  static async checkOverReceipt(prisma, poId, currentBagCount, lineData = null) {
     // Tính tổng bag_count đã received cho PO này
     const result = await prisma.receiptLine.aggregate({
       where: {
@@ -146,14 +151,22 @@ class BaggedPolicy {
     const totalReceived = result._sum.bagCount || 0;
     const totalWithCurrent = totalReceived + currentBagCount;
 
-    // Lấy expected bag count từ PO (giả sử có bảng PO hoặc field expectedBagCount)
-    // Phase 1: PO table chưa có, nên return false mặc định
-    // Phase 2+: Lookup expectedBagCount từ PO và so sánh
-    const expectedBagCount = null; // TODO: Lookup từ PO khi có
+    // HI-1 FIX: Calculate expectedBagCount from line data
+    // If nominalWeightPerBag is available, calculate expected bags from expectedQty
+    // Otherwise, fallback to safe default (no blocking)
+    let expectedBagCount = null;
+    
+    if (lineData && lineData.expectedQty && lineData.nominalWeightPerBag) {
+      const nominalWeight = Number(lineData.nominalWeightPerBag);
+      if (nominalWeight > 0) {
+        expectedBagCount = Math.ceil(Number(lineData.expectedQty) / nominalWeight);
+      }
+    }
 
     return {
       totalReceived,
       totalWithCurrent,
+      expectedBagCount,
       overReceiptBlocked: expectedBagCount ? totalWithCurrent > expectedBagCount : false,
     };
   }
