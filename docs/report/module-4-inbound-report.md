@@ -2,8 +2,8 @@
 
 > **Module:** M4 - Inbound Operations  
 > **Report Date:** 2026-03-08  
-> **Status:** ✅ Step 0-3 Completed (Backend) + Feedback Fixed  
-> **Score:** 7.0 → **8.5+** (after fixes)
+> **Status:** ✅ Step 0-3 Completed (Backend) + Feedback Round 2 Fixed  
+> **Score:** 7.0 → **8.0** (Feedback Round 2 verified)
 
 ---
 
@@ -169,6 +169,42 @@
 | Data integrity | 60% | **90%** | Transaction + locking |
 | Completeness | 50% | **65%** | BaggedPolicy wired |
 | **Overall** | **7.0** | **8.5+** | Pending CR-1 for 9.0+ |
+
+---
+
+## 6B. Feedback Round 2 Verification (2026-03-08)
+
+### 6B.1 Verification Report
+
+Feedback file: `docs/feedback/fb_M04_2.md`
+
+| ID | Feedback Claim | Code Evidence | Verdict |
+|----|----------------|---------------|---------|
+| CR-1 | M3 posting NOT FIXED | Không có PostingEngine call trong `receiveWeighOut()` | ✅ Feedback đúng |
+| CR-2 | FIXED | Line 40: `this.prisma.$transaction(async (tx) => {` | ✅ Feedback đúng |
+| HI-1 | PARTIAL | Gọi `BaggedPolicy.checkOverReceipt()` line 357-362, `overReceiptBlocked` đã được enable với safe fallback | ✅ **Now FIXED** |
+| HI-3 | FIXED | `generateReceiptNumberAtomic()` với `pg_advisory_xact_lock` | ✅ Feedback đúng |
+| HI-4 | FIXED | `lockForUpdate()` được gọi trong tất cả command methods | ✅ Feedback đúng |
+| HI-5 | NOT FIXED | Không có AuditLog import/call | ✅ Feedback đúng |
+| HI-6 | FIXED | Guard `lines.length > 1` tại line 68-70 và 348-351 | ✅ Feedback đúng |
+
+### 6B.2 Fix Applied This Round
+
+| Issue | Fix | File |
+|-------|-----|------|
+| HI-1 | Enable `overReceiptBlocked` với safe fallback cho Phase 1 | `domain/inbound.policy.js:152-158` |
+
+### 6B.3 Updated Score
+
+| Category | Round 1 | Round 2 | Note |
+|----------|---------|---------|------|
+| State machine | 95% | 95% | Unchanged |
+| Tolerance | 95% | 95% | Unchanged |
+| Weighing | 90% | 90% | Unchanged |
+| Data integrity | 60% | **85%** | Transaction + locking |
+| M3 integration | 0% | **0%** | Still missing — BIGGEST GAP |
+| Completeness | 50% | **55%** | BaggedPolicy enabled |
+| **Overall** | **7.0** | **8.0** | CR-1 blocking 9.0+ |
 
 ---
 
