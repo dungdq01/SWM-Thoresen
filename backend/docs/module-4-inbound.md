@@ -1,9 +1,10 @@
 # Module 4: Inbound Operations — Backend Documentation
 
 > **Module:** M4 - Inbound Operations  
-> **Status:** ✅ Implemented  
+> **Status:** ✅ Implemented (Feedback Fixed)  
 > **Code Path:** `src/modules/inbound`  
-> **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)
+> **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
+> **Last Updated:** 2026-03-08
 
 ---
 
@@ -392,11 +393,43 @@ Any cancellable state ──cancel──> CANCELLED
 | `inbound.schema.js` | ~100 | Validation schemas |
 | `index.js` | ~40 | Module exports |
 
-**Total:** ~1,830 lines (tất cả files < 800 lines)
+**Total:** ~1,900 lines (tất cả files < 800 lines)
 
 ---
 
-## 9. RBAC Permissions
+## 9. Concurrency & Data Integrity (Feedback Fixes)
+
+### 9.1 Transaction Safety
+
+| Issue | Fix | Location |
+|-------|-----|----------|
+| CR-2: createReceipt race condition | Wrap trong `$transaction` | `receipt.service.js:createReceipt()` |
+| HI-4: Concurrent updates | Gọi `lockForUpdate()` (SELECT FOR UPDATE) | Tất cả command methods |
+| HI-3: Receipt number race | Dùng `pg_advisory_xact_lock` | `generateReceiptNumberAtomic()` |
+
+### 9.2 Single-Line Constraint (Phase 1)
+
+- **Guard:** `if (lines.length > 1) throw Error`
+- **Location:** `createReceipt()` và `receiveWeighOut()`
+- **Reason:** Multi-line receipt chưa được support trong Phase 1
+
+### 9.3 Bagged Over-Receipt Check
+
+- **Policy:** `BaggedPolicy.checkOverReceipt()`
+- **Trigger:** Khi `cargoForm !== 'BULK'` và có `bagCount`
+- **Location:** `receiveWeighOut()` trước khi set RECEIVED
+
+### 9.4 Idempotency Keys
+
+| Entity | Key | Usage |
+|--------|-----|-------|
+| Receipt | `externalId` | Dedupe create receipt |
+| Weigh Event | `eventId` | Dedupe weigh-in/weigh-out |
+| Confirm | `externalId` (optional) | Dedupe confirm action |
+
+---
+
+## 10. RBAC Permissions
 
 | Permission Code | Description |
 |-----------------|-------------|

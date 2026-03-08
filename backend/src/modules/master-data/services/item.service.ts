@@ -86,9 +86,6 @@ export class ItemService {
       return result;
     };
 
-    if (dto.externalId) {
-      return this.idempotencyService.executeWithIdempotency(`ITEM:${dto.externalId}`, doCreate);
-    }
     return doCreate();
   }
 

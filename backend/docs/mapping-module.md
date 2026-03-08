@@ -96,7 +96,7 @@
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/master-data`  
 **Documentation:** [`docs/module-2-master-data.md`](./module-2-master-data.md)  
-**Database Docs:** [`prisma/docs/module-2-database.md`](../prisma/docs/module-2-database.md)
+**Database Docs:** [`prisma/docs/module-2-master-data.md`](../prisma/docs/module-2-master-data.md)
 
 ## Database Tables (17 tables)
 
@@ -282,6 +282,7 @@
 |---------------|------------|-------|
 | Module 1 | `NumberSequence` | Sinh transId (TRX-*), holdNo (HLD-*) |
 | Module 1 | `ReasonCode` | Validate reason codes cho reversal/adjustment |
+| Module 1 | `LogService` | AuditLog integration qua AuditLogAdapter |
 | Module 2 | `MdWarehouse` | Dimension validation |
 | Module 2 | `MdLocation` | Dimension validation |
 | Module 2 | `MdOwner` | Dimension + transaction owner |
@@ -290,15 +291,28 @@
 | Module 2 | `MdUom` | UOM validation |
 
 ### Modules that depend on Module 3:
-| Target Module | Dependency | Usage |
-|---------------|------------|-------|
-| Module 4 | `PostingEngineService` | Post receipt inbound |
-| Module 5 | `PostingEngineService`, `HoldService` | Allocate + ship outbound |
-| Module 6 | `PostingEngineService` | Adjustment, status change, count |
-| Module 7 | `PostingEngineService` | Putaway, pick movement |
-| Module 9 | `PostingEngineService` | VAS consume/produce |
-| Module 10 | `DailyStorageSnapshot` | Billing input |
-| Module 11 | `InventTrans`, `OnHand` | Reporting queries |
+| Target Module | Dependency                                       | Usage                            |
+| ---------------| --------------------------------------------------| ----------------------------------|
+| Module 4      | `PostingEngineService`                           | Post receipt inbound             |
+| Module 5      | `PostingEngineService`, `HoldService`            | Allocate + ship outbound         |
+| Module 6      | `PostingEngineService`                           | Adjustment, status change, count |
+| Module 7      | `PostingEngineService`                           | Putaway, pick movement           |
+| Module 9      | `PostingEngineService`                           | VAS consume/produce              |
+| Module 10     | `SnapshotService`, `DailyStorageSnapshot`        | Billing input                    |
+| Module 11     | `ReconciliationService`, `InventTrans`, `OnHand` | Reporting queries                |
+
+## Backend Services (8 services)
+
+| Service | Description |
+|---------|-------------|
+| `PostingEngineService` | Core posting logic with idempotency |
+| `ReversalEngineService` | Reversal with externalId idempotency check |
+| `HoldService` | Hold/allocation management |
+| `OnHandService` | OnHand query with Decimal.js + DB GROUP BY |
+| `TransactionQueryService` | Transaction history queries |
+| `InventDimService` | Dimension management with hash |
+| `ReconciliationService` | Ledger vs OnHand comparison |
+| `SnapshotService` | Daily storage snapshot for M10 Billing |
 
 ## RBAC Permissions
 
@@ -317,10 +331,25 @@
 
 # Module 4: Inbound Operations
 
-**Status:** ✅ Completed  
+**Status:** ✅ Completed (Feedback Fixed)  
 **Code Path:** `src/modules/inbound`  
 **Documentation:** [`docs/module-4-inbound.md`](./module-4-inbound.md)  
-**Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)
+**Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
+**Last Updated:** 2026-03-08
+
+### Feedback Fixes Applied
+
+| Issue ID | Description | Status |
+|----------|-------------|--------|
+| CR-2 | createReceipt wrapped in $transaction | ✅ Fixed |
+| HI-1 | BaggedPolicy.checkOverReceipt wired | ✅ Fixed |
+| HI-3 | Atomic receipt number generation | ✅ Fixed |
+| HI-4 | lockForUpdate called in all commands | ✅ Fixed |
+| HI-6 | Single-line guard added | ✅ Fixed |
+| MD-3 | Controller ternary bug | ✅ Fixed |
+| MD-4 | Use validated value instead of req.body | ✅ Fixed |
+| CR-1 | M3 PostingEngine integration | 🔜 Pending M3 interface |
+| HI-2 | Putaway workflow | 🔜 Pending M7 ready |
 
 ## Database Tables (6 tables)
 

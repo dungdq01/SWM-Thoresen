@@ -110,8 +110,8 @@ class InboundController {
       const context = this.buildContext(req);
       const result = await this.receiptService.confirmReceipt(id, value, context);
 
-      const statusCode = result.idempotentReplay ? 200 : 200;
-      return res.status(statusCode).json({
+      // MD-3 FIX: Confirm luôn trả 200 (không phân biệt idempotent replay)
+      return res.status(200).json({
         success: true,
         data: this.mapReceiptResponse(result.receipt),
         idempotentReplay: result.idempotentReplay,
@@ -216,7 +216,8 @@ class InboundController {
         });
       }
 
-      const { receiptId } = req.body;
+      // MD-4 FIX: Dùng value đã validate thay vì req.body
+      const { receiptId } = value;
       if (!receiptId) {
         return res.status(400).json({
           success: false,
@@ -252,7 +253,8 @@ class InboundController {
         });
       }
 
-      const { receiptId } = req.body;
+      // MD-4 FIX: Dùng value đã validate thay vì req.body
+      const { receiptId } = value;
       if (!receiptId) {
         return res.status(400).json({
           success: false,

@@ -2,7 +2,7 @@
 
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/inventory-core`  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-03-09
 
 ---
@@ -17,6 +17,8 @@ Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhi�
 - **Posting Engine**: Cổng vào duy nhất để các module khác ghi nhận tồn kho
 - **Reversal Engine**: Đảo chiều transaction khi cần correction
 - **Hold/Allocation**: Giữ hàng cho outbound
+- **Reconciliation**: So sánh ledger vs on-hand để phát hiện bất thường
+- **Snapshot**: Chụp daily storage snapshot cho M10 Billing
 
 ### Nguyên tắc cốt lõi
 - Mọi thay đổi tồn kho **PHẢI** đi qua Posting Engine
@@ -46,14 +48,17 @@ src/modules/inventory-core/
 │   ├── hold.service.js               # Hold/allocation service
 │   ├── onhand.service.js             # OnHand query service (Decimal.js)
 │   ├── transaction-query.service.js  # Transaction query service
-│   └── invent-dim.service.js         # Dimension service
+│   ├── invent-dim.service.js         # Dimension service
+│   ├── reconciliation.service.js     # Reconciliation service (HI-1 fix)
+│   └── snapshot.service.js           # Daily snapshot service (HI-1 fix)
 └── infra/
     ├── invent-dim.repository.js      # InventDim data access
     ├── invent-trans.repository.js    # InventTrans data access
     ├── onhand.repository.js          # OnHand data access (optimistic lock)
     ├── hold.repository.js            # Hold data access (NumberSequence)
     ├── reversal-link.repository.js   # ReversalLink data access
-    └── event-mapping.repository.js   # EventMapping data access
+    ├── event-mapping.repository.js   # EventMapping data access
+    └── audit-log.adapter.js          # M1 AuditLog integration (HI-4 fix)
 ```
 
 ---
@@ -67,6 +72,7 @@ src/modules/inventory-core/
 ### Foundation Services (từ Module 1)
 - `NumberSequenceService` - Sinh transId (TRX-*), holdNo (HLD-*)
 - `ReasonCode` - Validate reason codes cho reversal/adjustment
+- `LogService` - AuditLog integration qua `audit-log.adapter.js`
 
 ### Master Data (từ Module 2)
 - `MdWarehouse`, `MdLocation`, `MdOwner`, `MdInventoryStatus` - Dimension validation
