@@ -859,18 +859,18 @@ src/modules/inventory-control/
 ## Module Dependencies
 
 ### Module 7 depends on:
-| Source Module | Entity/Service | Usage |
-|---------------|----------------|-------|
-| Module 1 | `NumberSequence` | Sinh work_id (WRK-*) |
-| Module 1 | `ReasonCode` | Validate reason codes |
-| Module 1 | `AuditLog` | Audit trail |
-| Module 1 | `Idempotency` | External ID check |
-| Module 2 | `MdWarehouse` | Warehouse validation |
-| Module 2 | `MdLocation` | Location validation |
-| Module 2 | `MdItem` | Item validation |
-| Module 2 | `MdOwner` | Owner validation |
-| Module 3 | `PostingEngine` | Post movement inventory |
-| Module 3 | `ReversalEngine` | Reverse posted transactions (HI-4 fix) |
+| Source Module | Entity/Service   | Usage                                  |
+| ---------------| ------------------| ----------------------------------------|
+| Module 1      | `NumberSequence` | Sinh work_id (WRK-*)                   |
+| Module 1      | `ReasonCode`     | Validate reason codes                  |
+| Module 1      | `AuditLog`       | Audit trail                            |
+| Module 1      | `Idempotency`    | External ID check                      |
+| Module 2      | `MdWarehouse`    | Warehouse validation                   |
+| Module 2      | `MdLocation`     | Location validation                    |
+| Module 2      | `MdItem`         | Item validation                        |
+| Module 2      | `MdOwner`        | Owner validation                       |
+| Module 3      | `PostingEngine`  | Post movement inventory                |
+| Module 3      | `ReversalEngine` | Reverse posted transactions (HI-4 fix) |
 
 ### Modules that depend on Module 7:
 | Target Module | Dependency | Usage |
@@ -893,5 +893,120 @@ src/modules/inventory-control/
 | `WORK.EXECUTION.GENERATE` | Generate work từ trigger |
 | `WORK.MOBILE.SYNC` | Mobile batch sync |
 | `WORK.DASHBOARD.READ` | View dashboard |
+
+---
+
+# Module 8: Integration Platform
+
+## Overview
+Module 8 là **integration backbone** của hệ thống SWM, chịu trách nhiệm thu thập dữ liệu từ các nguồn bên ngoài (weighbridge, OCR, mobile), chuẩn hóa, lưu trữ và chuyển tiếp đến các module nghiệp vụ.
+
+**Code Path:** `src/modules/integration-platform`
+
+## Database Tables
+
+| # | Table Name | Description |
+|---|------------|-------------|
+| 1 | `m8_weighbridge_device` | Cấu hình thiết bị cân |
+| 2 | `m8_weighbridge_log` | Immutable log weigh events |
+| 3 | `m8_weighbridge_event_state` | Processing state của weigh event |
+| 4 | `m8_ocr_result` | Raw OCR extraction result |
+| 5 | `m8_ocr_confirmed_snapshot` | Confirmed/corrected OCR data |
+| 6 | `m8_mobile_sync_batch` | Batch envelope từ mobile |
+| 7 | `m8_mobile_sync_event` | Từng event trong batch |
+| 8 | `m8_erp_push_log` | ERP push job + response history |
+| 9 | `m8_integration_alert` | Alert read model |
+| 10 | `m8_channel_health_snapshot` | Dashboard summary |
+| 11 | `m8_device_heartbeat` | Heartbeat history |
+
+## API Endpoints
+
+### Weighbridge APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/integration/weighbridge/events` | Ingest weigh event |
+| POST | `/api/v1/integration/weighbridge/heartbeat` | Device heartbeat |
+| GET | `/api/v1/integration/weighbridge/logs` | Query weigh logs |
+| GET | `/api/v1/integration/weighbridge/logs/:id` | Get log detail |
+| POST | `/api/v1/integration/weighbridge/events/:id/reprocess` | Reprocess callback |
+| GET | `/api/v1/integration/weighbridge/devices` | List devices |
+
+### OCR APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/integration/ocr/uploads` | Upload file for OCR |
+| GET | `/api/v1/integration/ocr/results` | List OCR results |
+| GET | `/api/v1/integration/ocr/results/:id` | Get OCR result detail |
+| POST | `/api/v1/integration/ocr/results/:id/confirm` | Confirm/correct OCR |
+| POST | `/api/v1/integration/ocr/results/:id/link` | Link to receipt |
+| POST | `/api/v1/integration/ocr/results/:id/reject` | Reject OCR result |
+
+### Mobile Sync APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/integration/mobile-sync/batches` | Submit batch events |
+| GET | `/api/v1/integration/mobile-sync/batches` | List batches |
+| GET | `/api/v1/integration/mobile-sync/batches/:id` | Get batch detail |
+| GET | `/api/v1/integration/mobile-sync/events/:id` | Get event detail |
+| POST | `/api/v1/integration/mobile-sync/events/:id/replay` | Replay event |
+
+### ERP Push APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/integration/erp-push/jobs` | Enqueue push job |
+| GET | `/api/v1/integration/erp-push/jobs` | List push jobs |
+| GET | `/api/v1/integration/erp-push/jobs/:id` | Get job detail |
+| POST | `/api/v1/integration/erp-push/jobs/:id/retry` | Manual retry |
+| POST | `/api/v1/integration/erp-push/jobs/:id/cancel` | Cancel job |
+
+### Monitoring APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/integration/monitoring/overview` | Dashboard summary |
+| GET | `/api/v1/integration/monitoring/channel-health` | Channel health |
+| GET | `/api/v1/integration/alerts` | List alerts |
+| GET | `/api/v1/integration/alerts/:id` | Get alert detail |
+| POST | `/api/v1/integration/alerts/:id/acknowledge` | Acknowledge alert |
+| POST | `/api/v1/integration/alerts/:id/resolve` | Resolve alert |
+
+## Module Dependencies
+
+### Module 8 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `NumberSequence` | Sinh IDs |
+| Module 1 | `ReasonCode` | manual_weight, recovery |
+| Module 1 | `AuditLog` | Audit trail |
+| Module 2 | `MdWarehouse` | Device scope |
+| Module 2 | `MdLocation` | Mobile sync validation |
+
+### Modules that depend on Module 8:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 4 | `WeightCaptured`, `OCRConfirmed` | Inbound weighing + OCR |
+| Module 5 | `WeightCaptured` | Outbound weighing |
+| Module 7 | `MobileSyncEventReceived` | Work execution |
+| Module 10 | `ERPPushCompleted` | Billing sync |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events (agent) |
+| `INTEGRATION.WEIGHBRIDGE.READ` | View weighbridge logs |
+| `INTEGRATION.WEIGHBRIDGE.REPROCESS` | Reprocess callback |
+| `INTEGRATION.OCR.UPLOAD` | Upload OCR files |
+| `INTEGRATION.OCR.READ` | View OCR results |
+| `INTEGRATION.OCR.CONFIRM` | Confirm/correct OCR |
+| `INTEGRATION.OCR.LINK` | Link OCR to receipt |
+| `INTEGRATION.MOBILE_SYNC.SUBMIT` | Submit mobile batch |
+| `INTEGRATION.MOBILE_SYNC.READ` | View sync status |
+| `INTEGRATION.MOBILE_SYNC.REPLAY` | Replay failed events |
+| `INTEGRATION.ERP_PUSH.READ` | View ERP push jobs |
+| `INTEGRATION.ERP_PUSH.RETRY` | Manual retry job |
+| `INTEGRATION.ERP_PUSH.CANCEL` | Cancel job |
+| `INTEGRATION.MONITORING.READ` | View dashboard |
+| `INTEGRATION.ALERT.ACKNOWLEDGE` | Acknowledge alert |
+| `INTEGRATION.ALERT.RESOLVE` | Resolve alert |
 
 ---
