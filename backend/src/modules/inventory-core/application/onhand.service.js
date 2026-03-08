@@ -2,6 +2,7 @@
  * Module 3: Inventory Core Engine - OnHand Service
  */
 
+const { Decimal } = require('decimal.js');
 const { OnHandRepository } = require('../infra/onhand.repository');
 const { InventTransRepository } = require('../infra/invent-trans.repository');
 
@@ -28,6 +29,7 @@ class OnHandService {
 
   /**
    * Check availability for allocation
+   * HI-3 Fix: Use Decimal.js for precision
    */
   async checkAvailability(itemId, inventDimId, requestedQty) {
     const onHand = await this.onHandRepo.findByItemAndDim(itemId, inventDimId);
@@ -43,17 +45,17 @@ class OnHandService {
       };
     }
 
-    const availableQty = parseFloat(onHand.availableQty);
-    const requested = parseFloat(requestedQty);
-    const shortfall = Math.max(0, requested - availableQty);
+    const availableQty = new Decimal(onHand.availableQty);
+    const requested = new Decimal(requestedQty);
+    const shortfall = Decimal.max(0, requested.minus(availableQty));
 
     return {
-      available: availableQty >= requested,
+      available: availableQty.gte(requested),
       physicalQty: String(onHand.physicalQty),
       reservedQty: String(onHand.reservedQty),
       availableQty: String(onHand.availableQty),
-      requestedQty: String(requestedQty),
-      shortfall: String(shortfall),
+      requestedQty: requested.toString(),
+      shortfall: shortfall.toString(),
     };
   }
 
@@ -80,53 +82,56 @@ class OnHandService {
 
   /**
    * Aggregate on-hand by various dimensions
+   * HI-3 Fix: Use database-level GROUP BY aggregation with Decimal.js
    */
   async aggregateOnHand(groupBy, filters = {}) {
-    const onHandRecords = await this.onHandRepo.findMany(filters, { page: 1, pageSize: 10000 });
+    const groupByColumn = this.getGroupByColumn(groupBy);
+    
+    const results = await this.prisma.$queryRaw`
+      SELECT 
+        ${groupByColumn} as group_key,
+        SUM(oh.physical_qty) as physical_qty,
+        SUM(oh.reserved_qty) as reserved_qty,
+        SUM(oh.available_qty) as available_qty,
+        COUNT(*) as record_count
+      FROM on_hand oh
+      LEFT JOIN invent_dim dim ON oh.invent_dim_id = dim.id
+      LEFT JOIN md_warehouse wh ON dim.warehouse_id = wh.id
+      LEFT JOIN md_location loc ON dim.location_id = loc.id
+      LEFT JOIN md_owner ow ON dim.owner_id = ow.id
+      LEFT JOIN md_inventory_status st ON dim.inventory_status_id = st.id
+      LEFT JOIN md_item item ON oh.item_id = item.id
+      ${filters.warehouseId ? this.prisma.$queryRaw`WHERE dim.warehouse_id = ${filters.warehouseId}::uuid` : this.prisma.$queryRaw``}
+      GROUP BY ${groupByColumn}
+    `;
 
-    const aggregation = new Map();
+    return results.map(row => ({
+      key: row.group_key,
+      physicalQty: new Decimal(row.physical_qty || 0).toString(),
+      reservedQty: new Decimal(row.reserved_qty || 0).toString(),
+      availableQty: new Decimal(row.available_qty || 0).toString(),
+      recordCount: Number(row.record_count),
+    }));
+  }
 
-    for (const record of onHandRecords.items) {
-      let key = '';
-      const dim = record.inventDim;
-
-      switch (groupBy) {
-        case 'warehouse':
-          key = dim.warehouse.warehouseCode;
-          break;
-        case 'owner':
-          key = dim.owner.ownerCode;
-          break;
-        case 'item':
-          key = record.item.itemCode;
-          break;
-        case 'location':
-          key = `${dim.warehouse.warehouseCode}|${dim.location.locationCode}`;
-          break;
-        case 'status':
-          key = dim.inventoryStatus.statusCode;
-          break;
-        default:
-          key = 'all';
-      }
-
-      const current = aggregation.get(key) || {
-        key,
-        physicalQty: 0,
-        reservedQty: 0,
-        availableQty: 0,
-        recordCount: 0,
-      };
-
-      current.physicalQty += parseFloat(record.physicalQty);
-      current.reservedQty += parseFloat(record.reservedQty);
-      current.availableQty += parseFloat(record.availableQty);
-      current.recordCount += 1;
-
-      aggregation.set(key, current);
+  /**
+   * Get GROUP BY column based on groupBy parameter
+   */
+  getGroupByColumn(groupBy) {
+    switch (groupBy) {
+      case 'warehouse':
+        return this.prisma.$queryRaw`wh.warehouse_code`;
+      case 'owner':
+        return this.prisma.$queryRaw`ow.owner_code`;
+      case 'item':
+        return this.prisma.$queryRaw`item.item_code`;
+      case 'location':
+        return this.prisma.$queryRaw`CONCAT(wh.warehouse_code, '|', loc.location_code)`;
+      case 'status':
+        return this.prisma.$queryRaw`st.status_code`;
+      default:
+        return this.prisma.$queryRaw`'all'`;
     }
-
-    return Array.from(aggregation.values());
   }
 }
 

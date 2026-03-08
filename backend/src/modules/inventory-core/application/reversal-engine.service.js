@@ -25,6 +25,7 @@ class ReversalEngineService {
 
   /**
    * Reverse an inventory transaction
+   * HI-2 Fix: Added idempotency check for reversal
    */
   async reverseTransaction(command) {
     const {
@@ -43,6 +44,20 @@ class ReversalEngineService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // HI-2 Fix: Check idempotency for reversal via externalId
+      if (externalId) {
+        const existingReversal = await this.inventTransRepo.findByExternalId(externalId, tx);
+        if (existingReversal && existingReversal.isReversal) {
+          return {
+            originalTransId: existingReversal.reversalOfTransId,
+            reversalTransId: existingReversal.transId,
+            reversalTransDbId: existingReversal.id,
+            reversedQty: String(existingReversal.qty),
+            idempotentReplay: true,
+          };
+        }
+      }
+
       const originalTrans = await this.inventTransRepo.findByTransId(originalTransId, tx);
       if (!originalTrans) {
         throw transNotFoundError(originalTransId);

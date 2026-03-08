@@ -69,6 +69,16 @@ class InventTransRepository {
   }
 
   /**
+   * Find transaction by external_id only (for reversal idempotency - HI-2 Fix)
+   */
+  async findByExternalId(externalId, tx = null) {
+    const client = tx || this.prisma;
+    return client.inventTrans.findFirst({
+      where: { externalId },
+    });
+  }
+
+  /**
    * Create new transaction
    */
   async create(data, tx = null) {
