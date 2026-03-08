@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
-import { RptExportJobStatus, RptExportFormat } from '@prisma/client';
+import { RptExportJobStatus, RptExportFormat, Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface CreateExportJobParams {
@@ -40,8 +40,8 @@ export class ExportJobRepository {
           requestedBy: params.requestedBy,
           requestedRole: params.requestedRole,
           ownerScopeId: params.ownerScopeId,
-          warehouseScopeJson: params.warehouseScopeJson,
-          filterPayload: params.filterPayload,
+          warehouseScopeJson: params.warehouseScopeJson as Prisma.InputJsonValue | undefined,
+          filterPayload: params.filterPayload as Prisma.InputJsonValue,
           jobStatus: RptExportJobStatus.QUEUED,
           correlationId: params.correlationId,
           idempotencyKey: params.idempotencyKey,
@@ -152,7 +152,7 @@ export class ExportJobRepository {
         reportId,
         runMode,
         requestedBy,
-        filterPayload,
+        filterPayload: filterPayload as Prisma.InputJsonValue,
         durationMs,
         rowCount,
         cacheHit,
