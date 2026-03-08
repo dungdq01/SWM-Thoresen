@@ -22,6 +22,13 @@ import { ExceptionLogRepository } from './repositories/exception-log.repository'
 import { ApprovalDecisionRepository } from './repositories/approval-decision.repository';
 import { PickWorkLinkRepository } from './repositories/pick-work-link.repository';
 import { PostingLinkRepository } from './repositories/posting-link.repository';
+// Use Cases (Application Layer)
+import { CreateShipmentUseCase } from './application/createShipment.usecase';
+import { AllocateShipmentUseCase } from './application/allocateShipment.usecase';
+import { ShipShipmentUseCase } from './application/shipShipment.usecase';
+import { ReceiveOutboundWeightUseCase } from './application/receiveOutboundWeight.usecase';
+// Infrastructure Adapters
+import { M3AdapterService } from './infra/m3-adapter.service';
 
 @Module({
   controllers: [
@@ -32,6 +39,7 @@ import { PostingLinkRepository } from './repositories/posting-link.repository';
     OutboundQueryController,
   ],
   providers: [
+    // Services (Legacy)
     ShipmentService,
     ShipmentCommandService,
     ShipmentQueryService,
@@ -41,6 +49,7 @@ import { PostingLinkRepository } from './repositories/posting-link.repository';
     WeighingService,
     ToleranceService,
     ApprovalService,
+    // Repositories
     ShipmentHeaderRepository,
     ShipmentLineRepository,
     AllocationRecordRepository,
@@ -50,11 +59,22 @@ import { PostingLinkRepository } from './repositories/posting-link.repository';
     ApprovalDecisionRepository,
     PickWorkLinkRepository,
     PostingLinkRepository,
+    // Use Cases (Application Layer) - CR-1/CR-2 fix
+    CreateShipmentUseCase,
+    AllocateShipmentUseCase,
+    ShipShipmentUseCase,
+    ReceiveOutboundWeightUseCase,
+    // Infrastructure Adapters - M3 Integration
+    M3AdapterService,
   ],
   exports: [
     ShipmentService,
     ShipmentQueryService,
     AllocationService,
+    // Export use cases for cross-module usage
+    CreateShipmentUseCase,
+    AllocateShipmentUseCase,
+    ShipShipmentUseCase,
   ],
 })
 export class OutboundModule {}

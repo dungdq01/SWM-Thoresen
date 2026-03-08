@@ -428,19 +428,23 @@
 
 # Module 5: Outbound Operations
 
-**Status:** ✅ Implemented (Clean Architecture + RBAC v2)  
+**Status:** ✅ Implemented (Clean Architecture + RBAC + M3 Integration v3)  
 **Code Path:** `src/modules/outbound`  
 **Documentation:** [`docs/module-5-outbound.md`](./module-5-outbound.md)  
 **Database Docs:** [`prisma/docs/module-5-outbound.md`](../prisma/docs/module-5-outbound.md)  
-**Last Updated:** 2026-03-09 (Clean Architecture + RBAC)
+**Last Updated:** 2026-03-09 (CR-1/CR-2 M3 Integration Fixed)
 
 ### Architecture
 
-Module 5 đã được cấu trúc lại theo Clean Architecture:
+Module 5 đã được cấu trúc lại theo Clean Architecture với M3 integration:
 - **domain/**: State machine, policy, errors
-- **application/**: Use cases (createShipment, allocateShipment, shipShipment, receiveOutboundWeight)
-- **infra/**: Repositories (alternative pattern)
-- **controllers/**: All protected with AuthGuard + PermissionGuard
+- **application/**: Use cases với real M3 integration (createShipment, allocateShipment, shipShipment, receiveOutboundWeight)
+- **infra/**: M3AdapterService (OnHand/Hold/PostingEngine wrapper)
+- **controllers/**: All protected with AuthGuard + PermissionGuard, wired to use cases
+
+**M3 Integration:**
+- `AllocateShipmentUseCase` → M3 OnHandService (FIFO query) + HoldService (create holds)
+- `ShipShipmentUseCase` → M3 PostingEngineService (SHIPMENT_SHIPPED) + HoldService (release holds)
 
 ### Feedback Fixes Applied
 
@@ -453,8 +457,8 @@ Module 5 đã được cấu trúc lại theo Clean Architecture:
 | HI-5 | Line-level status history | ✅ Fixed |
 | HI-6 | lockForUpdate called before allocation | ✅ Fixed |
 | CR-3 | RBAC guards on all controllers | ✅ Fixed |
-| CR-1 | Real M3 OnHand/Hold integration | 🔜 Pending M3 interface |
-| CR-2 | M3 Posting at SHIPPED | 🔜 Pending M3 interface |
+| CR-1 | Real M3 OnHand/Hold integration | ✅ Fixed |
+| CR-2 | M3 Posting at SHIPPED | ✅ Fixed |
 
 ## Database Tables
 
