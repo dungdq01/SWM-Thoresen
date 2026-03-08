@@ -563,6 +563,7 @@ model MdWarehouse {
   dailySnapshots     DailyStorageSnapshot[]
   receiptHeaders     ReceiptHeader[]
   shipmentHeaders    ShipmentHeader[]
+  vasWorkOrders      VasWorkOrder[]
 
   @@map("md_warehouse")
 }
@@ -664,6 +665,8 @@ model MdOwner {
   receiptHeaders     ReceiptHeader[]
   shipmentHeaders    ShipmentHeader[]
   allocationRecords  ShipmentAllocationRecord[]
+  vasWorkOrders      VasWorkOrder[]               @relation("VasWoOwner")
+  vasPackagingOrders VasWorkOrder[]               @relation("VasPackagingOwner")
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -752,6 +755,9 @@ model MdItem {
   receiptLines          ReceiptLine[]
   shipmentLines         ShipmentLine[]
   allocationRecords     ShipmentAllocationRecord[]
+  vasBulkSourceOrders   VasWorkOrder[]                  @relation("VasBulkSource")
+  vasBaggedOutputOrders VasWorkOrder[]                  @relation("VasBaggedOutput")
+  vasPackagingOrders    VasWorkOrder[]                  @relation("VasPackaging")
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -3272,5 +3278,191 @@ model M8DeviceHeartbeat {
 
   @@index([deviceCode, receivedAt(sort: Desc)])
   @@map("m8_device_heartbeat")
+}
+
+// ========== Module 9: VAS / Bagging Operations Enums ==========
+
+enum VasWoStatus {
+  DRAFT
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum VasPackagingOwnership {
+  TVL_OWNED
+  CLIENT_OWNED
+}
+
+enum VasShiftCode {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+enum VasOutboxStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+enum VasStateAction {
+  CREATE
+  CONFIRM
+  START
+  ADD_SESSION
+  COMPLETE
+  CANCEL
+}
+
+enum VasExceptionSeverity {
+  INFO
+  WARN
+  ERROR
+}
+
+// ========== Module 9: VAS / Bagging Operations Models ==========
+
+model VasWorkOrder {
+  id                      String                @id @default(uuid()) @db.Uuid
+  woNumber                String                @unique @map("wo_number") @db.VarChar(30)
+  status                  VasWoStatus           @default(DRAFT)
+  ownerId                 String                @map("owner_id") @db.Uuid
+  warehouseId             String                @map("warehouse_id") @db.Uuid
+  bulkSourceItemId        String                @map("bulk_source_item_id") @db.Uuid
+  baggedOutputItemId      String                @map("bagged_output_item_id") @db.Uuid
+  plannedQtyKg            Decimal               @map("planned_qty_kg") @db.Decimal(18, 3)
+  actualConsumedQtyKg     Decimal?              @map("actual_consumed_qty_kg") @db.Decimal(18, 3)
+  actualOutputQtyKg       Decimal?              @map("actual_output_qty_kg") @db.Decimal(18, 3)
+  processLossQtyKg        Decimal?              @map("process_loss_qty_kg") @db.Decimal(18, 3)
+  actualBagCount          Int?                  @map("actual_bag_count")
+  packagingOwnership      VasPackagingOwnership @map("packaging_ownership")
+  packagingItemId         String                @map("packaging_item_id") @db.Uuid
+  packagingOwnerId        String                @map("packaging_owner_id") @db.Uuid
+  packagingQtyPlanned     Int                   @map("packaging_qty_planned")
+  packagingQtyActual      Int?                  @map("packaging_qty_actual")
+  startDate               DateTime              @map("start_date") @db.Date
+  estimatedCompletionDate DateTime?             @map("estimated_completion_date") @db.Date
+  confirmedAt             DateTime?             @map("confirmed_at")
+  confirmedBy             String?               @map("confirmed_by") @db.Uuid
+  startedAt               DateTime?             @map("started_at")
+  completedAt             DateTime?             @map("completed_at")
+  completedBy             String?               @map("completed_by") @db.Uuid
+  cancelledAt             DateTime?             @map("cancelled_at")
+  cancelledBy             String?               @map("cancelled_by") @db.Uuid
+  cancelReasonCode        String?               @map("cancel_reason_code") @db.VarChar(50)
+  yieldVarianceReasonCode String?               @map("yield_variance_reason_code") @db.VarChar(50)
+  notes                   String?               @db.Text
+  externalId              String                @unique @map("external_id") @db.VarChar(100)
+  correlationId           String                @map("correlation_id") @db.Uuid
+  createdBy               String                @map("created_by") @db.Uuid
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+  rowVersion              BigInt                @default(1) @map("row_version")
+
+  owner             MdOwner           @relation("VasWoOwner", fields: [ownerId], references: [id])
+  warehouse         MdWarehouse       @relation(fields: [warehouseId], references: [id])
+  bulkSourceItem    MdItem            @relation("VasBulkSource", fields: [bulkSourceItemId], references: [id])
+  baggedOutputItem  MdItem            @relation("VasBaggedOutput", fields: [baggedOutputItemId], references: [id])
+  packagingItem     MdItem            @relation("VasPackaging", fields: [packagingItemId], references: [id])
+  packagingOwner    MdOwner           @relation("VasPackagingOwner", fields: [packagingOwnerId], references: [id])
+  sessions          VasSession[]
+  stateHistory      VasStateHistory[]
+  exceptionLogs     VasExceptionLog[]
+  outboxEvents      VasOutbox[]
+
+  @@index([warehouseId, status, createdAt(sort: Desc)])
+  @@index([ownerId, status, createdAt(sort: Desc)])
+  @@index([bulkSourceItemId, status])
+  @@index([baggedOutputItemId, status])
+  @@index([correlationId])
+  @@map("vas_work_order")
+}
+
+model VasSession {
+  id               String       @id @default(uuid()) @db.Uuid
+  woId             String       @map("wo_id") @db.Uuid
+  sessionNum       Int          @map("session_num")
+  sessionDate      DateTime     @map("session_date") @db.Date
+  shiftCode        VasShiftCode @map("shift_code")
+  sessionQtyKg     Decimal      @map("session_qty_kg") @db.Decimal(18, 3)
+  sessionBagCount  Int          @map("session_bag_count")
+  workHours        Decimal?     @map("work_hours") @db.Decimal(8, 2)
+  productivityRate Decimal?     @map("productivity_rate") @db.Decimal(18, 3)
+  isOvertime       Boolean      @default(false) @map("is_overtime")
+  startTime        DateTime?    @map("start_time")
+  endTime          DateTime?    @map("end_time")
+  notes            String?      @db.Text
+  externalId       String       @unique @map("external_id") @db.VarChar(100)
+  createdBy        String       @map("created_by") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  workOrder VasWorkOrder @relation(fields: [woId], references: [id])
+
+  @@unique([woId, sessionNum])
+  @@index([woId, sessionDate])
+  @@map("vas_session")
+}
+
+model VasStateHistory {
+  id            String         @id @default(uuid()) @db.Uuid
+  woId          String         @map("wo_id") @db.Uuid
+  fromStatus    VasWoStatus?   @map("from_status")
+  toStatus      VasWoStatus    @map("to_status")
+  action        VasStateAction
+  reasonCode    String?        @map("reason_code") @db.VarChar(50)
+  remarks       String?        @db.Text
+  actorId       String         @map("actor_id") @db.Uuid
+  actorRole     String         @map("actor_role") @db.VarChar(30)
+  correlationId String         @map("correlation_id") @db.Uuid
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  workOrder VasWorkOrder @relation(fields: [woId], references: [id])
+
+  @@index([woId, createdAt(sort: Desc)])
+  @@index([correlationId])
+  @@map("vas_state_history")
+}
+
+model VasExceptionLog {
+  id            String               @id @default(uuid()) @db.Uuid
+  woId          String               @map("wo_id") @db.Uuid
+  exceptionCode String               @map("exception_code") @db.VarChar(50)
+  severity      VasExceptionSeverity
+  payloadJson   Json?                @map("payload_json")
+  reasonCode    String?              @map("reason_code") @db.VarChar(50)
+  resolvedAt    DateTime?            @map("resolved_at")
+  resolvedBy    String?              @map("resolved_by") @db.Uuid
+  createdAt     DateTime             @default(now()) @map("created_at")
+
+  workOrder VasWorkOrder @relation(fields: [woId], references: [id])
+
+  @@index([woId, createdAt(sort: Desc)])
+  @@index([exceptionCode, severity])
+  @@map("vas_exception_log")
+}
+
+model VasOutbox {
+  id              String          @id @default(uuid()) @db.Uuid
+  eventType       String          @map("event_type") @db.VarChar(50)
+  aggregateType   String          @default("VAS_WORK_ORDER") @map("aggregate_type") @db.VarChar(50)
+  aggregateId     String          @map("aggregate_id") @db.Uuid
+  aggregateNumber String          @map("aggregate_number") @db.VarChar(30)
+  eventKey        String          @unique @map("event_key") @db.VarChar(120)
+  payloadJson     Json            @map("payload_json")
+  status          VasOutboxStatus @default(PENDING)
+  retryCount      Int             @default(0) @map("retry_count")
+  nextRetryAt     DateTime?       @map("next_retry_at")
+  lastError       String?         @map("last_error") @db.Text
+  createdAt       DateTime        @default(now()) @map("created_at")
+  sentAt          DateTime?       @map("sent_at")
+
+  workOrder VasWorkOrder @relation(fields: [aggregateId], references: [id])
+
+  @@index([status, nextRetryAt])
+  @@index([aggregateId, eventType])
+  @@map("vas_outbox")
 }
 
