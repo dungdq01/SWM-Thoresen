@@ -1117,10 +1117,18 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 # Module 10: Billing & Commercial Control
 
 **Status:** ✅ Completed  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Code Path:** `src/modules/billing`  
 **Documentation:** [`docs/module-10-billing.md`](./module-10-billing.md)  
-**Database Docs:** [`prisma/docs/module-10-billing.md`](../prisma/docs/module-10-billing.md)
+**Database Docs:** [`prisma/docs/module-10-billing.md`](../prisma/docs/module-10-billing.md)  
+**Last Updated:** 2026-03-09
+
+### Recent Updates (v1.1.0)
+- Added `PermissionGuard` + `@Permission()` decorator to all endpoints
+- Added `InternalApiGuard` for `/internal/*` endpoints  
+- Fixed race conditions with `lockForUpdate` in state transitions
+- Added `StorageSnapshotService` for daily storage fee calculation
+- Added ERP push outbox entry on DN lock
 
 ## Database Tables (12 tables)
 

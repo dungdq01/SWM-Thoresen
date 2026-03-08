@@ -19,6 +19,7 @@ import {
   ChargeCalculationService,
   DebitNoteService,
   BillingExceptionService,
+  StorageSnapshotService,
 } from './services';
 
 import {
@@ -52,6 +53,7 @@ import {
     ChargeCalculationService,
     DebitNoteService,
     BillingExceptionService,
+    StorageSnapshotService,
   ],
   exports: [
     BillingContractService,
@@ -59,6 +61,7 @@ import {
     BillingEventService,
     DebitNoteService,
     BillingExceptionService,
+    StorageSnapshotService,
   ],
 })
 export class BillingModule {}

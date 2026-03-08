@@ -1,7 +1,8 @@
 # Module 10: Billing & Commercial Control - Database Documentation
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Total Tables:** 12  
+**Last Updated:** 2026-03-09  
 
 ---
 
