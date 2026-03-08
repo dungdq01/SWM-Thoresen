@@ -7,6 +7,7 @@ import {
   RptReconciliationResultStatus,
   RptReconciliationSeverity,
   RptReconciliationResolutionAction,
+  Prisma,
 } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -55,7 +56,7 @@ export class ReconciliationRepository {
         triggerType: params.triggerType,
         requestedBy: params.requestedBy,
         checkIds: params.checkIds,
-        runScope: params.runScope,
+        runScope: params.runScope as Prisma.InputJsonValue,
         runStatus: RptReconciliationRunStatus.QUEUED,
         acceptedChecksCount: params.checkIds.length,
         correlationId: params.correlationId,
@@ -103,13 +104,13 @@ export class ReconciliationRepository {
         resultStatus: params.resultStatus,
         severity: params.severity,
         sourceModule: params.sourceModule,
-        dimensionKey: params.dimensionKey,
+        dimensionKey: params.dimensionKey as Prisma.InputJsonValue | undefined,
         sourceRefType: params.sourceRefType,
         sourceRefId: params.sourceRefId,
         expectedValue: params.expectedValue,
         actualValue: params.actualValue,
         varianceValue: params.varianceValue,
-        mismatchDetail: params.mismatchDetail,
+        mismatchDetail: params.mismatchDetail as Prisma.InputJsonValue | undefined,
       },
     });
   }
