@@ -1022,8 +1022,12 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 ## Technical Notes
 
 - **Weight calculations**: Sử dụng `decimal.js` để đảm bảo độ chính xác
-- **Transaction atomicity**: Multi-step operations wrap trong `$transaction`
+- **Transaction atomicity**: Multi-step operations wrap trong `$transaction`:
+  - `weighbridge-ingest`: log + event_state
+  - `mobile-sync-batch`: batch + events  
+  - `ocr-confirmation`: snapshot + result status
 - **OCR confidence**: Per-field thresholds (BL/Vehicle: 90%, Others: 85%)
+- **Known Limitations (Phase 1)**: OCR/ERP mock, callback dispatch stub
 
 ---
 

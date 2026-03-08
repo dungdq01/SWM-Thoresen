@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { MobileSyncBatchRepository } from '../repositories/mobile-sync-batch.repository';
 import { MobileSyncEventRepository } from '../repositories/mobile-sync-event.repository';
 import { SyncBatchStatus, SyncEventStatus } from '../domain/integration.enums';
@@ -28,12 +29,13 @@ export class MobileSyncBatchService {
   private readonly logger = new Logger(MobileSyncBatchService.name);
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly batchRepo: MobileSyncBatchRepository,
     private readonly eventRepo: MobileSyncEventRepository,
   ) {}
 
   async submitBatch(params: SubmitBatchParams) {
-    // Check idempotency
+    // Check idempotency (outside transaction)
     const existing = await this.batchRepo.findByBatchId(params.batchId);
     if (existing) {
       this.logger.log(`Duplicate batch received: ${params.batchId}`);
@@ -52,63 +54,75 @@ export class MobileSyncBatchService {
     const firstSequenceNo = sequenceNos.length > 0 ? Math.min(...sequenceNos) : null;
     const lastSequenceNo = sequenceNos.length > 0 ? Math.max(...sequenceNos) : null;
 
-    // Create batch
-    const batch = await this.batchRepo.create({
-      batchId: params.batchId,
-      deviceId: params.deviceId,
-      keeperUserId: params.keeperUserId,
-      appVersion: params.appVersion,
-      eventCount,
-      payload: { events: params.events },
-      status: SyncBatchStatus.QUEUED,
-      firstSequenceNo,
-      lastSequenceNo,
-      externalId,
-      correlationId: params.correlationId,
-      sourceChannel: 'MOBILE_SYNC',
-    });
+    // Wrap all writes in $transaction for atomicity
+    const result = await this.prisma.$transaction(async (tx: Parameters<Parameters<typeof this.prisma.$transaction>[0]>[0]) => {
+      // Create batch
+      const batch = await tx.m8MobileSyncBatch.create({
+        data: {
+          batchId: params.batchId,
+          deviceId: params.deviceId,
+          keeperUserId: params.keeperUserId,
+          appVersion: params.appVersion,
+          eventCount,
+          payload: { events: params.events } as any,
+          status: SyncBatchStatus.QUEUED,
+          firstSequenceNo,
+          lastSequenceNo,
+          externalId,
+          correlationId: params.correlationId,
+          sourceChannel: 'MOBILE_SYNC',
+        },
+      });
 
-    // Create events and check for duplicates
-    let duplicateCount = 0;
-    const createdEvents = [];
+      // Create events and check for duplicates
+      let duplicateCount = 0;
 
-    for (const eventData of params.events) {
-      const eventExists = await this.eventRepo.existsByExternalId(eventData.eventExternalId);
-      if (eventExists) {
-        duplicateCount++;
-        continue;
+      for (const eventData of params.events) {
+        const eventExists = await tx.m8MobileSyncEvent.findFirst({
+          where: { eventExternalId: eventData.eventExternalId },
+        });
+        if (eventExists) {
+          duplicateCount++;
+          continue;
+        }
+
+        await tx.m8MobileSyncEvent.create({
+          data: {
+            batchId: batch.id,
+            eventExternalId: eventData.eventExternalId,
+            eventType: eventData.eventType,
+            workId: eventData.workId,
+            workLineId: eventData.workLineId,
+            sourceModule: eventData.sourceModule,
+            deviceId: params.deviceId,
+            deviceEventTime: new Date(eventData.deviceEventTime),
+            sequenceNo: eventData.sequenceNo,
+            payload: eventData.payload as any,
+            processStatus: SyncEventStatus.RECEIVED,
+            correlationId: params.correlationId,
+          },
+        });
       }
 
-      const event = await this.eventRepo.create({
-        batchId: batch.id,
-        eventExternalId: eventData.eventExternalId,
-        eventType: eventData.eventType,
-        workId: eventData.workId,
-        workLineId: eventData.workLineId,
-        sourceModule: eventData.sourceModule,
-        deviceId: params.deviceId,
-        deviceEventTime: new Date(eventData.deviceEventTime),
-        sequenceNo: eventData.sequenceNo,
-        payload: eventData.payload,
-        processStatus: SyncEventStatus.RECEIVED,
-        correlationId: params.correlationId,
+      // Update batch counts within transaction
+      await tx.m8MobileSyncBatch.update({
+        where: { id: batch.id },
+        data: { duplicateCount },
       });
-      createdEvents.push(event);
-    }
 
-    // Update batch counts
-    await this.batchRepo.updateCounts(batch.id, { duplicateCount });
+      return { batch, duplicateCount };
+    });
 
-    this.logger.log(`Batch ${params.batchId} created with ${eventCount} events, ${duplicateCount} duplicates`);
+    this.logger.log(`Batch ${params.batchId} created with ${eventCount} events, ${result.duplicateCount} duplicates`);
 
     return {
-      id: batch.id,
+      id: result.batch.id,
       batchId: params.batchId,
       isDuplicate: false,
       status: SyncBatchStatus.QUEUED,
       eventCount,
-      duplicateCount,
-      acceptedCount: eventCount - duplicateCount,
+      duplicateCount: result.duplicateCount,
+      acceptedCount: eventCount - result.duplicateCount,
       message: 'Batch accepted for processing',
     };
   }
