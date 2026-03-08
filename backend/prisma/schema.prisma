@@ -2882,3 +2882,395 @@ model WeWorkOutboxEvent {
   @@map("we_work_outbox_event")
 }
 
+// ========== Module 8: Integration Platform Enums ==========
+
+enum M8WeighingType {
+  WEIGH_IN
+  WEIGH_OUT
+  TARE
+  GROSS_LINE
+  MANUAL_ENTRY
+}
+
+enum M8DeviceStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+}
+
+enum M8WeighEventProcessingStatus {
+  RECEIVED
+  VALIDATED
+  LINKED
+  DUPLICATE
+  FAILED
+}
+
+enum M8CallbackStatus {
+  PENDING
+  SENT
+  ACKED
+  FAILED
+}
+
+enum M8OcrStatus {
+  UPLOADED
+  EXTRACTING
+  EXTRACTED
+  REVIEW_REQUIRED
+  CONFIRMED
+  LINKED
+  REJECTED
+}
+
+enum M8OcrLinkMethod {
+  AUTO_MATCHED
+  OPERATOR_SELECTED
+  OPERATOR_CREATED
+}
+
+enum M8SyncBatchStatus {
+  QUEUED
+  PROCESSING
+  PARTIAL_SUCCESS
+  SUCCESS
+  FAILED
+  CONFLICTED
+}
+
+enum M8SyncEventStatus {
+  RECEIVED
+  DUPLICATE
+  DISPATCHED
+  APPLIED
+  CONFLICTED
+  FAILED
+}
+
+enum M8ErpPushStatus {
+  PENDING
+  SENT
+  ACK_SUCCESS
+  ACK_FAILED
+  RETRY_SCHEDULED
+  DEAD_LETTER
+  CANCELLED
+}
+
+enum M8AlertSeverity {
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum M8AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  SUPPRESSED
+}
+
+enum M8ChannelStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
+// ========== Module 8: Integration Platform Models ==========
+
+model M8WeighbridgeDevice {
+  id                  String         @id @default(uuid()) @db.Uuid
+  deviceCode          String         @unique @map("device_code") @db.VarChar(50)
+  deviceName          String         @map("device_name") @db.VarChar(150)
+  warehouseId         String?        @map("warehouse_id") @db.Uuid
+  portName            String?        @map("port_name") @db.VarChar(50)
+  baudRate            Int?           @map("baud_rate")
+  dataBits            Int?           @map("data_bits")
+  stopBits            Int?           @map("stop_bits")
+  parity              String?        @db.VarChar(20)
+  frameFormat         String?        @map("frame_format") @db.VarChar(100)
+  heartbeatIntervalSec Int           @default(300) @map("heartbeat_interval_sec")
+  stableWindowMs      Int            @default(1000) @map("stable_window_ms")
+  isActive            Boolean        @default(true) @map("is_active")
+  lastSeenAt          DateTime?      @map("last_seen_at")
+  lastStatus          M8DeviceStatus? @map("last_status")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  weighLogs  M8WeighbridgeLog[]
+  heartbeats M8DeviceHeartbeat[]
+
+  @@index([warehouseId, isActive])
+  @@index([lastSeenAt])
+  @@map("m8_weighbridge_device")
+}
+
+model M8WeighbridgeLog {
+  id                  String         @id @default(uuid()) @db.Uuid
+  weighbridgeEventId  String         @unique @map("weighbridge_event_id") @db.VarChar(100)
+  receiptId           String?        @map("receipt_id") @db.Uuid
+  shipmentId          String?        @map("shipment_id") @db.Uuid
+  vehicleNumber       String         @map("vehicle_number") @db.VarChar(50)
+  weighingType        M8WeighingType @map("weighing_type")
+  weighingSequence    Int            @map("weighing_sequence")
+  grossWeightKg       Decimal?       @map("gross_weight_kg") @db.Decimal(18, 3)
+  tareWeightKg        Decimal?       @map("tare_weight_kg") @db.Decimal(18, 3)
+  netWeightKg         Decimal?       @map("net_weight_kg") @db.Decimal(18, 3)
+  rawWeightValue      String?        @map("raw_weight_value") @db.VarChar(100)
+  rawPayload          Json?          @map("raw_payload")
+  isStableWeight      Boolean        @default(false) @map("is_stable_weight")
+  isDuplicateSignal   Boolean        @default(false) @map("is_duplicate_signal")
+  duplicateOfEventId  String?        @map("duplicate_of_event_id") @db.VarChar(100)
+  isManualEntry       Boolean        @default(false) @map("is_manual_entry")
+  manualReasonCode    String?        @map("manual_reason_code") @db.VarChar(50)
+  approvedBy          String?        @map("approved_by") @db.Uuid
+  scaleDeviceId       String         @map("scale_device_id") @db.VarChar(50)
+  photoAlprPath       String?        @map("photo_alpr_path") @db.VarChar(500)
+  photoCargoPath      String?        @map("photo_cargo_path") @db.VarChar(500)
+  latencyMs           Int?           @map("latency_ms")
+  externalId          String         @map("external_id") @db.VarChar(100)
+  correlationId       String         @map("correlation_id") @db.Uuid
+  sourceChannel       String         @map("source_channel") @db.VarChar(30)
+  weighingTimestamp   DateTime       @map("weighing_timestamp")
+  createdBy           String         @map("created_by") @db.VarChar(100)
+  createdAt           DateTime       @default(now()) @map("created_at")
+
+  device     M8WeighbridgeDevice    @relation(fields: [scaleDeviceId], references: [deviceCode])
+  eventState M8WeighbridgeEventState?
+
+  @@index([receiptId])
+  @@index([shipmentId])
+  @@index([scaleDeviceId, createdAt(sort: Desc)])
+  @@index([vehicleNumber, createdAt(sort: Desc)])
+  @@index([correlationId])
+  @@index([weighingTimestamp])
+  @@map("m8_weighbridge_log")
+}
+
+model M8WeighbridgeEventState {
+  id               String                      @id @default(uuid()) @db.Uuid
+  weighbridgeLogId String                      @unique @map("weighbridge_log_id") @db.Uuid
+  processingStatus M8WeighEventProcessingStatus @map("processing_status")
+  linkedModule     String?                     @map("linked_module") @db.VarChar(20)
+  linkedObjectId   String?                     @map("linked_object_id") @db.Uuid
+  callbackStatus   M8CallbackStatus?           @map("callback_status")
+  callbackError    String?                     @map("callback_error") @db.Text
+  retryCount       Int                         @default(0) @map("retry_count")
+  lastRetryAt      DateTime?                   @map("last_retry_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+
+  weighLog M8WeighbridgeLog @relation(fields: [weighbridgeLogId], references: [id])
+
+  @@index([processingStatus, updatedAt(sort: Desc)])
+  @@index([callbackStatus])
+  @@map("m8_weighbridge_event_state")
+}
+
+model M8OcrResult {
+  id                 String          @id @default(uuid()) @db.Uuid
+  ocrRequestId       String          @unique @map("ocr_request_id") @db.VarChar(100)
+  imagePath          String          @map("image_path") @db.VarChar(500)
+  providerName       String          @map("provider_name") @db.VarChar(50)
+  providerRequestId  String?         @map("provider_request_id") @db.VarChar(100)
+  blNumber           String?         @map("bl_number") @db.VarChar(50)
+  blConfidence       Decimal?        @map("bl_confidence") @db.Decimal(5, 2)
+  vehicleNumber      String?         @map("vehicle_number") @db.VarChar(50)
+  vehicleConfidence  Decimal?        @map("vehicle_confidence") @db.Decimal(5, 2)
+  productName        String?         @map("product_name") @db.VarChar(200)
+  productConfidence  Decimal?        @map("product_confidence") @db.Decimal(5, 2)
+  vesselName         String?         @map("vessel_name") @db.VarChar(200)
+  vesselConfidence   Decimal?        @map("vessel_confidence") @db.Decimal(5, 2)
+  qtyExtracted       Decimal?        @map("qty_extracted") @db.Decimal(18, 3)
+  qtyUom             String?         @map("qty_uom") @db.VarChar(20)
+  qtyConfidence      Decimal?        @map("qty_confidence") @db.Decimal(5, 2)
+  overallConfidence  Decimal?        @map("overall_confidence") @db.Decimal(5, 2)
+  rawResponse        Json?           @map("raw_response")
+  linkedReceiptId    String?         @map("linked_receipt_id") @db.Uuid
+  linkMethod         M8OcrLinkMethod? @map("link_method")
+  operatorConfirmed  Boolean         @default(false) @map("operator_confirmed")
+  status             M8OcrStatus     @default(UPLOADED)
+  externalId         String          @map("external_id") @db.VarChar(100)
+  correlationId      String          @map("correlation_id") @db.Uuid
+  sourceChannel      String          @default("OCR") @map("source_channel") @db.VarChar(20)
+  warehouseId        String?         @map("warehouse_id") @db.Uuid
+  createdBy          String          @map("created_by") @db.VarChar(100)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  confirmedSnapshot M8OcrConfirmedSnapshot?
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([blNumber])
+  @@index([linkedReceiptId])
+  @@index([correlationId])
+  @@index([warehouseId, status])
+  @@map("m8_ocr_result")
+}
+
+model M8OcrConfirmedSnapshot {
+  id                     String   @id @default(uuid()) @db.Uuid
+  ocrResultId            String   @unique @map("ocr_result_id") @db.Uuid
+  confirmedBlNumber      String?  @map("confirmed_bl_number") @db.VarChar(50)
+  confirmedVehicleNumber String?  @map("confirmed_vehicle_number") @db.VarChar(50)
+  confirmedProductName   String?  @map("confirmed_product_name") @db.VarChar(200)
+  confirmedVesselName    String?  @map("confirmed_vessel_name") @db.VarChar(200)
+  confirmedQty           Decimal? @map("confirmed_qty") @db.Decimal(18, 3)
+  confirmedQtyUom        String?  @map("confirmed_qty_uom") @db.VarChar(20)
+  correctionsJson        Json?    @map("corrections_json")
+  confirmedBy            String   @map("confirmed_by") @db.Uuid
+  confirmedAt            DateTime @map("confirmed_at")
+  remarks                String?  @db.Text
+
+  ocrResult M8OcrResult @relation(fields: [ocrResultId], references: [id])
+
+  @@map("m8_ocr_confirmed_snapshot")
+}
+
+model M8MobileSyncBatch {
+  id             String             @id @default(uuid()) @db.Uuid
+  batchId        String             @unique @map("batch_id") @db.VarChar(100)
+  deviceId       String             @map("device_id") @db.VarChar(50)
+  keeperUserId   String             @map("keeper_user_id") @db.Uuid
+  appVersion     String?            @map("app_version") @db.VarChar(30)
+  eventCount     Int                @map("event_count")
+  payload        Json
+  status         M8SyncBatchStatus  @default(QUEUED)
+  duplicateCount Int                @default(0) @map("duplicate_count")
+  conflictCount  Int                @default(0) @map("conflict_count")
+  acceptedCount  Int                @default(0) @map("accepted_count")
+  rejectedCount  Int                @default(0) @map("rejected_count")
+  firstSequenceNo BigInt?           @map("first_sequence_no")
+  lastSequenceNo BigInt?            @map("last_sequence_no")
+  receivedAt     DateTime           @default(now()) @map("received_at")
+  processedAt    DateTime?          @map("processed_at")
+  externalId     String             @map("external_id") @db.VarChar(100)
+  correlationId  String             @map("correlation_id") @db.Uuid
+  sourceChannel  String             @default("MOBILE_SYNC") @map("source_channel") @db.VarChar(20)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  events M8MobileSyncEvent[]
+
+  @@index([deviceId, receivedAt(sort: Desc)])
+  @@index([keeperUserId, receivedAt(sort: Desc)])
+  @@index([status, receivedAt(sort: Desc)])
+  @@map("m8_mobile_sync_batch")
+}
+
+model M8MobileSyncEvent {
+  id              String             @id @default(uuid()) @db.Uuid
+  batchId         String             @map("batch_id") @db.Uuid
+  eventExternalId String             @unique @map("event_external_id") @db.VarChar(100)
+  eventType       String             @map("event_type") @db.VarChar(50)
+  workId          String?            @map("work_id") @db.Uuid
+  workLineId      String?            @map("work_line_id") @db.Uuid
+  sourceModule    String             @map("source_module") @db.VarChar(20)
+  deviceId        String             @map("device_id") @db.VarChar(50)
+  deviceEventTime DateTime           @map("device_event_time")
+  sequenceNo      BigInt             @map("sequence_no")
+  payload         Json
+  processStatus   M8SyncEventStatus  @default(RECEIVED) @map("process_status")
+  processError    String?            @map("process_error") @db.Text
+  dispatchedAt    DateTime?          @map("dispatched_at")
+  appliedAt       DateTime?          @map("applied_at")
+  correlationId   String             @map("correlation_id") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at")
+
+  batch M8MobileSyncBatch @relation(fields: [batchId], references: [id])
+
+  @@index([deviceId, sequenceNo])
+  @@index([workId])
+  @@index([workLineId])
+  @@index([processStatus, createdAt(sort: Desc)])
+  @@map("m8_mobile_sync_event")
+}
+
+model M8ErpPushLog {
+  id            String          @id @default(uuid()) @db.Uuid
+  pushJobId     String          @unique @map("push_job_id") @db.VarChar(100)
+  pushType      String          @map("push_type") @db.VarChar(30)
+  referenceId   String          @map("reference_id") @db.VarChar(50)
+  payload       Json
+  payloadHash   String?         @map("payload_hash") @db.VarChar(128)
+  status        M8ErpPushStatus @default(PENDING)
+  attemptCount  Int             @default(0) @map("attempt_count")
+  maxAttempts   Int             @default(10) @map("max_attempts")
+  lastAttemptAt DateTime?       @map("last_attempt_at")
+  nextRetryAt   DateTime?       @map("next_retry_at")
+  responseCode  Int?            @map("response_code")
+  responseBody  Json?           @map("response_body")
+  errorMessage  String?         @map("error_message") @db.Text
+  endpointName  String?         @map("endpoint_name") @db.VarChar(100)
+  externalId    String          @map("external_id") @db.VarChar(100)
+  correlationId String          @map("correlation_id") @db.Uuid
+  sourceChannel String          @default("ERP_PUSH") @map("source_channel") @db.VarChar(20)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@unique([pushType, referenceId])
+  @@index([status, nextRetryAt])
+  @@index([referenceId])
+  @@index([correlationId])
+  @@map("m8_erp_push_log")
+}
+
+model M8IntegrationAlert {
+  id             String           @id @default(uuid()) @db.Uuid
+  alertCode      String           @map("alert_code") @db.VarChar(50)
+  alertSource    String           @map("alert_source") @db.VarChar(30)
+  severity       M8AlertSeverity
+  sourceRefType  String?          @map("source_ref_type") @db.VarChar(30)
+  sourceRefId    String?          @map("source_ref_id") @db.VarChar(100)
+  title          String           @db.VarChar(200)
+  description    String?          @db.Text
+  status         M8AlertStatus    @default(OPEN)
+  ownerRole      String?          @map("owner_role") @db.VarChar(30)
+  warehouseId    String?          @map("warehouse_id") @db.Uuid
+  correlationId  String?          @map("correlation_id") @db.Uuid
+  firstRaisedAt  DateTime         @default(now()) @map("first_raised_at")
+  lastSeenAt     DateTime         @default(now()) @map("last_seen_at")
+  acknowledgedBy String?          @map("acknowledged_by") @db.Uuid
+  acknowledgedAt DateTime?        @map("acknowledged_at")
+  resolvedBy     String?          @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime?        @map("resolved_at")
+  resolutionNote String?          @map("resolution_note") @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@index([status, severity, lastSeenAt(sort: Desc)])
+  @@index([alertSource, status])
+  @@index([warehouseId, status])
+  @@index([sourceRefType, sourceRefId])
+  @@map("m8_integration_alert")
+}
+
+model M8ChannelHealthSnapshot {
+  id             String          @id @default(uuid()) @db.Uuid
+  channelName    String          @unique @map("channel_name") @db.VarChar(30)
+  status         M8ChannelStatus @default(HEALTHY)
+  openAlertCount Int             @default(0) @map("open_alert_count")
+  backlogCount   Int             @default(0) @map("backlog_count")
+  successRate1h  Decimal?        @map("success_rate_1h") @db.Decimal(5, 2)
+  avgLatencyMs1h Int?            @map("avg_latency_ms_1h")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@map("m8_channel_health_snapshot")
+}
+
+model M8DeviceHeartbeat {
+  id                 String   @id @default(uuid()) @db.Uuid
+  deviceCode         String   @map("device_code") @db.VarChar(50)
+  agentVersion       String?  @map("agent_version") @db.VarChar(30)
+  portName           String?  @map("port_name") @db.VarChar(50)
+  lastWeightReadAt   DateTime? @map("last_weight_read_at")
+  bufferPendingCount Int      @default(0) @map("buffer_pending_count")
+  healthStatus       String?  @map("health_status") @db.VarChar(30)
+  receivedAt         DateTime @default(now()) @map("received_at")
+
+  device M8WeighbridgeDevice @relation(fields: [deviceCode], references: [deviceCode])
+
+  @@index([deviceCode, receivedAt(sort: Desc)])
+  @@map("m8_device_heartbeat")
+}
+
