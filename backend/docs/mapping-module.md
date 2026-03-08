@@ -331,10 +331,25 @@
 
 # Module 4: Inbound Operations
 
-**Status:** ✅ Completed  
+**Status:** ✅ Completed (Feedback Fixed)  
 **Code Path:** `src/modules/inbound`  
 **Documentation:** [`docs/module-4-inbound.md`](./module-4-inbound.md)  
-**Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)
+**Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
+**Last Updated:** 2026-03-08
+
+### Feedback Fixes Applied
+
+| Issue ID | Description | Status |
+|----------|-------------|--------|
+| CR-2 | createReceipt wrapped in $transaction | ✅ Fixed |
+| HI-1 | BaggedPolicy.checkOverReceipt wired | ✅ Fixed |
+| HI-3 | Atomic receipt number generation | ✅ Fixed |
+| HI-4 | lockForUpdate called in all commands | ✅ Fixed |
+| HI-6 | Single-line guard added | ✅ Fixed |
+| MD-3 | Controller ternary bug | ✅ Fixed |
+| MD-4 | Use validated value instead of req.body | ✅ Fixed |
+| CR-1 | M3 PostingEngine integration | 🔜 Pending M3 interface |
+| HI-2 | Putaway workflow | 🔜 Pending M7 ready |
 
 ## Database Tables (6 tables)
 

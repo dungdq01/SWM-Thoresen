@@ -891,15 +891,15 @@ Inbound chạm nhiều boundary dễ lỗi: web UI, local weighbridge agent, OCR
 
 ### 21.3 Integration contract matrix (baseline để bóc FS)
 
-| Producer | Consumer | Message / API | Trigger | Key payload tối thiểu | Idempotency / dedupe |
-|---|---|---|---|---|---|
-| M8 | M4 | `WeightCaptured` / weigh-in | scale đọc gross | receipt_ref hoặc candidate_ref, gross_weight, ticket_id, timestamp, source_app | `ticket_id` hoặc event_id |
-| M8 | M4 | `WeightCaptured` / weigh-out | scale đọc tare | receipt_id, tare_weight, ticket_id, timestamp | `ticket_id` hoặc event_id |
-| M8 | M4 | `OCRMatched` / OCR result | scan B/L | bl_number, confidence, candidates, scan_time | `ocr_job_id` |
-| M4 | M3 | `PostInboundReceipt` | receipt sang `RECEIVED` | receipt_id, line_id, owner_id, item_id, net_weight, receiving_location_id, external_id, correlation_id | `external_id` |
-| M4 | M7 | `CreatePutawayWork` | posting/handoff sau `RECEIVED` | receipt_id, source_location_id, destination_rule, qty, owner_id, correlation_id | `receipt_id + work_type` |
-| M4 | M10 | `InboundHandlingCaptured` | receipt `RECEIVED` | receipt_id, owner_id, item_id, cargo_form, warehouse_id, net_weight_mt, event_timestamp | `receipt_id + event_type` |
-| M7 | M4 | `PutawayCompleted` | work hoàn tất | work_id, receipt_id, completed_at | `work_id + status` |
+| Producer | Consumer | Message / API                | Trigger                        | Key payload tối thiểu                                                                                  | Idempotency / dedupe      |
+| ----------| ----------| ------------------------------| --------------------------------| --------------------------------------------------------------------------------------------------------| ---------------------------|
+| M8       | M4       | `WeightCaptured` / weigh-in  | scale đọc gross                | receipt_ref hoặc candidate_ref, gross_weight, ticket_id, timestamp, source_app                         | `ticket_id` hoặc event_id |
+| M8       | M4       | `WeightCaptured` / weigh-out | scale đọc tare                 | receipt_id, tare_weight, ticket_id, timestamp                                                          | `ticket_id` hoặc event_id |
+| M8       | M4       | `OCRMatched` / OCR result    | scan B/L                       | bl_number, confidence, candidates, scan_time                                                           | `ocr_job_id`              |
+| M4       | M3       | `PostInboundReceipt`         | receipt sang `RECEIVED`        | receipt_id, line_id, owner_id, item_id, net_weight, receiving_location_id, external_id, correlation_id | `external_id`             |
+| M4       | M7       | `CreatePutawayWork`          | posting/handoff sau `RECEIVED` | receipt_id, source_location_id, destination_rule, qty, owner_id, correlation_id                        | `receipt_id + work_type`  |
+| M4       | M10      | `InboundHandlingCaptured`    | receipt `RECEIVED`             | receipt_id, owner_id, item_id, cargo_form, warehouse_id, net_weight_mt, event_timestamp                | `receipt_id + event_type` |
+| M7       | M4       | `PutawayCompleted`           | work hoàn tất                  | work_id, receipt_id, completed_at                                                                      | `work_id + status`        |
 
 
 ## 22. Yêu cầu phi chức năng áp cho module
