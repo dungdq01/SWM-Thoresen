@@ -49,9 +49,10 @@ CANCELLED   - Hủy theo header
 
 ### WePostingStatus
 ```
-PENDING - Chưa post
-POSTED  - Đã post thành công
-FAILED  - Post thất bại
+PENDING  - Chưa post
+POSTED   - Đã post thành công
+FAILED   - Post thất bại
+REVERSED - Đã reverse (khi cancel work có completed lines)
 ```
 
 ### WeExceptionType
@@ -148,6 +149,7 @@ Container nghiệp vụ chính của work.
 | posting_ref_id | VARCHAR(50) | NULL | Trans ID từ M3 |
 | posting_error_code | VARCHAR(50) | NULL | |
 | posting_error_message | TEXT | NULL | |
+| reversal_ref_id | VARCHAR(50) | NULL | Trans ID của reversal (khi cancel) |
 | external_id | VARCHAR(120) | UNIQUE NULL | Command idempotency |
 | version_no | BIGINT | NOT NULL | Optimistic lock |
 | created_at | TIMESTAMP | NOT NULL | |
@@ -324,6 +326,7 @@ Outbox cho async callbacks.
 | next_retry_at | TIMESTAMP | NULL | |
 | created_at | TIMESTAMP | NOT NULL | |
 | sent_at | TIMESTAMP | NULL | |
+| last_error | TEXT | NULL | Last error message (HI-2 fix) |
 | work_header_id | UUID | NULL | FK |
 
 ---

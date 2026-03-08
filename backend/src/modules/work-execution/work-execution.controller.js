@@ -232,7 +232,8 @@ class WorkExecutionController {
           this.workHeaderRepo,
           this.workLineRepo,
           this.workEventRepo,
-          this.workOutboxRepo
+          this.workOutboxRepo,
+          this.inventoryAdapter
         );
         return usecase.execute(id, input, context, tx);
       });
