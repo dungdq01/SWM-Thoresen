@@ -521,15 +521,15 @@ InventTrans (trans_id)
 
 ## 19. Baseline Source Documents
 
-| #   | Document                            | Key Content Used                                 |
-| -----| -------------------------------------| --------------------------------------------------|
-| 1   | TVL_SWM_BA_PO_Master.md             | US-M11-001..004, shrinkage definition, retention |
-| 2   | TVL_SWM_Business_Rules_Document.md  | BR-RPT-001..002, BR-AUD-001, BR-INV-001..010     |
-| 3   | TVL_SWM_SystemFlow_EndToEnd.md      | Reconciliation checks, posting trace             |
-| 4   | TVL_SWM_SystemControlMap.md         | Audit trail requirements                         |
-| 5   | THORESEN_SWM_PRD_VIBECODING_v2_0.md | CFM-01, CFM-11 (reporting read-only)             |
-| 6   | Module 9 VAS Spec                   | Material balance formula for RECON-005           |
-| 7   | Module 10 Billing Spec              | Event ownership contract for billing reports     |
+| # | Document | Key Content Used |
+|---|----------|-----------------|
+| 1 | TVL_SWM_BA_PO_Master.md | US-M11-001..004, shrinkage definition, retention |
+| 2 | TVL_SWM_Business_Rules_Document.md | BR-RPT-001..002, BR-AUD-001, BR-INV-001..010 |
+| 3 | TVL_SWM_SystemFlow_EndToEnd.md | Reconciliation checks, posting trace |
+| 4 | TVL_SWM_SystemControlMap.md | Audit trail requirements |
+| 5 | THORESEN_SWM_PRD_VIBECODING_v2_0.md | CFM-01, CFM-11 (reporting read-only) |
+| 6 | Module 9 VAS Spec | Material balance formula for RECON-005 |
+| 7 | Module 10 Billing Spec | Event ownership contract for billing reports |
 
 ## 20. Business Context, Ownership Boundary & Input/Output (v1.2)
 

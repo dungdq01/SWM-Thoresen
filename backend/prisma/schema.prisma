@@ -3912,3 +3912,340 @@ model BilErpPushLog {
   @@map("bil_erp_push_log")
 }
 
+// ========== Module 11: Reporting, Audit & Go-Live Control ==========
+
+enum RptExportJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+enum RptExportFormat {
+  CSV
+  PDF
+}
+
+enum RptReconciliationRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum RptReconciliationTriggerType {
+  MANUAL
+  SCHEDULED
+}
+
+enum RptReconciliationResultStatus {
+  PASS
+  WARNING
+  FAIL
+}
+
+enum RptReconciliationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RptReconciliationResolutionAction {
+  RESOLVED
+  REOPENED
+  COMMENT
+}
+
+enum RptGoLiveGateType {
+  AUTO
+  MANUAL
+}
+
+enum RptGoLiveMilestone {
+  BEFORE_SIT
+  BEFORE_UAT
+  BEFORE_GO_LIVE
+}
+
+enum RptGoLiveGateStatus {
+  PASS
+  FAIL
+  WAIVED
+  PENDING
+}
+
+enum RptReportRunMode {
+  SCREEN
+  EXPORT
+  API
+}
+
+enum RptReportRunStatus {
+  SUCCESS
+  FAILED
+}
+
+model RptReportCatalog {
+  id           String   @id @default(uuid()) @db.Uuid
+  reportId     String   @unique @map("report_id") @db.VarChar(50)
+  reportName   String   @map("report_name") @db.VarChar(150)
+  reportGroup  String   @map("report_group") @db.VarChar(50)
+  description  String?  @db.Text
+  sourceModule String   @map("source_module") @db.VarChar(20)
+  allowExport  Boolean  @default(true) @map("allow_export")
+  maxExportRows Int?    @map("max_export_rows")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  exportJobs    RptExportJob[]
+  reportRunLogs RptReportRunLog[]
+
+  @@index([reportGroup, isActive])
+  @@map("rpt_report_catalog")
+}
+
+model RptReconciliationCheck {
+  id          String   @id @default(uuid()) @db.Uuid
+  checkId     String   @unique @map("check_id") @db.VarChar(30)
+  checkName   String   @map("check_name") @db.VarChar(150)
+  description String?  @db.Text
+  sourceModule String  @map("source_module") @db.VarChar(20)
+  compareWith String   @map("compare_with") @db.VarChar(100)
+  checkQuery  String?  @map("check_query") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  reconciliationResults RptReconciliationResult[]
+
+  @@index([sourceModule, isActive])
+  @@map("rpt_reconciliation_check")
+}
+
+model RptExportJob {
+  id                 String             @id @default(uuid()) @db.Uuid
+  exportJobId        String             @unique @map("export_job_id") @db.VarChar(36)
+  reportCatalogId    String?            @map("report_catalog_id") @db.Uuid
+  reportId           String             @map("report_id") @db.VarChar(50)
+  exportFormat       RptExportFormat    @map("export_format")
+  requestedBy        String             @map("requested_by") @db.Uuid
+  requestedRole      String             @map("requested_role") @db.VarChar(30)
+  ownerScopeId       String?            @map("owner_scope_id") @db.Uuid
+  warehouseScopeJson Json?              @map("warehouse_scope_json")
+  filterPayload      Json               @map("filter_payload")
+  jobStatus          RptExportJobStatus @map("job_status")
+  rowCount           Int?               @map("row_count")
+  fileUri            String?            @map("file_uri") @db.Text
+  fileSizeBytes      BigInt?            @map("file_size_bytes")
+  checksumSha256     String?            @map("checksum_sha256") @db.VarChar(64)
+  expiresAt          DateTime?          @map("expires_at")
+  failureReason      String?            @map("failure_reason") @db.Text
+  idempotencyKey     String?            @map("idempotency_key") @db.VarChar(100)
+  correlationId      String             @map("correlation_id") @db.Uuid
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  reportCatalog RptReportCatalog?   @relation(fields: [reportCatalogId], references: [id])
+  events        RptExportJobEvent[]
+
+  @@index([requestedBy, createdAt(sort: Desc)])
+  @@index([jobStatus, createdAt(sort: Desc)])
+  @@index([reportId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@index([idempotencyKey])
+  @@map("rpt_export_job")
+}
+
+model RptExportJobEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  exportJobId  String   @map("export_job_id") @db.Uuid
+  eventType    String   @map("event_type") @db.VarChar(30)
+  eventPayload Json?    @map("event_payload")
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  exportJob RptExportJob @relation(fields: [exportJobId], references: [id])
+
+  @@index([exportJobId, createdAt(sort: Desc)])
+  @@map("rpt_export_job_event")
+}
+
+model RptReconciliationRun {
+  id                   String                       @id @default(uuid()) @db.Uuid
+  runId                String                       @unique @map("run_id") @db.VarChar(36)
+  triggerType          RptReconciliationTriggerType @map("trigger_type")
+  requestedBy          String?                      @map("requested_by") @db.Uuid
+  checkIds             Json                         @map("check_ids")
+  runScope             Json                         @map("run_scope")
+  runStatus            RptReconciliationRunStatus   @map("run_status")
+  acceptedChecksCount  Int                          @default(0) @map("accepted_checks_count")
+  completedChecksCount Int                          @default(0) @map("completed_checks_count")
+  failureReason        String?                      @map("failure_reason") @db.Text
+  idempotencyKey       String?                      @map("idempotency_key") @db.VarChar(100)
+  correlationId        String                       @map("correlation_id") @db.Uuid
+  startedAt            DateTime?                    @map("started_at")
+  completedAt          DateTime?                    @map("completed_at")
+  createdAt            DateTime                     @default(now()) @map("created_at")
+
+  results RptReconciliationResult[]
+
+  @@index([runStatus, createdAt(sort: Desc)])
+  @@index([requestedBy, createdAt(sort: Desc)])
+  @@index([idempotencyKey])
+  @@map("rpt_reconciliation_run")
+}
+
+model RptReconciliationResult {
+  id                 String                        @id @default(uuid()) @db.Uuid
+  resultId           String                        @unique @map("result_id") @db.VarChar(36)
+  runId              String                        @map("run_id") @db.Uuid
+  checkId            String                        @map("check_id") @db.Uuid
+  checkCode          String                        @map("check_code") @db.VarChar(30)
+  checkName          String                        @map("check_name") @db.VarChar(100)
+  resultStatus       RptReconciliationResultStatus @map("result_status")
+  severity           RptReconciliationSeverity
+  dimensionKey       Json?                         @map("dimension_key")
+  sourceModule       String                        @map("source_module") @db.VarChar(20)
+  sourceRefType      String?                       @map("source_ref_type") @db.VarChar(30)
+  sourceRefId        String?                       @map("source_ref_id") @db.VarChar(50)
+  expectedValue      Decimal?                      @map("expected_value") @db.Decimal(20, 3)
+  actualValue        Decimal?                      @map("actual_value") @db.Decimal(20, 3)
+  varianceValue      Decimal?                      @map("variance_value") @db.Decimal(20, 3)
+  mismatchDetail     Json?                         @map("mismatch_detail")
+  isResolved         Boolean                       @default(false) @map("is_resolved")
+  resolvedAt         DateTime?                     @map("resolved_at")
+  resolvedBy         String?                       @map("resolved_by") @db.Uuid
+  resolutionNote     String?                       @map("resolution_note") @db.Text
+  evidenceRef        String?                       @map("evidence_ref") @db.Text
+  supersedesResultId String?                       @map("supersedes_result_id") @db.Uuid
+  createdAt          DateTime                      @default(now()) @map("created_at")
+
+  run         RptReconciliationRun          @relation(fields: [runId], references: [id])
+  check       RptReconciliationCheck        @relation(fields: [checkId], references: [id])
+  resolutions RptReconciliationResolution[]
+
+  @@index([checkCode, createdAt(sort: Desc)])
+  @@index([resultStatus, severity, createdAt(sort: Desc)])
+  @@index([isResolved, severity, createdAt(sort: Desc)])
+  @@index([sourceModule, sourceRefId])
+  @@map("rpt_reconciliation_result")
+}
+
+model RptReconciliationResolution {
+  id                     String                             @id @default(uuid()) @db.Uuid
+  reconciliationResultId String                             @map("reconciliation_result_id") @db.Uuid
+  actionType             RptReconciliationResolutionAction  @map("action_type")
+  resolutionNote         String                             @map("resolution_note") @db.Text
+  evidenceRef            String?                            @map("evidence_ref") @db.Text
+  sourceModule           String?                            @map("source_module") @db.VarChar(20)
+  sourceRefId            String?                            @map("source_ref_id") @db.VarChar(50)
+  createdBy              String                             @map("created_by") @db.Uuid
+  createdAt              DateTime                           @default(now()) @map("created_at")
+
+  result RptReconciliationResult @relation(fields: [reconciliationResultId], references: [id])
+
+  @@index([reconciliationResultId, createdAt(sort: Desc)])
+  @@map("rpt_reconciliation_resolution")
+}
+
+model RptGoLiveGate {
+  id           String              @id @default(uuid()) @db.Uuid
+  gateId       String              @unique @map("gate_id") @db.VarChar(20)
+  gateName     String              @map("gate_name") @db.VarChar(150)
+  gateType     RptGoLiveGateType   @map("gate_type")
+  ownerRole    String              @map("owner_role") @db.VarChar(30)
+  reviewerRole String              @map("reviewer_role") @db.VarChar(30)
+  milestone    RptGoLiveMilestone
+  waiverAllowed Boolean            @default(false) @map("waiver_allowed")
+  isActive     Boolean             @default(true) @map("is_active")
+  checkConfig  Json?               @map("check_config")
+  displayOrder Int                 @default(0) @map("display_order")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  statuses RptGoLiveGateStatusRecord[]
+
+  @@index([milestone, isActive])
+  @@map("rpt_go_live_gate")
+}
+
+model RptGoLiveGateStatusRecord {
+  id            String              @id @default(uuid()) @db.Uuid
+  gateId        String              @map("gate_id") @db.Uuid
+  snapshotNo    String              @map("snapshot_no") @db.VarChar(30)
+  status        RptGoLiveGateStatus
+  lastCheckType RptGoLiveGateType   @map("last_check_type")
+  lastRunRef    String?             @map("last_run_ref") @db.VarChar(36)
+  effectiveAt   DateTime            @map("effective_at")
+  effectiveBy   String?             @map("effective_by") @db.Uuid
+  evidenceRef   String?             @map("evidence_ref") @db.Text
+  note          String?             @db.Text
+  waiverReason  String?             @map("waiver_reason") @db.Text
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  gate    RptGoLiveGate              @relation(fields: [gateId], references: [id])
+  history RptGoLiveSignoffHistory[]
+
+  @@unique([gateId, snapshotNo])
+  @@index([snapshotNo, status])
+  @@map("rpt_go_live_gate_status")
+}
+
+model RptGoLiveSignoffHistory {
+  id           String              @id @default(uuid()) @db.Uuid
+  gateStatusId String              @map("gate_status_id") @db.Uuid
+  gateCode     String              @map("gate_code") @db.VarChar(20)
+  actionStatus RptGoLiveGateStatus @map("action_status")
+  note         String              @db.Text
+  evidenceRef  String?             @map("evidence_ref") @db.Text
+  waiverReason String?             @map("waiver_reason") @db.Text
+  signedBy     String              @map("signed_by") @db.Uuid
+  signedAt     DateTime            @map("signed_at")
+
+  gateStatus RptGoLiveGateStatusRecord @relation(fields: [gateStatusId], references: [id])
+
+  @@index([gateStatusId, signedAt(sort: Desc)])
+  @@map("rpt_go_live_signoff_history")
+}
+
+model RptReportRunLog {
+  id              String             @id @default(uuid()) @db.Uuid
+  reportCatalogId String?            @map("report_catalog_id") @db.Uuid
+  reportId        String             @map("report_id") @db.VarChar(50)
+  runMode         RptReportRunMode   @map("run_mode")
+  requestedBy     String             @map("requested_by") @db.Uuid
+  filterPayload   Json               @map("filter_payload")
+  durationMs      Int?               @map("duration_ms")
+  rowCount        Int?               @map("row_count")
+  cacheHit        Boolean            @default(false) @map("cache_hit")
+  status          RptReportRunStatus
+  errorCode       String?            @map("error_code") @db.VarChar(50)
+  createdAt       DateTime           @default(now()) @map("created_at")
+
+  reportCatalog RptReportCatalog? @relation(fields: [reportCatalogId], references: [id])
+
+  @@index([reportId, createdAt(sort: Desc)])
+  @@index([requestedBy, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("rpt_report_run_log")
+}
+
+model RptDashboardCache {
+  id            String   @id @default(uuid()) @db.Uuid
+  widgetCode    String   @map("widget_code") @db.VarChar(50)
+  cacheKey      String   @map("cache_key") @db.VarChar(150)
+  cachePayload  Json     @map("cache_payload")
+  sourceFreshAt DateTime @map("source_fresh_at")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([widgetCode, cacheKey])
+  @@index([expiresAt])
+  @@map("rpt_dashboard_cache")
+}
+
