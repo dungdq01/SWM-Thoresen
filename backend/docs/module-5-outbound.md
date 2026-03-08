@@ -1,8 +1,8 @@
 # Module 5: Outbound Operations — API Documentation
 
 **Module Path:** `src/modules/outbound`  
-**Status:** ✅ Implemented (Clean Architecture + RBAC)  
-**Version:** 2.0.0  
+**Status:** ✅ Implemented (Clean Architecture + RBAC + M3 Integration)  
+**Version:** 2.1.0  
 **Last Updated:** 2026-03-09  
 
 ---
@@ -32,8 +32,8 @@ Module 5 quản lý toàn bộ **luồng xuất hàng (Outbound Operations)** t�
 | HI-1 | Auto-transition to ALL_WEIGHED when all lines weighed | ✅ Fixed |
 | HI-5 | Line-level status history | ✅ Fixed |
 | CR-3 | RBAC guards on all controllers | ✅ Fixed |
-| CR-1 | Real M3 OnHand/Hold integration | 🔜 Pending M3 interface |
-| CR-2 | M3 Posting at SHIPPED | 🔜 Pending M3 interface |
+| CR-1 | Real M3 OnHand/Hold integration | ✅ Fixed |
+| CR-2 | M3 Posting at SHIPPED | ✅ Fixed |
 
 ---
 
@@ -102,10 +102,15 @@ src/modules/outbound/
 
 ### Architecture Notes:
 - **domain/**: Contains pure business logic, state machine, and error definitions
-- **application/**: Contains use cases that orchestrate domain logic
-- **infra/**: Contains Clean Architecture repositories (alternative to services/)
-- **services/**: NestJS services (existing pattern, still functional)
-- **controllers/**: All endpoints protected with AuthGuard + PermissionGuard
+- **application/**: Contains use cases that orchestrate domain logic with real M3 integration
+- **infra/**: Contains M3AdapterService for OnHand/Hold/PostingEngine integration
+- **services/**: NestJS services (legacy pattern, still functional)
+- **controllers/**: All endpoints protected with AuthGuard + PermissionGuard, wired to use cases
+
+### M3 Integration (CR-1/CR-2 Fixed):
+- **AllocateShipmentUseCase**: Queries M3 OnHand with FIFO ordering, creates holds via HoldService
+- **ShipShipmentUseCase**: Posts to M3 PostingEngine, releases holds after shipping
+- **M3AdapterService**: NestJS wrapper for M3 JS services (OnHandService, HoldService, PostingEngineService)
 
 ---
 

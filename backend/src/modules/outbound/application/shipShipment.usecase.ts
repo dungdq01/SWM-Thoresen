@@ -1,6 +1,8 @@
 /**
  * Ship Shipment Use Case - Application Layer
  * Handles shipping and M3 inventory posting
+ * 
+ * CR-2 FIX: Real M3 PostingEngine call + hold release
  */
 
 import { Injectable, BadRequestException } from '@nestjs/common';
@@ -11,6 +13,7 @@ import { AllocationRecordRepository } from '../repositories/allocation-record.re
 import { PostingLinkRepository } from '../repositories/posting-link.repository';
 import { StatusHistoryRepository } from '../repositories/status-history.repository';
 import { ShipmentStateMachineService } from '../services/shipment-state-machine.service';
+import { M3AdapterService } from '../infra/m3-adapter.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ShipShipmentInput {
@@ -36,6 +39,7 @@ export class ShipShipmentUseCase {
     private readonly postingLinkRepo: PostingLinkRepository,
     private readonly historyRepo: StatusHistoryRepository,
     private readonly stateMachine: ShipmentStateMachineService,
+    private readonly m3Adapter: M3AdapterService,
   ) {}
 
   async execute(input: ShipShipmentInput): Promise<ShipResult> {
@@ -58,46 +62,83 @@ export class ShipShipmentUseCase {
 
       const inventTransIds: string[] = [];
 
+      // CR-2 FIX: Real M3 PostingEngine integration
       for (const line of passedLines) {
-        // TODO: CR-2 - Replace mock with real M3 PostingEngine call
-        // Real implementation should:
-        // 1. Get allocation records for line
-        // 2. Call postingEngine.postInventory({
-        //      eventCode: 'SHIPMENT_SHIPPED',
-        //      itemId: line.itemId,
-        //      ownerId: shipment.ownerId,
-        //      warehouseId: shipment.warehouseId,
-        //      inventDimId: allocation.inventDimId,
-        //      qty: -line.netWeightKg, // Negative for outbound
-        //      sourceRef: shipmentId,
-        //      correlationId
-        //    })
-        // 3. Release holds: holdService.releaseHold(allocation.holdRef)
+        // Get allocation records for this line
+        const lineAllocations = await this.allocationRepo.findByLineId(line.id);
+        
+        for (const alloc of lineAllocations) {
+          const externalId = uuidv4();
+          
+          // CR-2: Get dimension info from allocation
+          const dim = await this.prisma.inventDim.findUnique({
+            where: { id: alloc.inventDimId },
+            include: {
+              warehouse: { select: { warehouseCode: true } },
+              location: { select: { locationCode: true } },
+              owner: { select: { ownerCode: true } },
+              inventoryStatus: { select: { statusCode: true } },
+            },
+          });
 
-        const mockInventTransId = uuidv4();
-        inventTransIds.push(mockInventTransId);
+          if (!dim) {
+            throw new BadRequestException(`InventDim not found for allocation ${alloc.id}`);
+          }
 
-        await this.postingLinkRepo.create({
-          shipmentHeaderId: input.shipmentId,
-          shipmentLineId: line.id,
-          postingAction: 'POST',
-          m3ExternalId: mockInventTransId,
-          requestPayload: {
-            eventCode: 'SHIPMENT_SHIPPED',
-            qtyPosted: -Number(line.netWeightKg),
-          },
-          correlationId: corrId,
-        });
+          // CR-2: Call M3 PostingEngine for inventory deduction
+          const postingResult = await this.m3Adapter.postShipmentShipped({
+            externalId,
+            correlationId: corrId,
+            shipmentId: input.shipmentId,
+            lineId: line.id,
+            itemId: line.itemId,
+            qty: String(alloc.allocatedQty),
+            uomCode: 'KG',
+            dim: {
+              warehouseCode: dim.warehouse?.warehouseCode || '',
+              locationCode: dim.location?.locationCode || '',
+              ownerCode: dim.owner?.ownerCode || '',
+              statusCode: dim.inventoryStatus?.statusCode || 'AVAILABLE',
+            },
+            postedBy: input.userId,
+          });
+
+          inventTransIds.push(postingResult.transId);
+
+          // CR-2: Release hold via M3 HoldService
+          if (alloc.holdRef) {
+            const holds = await this.m3Adapter.getHoldsByShipment(input.shipmentId, line.id);
+            for (const hold of holds) {
+              if (hold.holdNo === alloc.holdRef && hold.status === 'ACTIVE') {
+                await this.m3Adapter.releaseHold(
+                  hold.id,
+                  null, // Release full qty
+                  input.userId || '',
+                  corrId,
+                );
+              }
+            }
+          }
+
+          // Create posting link record
+          await this.postingLinkRepo.create({
+            shipmentHeaderId: input.shipmentId,
+            shipmentLineId: line.id,
+            postingAction: 'POST',
+            m3ExternalId: postingResult.transId,
+            requestPayload: {
+              eventCode: 'SHIPMENT_SHIPPED',
+              qtyPosted: -Number(alloc.allocatedQty),
+              transDbId: postingResult.transDbId,
+            },
+            correlationId: corrId,
+          });
+
+          // Mark allocation as posted
+          await this.allocationRepo.markPosted(alloc.id, Number(alloc.allocatedQty));
+        }
 
         await this.lineRepo.updateStatus(line.id, 'LINE_SHIPPED');
-      }
-
-      // Mark allocations as posted
-      const allocations = await this.allocationRepo.findByShipmentId(input.shipmentId);
-      for (const alloc of allocations) {
-        if (alloc.status === 'PICKED') {
-          await this.allocationRepo.markPosted(alloc.id, Number(alloc.pickedQty || alloc.allocatedQty));
-        }
       }
 
       await this.headerRepo.updateStatus(input.shipmentId, 'SHIPPED', {

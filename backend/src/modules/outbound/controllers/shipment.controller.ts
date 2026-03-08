@@ -15,6 +15,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/
 import { ShipmentService } from '../services/shipment.service';
 import { ShipmentCommandService } from '../services/shipment-command.service';
 import { ShipmentQueryService } from '../services/shipment-query.service';
+import { CreateShipmentUseCase } from '../application/createShipment.usecase';
+import { ShipShipmentUseCase } from '../application/shipShipment.usecase';
 import { CreateShipmentDto } from '../dto/create-shipment.dto';
 import { ShipmentHeaderResponseDto, PaginatedShipmentListDto } from '../dto/shipment-response.dto';
 import { AuthGuard } from '../../../common/guards/auth.guard';
@@ -31,6 +33,8 @@ export class ShipmentController {
     private readonly shipmentService: ShipmentService,
     private readonly commandService: ShipmentCommandService,
     private readonly queryService: ShipmentQueryService,
+    private readonly createUseCase: CreateShipmentUseCase,
+    private readonly shipUseCase: ShipShipmentUseCase,
   ) {}
 
   @Post()
@@ -40,7 +44,11 @@ export class ShipmentController {
   @ApiResponse({ status: 409, description: 'Duplicate external ID' })
   @Permission('OUTBOUND.SHIPMENT.CREATE')
   async create(@Body() dto: CreateShipmentDto, @CurrentUser() user: RequestUser) {
-    return this.commandService.createShipment(dto, user.id);
+    // FIX: Wire to use case for consistent architecture
+    return this.createUseCase.execute({
+      ...dto,
+      createdBy: user.id,
+    });
   }
 
   @Get()
@@ -123,5 +131,20 @@ export class ShipmentController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.commandService.cancelShipment(id, reasonCode, user.id);
+  }
+
+  @Post(':id/ship')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ship the shipment (post to M3 inventory)' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 200, description: 'Shipment shipped and inventory posted' })
+  @ApiResponse({ status: 400, description: 'Cannot ship - invalid status or no passed lines' })
+  @Permission('OUTBOUND.SHIPMENT.SHIP')
+  async ship(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
+    // CR-2 FIX: Wire to use case for real M3 posting
+    return this.shipUseCase.execute({
+      shipmentId: id,
+      userId: user.id,
+    });
   }
 }

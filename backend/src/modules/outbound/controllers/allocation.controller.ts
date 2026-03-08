@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AllocationService } from '../services/allocation.service';
 import { ShipmentQueryService } from '../services/shipment-query.service';
+import { AllocateShipmentUseCase } from '../application/allocateShipment.usecase';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { Permission } from '../../../common/decorators/permission.decorator';
@@ -24,6 +25,7 @@ export class AllocationController {
   constructor(
     private readonly allocationService: AllocationService,
     private readonly queryService: ShipmentQueryService,
+    private readonly allocateUseCase: AllocateShipmentUseCase,
   ) {}
 
   @Post(':id/allocate')
@@ -34,7 +36,11 @@ export class AllocationController {
   @ApiResponse({ status: 400, description: 'Cannot allocate - invalid status or insufficient stock' })
   @Permission('OUTBOUND.ALLOCATION.EXECUTE')
   async allocate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
-    return this.allocationService.allocateShipment(id, user.id);
+    // FIX: Wire to use case instead of old service for CR-1/CR-2 real M3 integration
+    return this.allocateUseCase.execute({
+      shipmentId: id,
+      userId: user.id,
+    });
   }
 
   @Post(':id/unallocate')
