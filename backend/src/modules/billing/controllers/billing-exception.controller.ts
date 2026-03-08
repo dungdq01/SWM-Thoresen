@@ -9,15 +9,15 @@ import {
 } from '@nestjs/common';
 import { BillingExceptionService } from '../services/billing-exception.service';
 import { ResolveExceptionDto, QueryExceptionDto } from '../dto';
-import { AuthGuard } from '../../foundation/auth/auth.guard';
-import { CurrentUser } from '../../foundation/auth/current-user.decorator';
+import { AuthGuard, PermissionGuard, Permission, CurrentUser } from '../../foundation/auth';
 
 @Controller('api/v1/billing/exceptions')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class BillingExceptionController {
   constructor(private readonly exceptionService: BillingExceptionService) {}
 
   @Get()
+  @Permission('BILLING.EXCEPTION.READ')
   async findMany(@Query() query: QueryExceptionDto) {
     const result = await this.exceptionService.findMany(query);
     return {
@@ -32,6 +32,7 @@ export class BillingExceptionController {
   }
 
   @Get(':id')
+  @Permission('BILLING.EXCEPTION.READ')
   async findById(@Param('id') id: string) {
     const exception = await this.exceptionService.findById(id);
     return {
@@ -41,6 +42,7 @@ export class BillingExceptionController {
   }
 
   @Put(':id/resolve')
+  @Permission('BILLING.EXCEPTION.RESOLVE')
   async resolve(
     @Param('id') id: string,
     @Body() dto: ResolveExceptionDto,

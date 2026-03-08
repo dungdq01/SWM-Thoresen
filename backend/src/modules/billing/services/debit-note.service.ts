@@ -253,15 +253,16 @@ export class DebitNoteService {
   }
 
   async review(id: string, dto: ReviewDebitNoteDto, userId: string) {
-    const dn = await this.dnRepo.findById(id);
-    if (!dn) throw createBillingError('DN_NOT_FOUND', { id });
-
-    DebitNoteStateMachine.validateTransition(
-      dn.status as BilDebitNoteStatus,
-      BilDebitNoteStatus.REVIEWED,
-    );
-
     return this.prisma.$transaction(async (tx) => {
+      await this.dnRepo.lockForUpdate(id, tx);
+      const dn = await this.dnRepo.findById(id, tx);
+      if (!dn) throw createBillingError('DN_NOT_FOUND', { id });
+
+      DebitNoteStateMachine.validateTransition(
+        dn.status as BilDebitNoteStatus,
+        BilDebitNoteStatus.REVIEWED,
+      );
+
       await this.dnRepo.update(
         id,
         {
@@ -290,15 +291,16 @@ export class DebitNoteService {
   }
 
   async approve(id: string, dto: ApproveDebitNoteDto, userId: string) {
-    const dn = await this.dnRepo.findById(id);
-    if (!dn) throw createBillingError('DN_NOT_FOUND', { id });
-
-    DebitNoteStateMachine.validateTransition(
-      dn.status as BilDebitNoteStatus,
-      BilDebitNoteStatus.APPROVED,
-    );
-
     return this.prisma.$transaction(async (tx) => {
+      await this.dnRepo.lockForUpdate(id, tx);
+      const dn = await this.dnRepo.findById(id, tx);
+      if (!dn) throw createBillingError('DN_NOT_FOUND', { id });
+
+      DebitNoteStateMachine.validateTransition(
+        dn.status as BilDebitNoteStatus,
+        BilDebitNoteStatus.APPROVED,
+      );
+
       await this.dnRepo.update(
         id,
         {
@@ -327,23 +329,24 @@ export class DebitNoteService {
   }
 
   async lock(id: string, dto: LockDebitNoteDto, userId: string) {
-    const dn = await this.dnRepo.findById(id);
-    if (!dn) throw createBillingError('DN_NOT_FOUND', { id });
-
-    DebitNoteStateMachine.validateTransition(
-      dn.status as BilDebitNoteStatus,
-      BilDebitNoteStatus.LOCKED,
-    );
-
-    const blockers = await this.exceptionRepo.findBlockersByDebitNote(id);
-    if (blockers.length > 0) {
-      throw createBillingError('DN_BLOCKER_EXCEPTION', {
-        blockerCount: blockers.length,
-        blockerIds: blockers.map(b => b.id),
-      });
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      await this.dnRepo.lockForUpdate(id, tx);
+      const dn = await this.dnRepo.findById(id, tx);
+      if (!dn) throw createBillingError('DN_NOT_FOUND', { id });
+
+      DebitNoteStateMachine.validateTransition(
+        dn.status as BilDebitNoteStatus,
+        BilDebitNoteStatus.LOCKED,
+      );
+
+      const blockers = await this.exceptionRepo.findBlockersByDebitNote(id, tx);
+      if (blockers.length > 0) {
+        throw createBillingError('DN_BLOCKER_EXCEPTION', {
+          blockerCount: blockers.length,
+          blockerIds: blockers.map((b: { id: string }) => b.id),
+        });
+      }
+
       await this.dnRepo.update(
         id,
         {
@@ -366,6 +369,27 @@ export class DebitNoteService {
         },
         tx,
       );
+
+      // Create ERP push outbox entry for locked DN
+      await tx.bilErpPushOutbox.create({
+        data: {
+          debitNote: { connect: { id: dn.id } },
+          outboxType: 'DEBIT_NOTE',
+          payloadJson: {
+            dnId: dn.id,
+            dnNumber: dn.dnNumber,
+            ownerId: dn.ownerId,
+            grandTotal: Number(dn.grandTotal),
+            currencyCode: dn.currencyCode,
+            lockedAt: new Date().toISOString(),
+            lockedBy: userId,
+          },
+          status: 'PENDING',
+          externalId: `ERP-DN-${dn.dnNumber}-${Date.now()}`,
+        },
+      });
+
+      this.logger.log(`DN ${dn.dnNumber} locked and queued for ERP push`);
 
       return this.dnRepo.findById(id, tx);
     });

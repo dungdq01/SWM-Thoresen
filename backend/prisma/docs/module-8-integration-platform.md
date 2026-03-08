@@ -511,3 +511,10 @@ m8_mobile_sync_batch ──< m8_mobile_sync_event
    - ERP Push: `(push_type, reference_id)`
 
 3. **Indexes:** Đã tối ưu cho các query phổ biến (by status, by date range, by reference).
+
+4. **Transaction Boundaries:** Các operations sau sử dụng `$transaction`:
+   - `weighbridge-ingest`: log + event_state
+   - `mobile-sync-batch`: batch + events
+   - `ocr-confirmation`: snapshot + result status
+
+5. **Decimal Precision:** Weight calculations sử dụng `decimal.js` để đảm bảo độ chính xác.

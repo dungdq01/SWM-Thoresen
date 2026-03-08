@@ -18,6 +18,7 @@
 | Module 8 - Integration Platform | ✅ Completed | `src/modules/integration` | 12 tables | ~20 endpoints |
 | Module 9 - VAS / Bagging | ✅ Completed | `src/modules/vas` | 5 tables | ~11 endpoints |
 | Module 10 - Billing | ✅ Completed | `src/modules/billing` | 12 tables | ~22 endpoints |
+| Module 11 - Reporting | ✅ Completed | `src/modules/reporting` | 12 tables | ~26 endpoints |
 
 ---
 
@@ -1022,8 +1023,12 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 ## Technical Notes
 
 - **Weight calculations**: Sử dụng `decimal.js` để đảm bảo độ chính xác
-- **Transaction atomicity**: Multi-step operations wrap trong `$transaction`
+- **Transaction atomicity**: Multi-step operations wrap trong `$transaction`:
+  - `weighbridge-ingest`: log + event_state
+  - `mobile-sync-batch`: batch + events  
+  - `ocr-confirmation`: snapshot + result status
 - **OCR confidence**: Per-field thresholds (BL/Vehicle: 90%, Others: 85%)
+- **Known Limitations (Phase 1)**: OCR/ERP mock, callback dispatch stub
 
 ---
 
@@ -1113,10 +1118,18 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 # Module 10: Billing & Commercial Control
 
 **Status:** ✅ Completed  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Code Path:** `src/modules/billing`  
 **Documentation:** [`docs/module-10-billing.md`](./module-10-billing.md)  
-**Database Docs:** [`prisma/docs/module-10-billing.md`](../prisma/docs/module-10-billing.md)
+**Database Docs:** [`prisma/docs/module-10-billing.md`](../prisma/docs/module-10-billing.md)  
+**Last Updated:** 2026-03-09
+
+### Recent Updates (v1.1.0)
+- Added `PermissionGuard` + `@Permission()` decorator to all endpoints
+- Added `InternalApiGuard` for `/internal/*` endpoints  
+- Fixed race conditions with `lockForUpdate` in state transitions
+- Added `StorageSnapshotService` for daily storage fee calculation
+- Added ERP push outbox entry on DN lock
 
 ## Database Tables (12 tables)
 
@@ -1217,5 +1230,106 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 | `BILLING.DN.LOCK` | Lock DN |
 | `BILLING.EXCEPTION.READ` | View exceptions |
 | `BILLING.EXCEPTION.RESOLVE` | Resolve exception |
+
+---
+
+# Module 11: Reporting, Audit & Go-Live Control
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/reporting`  
+**Documentation:** [`docs/module-11-reporting.md`](./module-11-reporting.md)  
+**Database Docs:** [`prisma/docs/module-11-reporting.md`](../prisma/docs/module-11-reporting.md)
+
+## Database Tables (12 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `rpt_report_catalog` | Catalog các report | Config |
+| `rpt_reconciliation_check` | Catalog các check reconciliation | Config |
+| `rpt_export_job` | Export job header | Export |
+| `rpt_export_job_event` | Export job events | Export |
+| `rpt_reconciliation_run` | Reconciliation run header | Reconciliation |
+| `rpt_reconciliation_result` | Reconciliation mismatch results | Reconciliation |
+| `rpt_reconciliation_resolution` | Resolution history | Reconciliation |
+| `rpt_go_live_gate` | Gate catalog | Go-Live |
+| `rpt_go_live_gate_status` | Effective gate status | Go-Live |
+| `rpt_go_live_signoff_history` | Sign-off history | Go-Live |
+| `rpt_report_run_log` | Report execution log | Logging |
+| `rpt_dashboard_cache` | Dashboard widget cache | Cache |
+
+## API Endpoints
+
+### Dashboard APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/reporting/dashboard/summary` | Dashboard widgets summary |
+| GET | `/api/v1/reporting/dashboard/widgets/:code` | Single widget data |
+
+### Inventory Report APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/reporting/inventory/on-hand` | On-hand report |
+| GET | `/api/v1/reporting/inventory/movement` | Movement history |
+| GET | `/api/v1/reporting/inventory/aging` | Aging report |
+| GET | `/api/v1/reporting/inventory/inbound-summary` | Inbound summary |
+| GET | `/api/v1/reporting/inventory/outbound-summary` | Outbound summary |
+| GET | `/api/v1/reporting/inventory/utilization` | Location utilization |
+
+### Reconciliation APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/reporting/reconciliation/run` | Trigger reconciliation |
+| GET | `/api/v1/reporting/reconciliation/results` | List results |
+| GET | `/api/v1/reporting/reconciliation/results/:id` | Get result detail |
+| POST | `/api/v1/reporting/reconciliation/results/:id/resolve` | Resolve mismatch |
+
+### Go-Live Control APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/reporting/go-live/status` | Overall readiness status |
+| POST | `/api/v1/reporting/go-live/check` | Run auto gate checks |
+| POST | `/api/v1/reporting/go-live/gates/:id/sign-off` | Manual sign-off |
+| GET | `/api/v1/reporting/go-live/history` | Sign-off history |
+
+### Export APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/reporting/exports` | Create export job |
+| GET | `/api/v1/reporting/exports/:id` | Get export status |
+| GET | `/api/v1/reporting/exports/:id/download` | Download file |
+| GET | `/api/v1/reporting/exports` | List user exports |
+
+## Module Dependencies
+
+### Module 11 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `AuditLog` | User activity report |
+| Module 1 | `Idempotency` | Reconciliation/export idempotency |
+| Module 2 | `MdOwner` | Scope filtering |
+| Module 2 | `MdWarehouse` | Scope filtering |
+| Module 2 | `MdItem` | Report dimensions |
+| Module 3 | `InventTrans`, `OnHand` | Inventory reports |
+| Module 4 | `Receipt*` | Inbound reports |
+| Module 5 | `Shipment*` | Outbound reports |
+| Module 7 | `WeWork*` | Work queue dashboard |
+| Module 10 | `BilEvent`, `BilDebitNote` | Billing reports |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `REPORTING.DASHBOARD.READ` | View dashboard |
+| `REPORTING.INVENTORY.READ` | View inventory reports |
+| `REPORTING.BILLING.READ` | View billing reports |
+| `REPORTING.AUDIT.READ` | View audit reports |
+| `REPORTING.RECONCILIATION.RUN` | Run reconciliation |
+| `REPORTING.RECONCILIATION.READ` | View reconciliation results |
+| `REPORTING.RECONCILIATION.RESOLVE` | Resolve mismatch |
+| `REPORTING.GOLIVE.READ` | View go-live status |
+| `REPORTING.GOLIVE.CHECK` | Run go-live checks |
+| `REPORTING.GOLIVE.SIGNOFF` | Sign-off gates |
+| `REPORTING.EXPORT.CREATE` | Create export jobs |
+| `REPORTING.EXPORT.READ` | View/download exports |
 
 ---
