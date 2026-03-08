@@ -1,9 +1,9 @@
 # Module 5: Outbound Operations — API Documentation
 
 **Module Path:** `src/modules/outbound`  
-**Status:** ✅ Implemented (Feedback Fixed v1)  
-**Version:** 1.1.0  
-**Last Updated:** 2026-03-08  
+**Status:** ✅ Implemented (Clean Architecture + RBAC)  
+**Version:** 2.0.0  
+**Last Updated:** 2026-03-09  
 
 ---
 
@@ -27,36 +27,64 @@ Module 5 quản lý toàn bộ **luồng xuất hàng (Outbound Operations)** t�
 |-------|-------------|--------|
 | HI-2 | Tolerance 4-level cascade lookup | ✅ Fixed |
 | HI-3 | Allocation wrapped in $transaction | ✅ Fixed |
-| HI-4 | decidedBy extracted from x-user-id header | ✅ Fixed |
+| HI-4 | decidedBy extracted from authenticated user | ✅ Fixed |
 | HI-6 | lockForUpdate called before allocation | ✅ Fixed |
+| HI-1 | Auto-transition to ALL_WEIGHED when all lines weighed | ✅ Fixed |
+| HI-5 | Line-level status history | ✅ Fixed |
+| CR-3 | RBAC guards on all controllers | ✅ Fixed |
 | CR-1 | Real M3 OnHand/Hold integration | 🔜 Pending M3 interface |
 | CR-2 | M3 Posting at SHIPPED | 🔜 Pending M3 interface |
-| CR-3 | RBAC guards on controllers | 🔜 Pending M1 AuthGuard |
 
 ---
 
-## 2. Cấu trúc Code
+## 2. Cấu trúc Code (Clean Architecture)
 
 ```
 src/modules/outbound/
 ├── outbound.module.ts              # Module definition
-├── controllers/
-│   ├── shipment.controller.ts      # CRUD shipment endpoints
-│   ├── allocation.controller.ts    # Allocation endpoints
-│   ├── weighing.controller.ts      # Weighing endpoints
-│   ├── approval.controller.ts      # Approval endpoints
-│   └── outbound-query.controller.ts # Query/Dashboard endpoints
-├── services/
-│   ├── shipment.service.ts         # Core shipment logic
-│   ├── shipment-command.service.ts # Command orchestration
-│   ├── shipment-query.service.ts   # Query operations
-│   ├── shipment-state-machine.service.ts # State transitions
-│   ├── shipment-line-state.service.ts    # Line state management
-│   ├── allocation.service.ts       # Allocation logic
-│   ├── weighing.service.ts         # Weighing orchestration
-│   ├── tolerance.service.ts        # Tolerance checking
-│   └── approval.service.ts         # Approval workflow
-├── repositories/
+│
+├── controllers/                    # HTTP layer
+│   ├── shipment.controller.ts      # CRUD shipment endpoints + RBAC
+│   ├── allocation.controller.ts    # Allocation endpoints + RBAC
+│   ├── weighing.controller.ts      # Weighing endpoints + RBAC
+│   ├── approval.controller.ts      # Approval endpoints + RBAC
+│   └── outbound-query.controller.ts # Query/Dashboard endpoints + RBAC
+│
+├── application/                    # Use cases (business orchestration)
+│   ├── createShipment.usecase.ts   # Create shipment with idempotency
+│   ├── allocateShipment.usecase.ts # FIFO allocation with M3 integration
+│   ├── shipShipment.usecase.ts     # Ship and M3 posting
+│   ├── receiveOutboundWeight.usecase.ts # Tare/Gross with tolerance
+│   └── index.ts
+│
+├── domain/                         # Business rules & state machine
+│   ├── outbound.state-machine.ts   # Shipment status transitions
+│   ├── outbound.policy.ts          # Business policies & rules
+│   ├── outbound.errors.ts          # Domain-specific errors
+│   └── index.ts
+│
+├── infra/                          # Data access (alternative pattern)
+│   ├── shipment.repository.ts
+│   ├── allocation.repository.ts
+│   ├── weighing.repository.ts
+│   ├── status-history.repository.ts
+│   ├── exception-log.repository.ts
+│   ├── approval.repository.ts
+│   ├── posting-link.repository.ts
+│   └── index.ts
+│
+├── services/                       # NestJS services (legacy pattern)
+│   ├── shipment.service.ts
+│   ├── shipment-command.service.ts
+│   ├── shipment-query.service.ts
+│   ├── shipment-state-machine.service.ts
+│   ├── shipment-line-state.service.ts
+│   ├── allocation.service.ts
+│   ├── weighing.service.ts
+│   ├── tolerance.service.ts
+│   └── approval.service.ts
+│
+├── repositories/                   # NestJS repositories
 │   ├── shipment-header.repository.ts
 │   ├── shipment-line.repository.ts
 │   ├── allocation-record.repository.ts
@@ -66,10 +94,18 @@ src/modules/outbound/
 │   ├── approval-decision.repository.ts
 │   ├── pick-work-link.repository.ts
 │   └── posting-link.repository.ts
+│
 └── dto/
     ├── create-shipment.dto.ts
     └── shipment-response.dto.ts
 ```
+
+### Architecture Notes:
+- **domain/**: Contains pure business logic, state machine, and error definitions
+- **application/**: Contains use cases that orchestrate domain logic
+- **infra/**: Contains Clean Architecture repositories (alternative to services/)
+- **services/**: NestJS services (existing pattern, still functional)
+- **controllers/**: All endpoints protected with AuthGuard + PermissionGuard
 
 ---
 
