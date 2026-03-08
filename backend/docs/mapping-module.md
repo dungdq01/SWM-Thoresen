@@ -8,6 +8,7 @@
 
 | Module | Status | Code Path | DB Tables | API Endpoints |
 |--------|--------|-----------|-----------|---------------|
+| Module Auth | ✅ Completed | `src/modules/auth` | 7 tables | 13 endpoints |
 | Module 1 - Foundation | ✅ Completed | `src/modules/foundation` | 14 tables | ~25 endpoints |
 | Module 2 - Master Data | ✅ Completed | `src/modules/master-data` | 17 tables | ~55 endpoints |
 | Module 3 - Inventory Core | ✅ Completed | `src/modules/inventory-core` | 10 tables | ~13 endpoints |
@@ -19,6 +20,75 @@
 | Module 9 - VAS / Bagging | ✅ Completed | `src/modules/vas` | 5 tables | ~11 endpoints |
 | Module 10 - Billing | ✅ Completed | `src/modules/billing` | 12 tables | ~22 endpoints |
 | Module 11 - Reporting | ✅ Completed | `src/modules/reporting` | 12 tables | ~26 endpoints |
+
+---
+
+# Module Auth: Authentication & Authorization
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/auth`  
+**Documentation:** [`docs/module-auth.md`](./module-auth.md)  
+**Database Docs:** [`prisma/docs/module-auth.md`](../prisma/docs/module-auth.md)
+
+## Database Tables (7 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `auth_local_credential` | Password hash và flags | Credential |
+| `auth_password_history` | Lịch sử password | Credential |
+| `auth_session` | Session tracking | Session |
+| `auth_refresh_token` | Refresh token với rotation | Session |
+| `auth_login_attempt` | Log login attempts | Security |
+| `auth_security_event` | Audit security events | Security |
+| `auth_account_lock` | Account lockout tracking | Security |
+
+## API Endpoints
+
+### Authentication
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/auth/login` | Login với username/password |
+| POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/logout` | Logout current session |
+| POST | `/api/v1/auth/logout-all` | Logout all sessions |
+
+### Profile & Context
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/auth/me` | Get current user profile |
+| GET | `/api/v1/auth/me/permissions` | Get permission snapshot |
+| POST | `/api/v1/auth/select-warehouse` | Select/switch warehouse context |
+
+### Session Management
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/auth/sessions` | List active sessions |
+| POST | `/api/v1/auth/sessions/:id/revoke` | Revoke specific session |
+
+### Password Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/auth/change-password` | Change own password |
+
+### Admin APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/admin/auth/users/:id/force-reset-password` | Admin reset password |
+| POST | `/api/v1/admin/auth/users/:id/unlock` | Admin unlock account |
+| POST | `/api/v1/admin/auth/users/:id/revoke-all-sessions` | Admin revoke all sessions |
+
+## Cross-Module Dependencies
+
+| Depends On | Table/Service | Usage |
+|------------|---------------|-------|
+| Module 1 | `app_user`, `role`, `permission`, `user_role` | User & RBAC data |
+| Module 2 | `md_warehouse` | Warehouse context validation |
+
+| Used By | Usage |
+|---------|-------|
+| All Modules | JWT validation via AuthGuard |
+| All Modules | Permission check via PermissionGuard |
+| All Modules | Warehouse scope filtering |
 
 ---
 

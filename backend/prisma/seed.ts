@@ -16,6 +16,7 @@ import {
   LocationStatus,
   ServiceGroup,
 } from '@prisma/client';
+import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
@@ -115,6 +116,25 @@ async function main() {
     },
   });
 
+  // Seed auth credentials for admin user
+  const adminPasswordHash = await argon2.hash('Admin@123', {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
+
+  await prisma.authLocalCredential.upsert({
+    where: { userId: admin.id },
+    update: { passwordHash: adminPasswordHash, mustChangePassword: false },
+    create: {
+      userId: admin.id,
+      passwordHash: adminPasswordHash,
+      passwordAlgo: 'ARGON2ID',
+      mustChangePassword: false,
+    },
+  });
+
   const governance = await prisma.appUser.upsert({
     where: { userCode: 'gov_manager' },
     update: { fullName: 'Governance Manager', isActive: true },
@@ -123,6 +143,25 @@ async function main() {
       username: 'gov_manager',
       fullName: 'Governance Manager',
       email: 'governance@swms.local',
+    },
+  });
+
+  // Seed auth credentials for governance user
+  const govPasswordHash = await argon2.hash('Gov@123456', {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
+
+  await prisma.authLocalCredential.upsert({
+    where: { userId: governance.id },
+    update: { passwordHash: govPasswordHash, mustChangePassword: false },
+    create: {
+      userId: governance.id,
+      passwordHash: govPasswordHash,
+      passwordAlgo: 'ARGON2ID',
+      mustChangePassword: false,
     },
   });
 
