@@ -3,8 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-08  
-> **Status:** ✅ Schema Complete (Feedback Round 2 - Score 8.0/10)
+> **Last Updated:** 2026-03-08 (FB-v2)
 
 ---
 
@@ -320,3 +319,30 @@ Khi volume tăng, cân nhắc partition theo tháng:
 - `receipt_status_history`
 - `receipt_exception_log`
 - `receipt_weighing_log`
+
+---
+
+## 6. Feedback Fixes Applied
+
+### 6.1 Concurrency & Transaction Safety
+
+| Issue | Description | Fix | Impact |
+|-------|-------------|-----|--------|
+| CR-2 | createReceipt race condition | Wrap trong `$transaction` | Data integrity |
+| HI-3 | Receipt number race | `pg_advisory_xact_lock` | Unique numbers |
+| HI-4 | Concurrent updates | `SELECT FOR UPDATE` | Prevent lost updates |
+
+### 6.2 Business Logic Fixes
+
+| Issue | Description | Fix | Impact |
+|-------|-------------|-----|--------|
+| HI-1 | BaggedPolicy dead code | Enable `overReceiptBlocked` | Over-receipt prevention |
+| HI-6 | Multi-line assumption | Guard `lines.length > 1` | Explicit constraint |
+
+### 6.3 Pending (Module Dependencies)
+
+| Issue | Description | Dependency |
+|-------|-------------|------------|
+| CR-1 | M3 PostingEngine | M3 interface ready |
+| HI-2 | Putaway workflow | M7 Work ready |
+| HI-5 | AuditLog integration | M1 LogService ready |
