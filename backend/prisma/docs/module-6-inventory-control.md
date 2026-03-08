@@ -1,7 +1,8 @@
 # Module 6: Inventory Control — Database Documentation
 
-**Version:** 1.0  
-**Ngày tạo:** 2025-01-08
+**Version:** 1.1  
+**Ngày tạo:** 2025-01-08  
+**Cập nhật:** 2025-03-09
 
 ---
 

@@ -7,6 +7,7 @@ const transferOrderRepo = require('../infra/transfer-order.repository');
 const validationService = require('./ic-validation.service');
 const stateMachine = require('./ic-state-machine.service');
 const postingAdapter = require('./ic-posting-adapter.service');
+const auditLogAdapter = require('./ic-audit-log.adapter');
 const statusHistoryRepo = require('../infra/ic-status-history.repository');
 const { validateTransferOrderLines } = require('../domain/ic.policy');
 const { IcTransferOrderStatus, IcTransferLineStatus, IcDocumentEntityType, IcExceptionType } = require('../domain/ic.enums');
@@ -22,7 +23,7 @@ async function createTransferOrder(data, requestContext) {
 
   const existing = await transferOrderRepo.findTransferOrderByExternalId(data.externalId);
   if (existing) {
-    throw new IcIdempotencyConflictError(data.externalId);
+    return { ...existing, idempotentReplay: true };
   }
 
   const lineErrors = validateTransferOrderLines(data.lines, data.fromWarehouseId, data.toWarehouseId);

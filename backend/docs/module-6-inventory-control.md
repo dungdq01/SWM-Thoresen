@@ -1,7 +1,8 @@
 # Module 6: Inventory Control — Backend Documentation
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Ngày tạo:** 2025-01-08  
+**Cập nhật:** 2025-03-09  
 **Code Path:** `backend/src/modules/inventory-control/`
 
 ---
@@ -29,7 +30,9 @@ Module 6 - Inventory Control là **lớp orchestration nghiệp vụ** cho các 
 ```
 src/modules/inventory-control/
 ├── index.js                           # Module entry point
-├── inventory-control.routes.js        # Route definitions
+├── inventory-control.routes.js        # Route definitions (with RBAC)
+├── middleware/
+│   └── auth.middleware.js             # Auth & Permission preHandlers
 ├── controllers/
 │   ├── onhand-inquiry.controller.js   # On-hand & movement history
 │   ├── move-order.controller.js       # Move order operations
@@ -48,7 +51,8 @@ src/modules/inventory-control/
 │   ├── reconciliation.service.js      # Reconciliation business logic
 │   ├── ic-validation.service.js       # Centralized validation
 │   ├── ic-state-machine.service.js    # State transitions
-│   └── ic-posting-adapter.service.js  # M3 posting adapter
+│   ├── ic-posting-adapter.service.js  # M3 posting adapter
+│   └── ic-audit-log.adapter.js        # M1 audit log adapter
 ├── infra/
 │   ├── move-order.repository.js
 │   ├── transfer-order.repository.js
@@ -439,12 +443,43 @@ OPEN → INVESTIGATING → RESOLVED → CLOSED
 |--------|------------|-------|
 | M1 Foundation | NumberSequence | Sinh document number |
 | M1 Foundation | ReasonCode | Validate reason codes |
-| M1 Foundation | Idempotency | External ID check |
+| M1 Foundation | AuthorizationService | RBAC, permission check |
+| M1 Foundation | LogService | Audit logging |
 | M2 Master Data | MdItem, MdOwner, MdWarehouse, MdLocation | Entity validation |
 | M2 Master Data | MdInventoryStatus | Status matrix |
 | M3 Inventory Core | PostingEngine | Post inventory transactions |
 | M3 Inventory Core | OnHand Query | Check available stock |
 | M3 Inventory Core | InventTrans Query | Movement history |
+
+---
+
+## 7.1 RBAC (Role-Based Access Control)
+
+Mọi route đều được bảo vệ bởi RBAC middleware. Cấu trúc permission codes:
+
+| Permission Code | Mô tả |
+|----------------|-------|
+| `IC.ONHAND.READ` | Tra cứu tồn kho |
+| `IC.MOVEMENT.READ` | Xem lịch sử biến động |
+| `IC.MOVE.CREATE` | Tạo move order |
+| `IC.MOVE.CONFIRM` | Xác nhận move order |
+| `IC.MOVE.EXECUTE` | Thực thi move order |
+| `IC.TRANSFER.CREATE` | Tạo transfer order |
+| `IC.TRANSFER.SHIP` | Ship transfer |
+| `IC.TRANSFER.RECEIVE` | Nhận transfer |
+| `IC.STATUS.CREATE` | Tạo status change |
+| `IC.STATUS.REVERSE` | Reverse status change |
+| `IC.CYCLECOUNT.CREATE` | Tạo cycle count |
+| `IC.CYCLECOUNT.APPROVE` | Duyệt cycle count |
+| `IC.CYCLECOUNT.POST` | Post cycle count |
+| `IC.ADJUSTMENT.CREATE` | Tạo adjustment |
+| `IC.ADJUSTMENT.APPROVE` | Duyệt adjustment |
+| `IC.ADJUSTMENT.POST` | Post adjustment |
+| `IC.RECONCILIATION.RUN` | Chạy reconciliation |
+| `IC.RECONCILIATION.RESOLVE` | Giải quyết reconciliation |
+
+**Files liên quan:**
+- `middleware/auth.middleware.js` → `authPreHandler()`, `permissionPreHandler()`
 
 ---
 
@@ -459,7 +494,23 @@ Mọi command API đều yêu cầu `external_id` unique:
 }
 ```
 
-- Retry cùng `external_id` trả về kết quả cũ, không tạo document mới
+**Behavior khi duplicate:**
+- Retry cùng `external_id` trả về kết quả cũ với flag `idempotentReplay: true`
+- HTTP Status: `200 OK` (không phải 409 Conflict)
+- Client có thể dùng flag này để biết đây là replay
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "moveNumber": "MOV-20250108-0001",
+    "status": "DRAFT",
+    "idempotentReplay": true
+  }
+}
+```
+
 - Scope: `(module_code, action_code, external_id)` unique
 
 ---
