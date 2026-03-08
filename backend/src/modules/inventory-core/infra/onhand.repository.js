@@ -82,6 +82,7 @@ class OnHandRepository {
 
   /**
    * Update on-hand quantities
+   * MD-2 Fix: Added rowVersion WHERE clause for optimistic locking defense
    */
   async updateQty(id, qtyChanges, tx = null) {
     const client = tx || this.prisma;
@@ -95,8 +96,11 @@ class OnHandRepository {
     const reservedQty = new Decimal(current.reservedQty).plus(qtyChanges.reservedDelta || 0);
     const availableQty = physicalQty.minus(reservedQty);
 
-    return client.onHand.update({
-      where: { id },
+    const updated = await client.onHand.updateMany({
+      where: { 
+        id,
+        rowVersion: current.rowVersion,
+      },
       data: {
         physicalQty: physicalQty.toFixed(3),
         reservedQty: reservedQty.toFixed(3),
@@ -106,6 +110,12 @@ class OnHandRepository {
         rowVersion: { increment: 1 },
       },
     });
+
+    if (updated.count === 0) {
+      throw new Error(`Optimistic lock failed for on_hand id=${id}. Row was modified by another transaction.`);
+    }
+
+    return client.onHand.findUnique({ where: { id } });
   }
 
   /**

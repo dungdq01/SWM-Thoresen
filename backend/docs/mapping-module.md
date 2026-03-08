@@ -11,7 +11,7 @@
 | Module 1 - Foundation | ✅ Completed | `src/modules/foundation` | 14 tables | ~25 endpoints |
 | Module 2 - Master Data | ✅ Completed | `src/modules/master-data` | 17 tables | ~55 endpoints |
 | Module 3 - Inventory Core | ✅ Completed | `src/modules/inventory-core` | 10 tables | ~13 endpoints |
-| Module 4 - Inbound | 🔜 Pending | `src/modules/inbound` | - | - |
+| Module 4 - Inbound | ✅ Completed | `src/modules/inbound` | 6 tables | ~14 endpoints |
 | Module 5 - Outbound | 🔜 Pending | `src/modules/outbound` | - | - |
 
 ---
@@ -275,12 +275,122 @@
 | POST | `/api/v1/inventory/holds/:holdId/release` | Release hold |
 | POST | `/api/v1/inventory/holds/:holdId/cancel` | Cancel hold |
 
+## Cross-Module Dependencies
+
+### Module 3 depends on:
+| Source Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 1 | `NumberSequence` | Sinh transId (TRX-*), holdNo (HLD-*) |
+| Module 1 | `ReasonCode` | Validate reason codes cho reversal/adjustment |
+| Module 2 | `MdWarehouse` | Dimension validation |
+| Module 2 | `MdLocation` | Dimension validation |
+| Module 2 | `MdOwner` | Dimension + transaction owner |
+| Module 2 | `MdInventoryStatus` | Dimension + allocatable check |
+| Module 2 | `MdItem` | Item validation |
+| Module 2 | `MdUom` | UOM validation |
+
+### Modules that depend on Module 3:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 4 | `PostingEngineService` | Post receipt inbound |
+| Module 5 | `PostingEngineService`, `HoldService` | Allocate + ship outbound |
+| Module 6 | `PostingEngineService` | Adjustment, status change, count |
+| Module 7 | `PostingEngineService` | Putaway, pick movement |
+| Module 9 | `PostingEngineService` | VAS consume/produce |
+| Module 10 | `DailyStorageSnapshot` | Billing input |
+| Module 11 | `InventTrans`, `OnHand` | Reporting queries |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INVENTORY.POSTING.CREATE` | Tạo inventory transaction |
+| `INVENTORY.REVERSAL.CREATE` | Reverse transaction |
+| `INVENTORY.ONHAND.READ` | Query on-hand |
+| `INVENTORY.HOLD.CREATE` | Tạo hold |
+| `INVENTORY.HOLD.READ` | Xem hold |
+| `INVENTORY.HOLD.RELEASE` | Release hold |
+| `INVENTORY.HOLD.CANCEL` | Cancel hold |
+| `INVENTORY.TRANSACTION.READ` | Xem transaction history |
+
 ---
 
 # Module 4: Inbound Operations
 
-**Status:** 🔜 Pending  
-**Code Path:** `src/modules/inbound` (planned)
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/inbound`  
+**Documentation:** [`docs/module-4-inbound.md`](./module-4-inbound.md)  
+**Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)
+
+## Database Tables (6 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `receipt_header` | Header phiếu nhận hàng | Runtime |
+| `receipt_line` | Dòng hàng trong receipt | Runtime |
+| `receipt_weighing_log` | Log cân weigh-in/weigh-out | Audit |
+| `receipt_status_history` | Lịch sử chuyển trạng thái | Audit |
+| `receipt_exception_log` | Log exception nghiệp vụ | Audit |
+| `receipt_integration_state` | Trạng thái sync với M3/M7/M10 | Control |
+
+## API Endpoints
+
+### Receipt Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inbound/receipts` | Tạo receipt mới |
+| GET | `/api/v1/inbound/receipts` | List receipts (paginated) |
+| GET | `/api/v1/inbound/receipts/:id` | Get receipt by ID |
+| GET | `/api/v1/inbound/receipts/:id/history` | Get status history |
+| POST | `/api/v1/inbound/receipts/:id/confirm` | Confirm receipt |
+| POST | `/api/v1/inbound/receipts/:id/cancel` | Cancel receipt |
+| POST | `/api/v1/inbound/receipts/:id/reweigh` | Reweigh receipt |
+| POST | `/api/v1/inbound/receipts/:id/close` | Close receipt |
+| POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing |
+
+### Weighing Events
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inbound/weigh-events/in` | Nhận weigh-in (gross) |
+| POST | `/api/v1/inbound/weigh-events/out` | Nhận weigh-out (tare) |
+
+### Dashboard
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/inbound/dashboard/summary` | Dashboard summary |
+
+## Cross-Module Dependencies
+
+### Module 4 depends on:
+| Source Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 1 | `NumberSequence` | Sinh receipt_number (RCV-*) |
+| Module 1 | `ReasonCode` | Validate reason codes |
+| Module 2 | `MdOwner` | Owner validation |
+| Module 2 | `MdVendor` | Vendor validation |
+| Module 2 | `MdItem` | Item validation + tolerance lookup |
+| Module 2 | `MdWarehouse` | Warehouse validation |
+| Module 2 | `MdLocation` | Location validation (type=RECEIVING) |
+| Module 2 | `MdOwnerItemPolicy` | Tolerance lookup priority |
+
+### Modules that depend on Module 4:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 7 | `CreatePutawayWork` | Tạo putaway work khi RECEIVED |
+| Module 10 | `InboundHandlingCaptured` | Capture billing event |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INBOUND.RECEIPT.CREATE` | Tạo receipt |
+| `INBOUND.RECEIPT.READ` | Xem receipt |
+| `INBOUND.RECEIPT.CONFIRM` | Confirm receipt |
+| `INBOUND.RECEIPT.CANCEL` | Cancel receipt |
+| `INBOUND.RECEIPT.REWEIGH` | Reweigh receipt |
+| `INBOUND.RECEIPT.CLOSE` | Close receipt |
+| `INBOUND.WEIGH.RECEIVE` | Nhận weigh events |
+| `INBOUND.DASHBOARD.READ` | Xem dashboard |
 
 ---
 

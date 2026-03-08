@@ -189,9 +189,10 @@ class PostingEngineService {
 
   /**
    * Update on-hand record
+   * MD-1 Fix: Removed redundant if/else condition
    */
   async updateOnHand(itemId, inventDimId, uomId, qtyChange, tx) {
-    const { onHand, created } = await this.onHandRepo.getOrCreate(
+    const { onHand } = await this.onHandRepo.getOrCreate(
       {
         itemId,
         inventDimId,
@@ -202,14 +203,6 @@ class PostingEngineService {
       },
       tx
     );
-
-    if (created && qtyChange.greaterThan(0)) {
-      return this.onHandRepo.updateQty(
-        onHand.id,
-        { physicalDelta: qtyChange.toFixed(3), isMovement: true },
-        tx
-      );
-    }
 
     return this.onHandRepo.updateQty(
       onHand.id,
