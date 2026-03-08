@@ -117,7 +117,7 @@ export class WeighbridgeDeviceService {
       await this.deviceRepo.updateLastSeen(device.deviceCode, device.lastSeenAt || new Date(), DeviceStatus.OFFLINE);
     }
 
-    return { offlineCount: offlineDevices.length, devices: offlineDevices.map(d => d.deviceCode) };
+    return { offlineCount: offlineDevices.length, devices: offlineDevices.map((d: { deviceCode: string }) => d.deviceCode) };
   }
 
   async getActiveDevices() {

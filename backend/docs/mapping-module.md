@@ -992,24 +992,37 @@ Module 8 là **integration backbone** của hệ thống SWM, chịu trách nhi�
 
 ## RBAC Permissions
 
+Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `PermissionGuard`.
+
 | Permission Code | Description |
 |-----------------|-------------|
 | `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events (agent) |
 | `INTEGRATION.WEIGHBRIDGE.READ` | View weighbridge logs |
 | `INTEGRATION.WEIGHBRIDGE.REPROCESS` | Reprocess callback |
+| `INTEGRATION.WEIGHBRIDGE_DEVICE.READ` | List weighbridge devices |
+| `INTEGRATION.WEIGHBRIDGE_DEVICE.HEARTBEAT` | Send device heartbeat |
 | `INTEGRATION.OCR.UPLOAD` | Upload OCR files |
 | `INTEGRATION.OCR.READ` | View OCR results |
 | `INTEGRATION.OCR.CONFIRM` | Confirm/correct OCR |
 | `INTEGRATION.OCR.LINK` | Link OCR to receipt |
+| `INTEGRATION.OCR.REJECT` | Reject OCR result |
 | `INTEGRATION.MOBILE_SYNC.SUBMIT` | Submit mobile batch |
 | `INTEGRATION.MOBILE_SYNC.READ` | View sync status |
 | `INTEGRATION.MOBILE_SYNC.REPLAY` | Replay failed events |
+| `INTEGRATION.ERP_PUSH.ENQUEUE` | Enqueue ERP push job |
 | `INTEGRATION.ERP_PUSH.READ` | View ERP push jobs |
 | `INTEGRATION.ERP_PUSH.RETRY` | Manual retry job |
 | `INTEGRATION.ERP_PUSH.CANCEL` | Cancel job |
-| `INTEGRATION.MONITORING.READ` | View dashboard |
+| `INTEGRATION.MONITORING.VIEW` | View monitoring dashboard |
+| `INTEGRATION.ALERT.READ` | View alerts |
 | `INTEGRATION.ALERT.ACKNOWLEDGE` | Acknowledge alert |
 | `INTEGRATION.ALERT.RESOLVE` | Resolve alert |
+
+## Technical Notes
+
+- **Weight calculations**: Sử dụng `decimal.js` để đảm bảo độ chính xác
+- **Transaction atomicity**: Multi-step operations wrap trong `$transaction`
+- **OCR confidence**: Per-field thresholds (BL/Vehicle: 90%, Others: 85%)
 
 ---
 

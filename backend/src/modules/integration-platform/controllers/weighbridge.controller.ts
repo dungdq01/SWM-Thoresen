@@ -1,4 +1,9 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { WeighbridgeIngestService } from '../services/weighbridge-ingest.service';
 import { WeighbridgeLogService } from '../services/weighbridge-log.service';
 import { WeighbridgeDeviceService } from '../services/weighbridge-device.service';
@@ -6,6 +11,7 @@ import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto } from '../dt
 import { WeighLogQueryDto } from '../dto/weighbridge/weigh-log-query.dto';
 
 @Controller('api/v1/integration/weighbridge')
+@UseGuards(AuthGuard, PermissionGuard)
 export class WeighbridgeController {
   constructor(
     private readonly ingestService: WeighbridgeIngestService,
@@ -15,14 +21,14 @@ export class WeighbridgeController {
 
   @Post('events')
   @HttpCode(HttpStatus.OK)
-  async ingestWeighEvent(@Body() dto: CreateWeighEventDto) {
-    // In production, get createdBy from auth context
-    const createdBy = 'system-agent';
-    return this.ingestService.ingestWeighEvent(dto, createdBy);
+  @Permission('INTEGRATION.WEIGHBRIDGE.INGEST')
+  async ingestWeighEvent(@Body() dto: CreateWeighEventDto, @CurrentUser() user: RequestUser) {
+    return this.ingestService.ingestWeighEvent(dto, user.id);
   }
 
   @Post('heartbeat')
   @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE_DEVICE.HEARTBEAT')
   async heartbeat(@Body() dto: HeartbeatDto) {
     return this.deviceService.processHeartbeat({
       deviceCode: dto.deviceCode,
@@ -35,6 +41,7 @@ export class WeighbridgeController {
   }
 
   @Get('logs')
+  @Permission('INTEGRATION.WEIGHBRIDGE.READ')
   async getLogs(@Query() query: WeighLogQueryDto) {
     return this.logService.getLogs({
       scaleDeviceId: query.scaleDeviceId,
@@ -52,22 +59,24 @@ export class WeighbridgeController {
   }
 
   @Get('logs/:id')
+  @Permission('INTEGRATION.WEIGHBRIDGE.READ')
   async getLogById(@Param('id') id: string) {
     return this.logService.getLogById(id);
   }
 
   @Post('events/:id/reprocess')
   @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE.REPROCESS')
   async reprocessCallback(
     @Param('id') id: string,
     @Body() dto: ReprocessWeighEventDto,
+    @CurrentUser() user: RequestUser,
   ) {
-    // In production, get userId from auth context
-    const userId = 'admin-user';
-    return this.ingestService.reprocessCallback(id, userId, dto.reasonCode);
+    return this.ingestService.reprocessCallback(id, user.id, dto.reasonCode);
   }
 
   @Get('devices')
+  @Permission('INTEGRATION.WEIGHBRIDGE_DEVICE.READ')
   async getDevices(
     @Query('warehouseId') warehouseId?: string,
     @Query('isActive') isActive?: string,

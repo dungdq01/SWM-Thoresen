@@ -1,30 +1,72 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { IsString, IsOptional, IsUUID, IsArray, IsNumber, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { MobileSyncBatchService, SubmitBatchParams } from '../services/mobile-sync-batch.service';
 import { MobileSyncDispatchService } from '../services/mobile-sync-dispatch.service';
 
+class SyncEventDto {
+  @IsString()
+  eventExternalId!: string;
+
+  @IsString()
+  eventType!: string;
+
+  @IsOptional()
+  @IsUUID()
+  workId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  workLineId?: string;
+
+  @IsString()
+  sourceModule!: string;
+
+  @IsString()
+  deviceEventTime!: string;
+
+  @IsNumber()
+  sequenceNo!: number;
+
+  payload!: Record<string, unknown>;
+}
+
 class SubmitBatchDto {
+  @IsString()
   batchId!: string;
+
+  @IsString()
   deviceId!: string;
+
+  @IsUUID()
   keeperUserId!: string;
+
+  @IsOptional()
+  @IsString()
   appVersion?: string;
+
+  @IsUUID()
   correlationId!: string;
-  events!: Array<{
-    eventExternalId: string;
-    eventType: string;
-    workId?: string;
-    workLineId?: string;
-    sourceModule: string;
-    deviceEventTime: string;
-    sequenceNo: number;
-    payload: Record<string, unknown>;
-  }>;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SyncEventDto)
+  events!: SyncEventDto[];
 }
 
 class ReplayEventDto {
+  @IsOptional()
+  @IsString()
   reason?: string;
 }
 
 @Controller('api/v1/integration/mobile-sync')
+@UseGuards(AuthGuard, PermissionGuard)
 export class MobileSyncController {
   constructor(
     private readonly batchService: MobileSyncBatchService,
@@ -32,11 +74,13 @@ export class MobileSyncController {
   ) {}
 
   @Post('batches')
+  @Permission('INTEGRATION.MOBILE_SYNC.SUBMIT')
   async submitBatch(@Body() dto: SubmitBatchDto) {
     return this.batchService.submitBatch(dto);
   }
 
   @Get('batches')
+  @Permission('INTEGRATION.MOBILE_SYNC.READ')
   async getBatches(
     @Query('deviceId') deviceId?: string,
     @Query('keeperUserId') keeperUserId?: string,
@@ -58,19 +102,21 @@ export class MobileSyncController {
   }
 
   @Get('batches/:id')
+  @Permission('INTEGRATION.MOBILE_SYNC.READ')
   async getBatchById(@Param('id') id: string) {
     return this.batchService.getBatchById(id);
   }
 
   @Get('events/:id')
+  @Permission('INTEGRATION.MOBILE_SYNC.READ')
   async getEventById(@Param('id') id: string) {
     return this.batchService.getEventById(id);
   }
 
   @Post('events/:id/replay')
   @HttpCode(HttpStatus.OK)
-  async replayEvent(@Param('id') id: string, @Body() dto: ReplayEventDto) {
-    const userId = 'admin'; // In production, from auth context
-    return this.dispatchService.replayEvent(id, userId);
+  @Permission('INTEGRATION.MOBILE_SYNC.REPLAY')
+  async replayEvent(@Param('id') id: string, @Body() dto: ReplayEventDto, @CurrentUser() user: RequestUser) {
+    return this.dispatchService.replayEvent(id, user.id);
   }
 }

@@ -1,37 +1,80 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { IsString, IsOptional, IsUUID, IsNumber } from 'class-validator';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { OcrUploadService } from '../services/ocr-upload.service';
 import { OcrExtractService } from '../services/ocr-extract.service';
 import { OcrConfirmationService, ConfirmOcrParams, LinkOcrParams } from '../services/ocr-confirmation.service';
 import { v4 as uuidv4 } from 'uuid';
 
 class UploadOcrDto {
+  @IsString()
   imagePath!: string;
+
+  @IsOptional()
+  @IsString()
   providerName?: string;
+
+  @IsOptional()
+  @IsUUID()
   warehouseId?: string;
 }
 
 class ConfirmOcrDto {
+  @IsOptional()
+  @IsString()
   confirmedBlNumber?: string;
+
+  @IsOptional()
+  @IsString()
   confirmedVehicleNumber?: string;
+
+  @IsOptional()
+  @IsString()
   confirmedProductName?: string;
+
+  @IsOptional()
+  @IsString()
   confirmedVesselName?: string;
+
+  @IsOptional()
+  @IsNumber()
   confirmedQty?: number;
+
+  @IsOptional()
+  @IsString()
   confirmedQtyUom?: string;
+
+  @IsOptional()
   corrections?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsString()
   remarks?: string;
 }
 
 class LinkOcrDto {
+  @IsUUID()
   receiptId!: string;
+
+  @IsString()
   linkMethod!: string;
+
+  @IsOptional()
+  @IsUUID()
   correlationId?: string;
 }
 
 class RejectOcrDto {
+  @IsString()
   reason!: string;
 }
 
 @Controller('api/v1/integration/ocr')
+@UseGuards(AuthGuard, PermissionGuard)
 export class OcrController {
   constructor(
     private readonly uploadService: OcrUploadService,
@@ -40,9 +83,10 @@ export class OcrController {
   ) {}
 
   @Post('uploads')
-  async uploadForOcr(@Body() dto: UploadOcrDto) {
+  @Permission('INTEGRATION.OCR.UPLOAD')
+  async uploadForOcr(@Body() dto: UploadOcrDto, @CurrentUser() user: RequestUser) {
     const correlationId = uuidv4();
-    const createdBy = 'operator'; // In production, from auth context
+    const createdBy = user.id;
 
     const result = await this.uploadService.uploadForOcr({
       imagePath: dto.imagePath,
@@ -61,6 +105,7 @@ export class OcrController {
   }
 
   @Get('results')
+  @Permission('INTEGRATION.OCR.READ')
   async getResults(
     @Query('status') status?: string,
     @Query('warehouseId') warehouseId?: string,
@@ -82,19 +127,21 @@ export class OcrController {
   }
 
   @Get('results/:id')
+  @Permission('INTEGRATION.OCR.READ')
   async getResultById(@Param('id') id: string) {
     return this.uploadService.getResultById(id);
   }
 
   @Post('results/:id/confirm')
   @HttpCode(HttpStatus.OK)
-  async confirmResult(@Param('id') id: string, @Body() dto: ConfirmOcrDto) {
-    const confirmedBy = 'operator'; // In production, from auth context
-    return this.confirmationService.confirmOcrResult(id, dto, confirmedBy);
+  @Permission('INTEGRATION.OCR.CONFIRM')
+  async confirmResult(@Param('id') id: string, @Body() dto: ConfirmOcrDto, @CurrentUser() user: RequestUser) {
+    return this.confirmationService.confirmOcrResult(id, dto, user.id);
   }
 
   @Post('results/:id/link')
   @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.OCR.LINK')
   async linkToReceipt(@Param('id') id: string, @Body() dto: LinkOcrDto) {
     return this.confirmationService.linkToReceipt(id, {
       receiptId: dto.receiptId,
@@ -105,8 +152,8 @@ export class OcrController {
 
   @Post('results/:id/reject')
   @HttpCode(HttpStatus.OK)
-  async rejectResult(@Param('id') id: string, @Body() dto: RejectOcrDto) {
-    const rejectedBy = 'operator'; // In production, from auth context
-    return this.confirmationService.rejectOcrResult(id, dto.reason, rejectedBy);
+  @Permission('INTEGRATION.OCR.REJECT')
+  async rejectResult(@Param('id') id: string, @Body() dto: RejectOcrDto, @CurrentUser() user: RequestUser) {
+    return this.confirmationService.rejectOcrResult(id, dto.reason, user.id);
   }
 }
