@@ -14,6 +14,7 @@
 | Module 4 - Inbound | ✅ Completed | `src/modules/inbound` | 6 tables | ~14 endpoints |
 | Module 5 - Outbound | ✅ Completed | `src/modules/outbound` | 10 tables | ~18 endpoints |
 | Module 6 - Inventory Control | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
+| Module 7 - Work Execution | ✅ Completed | `src/modules/work-execution` | 10 tables | ~20 endpoints |
 
 ---
 
@@ -772,5 +773,106 @@ src/modules/inventory-control/
 | `IC.RECON.RUN` | Run reconciliation |
 | `IC.RECON.ASSIGN` | Assign reviewer |
 | `IC.RECON.RESOLVE` | Resolve issue |
+
+---
+
+# Module 7: Work Execution & Mobile Operations
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/work-execution`  
+**Documentation:** [`docs/module-7-work-execution.md`](./module-7-work-execution.md)  
+**Database Docs:** [`prisma/docs/module-7-work-execution.md`](../prisma/docs/module-7-work-execution.md)
+
+## Database Tables (10 tables)
+
+| Table | Description | Group |
+|-------|-------------|-------|
+| `we_work_header` | Container work chính | Runtime Core |
+| `we_work_line` | Từng dòng thực thi | Runtime Core |
+| `we_work_assignment_history` | Lịch sử claim/release | Runtime Core |
+| `we_work_status_history` | Lịch sử status changes | Runtime Core |
+| `we_work_posting_link` | Liên kết M3 posting | Runtime Core |
+| `we_work_event_log` | Event audit log | Trace |
+| `we_work_exception` | Exception tracking | Trace |
+| `we_mobile_sync_batch` | Mobile sync batches | Mobile |
+| `we_mobile_sync_event` | Từng event trong batch | Mobile |
+| `we_work_outbox_event` | Outbox cho callbacks | Integration |
+
+## API Endpoints
+
+### Query APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/works` | List works (dashboard) |
+| GET | `/api/v1/works/:id` | Get work detail |
+| GET | `/api/v1/works/:id/history` | Get work history |
+| GET | `/api/v1/works/:id/exceptions` | Get work exceptions |
+| GET | `/api/v1/works/dashboard/summary` | Dashboard summary |
+
+### Command APIs - Header Level
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/works/:id/claim` | Claim work |
+| POST | `/api/v1/works/:id/release` | Release work |
+| POST | `/api/v1/works/:id/start` | Start work |
+| POST | `/api/v1/works/:id/cancel` | Cancel work |
+
+### Command APIs - Line Level
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/works/:id/lines/:lineNum/start` | Start line |
+| POST | `/api/v1/works/:id/lines/:lineNum/complete` | Complete line |
+| POST | `/api/v1/works/:id/lines/:lineNum/skip` | Skip line |
+| POST | `/api/v1/works/:id/manager-override-complete` | Manager override |
+
+### Mobile APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/mobile/works/available` | Available works to claim |
+| GET | `/api/v1/mobile/works/my` | My claimed works |
+| POST | `/api/v1/mobile/scan/validate` | Validate QR scan |
+| POST | `/api/v1/mobile/works/sync` | Batch sync offline events |
+
+### Internal API
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/internal/works/generate` | Generate work from trigger |
+
+## Module Dependencies
+
+### Module 7 depends on:
+| Source Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 1 | `NumberSequence` | Sinh work_id (WRK-*) |
+| Module 1 | `ReasonCode` | Validate reason codes |
+| Module 1 | `AuditLog` | Audit trail |
+| Module 1 | `Idempotency` | External ID check |
+| Module 2 | `MdWarehouse` | Warehouse validation |
+| Module 2 | `MdLocation` | Location validation |
+| Module 2 | `MdItem` | Item validation |
+| Module 2 | `MdOwner` | Owner validation |
+| Module 3 | `PostingEngine` | Post movement inventory |
+
+### Modules that depend on Module 7:
+| Target Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 4 | `PutawayCompleted` | Callback khi putaway xong |
+| Module 5 | `PickCompleted` | Callback khi pick xong |
+| Module 6 | `MoveCompleted` | Callback khi move xong |
+
+## RBAC Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `WORK.EXECUTION.READ` | Xem work |
+| `WORK.EXECUTION.CLAIM` | Claim/Release work |
+| `WORK.EXECUTION.START` | Start work/line |
+| `WORK.EXECUTION.COMPLETE` | Complete line |
+| `WORK.EXECUTION.SKIP` | Skip line |
+| `WORK.EXECUTION.CANCEL` | Cancel work |
+| `WORK.EXECUTION.OVERRIDE` | Manager override |
+| `WORK.EXECUTION.GENERATE` | Generate work từ trigger |
+| `WORK.MOBILE.SYNC` | Mobile batch sync |
+| `WORK.DASHBOARD.READ` | View dashboard |
 
 ---

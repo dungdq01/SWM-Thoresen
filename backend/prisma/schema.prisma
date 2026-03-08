@@ -2499,3 +2499,386 @@ model IcExceptionLog {
   @@index([exceptionType, status, createdAt(sort: Desc)])
   @@map("ic_exception_log")
 }
+
+// ========== Module 7: Work Execution & Mobile Operations ==========
+
+enum WeWorkType {
+  PUTAWAY
+  PICK
+  MOVE
+  TRANSFER_PICK
+  TRANSFER_PUT
+}
+
+enum WeWorkStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WeWorkLineStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  CANCELLED
+}
+
+enum WeStepType {
+  PUT
+  PICK
+  MOVE
+  TRANSFER_PICK
+  TRANSFER_PUT
+}
+
+enum WePostingStatus {
+  PENDING
+  POSTED
+  FAILED
+}
+
+enum WeAssignmentMode {
+  SELF_CLAIM
+  DIRECTED
+}
+
+enum WeAssignmentAction {
+  CLAIM
+  RELEASE
+  REASSIGN
+}
+
+enum WeStatusObjectType {
+  HEADER
+  LINE
+}
+
+enum WeTriggerAction {
+  CREATE
+  CLAIM
+  RELEASE
+  START
+  COMPLETE
+  SKIP
+  CANCEL
+  OVERRIDE
+}
+
+enum WeExceptionType {
+  SHORT_PICK
+  LOCATION_MISMATCH
+  ITEM_NOT_FOUND
+  SYNC_CONFLICT
+  POSTING_FAILED
+}
+
+enum WeExceptionSeverity {
+  INFO
+  WARN
+  BLOCKER
+}
+
+enum WeExceptionStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum WeSyncEventType {
+  START_LINE
+  COMPLETE_LINE
+  SKIP_LINE
+}
+
+enum WeSyncResult {
+  PENDING
+  SUCCESS
+  DUPLICATE
+  CONFLICT
+  REJECTED
+}
+
+enum WeSyncBatchStatus {
+  RECEIVED
+  PROCESSING
+  PARTIAL
+  SUCCESS
+  FAILED
+}
+
+enum WeOutboxStatus {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+enum WeSourceModule {
+  M4
+  M5
+  M6
+  MANUAL
+}
+
+enum WeSourceType {
+  RECEIPT
+  SHIPMENT
+  MOVE_ORDER
+  TRANSFER_ORDER
+}
+
+model WeWorkHeader {
+  id               String           @id @default(uuid()) @db.Uuid
+  workId           String           @unique @map("work_id") @db.VarChar(40)
+  workType         WeWorkType       @map("work_type")
+  status           WeWorkStatus     @default(OPEN)
+  priorityNo       Int              @default(50) @map("priority_no")
+  warehouseId      String           @map("warehouse_id") @db.Uuid
+  zoneId           String?          @map("zone_id") @db.Uuid
+  sourceModule     WeSourceModule   @map("source_module")
+  sourceType       WeSourceType     @map("source_type")
+  sourceRefId      String           @map("source_ref_id") @db.VarChar(50)
+  sourceRefLineId  String?          @map("source_ref_line_id") @db.VarChar(50)
+  sourceOwnerId    String?          @map("source_owner_id") @db.Uuid
+  assignedTo       String?          @map("assigned_to") @db.Uuid
+  assignedAt       DateTime?        @map("assigned_at")
+  startedAt        DateTime?        @map("started_at")
+  completedAt      DateTime?        @map("completed_at")
+  cancelledAt      DateTime?        @map("cancelled_at")
+  cancelReasonCode String?          @map("cancel_reason_code") @db.VarChar(50)
+  assignmentMode   WeAssignmentMode @default(SELF_CLAIM) @map("assignment_mode")
+  sourceDocVersion BigInt?          @map("source_doc_version")
+  externalId       String           @unique @map("external_id") @db.VarChar(120)
+  correlationId    String           @map("correlation_id") @db.Uuid
+  sourceApp        SourceApp        @map("source_app")
+  versionNo        BigInt           @default(0) @map("version_no")
+  createdBy        String?          @map("created_by") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedBy        String?          @map("updated_by") @db.Uuid
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  lines              WeWorkLine[]
+  assignmentHistory  WeWorkAssignmentHistory[]
+  statusHistory      WeWorkStatusHistory[]
+  eventLogs          WeWorkEventLog[]
+  exceptions         WeWorkException[]
+  outboxEvents       WeWorkOutboxEvent[]
+
+  @@unique([sourceModule, sourceType, sourceRefId, sourceRefLineId, workType], name: "we_work_source_unique")
+  @@index([status, warehouseId, workType, priorityNo, createdAt(sort: Desc)])
+  @@index([assignedTo, status, warehouseId])
+  @@index([sourceModule, sourceRefId, workType])
+  @@map("we_work_header")
+}
+
+model WeWorkLine {
+  id                  String           @id @default(uuid()) @db.Uuid
+  workHeaderId        String           @map("work_header_id") @db.Uuid
+  lineNum             Int              @map("line_num")
+  stepType            WeStepType       @map("step_type")
+  status              WeWorkLineStatus @default(OPEN)
+  itemId              String           @map("item_id") @db.Uuid
+  ownerId             String           @map("owner_id") @db.Uuid
+  fromWarehouseId     String?          @map("from_warehouse_id") @db.Uuid
+  fromLocationId      String?          @map("from_location_id") @db.Uuid
+  toWarehouseId       String?          @map("to_warehouse_id") @db.Uuid
+  toLocationId        String?          @map("to_location_id") @db.Uuid
+  expectedQty         Decimal          @map("expected_qty") @db.Decimal(18, 3)
+  actualQty           Decimal?         @map("actual_qty") @db.Decimal(18, 3)
+  varianceQty         Decimal?         @map("variance_qty") @db.Decimal(18, 3)
+  uom                 String           @db.VarChar(20)
+  inventoryStatusFrom String?          @map("inventory_status_from") @db.VarChar(30)
+  inventoryStatusTo   String?          @map("inventory_status_to") @db.VarChar(30)
+  scannedLocationCode String?          @map("scanned_location_code") @db.VarChar(50)
+  scannedLocationId   String?          @map("scanned_location_id") @db.Uuid
+  reasonCode          String?          @map("reason_code") @db.VarChar(50)
+  evidenceText        String?          @map("evidence_text") @db.Text
+  startedAt           DateTime?        @map("started_at")
+  completedAt         DateTime?        @map("completed_at")
+  completedBy         String?          @map("completed_by") @db.Uuid
+  postingStatus       WePostingStatus  @default(PENDING) @map("posting_status")
+  postingRefType      String?          @map("posting_ref_type") @db.VarChar(30)
+  postingRefId        String?          @map("posting_ref_id") @db.VarChar(50)
+  postingErrorCode    String?          @map("posting_error_code") @db.VarChar(50)
+  postingErrorMessage String?          @map("posting_error_message") @db.Text
+  externalId          String?          @unique @map("external_id") @db.VarChar(120)
+  versionNo           BigInt           @default(0) @map("version_no")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  header       WeWorkHeader          @relation(fields: [workHeaderId], references: [id])
+  postingLink  WeWorkPostingLink?
+  statusHistory WeWorkStatusHistory[]
+  eventLogs    WeWorkEventLog[]
+  exceptions   WeWorkException[]
+
+  @@unique([workHeaderId, lineNum])
+  @@index([workHeaderId, status, lineNum])
+  @@index([scannedLocationId])
+  @@map("we_work_line")
+}
+
+model WeWorkAssignmentHistory {
+  id           String             @id @default(uuid()) @db.Uuid
+  workHeaderId String             @map("work_header_id") @db.Uuid
+  actionType   WeAssignmentAction @map("action_type")
+  fromUserId   String?            @map("from_user_id") @db.Uuid
+  toUserId     String?            @map("to_user_id") @db.Uuid
+  reasonCode   String?            @map("reason_code") @db.VarChar(50)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  createdBy    String?            @map("created_by") @db.Uuid
+
+  header WeWorkHeader @relation(fields: [workHeaderId], references: [id])
+
+  @@index([workHeaderId, createdAt(sort: Desc)])
+  @@map("we_work_assignment_history")
+}
+
+model WeWorkStatusHistory {
+  id            String             @id @default(uuid()) @db.Uuid
+  objectType    WeStatusObjectType @map("object_type")
+  objectId      String             @map("object_id") @db.Uuid
+  fromStatus    String?            @map("from_status") @db.VarChar(20)
+  toStatus      String             @map("to_status") @db.VarChar(20)
+  triggerAction WeTriggerAction    @map("trigger_action")
+  reasonCode    String?            @map("reason_code") @db.VarChar(50)
+  remark        String?            @db.Text
+  createdAt     DateTime           @default(now()) @map("created_at")
+  createdBy     String?            @map("created_by") @db.Uuid
+  workHeaderId  String?            @map("work_header_id") @db.Uuid
+  workLineId    String?            @map("work_line_id") @db.Uuid
+
+  header WeWorkHeader? @relation(fields: [workHeaderId], references: [id])
+  line   WeWorkLine?   @relation(fields: [workLineId], references: [id])
+
+  @@index([objectType, objectId, createdAt(sort: Desc)])
+  @@map("we_work_status_history")
+}
+
+model WeWorkPostingLink {
+  id                 String          @id @default(uuid()) @db.Uuid
+  workLineId         String          @unique @map("work_line_id") @db.Uuid
+  postingModule      String          @default("M3") @map("posting_module") @db.VarChar(20)
+  postingRequestType String          @map("posting_request_type") @db.VarChar(30)
+  postingRefId       String?         @map("posting_ref_id") @db.VarChar(50)
+  postingStatus      WePostingStatus @default(PENDING) @map("posting_status")
+  postedAt           DateTime?       @map("posted_at")
+  errorCode          String?         @map("error_code") @db.VarChar(50)
+  errorMessage       String?         @map("error_message") @db.Text
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  line WeWorkLine @relation(fields: [workLineId], references: [id])
+
+  @@map("we_work_posting_link")
+}
+
+model WeWorkEventLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  workHeaderId  String?  @map("work_header_id") @db.Uuid
+  workLineId    String?  @map("work_line_id") @db.Uuid
+  eventType     String   @map("event_type") @db.VarChar(40)
+  eventPayload  Json     @map("event_payload")
+  correlationId String   @map("correlation_id") @db.Uuid
+  sourceApp     SourceApp @map("source_app")
+  createdAt     DateTime @default(now()) @map("created_at")
+  createdBy     String?  @map("created_by") @db.Uuid
+
+  header WeWorkHeader? @relation(fields: [workHeaderId], references: [id])
+  line   WeWorkLine?   @relation(fields: [workLineId], references: [id])
+
+  @@index([workHeaderId, createdAt(sort: Desc)])
+  @@index([workLineId, createdAt(sort: Desc)])
+  @@index([eventType, createdAt(sort: Desc)])
+  @@map("we_work_event_log")
+}
+
+model WeWorkException {
+  id             String              @id @default(uuid()) @db.Uuid
+  workHeaderId   String?             @map("work_header_id") @db.Uuid
+  workLineId     String?             @map("work_line_id") @db.Uuid
+  exceptionType  WeExceptionType     @map("exception_type")
+  severity       WeExceptionSeverity
+  status         WeExceptionStatus   @default(OPEN)
+  reasonCode     String?             @map("reason_code") @db.VarChar(50)
+  detailText     String?             @map("detail_text") @db.Text
+  resolutionText String?             @map("resolution_text") @db.Text
+  resolvedBy     String?             @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime?           @map("resolved_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  createdBy      String?             @map("created_by") @db.Uuid
+
+  header WeWorkHeader? @relation(fields: [workHeaderId], references: [id])
+  line   WeWorkLine?   @relation(fields: [workLineId], references: [id])
+
+  @@index([status, exceptionType, createdAt(sort: Desc)])
+  @@index([workHeaderId, status])
+  @@index([workLineId, status])
+  @@map("we_work_exception")
+}
+
+model WeMobileSyncBatch {
+  id             String            @id @default(uuid()) @db.Uuid
+  batchNo        String            @unique @map("batch_no") @db.VarChar(40)
+  deviceId       String            @map("device_id") @db.VarChar(80)
+  userId         String            @map("user_id") @db.Uuid
+  syncStatus     WeSyncBatchStatus @default(RECEIVED) @map("sync_status")
+  eventCount     Int               @map("event_count")
+  successCount   Int               @default(0) @map("success_count")
+  duplicateCount Int               @default(0) @map("duplicate_count")
+  conflictCount  Int               @default(0) @map("conflict_count")
+  correlationId  String            @map("correlation_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+  processedAt    DateTime?         @map("processed_at")
+
+  events WeMobileSyncEvent[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([syncStatus, createdAt(sort: Desc)])
+  @@map("we_mobile_sync_batch")
+}
+
+model WeMobileSyncEvent {
+  id               String          @id @default(uuid()) @db.Uuid
+  syncBatchId      String          @map("sync_batch_id") @db.Uuid
+  externalId       String          @unique @map("external_id") @db.VarChar(120)
+  deviceSequenceNo BigInt          @map("device_sequence_no")
+  eventType        WeSyncEventType @map("event_type")
+  workId           String          @map("work_id") @db.VarChar(40)
+  workLineId       String?         @map("work_line_id") @db.Uuid
+  eventPayload     Json            @map("event_payload")
+  processingResult WeSyncResult    @default(PENDING) @map("processing_result")
+  resultMessage    String?         @map("result_message") @db.Text
+  processedAt      DateTime?       @map("processed_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  batch WeMobileSyncBatch @relation(fields: [syncBatchId], references: [id])
+
+  @@index([syncBatchId, deviceSequenceNo])
+  @@index([workId, eventType])
+  @@map("we_mobile_sync_event")
+}
+
+model WeWorkOutboxEvent {
+  id             String         @id @default(uuid()) @db.Uuid
+  aggregateType  String         @default("WORK") @map("aggregate_type") @db.VarChar(30)
+  aggregateId    String         @map("aggregate_id") @db.Uuid
+  eventType      String         @map("event_type") @db.VarChar(40)
+  targetModule   String         @map("target_module") @db.VarChar(20)
+  payload        Json
+  deliveryStatus WeOutboxStatus @default(PENDING) @map("delivery_status")
+  retryCount     Int            @default(0) @map("retry_count")
+  nextRetryAt    DateTime?      @map("next_retry_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  sentAt         DateTime?      @map("sent_at")
+  workHeaderId   String?        @map("work_header_id") @db.Uuid
+
+  header WeWorkHeader? @relation(fields: [workHeaderId], references: [id])
+
+  @@index([deliveryStatus, nextRetryAt])
+  @@index([aggregateId, eventType])
+  @@map("we_work_outbox_event")
+}
+
