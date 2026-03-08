@@ -870,6 +870,7 @@ src/modules/inventory-control/
 | Module 2 | `MdItem` | Item validation |
 | Module 2 | `MdOwner` | Owner validation |
 | Module 3 | `PostingEngine` | Post movement inventory |
+| Module 3 | `ReversalEngine` | Reverse posted transactions (HI-4 fix) |
 
 ### Modules that depend on Module 7:
 | Target Module | Dependency | Usage |

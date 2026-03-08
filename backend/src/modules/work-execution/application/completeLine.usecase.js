@@ -89,8 +89,23 @@ class CompleteLineUseCase {
       postingRequestType: getPostingRequestType(header.workType),
       postingRefId: postingResult.postingRefId,
       postingStatus: postingResult.success ? POSTING_STATUS.POSTED : POSTING_STATUS.FAILED,
-      postedAt: new Date(),
+      postedAt: postingResult.success ? new Date() : null,
+      errorCode: postingResult.success ? null : 'POSTING_FAILED',
+      errorMessage: postingResult.success ? null : postingResult.errorMessage,
     }, tx);
+
+    if (!postingResult.success) {
+      await this.workExceptionRepo.create({
+        id: uuidv4(),
+        workHeaderId: header.id,
+        workLineId: line.id,
+        exceptionType: EXCEPTION_TYPE.POSTING_FAILED,
+        severity: EXCEPTION_SEVERITY.BLOCKER,
+        status: 'OPEN',
+        detailText: `Inventory posting failed: ${postingResult.errorMessage || 'Unknown error'}`,
+        createdBy: context.userId,
+      }, tx);
+    }
 
     await this.workEventRepo.createStatusHistory({
       id: uuidv4(),

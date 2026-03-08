@@ -22,6 +22,7 @@ backend/src/modules/work-execution/
 ├── work-execution.routes.js      # API routes
 ├── work-execution.controller.js  # HTTP controller
 ├── work-execution.schema.js      # Validation schemas
+├── index.js                      # Entry point
 ├── domain/
 │   ├── work.types.js            # Enums và constants
 │   ├── work.errors.js           # Error definitions
@@ -31,21 +32,23 @@ backend/src/modules/work-execution/
 │   ├── generateWork.usecase.js  # Tạo work từ trigger
 │   ├── claimWork.usecase.js     # Claim/Release work
 │   ├── startWork.usecase.js     # Start header/line
-│   ├── completeLine.usecase.js  # Complete line + posting
+│   ├── completeLine.usecase.js  # Complete line + posting + exception
 │   ├── skipLine.usecase.js      # Skip line
-│   ├── cancelWork.usecase.js    # Cancel work
+│   ├── cancelWork.usecase.js    # Cancel work + reversal
 │   ├── getWorkList.usecase.js   # Query usecases
 │   ├── syncBatch.usecase.js     # Mobile sync
-│   └── validateScan.usecase.js  # QR validation
+│   ├── validateScan.usecase.js  # QR validation
+│   └── deliverOutbox.usecase.js # Outbox delivery (HI-2 fix)
 └── infra/
-    ├── workHeader.repository.js
-    ├── workLine.repository.js
+    ├── workHeader.repository.js  # + optimistic locking (HI-3 fix)
+    ├── workLine.repository.js    # + optimistic locking (HI-3 fix)
     ├── workEvent.repository.js
     ├── workException.repository.js
-    ├── workOutbox.repository.js
+    ├── workOutbox.repository.js  # + delivery methods (HI-2 fix)
     ├── mobileSync.repository.js
-    ├── inventoryAdapter.js      # Adapter to M3
-    └── work.mapper.js           # DTO mappers
+    ├── inventoryAdapter.js       # M3 posting + reversal (HI-4/5 fix)
+    ├── auditLogAdapter.js        # M1 audit integration (HI-6 fix)
+    └── work.mapper.js            # DTO mappers
 ```
 
 ---
@@ -439,9 +442,66 @@ OPEN ──────────────► IN_PROGRESS ─────�
 
 | Module | Dependency Type | Mô tả |
 |--------|-----------------|-------|
-| M1 Foundation | Consume | RBAC, reason codes, audit, idempotency |
+| M1 Foundation | Consume | RBAC, reason codes, **audit log** (HI-6), idempotency |
 | M2 Master Data | Consume | Location, warehouse, item validation |
-| M3 Inventory Core | Call | Post movement inventory effects |
+| M3 Inventory Core | Call | Post movement inventory + **reversal** (HI-4) |
 | M4 Inbound | Trigger/Callback | Putaway work source |
 | M5 Outbound | Trigger/Callback | Pick work source |
 | M6 Inventory Control | Trigger/Callback | Move/transfer work source |
+
+---
+
+## Feedback Fixes Applied (v2)
+
+| Issue | Description | Fix |
+|-------|-------------|-----|
+| HI-1 | Posting failure does not create exception | Tạo `WeWorkException` với type `POSTING_FAILED` khi post thất bại |
+| HI-2 | No outbox consumer/publisher | Thêm `deliverOutbox.usecase.js` và các methods trong `workOutbox.repository.js` |
+| HI-3 | versionNo never checked | Thêm `updateWithOptimisticLock()` trong repositories |
+| HI-4 | Cancel does not reverse posted InventTrans | Thêm `reversePosting()` trong `inventoryAdapter.js`, gọi khi cancel |
+| HI-5 | Inventory adapter mock fallback | Xóa mock, trả `success: false` nếu PostingEngine không có |
+| HI-6 | No M1 AuditLog integration | Thêm `auditLogAdapter.js` integrate với M1 |
+
+---
+
+## Posting Status Flow
+
+```
+PENDING ───► POSTED ───► REVERSED (khi cancel)
+    │
+    └───► FAILED (tạo exception)
+```
+
+---
+
+## Outbox Delivery
+
+Outbox events được deliver qua `DeliverOutboxUseCase`:
+
+```javascript
+// Gọi từ scheduled job hoặc manual trigger
+const usecase = new DeliverOutboxUseCase(outboxRepo, httpClient);
+const result = await usecase.execute(50); // batch size
+// { total: 10, sent: 8, failed: 1, dead: 1 }
+```
+
+**Retry policy:** Exponential backoff, max 5 retries, sau đó DEAD.
+
+---
+
+## Audit Log Events
+
+M7 log các events sau vào M1 AuditLog:
+
+| Event | Entity | Trigger |
+|-------|--------|--------|
+| WORK_CREATED | WeWorkHeader | generateWork |
+| WORK_CLAIMED | WeWorkHeader | claimWork |
+| WORK_RELEASED | WeWorkHeader | releaseWork |
+| WORK_STARTED | WeWorkHeader | startWork |
+| WORK_COMPLETED | WeWorkHeader | auto-complete |
+| WORK_CANCELLED | WeWorkHeader | cancelWork |
+| WORK_LINE_COMPLETED | WeWorkLine | completeLine |
+| WORK_LINE_SKIPPED | WeWorkLine | skipLine |
+| WORK_MANAGER_OVERRIDE | WeWorkLine | override complete |
+| WORK_POSTING_REVERSED | WeWorkLine | cancel reversal |

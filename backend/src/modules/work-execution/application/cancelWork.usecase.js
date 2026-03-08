@@ -9,11 +9,12 @@ const { canCancel, hasAnyCompletedLine, getNextHeaderStatus } = require('../doma
 const { validateCancelWork, getTargetModuleForCallback } = require('../domain/work.policy');
 
 class CancelWorkUseCase {
-  constructor(workHeaderRepo, workLineRepo, workEventRepo, workOutboxRepo) {
+  constructor(workHeaderRepo, workLineRepo, workEventRepo, workOutboxRepo, inventoryAdapter) {
     this.workHeaderRepo = workHeaderRepo;
     this.workLineRepo = workLineRepo;
     this.workEventRepo = workEventRepo;
     this.workOutboxRepo = workOutboxRepo;
+    this.inventoryAdapter = inventoryAdapter;
   }
 
   async execute(workId, input, context, tx) {
@@ -45,6 +46,40 @@ class CancelWorkUseCase {
     }
 
     await this.workHeaderRepo.findByIdForUpdate(header.id, tx);
+
+    // HI-4 Fix: Reverse posted InventTrans for completed lines
+    for (const line of completedLines) {
+      if (line.postingStatus === 'POSTED' && line.postingRefId && this.inventoryAdapter) {
+        const reversalResult = await this.inventoryAdapter.reversePosting({
+          originalTransId: line.postingRefId,
+          reasonCode: input.reasonCode,
+          correlationId: header.correlationId,
+          createdBy: context.userId,
+        }, tx);
+
+        if (reversalResult.success) {
+          await this.workLineRepo.update(line.id, {
+            postingStatus: 'REVERSED',
+            reversalRefId: reversalResult.reversalRefId,
+          }, tx);
+
+          await this.workEventRepo.createEventLog({
+            id: uuidv4(),
+            workHeaderId: header.id,
+            workLineId: line.id,
+            eventType: EVENT_TYPES.LINE_POSTING_REVERSED,
+            eventPayload: {
+              originalPostingRefId: line.postingRefId,
+              reversalRefId: reversalResult.reversalRefId,
+              reasonCode: input.reasonCode,
+            },
+            correlationId: header.correlationId,
+            sourceApp: context.sourceApp || 'WEB',
+            createdBy: context.userId,
+          }, tx);
+        }
+      }
+    }
 
     const openLines = header.lines?.filter(l => 
       l.status === WORK_LINE_STATUS.OPEN || l.status === WORK_LINE_STATUS.IN_PROGRESS
