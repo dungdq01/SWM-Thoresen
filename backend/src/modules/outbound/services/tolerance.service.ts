@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ExceptionLogRepository } from '../repositories/exception-log.repository';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ToleranceCheckParams {
@@ -24,9 +25,12 @@ export interface ToleranceResult {
 
 @Injectable()
 export class ToleranceService {
-  private readonly DEFAULT_TOLERANCE_PCT = 2.0;
+  private readonly DEFAULT_TOLERANCE_PCT = parseFloat(process.env.OUTBOUND_TOLERANCE_PCT || '2.0');
 
-  constructor(private readonly exceptionRepo: ExceptionLogRepository) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly exceptionRepo: ExceptionLogRepository,
+  ) {}
 
   async checkTolerance(params: ToleranceCheckParams): Promise<ToleranceResult> {
     const tolerancePct = await this.getTolerancePct(params.itemId, params.ownerId);
@@ -70,7 +74,43 @@ export class ToleranceService {
     };
   }
 
+  /**
+   * HI-2: 4-level tolerance cascade lookup
+   * Priority: OwnerItemPolicy → Item → Owner → ENV default
+   */
   private async getTolerancePct(itemId: string, ownerId: string): Promise<number> {
+    // Level 1: Check OwnerItemPolicy for specific owner+item combination
+    const ownerItemPolicy = await this.prisma.mdOwnerItemPolicy.findFirst({
+      where: {
+        ownerId,
+        itemId,
+        isActive: true,
+      },
+      select: { tolerancePct: true },
+    });
+    if (ownerItemPolicy?.tolerancePct != null) {
+      return Number(ownerItemPolicy.tolerancePct);
+    }
+
+    // Level 2: Check Item default tolerance
+    const item = await this.prisma.mdItem.findUnique({
+      where: { id: itemId },
+      select: { tolerancePct: true },
+    });
+    if (item?.tolerancePct != null) {
+      return Number(item.tolerancePct);
+    }
+
+    // Level 3: Check Owner default tolerance
+    const owner = await this.prisma.mdOwner.findUnique({
+      where: { id: ownerId },
+      select: { defaultTolerancePct: true },
+    });
+    if (owner?.defaultTolerancePct != null) {
+      return Number(owner.defaultTolerancePct);
+    }
+
+    // Level 4: ENV default
     return this.DEFAULT_TOLERANCE_PCT;
   }
 

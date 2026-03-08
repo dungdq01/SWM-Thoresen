@@ -425,8 +425,23 @@
 
 # Module 5: Outbound Operations
 
-**Status:** ✅ Implemented  
-**Code Path:** `src/modules/outbound`
+**Status:** ✅ Implemented (Feedback Fixed v1)  
+**Code Path:** `src/modules/outbound`  
+**Documentation:** [`docs/module-5-outbound.md`](./module-5-outbound.md)  
+**Database Docs:** [`prisma/docs/module-5-outbound.md`](../prisma/docs/module-5-outbound.md)  
+**Last Updated:** 2026-03-08 (FB-v1)
+
+### Feedback Fixes Applied
+
+| Issue ID | Description | Status |
+|----------|-------------|--------|
+| HI-2 | Tolerance 4-level cascade lookup | ✅ Fixed |
+| HI-3 | Allocation wrapped in $transaction | ✅ Fixed |
+| HI-4 | decidedBy extracted from x-user-id header | ✅ Fixed |
+| HI-6 | lockForUpdate called before allocation | ✅ Fixed |
+| CR-1 | Real M3 OnHand/Hold integration | 🔜 Pending M3 interface |
+| CR-2 | M3 Posting at SHIPPED | 🔜 Pending M3 interface |
+| CR-3 | RBAC guards on controllers | 🔜 Pending M1 AuthGuard |
 
 ## Database Tables
 
