@@ -6,27 +6,42 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AddVasSessionService } from '../services/add-vas-session.service';
 import { AddVasSessionDto } from '../dto/add-vas-session.dto';
+import {
+  VasAuthGuard,
+  VasPermissionGuard,
+  Permission,
+  CurrentUser,
+  UserContext,
+} from '../guards/vas-auth.guard';
 
 @ApiTags('VAS Sessions')
+@ApiBearerAuth()
 @Controller('api/v1/vas-wo')
+@UseGuards(VasAuthGuard, VasPermissionGuard)
 export class VasSessionController {
   constructor(private readonly addSessionService: AddVasSessionService) {}
 
   @Post(':id/session')
   @HttpCode(HttpStatus.CREATED)
+  @Permission('VAS.SESSION.CREATE')
   @ApiOperation({ summary: 'Thêm session progress vào WO' })
   @ApiResponse({ status: 201, description: 'Session added' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Work Order not found' })
   @ApiResponse({ status: 409, description: 'Invalid state or duplicate externalId' })
+  @ApiResponse({ status: 422, description: 'Insufficient packaging stock' })
   async addSession(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AddVasSessionDto,
+    @CurrentUser() user: UserContext,
   ) {
-    const actor = { userId: '00000000-0000-0000-0000-000000000001', role: 'SYSTEM' };
+    const actor = { userId: user.userId, role: user.role };
     return this.addSessionService.execute(id, dto, actor);
   }
 }

@@ -4,8 +4,9 @@ import { VasWorkOrderRepository } from '../repositories/vas-work-order.repositor
 import { VasSessionRepository } from '../repositories/vas-session.repository';
 import { VasStateHistoryRepository } from '../repositories/vas-state-history.repository';
 import { VasStateMachineService } from './vas-state-machine.service';
+import { VasInventoryFacade } from '../facades/vas-inventory.facade';
 import { AddVasSessionDto } from '../dto/add-vas-session.dto';
-import { VasWoNotFoundError } from '../domain/vas.errors';
+import { VasWoNotFoundError, VasInsufficientPackagingError } from '../domain/vas.errors';
 import { VasWoStatus, VasStateAction } from '../domain/vas.enums';
 import { Prisma } from '@prisma/client';
 
@@ -19,6 +20,7 @@ export class AddVasSessionService {
     private readonly sessionRepo: VasSessionRepository,
     private readonly stateHistoryRepo: VasStateHistoryRepository,
     private readonly stateMachine: VasStateMachineService,
+    private readonly inventoryFacade: VasInventoryFacade,
   ) {}
 
   async execute(
@@ -44,6 +46,26 @@ export class AddVasSessionService {
       }
 
       this.stateMachine.assertCanAddSession(wo.status);
+
+      // HI-2 Fix: Check packaging availability before creating session
+      const cumulativeBags = await this.sessionRepo.getCumulativeBagCount(woId, tx);
+      const totalBagsAfterSession = cumulativeBags + dto.sessionBagCount;
+
+      const packagingAvailable = await this.inventoryFacade.getPackagingAvailable(
+        {
+          ownerId: wo.packagingOwnerId,
+          warehouseId: wo.warehouseId,
+          itemId: wo.packagingItemId,
+        },
+        tx,
+      );
+
+      if (packagingAvailable < totalBagsAfterSession) {
+        this.logger.warn(
+          `Insufficient packaging: available=${packagingAvailable}, required=${totalBagsAfterSession}`,
+        );
+        throw new VasInsufficientPackagingError(packagingAvailable, totalBagsAfterSession);
+      }
 
       const sessionNum = await this.sessionRepo.getNextSessionNum(woId, tx);
 

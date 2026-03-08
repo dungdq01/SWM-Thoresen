@@ -3,7 +3,13 @@
 **Module Name:** VAS / Bagging Operations  
 **Code Path:** `src/modules/vas`  
 **Status:** ✅ Implemented  
-**Version:** 1.0.0
+**Version:** 1.1.0  
+**Last Updated:** 2026-03-09
+
+### Changelog v1.1.0
+- ✅ **M3 Integration:** Real PostingEngine + HoldService integration via `InventoryCoreAdapter`
+- ✅ **RBAC:** Added `VasAuthGuard` + `VasPermissionGuard` on all controllers
+- ✅ **Packaging Check:** Block session if cumulative bags exceed available packaging
 
 ---
 
@@ -360,10 +366,15 @@ CANCELLED CANCELLED  CANCELLED
 ```
 src/modules/vas/
 ├── vas.module.ts
+├── adapters/
+│   ├── index.ts
+│   └── inventory-core.adapter.ts    # Bridge to M3 PostingEngine + HoldService
+├── guards/
+│   └── vas-auth.guard.ts            # VasAuthGuard + VasPermissionGuard
 ├── controllers/
-│   ├── vas-wo-command.controller.ts
-│   ├── vas-wo-query.controller.ts
-│   └── vas-session.controller.ts
+│   ├── vas-wo-command.controller.ts  # @UseGuards(VasAuthGuard, VasPermissionGuard)
+│   ├── vas-wo-query.controller.ts    # @UseGuards(VasAuthGuard, VasPermissionGuard)
+│   └── vas-session.controller.ts     # @UseGuards(VasAuthGuard, VasPermissionGuard)
 ├── dto/
 │   ├── create-vas-wo.dto.ts
 │   ├── update-vas-wo.dto.ts
@@ -375,21 +386,21 @@ src/modules/vas/
 ├── services/
 │   ├── create-vas-wo.service.ts
 │   ├── update-vas-wo.service.ts
-│   ├── confirm-vas-wo.service.ts
-│   ├── add-vas-session.service.ts
-│   ├── complete-vas-wo.service.ts
-│   ├── cancel-vas-wo.service.ts
+│   ├── confirm-vas-wo.service.ts     # Uses InventoryCoreAdapter for reserveVasBulk
+│   ├── add-vas-session.service.ts    # Checks packaging availability
+│   ├── complete-vas-wo.service.ts    # Uses InventoryCoreAdapter for postVasCompletion
+│   ├── cancel-vas-wo.service.ts      # Uses InventoryCoreAdapter for releaseVasReservation
 │   ├── vas-query.service.ts
 │   ├── vas-state-machine.service.ts
 │   └── vas-validation.service.ts
 ├── repositories/
 │   ├── vas-work-order.repository.ts
-│   ├── vas-session.repository.ts
+│   ├── vas-session.repository.ts     # getCumulativeBagCount for packaging check
 │   ├── vas-state-history.repository.ts
 │   ├── vas-exception-log.repository.ts
 │   └── vas-outbox.repository.ts
 ├── facades/
-│   ├── vas-inventory.facade.ts
+│   ├── vas-inventory.facade.ts       # Uses InventoryCoreAdapter
 │   └── vas-billing.facade.ts
 └── domain/
     ├── vas.enums.ts

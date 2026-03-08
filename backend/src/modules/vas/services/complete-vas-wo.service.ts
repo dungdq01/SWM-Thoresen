@@ -62,16 +62,26 @@ export class CompleteVasWoService {
         throw new VasReasonRequiredError('COMPLETE with high process loss');
       }
 
+      // Fetch codes for M3 posting
+      const [owner, warehouse, packagingOwner] = await Promise.all([
+        tx.mdOwner.findUnique({ where: { id: wo.ownerId }, select: { ownerCode: true } }),
+        tx.mdWarehouse.findUnique({ where: { id: wo.warehouseId }, select: { warehouseCode: true } }),
+        tx.mdOwner.findUnique({ where: { id: wo.packagingOwnerId }, select: { ownerCode: true } }),
+      ]);
+
       const transIds = await this.inventoryFacade.postVasCompletion(
         {
           woId: wo.id,
           woNumber: wo.woNumber,
           ownerId: wo.ownerId,
+          ownerCode: owner?.ownerCode || '',
           warehouseId: wo.warehouseId,
+          warehouseCode: warehouse?.warehouseCode || '',
           bulkSourceItemId: wo.bulkSourceItemId,
           baggedOutputItemId: wo.baggedOutputItemId,
           packagingItemId: wo.packagingItemId,
           packagingOwnerId: wo.packagingOwnerId,
+          packagingOwnerCode: packagingOwner?.ownerCode || '',
           actualConsumedQtyKg: new Prisma.Decimal(dto.actualConsumedQtyKg),
           actualOutputQtyKg: new Prisma.Decimal(dto.actualOutputQtyKg),
           packagingQtyActual: dto.packagingQtyActual,
@@ -81,7 +91,7 @@ export class CompleteVasWoService {
         tx,
       );
 
-      await this.inventoryFacade.releaseVasReservation(wo.id, tx);
+      await this.inventoryFacade.releaseVasReservation(wo.id, actor.userId, wo.correlationId, tx);
 
       const sessionSummary = await this.sessionRepo.getSessionSummary(wo.id, tx);
 
