@@ -18,16 +18,16 @@ import {
   LockDebitNoteDto,
   QueryDebitNoteDto,
 } from '../dto';
-import { AuthGuard } from '../../foundation/auth/auth.guard';
-import { CurrentUser } from '../../foundation/auth/current-user.decorator';
+import { AuthGuard, PermissionGuard, Permission, CurrentUser } from '../../foundation/auth';
 
 @Controller('api/v1/billing/debit-notes')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class DebitNoteController {
   constructor(private readonly dnService: DebitNoteService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Permission('BILLING.DN.GENERATE')
   async generate(@Body() dto: GenerateDebitNoteDto, @CurrentUser('id') userId: string) {
     const result = await this.dnService.generate(dto, userId);
     return {
@@ -38,6 +38,7 @@ export class DebitNoteController {
   }
 
   @Get()
+  @Permission('BILLING.DN.READ')
   async findMany(@Query() query: QueryDebitNoteDto) {
     const result = await this.dnService.findMany(query);
     return {
@@ -52,6 +53,7 @@ export class DebitNoteController {
   }
 
   @Get(':id')
+  @Permission('BILLING.DN.READ')
   async findById(@Param('id') id: string) {
     const dn = await this.dnService.findById(id);
     return {
@@ -61,6 +63,7 @@ export class DebitNoteController {
   }
 
   @Put(':id/review')
+  @Permission('BILLING.DN.REVIEW')
   async review(
     @Param('id') id: string,
     @Body() dto: ReviewDebitNoteDto,
@@ -74,6 +77,7 @@ export class DebitNoteController {
   }
 
   @Put(':id/approve')
+  @Permission('BILLING.DN.APPROVE')
   async approve(
     @Param('id') id: string,
     @Body() dto: ApproveDebitNoteDto,
@@ -87,6 +91,7 @@ export class DebitNoteController {
   }
 
   @Put(':id/lock')
+  @Permission('BILLING.DN.LOCK')
   async lock(
     @Param('id') id: string,
     @Body() dto: LockDebitNoteDto,
@@ -100,6 +105,7 @@ export class DebitNoteController {
   }
 
   @Get(':id/history')
+  @Permission('BILLING.DN.READ')
   async getHistory(@Param('id') id: string) {
     const history = await this.dnService.getHistory(id);
     return {

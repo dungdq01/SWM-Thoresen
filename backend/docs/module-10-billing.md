@@ -1,8 +1,9 @@
 # Module 10: Billing & Commercial Control
 
 **Status:** ✅ Implemented  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Code Path:** `src/modules/billing`  
+**Last Updated:** 2026-03-09  
 **Database Docs:** [`prisma/docs/module-10-billing.md`](../prisma/docs/module-10-billing.md)
 
 ---
@@ -45,6 +46,7 @@ src/modules/billing/
 │   ├── charge-calculation.service.ts
 │   ├── debit-note.service.ts
 │   ├── rate-resolution.service.ts
+│   ├── storage-snapshot.service.ts  # Daily storage snapshot
 │   └── index.ts
 ├── repositories/
 │   ├── billing-contract.repository.ts
@@ -399,5 +401,23 @@ Billable Qty = Opening Qty + Inbound Today
 
 - **Decimal precision**: Sử dụng `decimal.js` cho tính toán tiền tệ
 - **Idempotency**: Tất cả commands có `externalId` unique
-- **Transaction**: Multi-step operations wrap trong `$transaction`
+- **Transaction**: Multi-step operations wrap trong `$transaction` với `lockForUpdate`
 - **Calculation trace**: Mọi charge đều có `calculationTraceJson` để audit
+- **RBAC**: Sử dụng `AuthGuard` + `PermissionGuard` + `@Permission()` decorator
+- **Internal API**: Endpoint `/internal/*` sử dụng `InternalApiGuard` với `x-internal-api-key` header
+- **ERP Push**: DN lock tự động tạo entry trong `bil_erp_push_outbox`
+- **Storage Snapshot**: `StorageSnapshotService` tính phí lưu kho theo công thức TVL (Opening + Inbound)
+
+---
+
+## Security
+
+### Authentication & Authorization
+- Tất cả public endpoints sử dụng `@UseGuards(AuthGuard, PermissionGuard)`
+- Mỗi endpoint có `@Permission('BILLING.*')` decorator tương ứng
+- Internal capture endpoint sử dụng `InternalApiGuard` với API key
+
+### Data Integrity
+- State transitions (review/approve/lock) sử dụng `lockForUpdate` để tránh race condition
+- Tất cả reads và updates trong cùng một `$transaction`
+- Blocker exception check nằm trong transaction trước khi lock DN

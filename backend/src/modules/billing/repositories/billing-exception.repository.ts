@@ -55,8 +55,9 @@ export class BillingExceptionRepository {
     return { data, total, page, limit };
   }
 
-  async findBlockersByDebitNote(debitNoteId: string) {
-    return this.prisma.bilException.findMany({
+  async findBlockersByDebitNote(debitNoteId: string, tx?: Prisma.TransactionClient) {
+    const client = tx || this.prisma;
+    return client.bilException.findMany({
       where: {
         debitNoteId,
         severity: BilExceptionSeverity.BLOCKER,

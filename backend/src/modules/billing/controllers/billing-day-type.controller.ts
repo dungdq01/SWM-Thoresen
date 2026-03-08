@@ -10,15 +10,16 @@ import {
 } from '@nestjs/common';
 import { BillingDayTypeService } from '../services/billing-day-type.service';
 import { UpsertDayTypeDto, QueryDayTypeDto } from '../dto';
-import { AuthGuard } from '../../foundation/auth/auth.guard';
+import { AuthGuard, PermissionGuard, Permission } from '../../foundation/auth';
 
 @Controller('api/v1/billing/day-types')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class BillingDayTypeController {
   constructor(private readonly dayTypeService: BillingDayTypeService) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
+  @Permission('BILLING.DAY_TYPE.MANAGE')
   async upsert(@Body() dto: UpsertDayTypeDto) {
     const result = await this.dayTypeService.upsert(dto);
     return {
@@ -29,6 +30,7 @@ export class BillingDayTypeController {
 
   @Post('bulk')
   @HttpCode(HttpStatus.OK)
+  @Permission('BILLING.DAY_TYPE.MANAGE')
   async bulkUpsert(@Body() entries: UpsertDayTypeDto[]) {
     const results = await this.dayTypeService.bulkUpsert(entries);
     return {
@@ -39,6 +41,7 @@ export class BillingDayTypeController {
   }
 
   @Get()
+  @Permission('BILLING.DAY_TYPE.MANAGE')
   async findMany(@Query() query: QueryDayTypeDto) {
     const result = await this.dayTypeService.findMany(query);
     return {

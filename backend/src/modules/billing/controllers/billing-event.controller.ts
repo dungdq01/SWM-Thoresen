@@ -11,14 +11,15 @@ import {
 } from '@nestjs/common';
 import { BillingEventService } from '../services/billing-event.service';
 import { CaptureEventDto, QueryEventDto } from '../dto';
-import { AuthGuard } from '../../foundation/auth/auth.guard';
+import { AuthGuard, PermissionGuard, Permission, InternalApiGuard } from '../../foundation/auth';
 
 @Controller('api/v1/billing/events')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class BillingEventController {
   constructor(private readonly eventService: BillingEventService) {}
 
   @Get()
+  @Permission('BILLING.EVENT.READ')
   async findMany(@Query() query: QueryEventDto) {
     const result = await this.eventService.findMany(query);
     return {
@@ -33,6 +34,7 @@ export class BillingEventController {
   }
 
   @Get(':id')
+  @Permission('BILLING.EVENT.READ')
   async findById(@Param('id') id: string) {
     const event = await this.eventService.findById(id);
     return {
@@ -43,6 +45,7 @@ export class BillingEventController {
 }
 
 @Controller('internal/billing/events')
+@UseGuards(InternalApiGuard)
 export class BillingEventInternalController {
   constructor(private readonly eventService: BillingEventService) {}
 
