@@ -1,5 +1,12 @@
 # Module 11: Reporting Database Schema
 
+**Status:** ✅ Implemented  
+**Version:** 1.1.0  
+**Last Updated:** 2026-03-09  
+**API Docs:** [`backend/docs/module-11-reporting.md`](../../docs/module-11-reporting.md)
+
+---
+
 ## Tổng quan
 
 Module 11 sở hữu **12 tables** cho các chức năng reporting, reconciliation, go-live control và export.
