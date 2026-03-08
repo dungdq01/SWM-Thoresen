@@ -39,18 +39,18 @@
 
 ## Review Gate Checklist (10 items — per Spec AC)
 
-| # | Gate Question | Result | Note |
-|---|-------------|--------|------|
-| 1 | Receipt state machine 10 states? | **PASS** | DRAFT→AWAITING_WEIGHING→WEIGHED_IN→PROCESSING→WEIGHED_OUT→RECEIVED→PUTAWAY→CLOSED + REJECTED + CANCELLED |
-| 2 | Weigh-in/out capture correct? | **PASS** | Gross/tare/net with per-attempt logging, decimal.js precision |
-| 3 | Tolerance check 4-level cascade? | **PASS** | OwnerItemPolicy → Item → Owner → ENV default |
-| 4 | Pass=RECEIVED, Fail=REJECTED? | **PASS** | Auto-accept/auto-reject, no PENDING_APPROVAL |
-| 5 | Re-weigh max 3, keeps receipt#? | **PASS** | canReweigh checks attemptNumber, same receipt number |
-| 6 | Inbound posting at RECEIVED? | **FAIL** | Side effects declared but **NOT IMPLEMENTED** |
-| 7 | Putaway work auto-created? | **FAIL** | putawayComplete action defined but **NO service method** |
-| 8 | RBAC enforce? | **PASS** | 8 permission codes on all 12 routes |
-| 9 | Idempotency? | **PASS** | externalId on receipt, eventId on weighing |
-| 10 | Audit trail? | **PASS** | StatusHistory + WeighingLog + ExceptionLog + correlationId |
+| #   | Gate Question                    | Result   | Note                                                                                                     |
+| -----| ----------------------------------| ----------| ----------------------------------------------------------------------------------------------------------|
+| 1   | Receipt state machine 10 states? | **PASS** | DRAFT→AWAITING_WEIGHING→WEIGHED_IN→PROCESSING→WEIGHED_OUT→RECEIVED→PUTAWAY→CLOSED + REJECTED + CANCELLED |
+| 2   | Weigh-in/out capture correct?    | **PASS** | Gross/tare/net with per-attempt logging, decimal.js precision                                            |
+| 3   | Tolerance check 4-level cascade? | **PASS** | OwnerItemPolicy → Item → Owner → ENV default                                                             |
+| 4   | Pass=RECEIVED, Fail=REJECTED?    | **PASS** | Auto-accept/auto-reject, no PENDING_APPROVAL                                                             |
+| 5   | Re-weigh max 3, keeps receipt#?  | **PASS** | canReweigh checks attemptNumber, same receipt number                                                     |
+| 6   | Inbound posting at RECEIVED?     | **FAIL** | Side effects declared but **NOT IMPLEMENTED**                                                            |
+| 7   | Putaway work auto-created?       | **FAIL** | putawayComplete action defined but **NO service method**                                                 |
+| 8   | RBAC enforce?                    | **PASS** | 8 permission codes on all 12 routes                                                                      |
+| 9   | Idempotency?                     | **PASS** | externalId on receipt, eventId on weighing                                                               |
+| 10  | Audit trail?                     | **PASS** | StatusHistory + WeighingLog + ExceptionLog + correlationId                                               |
 
 **Result: 8/10 PASS, 2/10 FAIL**
 
