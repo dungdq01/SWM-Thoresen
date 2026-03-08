@@ -3,7 +3,8 @@
 **Module:** Inventory Core Engine  
 **Database:** PostgreSQL  
 **Total Tables:** 10  
-**Last Updated:** 2026-03-08
+**Total Services:** 8  
+**Last Updated:** 2026-03-09
 
 ---
 
@@ -18,6 +19,31 @@ Module 3 quản lý inventory backbone của hệ thống SWM với các bảng 
 | Control/Quality | `inventory_reconciliation_run`, `inventory_reconciliation_result` |
 | Snapshot | `inventory_snapshot_run`, `daily_storage_snapshot` |
 | Config | `inventory_event_mapping` |
+
+### Backend Services (8 services)
+
+| Service | File | Description |
+|---------|------|-------------|
+| PostingEngineService | `posting-engine.service.js` | Core posting logic |
+| ReversalEngineService | `reversal-engine.service.js` | Reversal with idempotency |
+| HoldService | `hold.service.js` | Hold/allocation management |
+| OnHandService | `onhand.service.js` | OnHand query with Decimal.js |
+| TransactionQueryService | `transaction-query.service.js` | Transaction history |
+| InventDimService | `invent-dim.service.js` | Dimension management |
+| ReconciliationService | `reconciliation.service.js` | Ledger vs OnHand comparison |
+| SnapshotService | `snapshot.service.js` | Daily storage snapshot for M10 |
+
+### Infrastructure (7 components)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| InventDimRepository | `invent-dim.repository.js` | Dimension CRUD |
+| InventTransRepository | `invent-trans.repository.js` | Ledger CRUD + idempotency |
+| OnHandRepository | `onhand.repository.js` | OnHand CRUD + optimistic lock |
+| HoldRepository | `hold.repository.js` | Hold CRUD + NumberSequence |
+| ReversalLinkRepository | `reversal-link.repository.js` | Reversal tracking |
+| EventMappingRepository | `event-mapping.repository.js` | Event config |
+| AuditLogAdapter | `audit-log.adapter.js` | M1 LogService integration |
 
 ---
 

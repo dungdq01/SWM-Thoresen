@@ -282,6 +282,7 @@
 |---------------|------------|-------|
 | Module 1 | `NumberSequence` | Sinh transId (TRX-*), holdNo (HLD-*) |
 | Module 1 | `ReasonCode` | Validate reason codes cho reversal/adjustment |
+| Module 1 | `LogService` | AuditLog integration qua AuditLogAdapter |
 | Module 2 | `MdWarehouse` | Dimension validation |
 | Module 2 | `MdLocation` | Dimension validation |
 | Module 2 | `MdOwner` | Dimension + transaction owner |
@@ -297,8 +298,21 @@
 | Module 6 | `PostingEngineService` | Adjustment, status change, count |
 | Module 7 | `PostingEngineService` | Putaway, pick movement |
 | Module 9 | `PostingEngineService` | VAS consume/produce |
-| Module 10 | `DailyStorageSnapshot` | Billing input |
-| Module 11 | `InventTrans`, `OnHand` | Reporting queries |
+| Module 10 | `SnapshotService`, `DailyStorageSnapshot` | Billing input |
+| Module 11 | `ReconciliationService`, `InventTrans`, `OnHand` | Reporting queries |
+
+## Backend Services (8 services)
+
+| Service | Description |
+|---------|-------------|
+| `PostingEngineService` | Core posting logic with idempotency |
+| `ReversalEngineService` | Reversal with externalId idempotency check |
+| `HoldService` | Hold/allocation management |
+| `OnHandService` | OnHand query with Decimal.js + DB GROUP BY |
+| `TransactionQueryService` | Transaction history queries |
+| `InventDimService` | Dimension management with hash |
+| `ReconciliationService` | Ledger vs OnHand comparison |
+| `SnapshotService` | Daily storage snapshot for M10 Billing |
 
 ## RBAC Permissions
 

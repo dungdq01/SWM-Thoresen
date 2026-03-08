@@ -1290,19 +1290,19 @@ Tài liệu này được biên soạn theo baseline mới hơn của bộ tài 
 
 ## 32. Phụ lục B — UAT scenario matrix tối thiểu
 
-| UAT ID | Scenario | Precondition | Expected result |
-|---|---|---|---|
-| UAT-M4-001 | Standard inbound happy path | ASN/PO hợp lệ, vehicle match đúng | receipt đi `DRAFT → ... → RECEIVED → PUTAWAY → CLOSED` |
-| UAT-M4-002 | Vessel OCR match happy path | OCR trả đúng B/L candidate | operator confirm nhanh, flow tiếp tục bình thường |
-| UAT-M4-003 | OCR fail manual select | OCR confidence thấp | operator chọn thủ công, audit đầy đủ |
-| UAT-M4-004 | Tolerance pass | variance <= tolerance | auto `RECEIVED`, post M3 đúng 1 lần |
-| UAT-M4-005 | Tolerance fail | variance > tolerance | `REJECTED`, chưa post M3 |
-| UAT-M4-006 | Re-weigh lần 1..3 | receipt `REJECTED` | quay về `AWAITING_WEIGHING`, giữ nguyên receipt number |
-| UAT-M4-007 | Re-weigh lần 4 | attempt = 3 và vẫn fail | block thao tác, yêu cầu manager |
-| UAT-M4-008 | Duplicate weigh-in event | cùng ticket/event | không tạo duplicate log/transition sai |
-| UAT-M4-009 | Posting retry idempotent | M3 timeout rồi retry cùng `external_id` | chỉ có 1 inbound trans |
-| UAT-M4-010 | Putaway create retry idempotent | M7 lỗi lần đầu | retry không tạo nhiều work cho cùng receipt |
-| UAT-M4-011 | Cancel tại `WEIGHED_IN` | manager + reason code | `CANCELLED`, không reverse |
-| UAT-M4-012 | Close bị chặn khi work chưa done | putaway chưa hoàn tất | API/UI từ chối close |
-| UAT-M4-013 | Bagged over-receipt blocked | tổng bag_count vượt PO | chặn `RECEIVED`, trả lỗi business |
-| UAT-M4-014 | Manual weight without permission | user không đủ quyền | reject với lỗi permission |
+| UAT ID     | Scenario                         | Precondition                            | Expected result                                        |
+| ------------| ----------------------------------| -----------------------------------------| --------------------------------------------------------|
+| UAT-M4-001 | Standard inbound happy path      | ASN/PO hợp lệ, vehicle match đúng       | receipt đi `DRAFT → ... → RECEIVED → PUTAWAY → CLOSED` |
+| UAT-M4-002 | Vessel OCR match happy path      | OCR trả đúng B/L candidate              | operator confirm nhanh, flow tiếp tục bình thường      |
+| UAT-M4-003 | OCR fail manual select           | OCR confidence thấp                     | operator chọn thủ công, audit đầy đủ                   |
+| UAT-M4-004 | Tolerance pass                   | variance <= tolerance                   | auto `RECEIVED`, post M3 đúng 1 lần                    |
+| UAT-M4-005 | Tolerance fail                   | variance > tolerance                    | `REJECTED`, chưa post M3                               |
+| UAT-M4-006 | Re-weigh lần 1..3                | receipt `REJECTED`                      | quay về `AWAITING_WEIGHING`, giữ nguyên receipt number |
+| UAT-M4-007 | Re-weigh lần 4                   | attempt = 3 và vẫn fail                 | block thao tác, yêu cầu manager                        |
+| UAT-M4-008 | Duplicate weigh-in event         | cùng ticket/event                       | không tạo duplicate log/transition sai                 |
+| UAT-M4-009 | Posting retry idempotent         | M3 timeout rồi retry cùng `external_id` | chỉ có 1 inbound trans                                 |
+| UAT-M4-010 | Putaway create retry idempotent  | M7 lỗi lần đầu                          | retry không tạo nhiều work cho cùng receipt            |
+| UAT-M4-011 | Cancel tại `WEIGHED_IN`          | manager + reason code                   | `CANCELLED`, không reverse                             |
+| UAT-M4-012 | Close bị chặn khi work chưa done | putaway chưa hoàn tất                   | API/UI từ chối close                                   |
+| UAT-M4-013 | Bagged over-receipt blocked      | tổng bag_count vượt PO                  | chặn `RECEIVED`, trả lỗi business                      |
+| UAT-M4-014 | Manual weight without permission | user không đủ quyền                     | reject với lỗi permission                              |
