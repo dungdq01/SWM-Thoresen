@@ -7,6 +7,7 @@ const statusChangeRepo = require('../infra/status-change.repository');
 const validationService = require('./ic-validation.service');
 const stateMachine = require('./ic-state-machine.service');
 const postingAdapter = require('./ic-posting-adapter.service');
+const auditLogAdapter = require('./ic-audit-log.adapter');
 const statusHistoryRepo = require('../infra/ic-status-history.repository');
 const { isStatusChangeAllowed } = require('../domain/ic.policy');
 const { IcStatusChangeStatus, IcDocumentEntityType, IcExceptionType } = require('../domain/ic.enums');
@@ -22,7 +23,7 @@ async function createStatusChange(data, requestContext) {
 
   const existing = await statusChangeRepo.findStatusChangeByExternalId(data.externalId);
   if (existing) {
-    throw new IcIdempotencyConflictError(data.externalId);
+    return { ...existing, idempotentReplay: true };
   }
 
   if (!isStatusChangeAllowed(data.fromStatus, data.toStatus)) {
@@ -174,20 +175,54 @@ async function reverseStatusChange(id, reverseReasonCode, requestContext) {
       throw new IcNotFoundError('StatusChange', id);
     }
 
-    const newStatus = await stateMachine.transitionStatusChange(
-      statusChange,
-      IcStatusChangeStatus.REVERSED,
-      userId,
-      correlationId,
-      reverseReasonCode,
-      'Reversed',
-      tx
-    );
+    if (statusChange.status !== IcStatusChangeStatus.POSTED) {
+      throw new IcValidationError(`Only POSTED status changes can be reversed. Current: ${statusChange.status}`);
+    }
 
-    return statusChangeRepo.updateStatusChange(id, {
-      status: newStatus,
-      updatedBy: userId,
-    }, tx);
+    // Create reversed status change object (swap from/to)
+    const reversedStatusChange = {
+      ...statusChange,
+      fromStatus: statusChange.toStatus,
+      toStatus: statusChange.fromStatus,
+      externalId: `${statusChange.externalId}-REV`,
+      reasonCode: reverseReasonCode || statusChange.reasonCode,
+    };
+
+    // Post reversal to M3 Inventory Core
+    try {
+      const postingResult = await postingAdapter.postStatusChange(reversedStatusChange, correlationId, tx);
+
+      const newStatus = await stateMachine.transitionStatusChange(
+        statusChange,
+        IcStatusChangeStatus.REVERSED,
+        userId,
+        correlationId,
+        reverseReasonCode,
+        'Reversed via M3',
+        tx
+      );
+
+      return statusChangeRepo.updateStatusChange(id, {
+        status: newStatus,
+        reversedTransGroupId: postingResult.transId,
+        reversedAt: new Date(),
+        reversedBy: userId,
+        updatedBy: userId,
+      }, tx);
+    } catch (error) {
+      await statusHistoryRepo.createExceptionLog({
+        entityType: IcDocumentEntityType.STATUS_CHANGE,
+        entityId: statusChange.id,
+        exceptionType: IcExceptionType.POST_FAIL,
+        severity: 'HIGH',
+        message: `Reversal failed: ${error.message}`,
+        payloadJson: { error: error.details || {} },
+        createdBy: userId,
+        correlationId,
+      }, tx);
+
+      throw error;
+    }
   });
 }
 

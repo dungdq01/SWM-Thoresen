@@ -5,6 +5,7 @@
 const prisma = require('../../../shared/db/prismaClient');
 const reconciliationRepo = require('../infra/reconciliation.repository');
 const stateMachine = require('./ic-state-machine.service');
+const auditLogAdapter = require('./ic-audit-log.adapter');
 const { IcReconciliationStatus, IcReconciliationSeverity, IcDocumentEntityType } = require('../domain/ic.enums');
 const { IcIdempotencyConflictError, IcNotFoundError, IcValidationError } = require('../domain/ic.errors');
 
@@ -18,7 +19,7 @@ async function runReconciliation(data, requestContext) {
 
   const existing = await reconciliationRepo.findReconciliationByExternalId(data.externalId);
   if (existing) {
-    throw new IcIdempotencyConflictError(data.externalId);
+    return { ...existing, idempotentReplay: true };
   }
 
   return prisma.$transaction(async (tx) => {

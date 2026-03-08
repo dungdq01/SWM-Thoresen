@@ -1,8 +1,9 @@
 # Module 6: Inventory Control — Work Report
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Ngày hoàn thành:** 2025-01-08  
-**Trạng thái:** ✅ Completed
+**Cập nhật:** 2025-03-09  
+**Trạng thái:** ✅ Completed (with fixes)
 
 ---
 
@@ -210,16 +211,70 @@ backend/src/modules/inventory-control/
 
 ---
 
-## 8. Next Steps
+## 8. Feedback Fixes (v1.1 - 2025-03-09)
+
+Dựa trên feedback từ `docs/feedback/fb_M06.md`, các vấn đề sau đã được sửa:
+
+### 8.1 Critical Issues Fixed
+
+| Issue | Mô tả | Fix |
+|-------|-------|-----|
+| **CR-1: Zero RBAC** | Không có authentication/authorization | Tạo `middleware/auth.middleware.js` với `authPreHandler()` và `permissionPreHandler()`. Áp dụng cho tất cả 39 endpoints. |
+
+### 8.2 High Issues Fixed
+
+| Issue | Mô tả | Fix |
+|-------|-------|-----|
+| **HI-1: Cycle Count không post M3** | `postCycleCount()` tạo adjustment nhưng không gọi M3 | Thêm `postingAdapter.postAdjustment()` sau khi tạo adjustment record |
+| **HI-2: Status Change Reverse không M3** | `reverseStatusChange()` không gọi posting | Thêm `postingAdapter.postStatusChange()` với swap from/to statuses |
+| **HI-3: Idempotency trả 409** | Throw error thay vì return existing | Sửa tất cả services để return `{ ...existing, idempotentReplay: true }` |
+| **HI-5: Không M1 AuditLog** | Thiếu audit logging | Tạo `ic-audit-log.adapter.js` và integrate vào tất cả services |
+
+### 8.3 Files Changed
+
+| File | Change |
+|------|--------|
+| `middleware/auth.middleware.js` | **NEW** - RBAC middleware cho Fastify |
+| `inventory-control.routes.js` | Updated - Thêm preHandler cho tất cả routes |
+| `services/cycle-count.service.js` | Updated - Thêm M3 posting call |
+| `services/status-change.service.js` | Updated - Thêm M3 posting cho reverse |
+| `services/move-order.service.js` | Updated - Idempotency pattern + audit log |
+| `services/transfer-order.service.js` | Updated - Idempotency pattern + audit log |
+| `services/adjustment.service.js` | Updated - Idempotency pattern + audit log |
+| `services/reconciliation.service.js` | Updated - Idempotency pattern + audit log |
+| `services/ic-audit-log.adapter.js` | **NEW** - M1 audit log adapter |
+
+### 8.4 Permission Codes Added
+
+```
+IC.ONHAND.READ, IC.MOVEMENT.READ
+IC.MOVE.CREATE, IC.MOVE.READ, IC.MOVE.CONFIRM, IC.MOVE.EXECUTE, IC.MOVE.CANCEL
+IC.TRANSFER.CREATE, IC.TRANSFER.READ, IC.TRANSFER.RELEASE, IC.TRANSFER.SHIP, IC.TRANSFER.RECEIVE, IC.TRANSFER.CLOSE, IC.TRANSFER.CANCEL
+IC.STATUS.CREATE, IC.STATUS.READ, IC.STATUS.CANCEL, IC.STATUS.REVERSE
+IC.CYCLECOUNT.CREATE, IC.CYCLECOUNT.READ, IC.CYCLECOUNT.RELEASE, IC.CYCLECOUNT.SUBMIT, IC.CYCLECOUNT.APPROVE, IC.CYCLECOUNT.POST, IC.CYCLECOUNT.CANCEL
+IC.ADJUSTMENT.CREATE, IC.ADJUSTMENT.READ, IC.ADJUSTMENT.SUBMIT, IC.ADJUSTMENT.APPROVE, IC.ADJUSTMENT.POST, IC.ADJUSTMENT.CANCEL
+IC.RECONCILIATION.RUN, IC.RECONCILIATION.READ, IC.RECONCILIATION.ASSIGN, IC.RECONCILIATION.RESOLVE, IC.RECONCILIATION.CLOSE
+```
+
+### 8.5 Feedback Items NOT Fixed (False Positives)
+
+| Issue | Feedback | Thực tế |
+|-------|----------|---------|
+| **HI-4: No lockForUpdate** | "Missing lockForUpdate in critical operations" | Đã có implement trong 6 repositories từ ban đầu |
+
+---
+
+## 9. Next Steps
 
 1. **Chạy migration:** `npx prisma migrate dev --name add_module6_inventory_control`
 2. **Generate Prisma client:** `npx prisma generate`
 3. **Test backend:** Kiểm tra các API endpoints
 4. **Seed data:** Thêm number sequences cho MOV-*, TRF-*, STC-*, CNT-*, ADJ-*, REC-*
+5. **Seed permissions:** Thêm permission codes mới vào database
 
 ---
 
-## 9. Notes
+## 10. Notes
 
 - Tất cả files đều < 800 dòng theo yêu cầu
 - Module 6 **không** update `on_hand` hoặc `invent_trans` trực tiếp

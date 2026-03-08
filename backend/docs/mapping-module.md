@@ -695,7 +695,9 @@ src/modules/outbound/
 ```
 src/modules/inventory-control/
 ├── index.js
-├── inventory-control.routes.js
+├── inventory-control.routes.js        # Routes with RBAC middleware
+├── middleware/
+│   └── auth.middleware.js             # Auth & Permission preHandlers
 ├── controllers/
 │   ├── onhand-inquiry.controller.js
 │   ├── move-order.controller.js
@@ -714,7 +716,8 @@ src/modules/inventory-control/
 │   ├── reconciliation.service.js
 │   ├── ic-validation.service.js
 │   ├── ic-state-machine.service.js
-│   └── ic-posting-adapter.service.js
+│   ├── ic-posting-adapter.service.js  # M3 posting adapter
+│   └── ic-audit-log.adapter.js        # M1 audit log adapter
 ├── infra/
 │   ├── move-order.repository.js
 │   ├── transfer-order.repository.js
