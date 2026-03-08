@@ -45,8 +45,8 @@ export class OcrExtractService {
       // Mock OCR extraction - in production, this would call actual OCR provider
       const extractedData = await this.mockOcrExtraction(result.imagePath);
 
-      // Determine final status based on confidence
-      const status = extractedData.overallConfidence && extractedData.overallConfidence >= 80
+      // Determine final status based on per-field confidence thresholds (spec: 90% for BL/vehicle, 85% for others)
+      const status = this.evaluateConfidence(extractedData)
         ? OcrStatus.EXTRACTED
         : OcrStatus.REVIEW_REQUIRED;
 
@@ -66,6 +66,38 @@ export class OcrExtractService {
         `OCR extraction failed: ${error}`,
       );
     }
+  }
+
+  /**
+   * Evaluate OCR confidence per field based on spec thresholds:
+   * - BL Number: ≥90%
+   * - Vehicle Number: ≥90%
+   * - Product Name: ≥85%
+   * - Vessel Name: ≥85%
+   * - Quantity: ≥85%
+   */
+  private evaluateConfidence(data: OcrExtractedData): boolean {
+    const thresholds = {
+      blConfidence: 90,
+      vehicleConfidence: 90,
+      productConfidence: 85,
+      vesselConfidence: 85,
+      qtyConfidence: 85,
+    };
+
+    // Check each field that was extracted
+    if (data.blNumber && (data.blConfidence ?? 0) < thresholds.blConfidence) return false;
+    if (data.vehicleNumber && (data.vehicleConfidence ?? 0) < thresholds.vehicleConfidence) return false;
+    if (data.productName && (data.productConfidence ?? 0) < thresholds.productConfidence) return false;
+    if (data.vesselName && (data.vesselConfidence ?? 0) < thresholds.vesselConfidence) return false;
+    if (data.qtyExtracted && (data.qtyConfidence ?? 0) < thresholds.qtyConfidence) return false;
+
+    // At least BL or vehicle must be extracted with confidence
+    const hasPrimaryField = 
+      (!!data.blNumber && (data.blConfidence ?? 0) >= thresholds.blConfidence) ||
+      (!!data.vehicleNumber && (data.vehicleConfidence ?? 0) >= thresholds.vehicleConfidence);
+
+    return !!hasPrimaryField;
   }
 
   private async mockOcrExtraction(imagePath: string): Promise<OcrExtractedData> {

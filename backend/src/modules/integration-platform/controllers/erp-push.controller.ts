@@ -1,32 +1,53 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { IsString, IsOptional, IsUUID } from 'class-validator';
+import { AuthGuard } from '../../../common/guards/auth.guard';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { ErpPushService, EnqueuePushJobParams } from '../services/erp-push.service';
 
 class EnqueuePushJobDto {
+  @IsString()
   pushType!: string;
+
+  @IsString()
   referenceId!: string;
+
   payload!: Record<string, unknown>;
+
+  @IsUUID()
   correlationId!: string;
+
+  @IsOptional()
+  @IsString()
   endpointName?: string;
 }
 
 class RetryJobDto {
+  @IsOptional()
+  @IsString()
   reason?: string;
 }
 
 class CancelJobDto {
+  @IsString()
   reason!: string;
 }
 
 @Controller('api/v1/integration/erp-push')
+@UseGuards(AuthGuard, PermissionGuard)
 export class ErpPushController {
   constructor(private readonly pushService: ErpPushService) {}
 
   @Post('jobs')
+  @Permission('INTEGRATION.ERP_PUSH.ENQUEUE')
   async enqueueJob(@Body() dto: EnqueuePushJobDto) {
     return this.pushService.enqueuePushJob(dto);
   }
 
   @Get('jobs')
+  @Permission('INTEGRATION.ERP_PUSH.READ')
   async getJobs(
     @Query('pushType') pushType?: string,
     @Query('status') status?: string,
@@ -48,21 +69,22 @@ export class ErpPushController {
   }
 
   @Get('jobs/:id')
+  @Permission('INTEGRATION.ERP_PUSH.READ')
   async getJobById(@Param('id') id: string) {
     return this.pushService.getJobById(id);
   }
 
   @Post('jobs/:id/retry')
   @HttpCode(HttpStatus.OK)
-  async retryJob(@Param('id') id: string, @Body() dto: RetryJobDto) {
-    const userId = 'admin'; // In production, from auth context
-    return this.pushService.retryJob(id, userId);
+  @Permission('INTEGRATION.ERP_PUSH.RETRY')
+  async retryJob(@Param('id') id: string, @Body() dto: RetryJobDto, @CurrentUser() user: RequestUser) {
+    return this.pushService.retryJob(id, user.id);
   }
 
   @Post('jobs/:id/cancel')
   @HttpCode(HttpStatus.OK)
-  async cancelJob(@Param('id') id: string, @Body() dto: CancelJobDto) {
-    const userId = 'admin'; // In production, from auth context
-    return this.pushService.cancelJob(id, userId, dto.reason);
+  @Permission('INTEGRATION.ERP_PUSH.CANCEL')
+  async cancelJob(@Param('id') id: string, @Body() dto: CancelJobDto, @CurrentUser() user: RequestUser) {
+    return this.pushService.cancelJob(id, user.id, dto.reason);
   }
 }

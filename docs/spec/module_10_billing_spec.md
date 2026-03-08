@@ -1,11 +1,12 @@
 # Module 10 — Billing & Commercial Control: Functional Specification
 
-**Version:** 1.1
+**Version:** 1.2
 **Created:** 2026-03-08
-**Revised:** 2026-03-08
-**Status:** DRAFT — Pending Senior Manager Review
+**Revised:** 2026-03-09
+**Status:** DRAFT — Enriched for Functional / Technical Handover
 **Source:** 5 Check-Report Documents + BRD
 **Changelog v1.1:** Add free-days per lot lineage, event ownership contract, day type/OT combined multiplier formula, billable inventory statuses, CUST_VIEWER visibility decision. Per Senior Manager review.
+**Changelog v1.2:** Preserve original spec and append success criteria, non-goals, cross-module ownership matrix, billing input contracts, rate precedence, detailed storage rules, exception handling, API functional contract, ERP push contract, UI/report scope, UAT catalog, open decision register.
 
 ---
 
@@ -45,6 +46,41 @@ Dac ta chuc nang Module 10 — Billing & Commercial Control. Module nay tinh phi
 | M5 Outbound | Consumes event | M5 publishes OUTBOUND_HANDLING domain event |
 | M9 VAS | Consumes event | M9 publishes BAGGING_FEE domain event |
 | M8 Integration | Triggers | DN LOCKED → ERP push |
+
+---
+## 3A. Module Goal, Success Criteria, Non-Goals (v1.2 — NEW)
+
+### 3A.1 Goal
+Module 10 dam bao moi hoat dong billable trong kho SWM duoc thu thap, tinh phi, kiem soat, phat hanh Debit Note va dong bo ERP mot cach truy vet duoc, idempotent va khong that thoat doanh thu.
+
+### 3A.2 Success Criteria
+- Khong bo sot billable activity tu cac luong Inbound / Outbound / VAS / Storage.
+- Moi debit note co the truy vet nguoc ve contract, fee line, domain event hoac snapshot.
+- Debit Note LOCKED la immutable, khong bi sua tay sau khi chot.
+- ERP push khong bi duplicate, co retry va co lich su trang thai day du.
+- Billing exception duoc hien thi ro rang de BILLING_OFC xu ly truoc khi chot DN.
+
+### 3A.3 Non-Goals / Explicit Exclusions
+- Khong quan ly thu tien, cong no, doi soat thanh toan.
+- Khong tu dong phat sinh credit note trong Phase 1.
+- Khong ho tro multi-currency trong Phase 1.
+- Khong cho phep M10 tu suy dien billable event tu raw InventTrans.
+- Khong cho phep user sua tay snapshot da chot hoac DN da LOCKED.
+
+---
+
+## 3B. Cross-Module Boundary & Ownership Matrix (v1.2 — NEW)
+
+| Object / Capability | Owner Module | M10 Role | Note |
+|---|---|---|---|
+| Owner / Item / Warehouse / Location master | M2 | Read-only | M10 khong tao master data |
+| Billing contract / fee line / day type calendar | M10 + reference tu M2 governance | Owner | M10 quan ly du lieu tinh phi |
+| OnHand / lot lineage / receipt_line lineage | M3 | Read-only | Nguon truth cho snapshot reconciliation |
+| Inbound handling completion | M4 | Consume event | M10 khong tu xac dinh RECEIVED |
+| Outbound handling completion | M5 | Consume event | M10 khong tu xac dinh SHIPPED |
+| Bagging completion / OT flag | M9 | Consume event | M10 tinh phi dua tren event M9 |
+| ERP integration | M8 | Publish locked DN payload | M10 tao payload business; M8 thuc hien ket noi |
+| Audit log / number sequence | M1 | Use shared service | DN numbering, action trace |
 
 ---
 
@@ -538,3 +574,333 @@ billing_qty_mt = weight_kg / 1000
 | 7 | Module 4 Inbound Spec | INBOUND_HANDLING event trigger |
 | 8 | Module 5 Outbound Spec | OUTBOUND_HANDLING event trigger |
 | 9 | Module 9 VAS Spec | BAGGING_FEE event trigger, OT source |
+---
+
+## 18. Billing Input Contract by Event Type (v1.2 — NEW)
+
+### 18.1 Common Input Contract
+Tat ca domain events dua vao M10 deu phai co toi thieu cac field sau:
+
+| Field | Required | Description |
+|---|---|---|
+| event_type | Y | INBOUND_HANDLING / OUTBOUND_HANDLING / BAGGING_FEE |
+| external_id | Y | Idempotency key duy nhat tren toan he thong |
+| correlation_id | Y | Correlate giua transaction va billing |
+| source_module | Y | M4 / M5 / M9 |
+| occurred_at | Y | Thoi diem su kien xay ra tai module goc |
+| event_date | Y | Ngay hach toan billing |
+| owner_id | Y | Chu hang |
+| warehouse_id | Y | Kho phat sinh |
+| qty_mt | Y | So luong billing sau quy doi MT |
+| cargo_form | N | BULK / BAGGED_25KG / BAGGED_50KG / JUMBO_1000KG |
+| day_type | Y | WORKING_DAY / DAY_OFF / HOLIDAY |
+| is_overtime | Y | TRUE / FALSE |
+| ref_id | Y | Receipt / Shipment / WO ID |
+| ref_line_id | N | Dong nguon neu co |
+
+### 18.2 INBOUND_HANDLING
+- **Source module:** M4
+- **Trigger:** Receipt state chuyen sang `RECEIVED`
+- **Billing quantity basis:** net_weight_mt cua receipt line da nhan
+- **Ref object:** `receipt_id`, `receipt_line_id`
+- **Mandatory extra fields:** vehicle_type (neu sau nay pricing can), receipt_type, weighbridge_ref neu co
+- **Idempotency:** unique theo `external_id`; recommend format `M4-INBOUND-{receipt_line_id}-{event_version}`
+- **Validation:** owner/item/warehouse phai ton tai; qty_mt > 0; day_type phai ton tai trong calendar
+
+### 18.3 OUTBOUND_HANDLING
+- **Source module:** M5
+- **Trigger:** Shipment state chuyen sang `SHIPPED`
+- **Billing quantity basis:** mac dinh = `actual_shipped_mt`; rieng luong DPM co the can them `nominal_qty_mt` de report doi chieu
+- **Ref object:** `shipment_id`, `shipment_line_id`
+- **Mandatory extra fields:** shipment_type, truck_no / barge_no neu co, dpm_mode flag neu applicable
+- **Validation:** qty_mt > 0; shipment phai o terminal state billable
+- **Rule:** M10 su dung qty billing duoc publish boi M5, khong tu suy dien lai tu transaction lines
+
+### 18.4 BAGGING_FEE
+- **Source module:** M9
+- **Trigger:** WO state chuyen sang `COMPLETED`
+- **Billing quantity basis:** completed output qty_mt cua WO
+- **Ref object:** `wo_id`, `wo_line_id`
+- **Mandatory extra fields:** bag_type, bag_count, material_owner_type (CUSTOMER_PROVIDED / TVL_OWNED), session_count
+- **OT rule:** neu bat ky session trong WO co `is_overtime = TRUE` thi event set `is_overtime = TRUE`
+- **Validation:** bag_count phai co khi material fee ap dung
+
+### 18.5 Event Capture Failure Policy
+- Payload invalid schema → status `REJECTED`, ghi error_code, khong tinh phi.
+- Payload hop le nhung thieu contract/rate → status `CAPTURED` + flag `EXCEPTION_REQUIRED`.
+- Duplicate `external_id` → bo qua, khong tao them billing_event.
+
+---
+
+## 19. Storage Billing Logic Detail (v1.2 — NEW)
+
+### 19.1 Snapshot Grain
+Snapshot chuan duoc tao theo to hop: `(snapshot_date, warehouse_id, location_id, owner_id, item_id, receipt_line_id, inventory_status)`
+
+### 19.2 Snapshot Rules
+1. `opening_qty_mt` = closing_qty_mt cua snapshot ngay T-1 cung grain.
+2. `inbound_today_mt` = tong qty duoc putaway vao grain trong ngay T.
+3. `outbound_today_mt` = tong qty xuat kho khoi grain trong ngay T.
+4. `closing_qty_mt` = opening + inbound - outbound.
+5. `billable_qty_mt` = opening + inbound. Khong tru outbound trong ngay.
+6. Snapshot chi lay location co `is_billing_location = TRUE`.
+7. Snapshot phai dong bo theo gio Vietnam (UTC+7).
+8. Neu khong tim thay contract hieu luc tai `snapshot_date` thi snapshot van duoc tao nhung `daily_amount_vnd = NULL`, flag exception.
+
+### 19.3 Free-Day Detailed Rule
+- `first_putaway_date` la ngay putaway dau tien cua chinh `receipt_line_id`.
+- `days_in_storage = snapshot_date - first_putaway_date + 1` neu business quy uoc tinh ngay dau tien la day 1.
+- Truong hop business quy uoc khac, phai chot trong Open Decision Register.
+- `is_free_day = TRUE` khi `days_in_storage <= free_days` cua fee line storage phu hop.
+- Khong duoc gop nhieu lot de tinh free-day theo owner/item aggregate.
+
+### 19.4 Billable Status Rule
+- AVAILABLE: mac dinh billable.
+- DAMAGED / BLOCKED: dang cho business chot. Trong khi chua chot, he thong phai luu ro `is_billable_status` va co kha nang re-run calculation.
+- IN_TRANSIT: khong bill.
+
+### 19.5 Backdated Correction / Rebuild Rule
+- Neu phat hien sai lineage hoac backdated transaction anh huong snapshot da tao, he thong khong sua tay tung dong snapshot.
+- Cach xu ly: tao `rebuild job` cho date range bi anh huong, danh dau version moi, giu audit version cu.
+- Neu DN da LOCKED va snapshot rebuild lam doi so tien, dua vao exception workflow; Phase 1 khong tao credit note tu dong.
+
+### 19.6 Storage Calculation Trace
+Moi debit_note_line loai STORAGE phai luu:
+- snapshot_date
+- receipt_line_id
+- opening_qty_mt
+- inbound_today_mt
+- outbound_today_mt
+- billable_qty_mt
+- free_days
+- days_in_storage
+- is_free_day
+- applied_rate
+- computed_amount
+
+---
+
+## 20. Rate Resolution & Contract Versioning (v1.2 — NEW)
+
+### 20.1 Contract Selection Precedence
+Khi tinh phi cho 1 event / snapshot, he thong chon contract theo thu tu uu tien sau:
+1. Contract cua owner co hieu luc tai `event_date` / `snapshot_date`, match warehouse neu contract co scope warehouse.
+2. Contract owner-level default co hieu luc tai ngay tinh phi.
+3. Neu khong tim thay → tao exception `MISSING_CONTRACT`, khong auto-fallback ve gia hardcode.
+
+### 20.2 Fee Line Selection Precedence
+Trong 1 contract, fee line duoc chon theo thu tu:
+1. Match exact `fee_type + cargo_form + warehouse_scope + day_type_scope`
+2. Match `fee_type + cargo_form + warehouse_scope`
+3. Match `fee_type + cargo_form`
+4. Match `fee_type` general default
+5. Khong tim thay → `MISSING_RATE`
+
+### 20.3 Overlap & Effective Date Rule
+- Khong cho phep 2 contract active overlap cung owner trong cung date range scope.
+- Update contract phai qua validation overlap truoc khi save.
+- Contract het hieu luc khong duoc ap cho event/snapshot co ngay nam ngoai range.
+
+### 20.4 Versioning Rule
+- Contract / fee line sau khi da duoc dung de tinh DN LOCKED thi khong duoc sua silent overwrite.
+- Neu can thay doi gia, tao version moi voi effective_from moi.
+- Mọi debit_note_line phai luu reference contract_id + fee_line_id da ap dung tai thoi diem tinh phi.
+
+---
+
+## 21. Exception & Reconciliation Scenarios (v1.2 — NEW)
+
+| Code | Scenario | Detection | System Action | User Action |
+|---|---|---|---|---|
+| EX-BIL-001 | Missing contract | Event/snapshot khong tim thay contract hieu luc | Tao exception, khong tinh amount | BILLING_OFC bo sung contract / rate, re-calc |
+| EX-BIL-002 | Missing rate | Co contract nhung khong co fee line phu hop | Tao exception | Cap nhat fee line, re-calc |
+| EX-BIL-003 | Duplicate event | Trung `external_id` | Skip event moi, ghi audit | Khong can action |
+| EX-BIL-004 | Invalid payload | Schema/event data sai | Reject + log | Publisher module fix, replay |
+| EX-BIL-005 | Late event after DN LOCKED | Event_date thuoc ky da lock | Tao exception `LATE_EVENT_LOCKED_PERIOD` | Xu ly thuong mai / ky sau theo quyet dinh business |
+| EX-BIL-006 | Snapshot rebuild impact | Rebuild thay doi amount da tinh | Tao exception severity HIGH | Review thu cong, quyet dinh adjustment |
+| EX-BIL-007 | ERP push failed | Push response failed / timeout | Retry theo policy | Theo doi push history |
+| EX-BIL-008 | Event vs transaction truth mismatch | Qty event lech so voi reconciliation query | Tao exception | Kiem tra M4/M5/M9 va M3 |
+
+### 21.1 Reconciliation Controls
+- Reconcile so luong event INBOUND_HANDLING voi so receipt lines RECEIVED trong M4.
+- Reconcile so luong event OUTBOUND_HANDLING voi shipment lines SHIPPED trong M5.
+- Reconcile BAGGING_FEE voi WO COMPLETED trong M9.
+- Reconcile snapshot closing qty voi M3 onhand/cuoi ngay theo grain tuong ung.
+
+### 21.2 Late Event Policy (Phase 1 Proposed Default)
+- Event den muon sau khi DN LOCKED **khong** tu dong mo khoa DN.
+- Event duoc dua vao exception queue.
+- BILLING_OFC quyet dinh dua vao DN ky sau hoac xu ly ngoai he thong.
+- Credit note / debit adjustment chinh thuc thuoc Phase 2.
+
+---
+
+## 22. API Functional Contract Detail (v1.2 — NEW)
+
+### 22.1 POST `/api/v1/billing/contracts`
+**Purpose:** Tao contract billing cho owner.
+
+**Minimum request:**
+```json
+{
+  "owner_id": "OWN-001",
+  "effective_from": "2026-03-01",
+  "effective_to": "2026-12-31",
+  "is_default": true,
+  "fee_lines": [
+    {
+      "fee_type": "STORAGE",
+      "cargo_form": "BULK",
+      "unit_rate": 12000,
+      "free_days": 5
+    }
+  ]
+}
+```
+
+**Validation:**
+- owner_id bat buoc ton tai.
+- effective_from <= effective_to.
+- Khong overlap contract active.
+- fee_lines khong duoc trung `fee_type + cargo_form + scope`.
+
+**Business errors:**
+- `BIL-CONTRACT-409-OVERLAP`
+- `BIL-CONTRACT-400-INVALID_DATE_RANGE`
+- `BIL-CONTRACT-404-OWNER_NOT_FOUND`
+
+### 22.2 POST `/api/v1/billing/debit-notes`
+**Purpose:** Generate DRAFT debit note cho owner / period.
+
+**Minimum request:**
+```json
+{
+  "owner_id": "OWN-001",
+  "billing_period_start": "2026-03-01",
+  "billing_period_end": "2026-03-31",
+  "warehouse_scope": ["WH-A"],
+  "idempotency_key": "DNGEN-OWN001-202603"
+}
+```
+
+**Rules:**
+- Idempotent theo `idempotency_key`.
+- Khong generate trung 2 DN DRAFT cho cung owner + period + scope neu config khong cho phep.
+- Neu con exception severity HIGH thi co the chan generate hoac generate voi warning flag, tuy theo config.
+
+### 22.3 PUT `/api/v1/billing/debit-notes/{id}/review`
+- Guard: DN dang o DRAFT.
+- Side effect: gan `reviewed_by`, `reviewed_at`.
+- Error: `409 INVALID_STATE` neu DN khong o DRAFT.
+
+### 22.4 PUT `/api/v1/billing/debit-notes/{id}/approve`
+- Guard: DN dang o REVIEWED.
+- Actor: BILLING_OFC; WH_MANAGER neu business chot co tham gia.
+- Error: `403 FORBIDDEN_ROLE`, `409 INVALID_STATE`.
+
+### 22.5 PUT `/api/v1/billing/debit-notes/{id}/lock`
+- Guard: DN dang o APPROVED.
+- Actor: BILLING_OFC only.
+- Side effect: set `locked_at`, `locked_by`, `erp_push_status=PENDING`, tao outbox message ERP.
+- Idempotency: lock API phai idempotent; goi lap lai tren DN da LOCKED tra ve ket qua thanh cong hien tai, khong push them lan nua.
+
+### 22.6 GET Endpoints General Rules
+- List API phai support filter, sort, pagination.
+- Date filter theo timezone Vietnam.
+- CUST_VIEWER chi duoc xem du lieu owner cua minh va DN status LOCKED.
+- Export API chi xuat du lieu tu DN da ton tai, khong tu tinh lai real-time.
+
+---
+
+## 23. ERP Push Contract & Retry Policy (v1.2 — NEW)
+
+### 23.1 Trigger
+- Trigger khi DN chuyen `APPROVED -> LOCKED`.
+- Payload duoc dong goi tu header + lines cua DN LOCKED.
+
+### 23.2 Payload Logical Fields
+**Header:** dn_number, owner_code, billing_period_start, billing_period_end, total_before_vat, vat_amount, grand_total, currency=VND
+
+**Line:** charge_code, description, qty_mt, unit_rate, multiplier, amount_vnd, source_ref_id
+
+### 23.3 Push State
+- `PENDING`: vua lock, chua gui hoac dang cho worker.
+- `SUCCESS`: ERP xac nhan thanh cong.
+- `FAILED`: gui that bai, cho retry / manual action.
+
+### 23.4 Retry Policy
+- Retry tu dong toi da 3 lan theo exponential backoff.
+- Sau 3 lan that bai → giu `FAILED`, tao exception va thong bao BILLING_OFC.
+- Push phai idempotent theo `dn_number` hoac integration key.
+
+### 23.5 Audit Fields
+Can luu: request payload hash, response code, response body rut gon, pushed_at, retried_count, integration_correlation_id.
+
+---
+
+## 24. UI / Report Scope (v1.2 — NEW)
+
+### 24.1 Screens
+1. Contract List / Contract Detail
+2. Billing Event Queue
+3. Storage Snapshot Inquiry
+4. Billing Exception Queue
+5. Debit Note List / Detail
+6. ERP Push History
+7. Export Center (PDF / Excel)
+
+### 24.2 Key Columns
+**Billing Event Queue:** event_date, event_type, ref_id, owner, warehouse, qty_mt, day_type, is_overtime, status, exception_flag
+
+**Exception Queue:** exception_code, severity, ref_id, owner, detected_at, root_cause, resolution_status
+
+**Debit Note List:** dn_number, owner, period, status, total_before_vat, vat_amount, grand_total, erp_push_status
+
+### 24.3 Customer Visibility
+- CUST_VIEWER chi xem DN `LOCKED`.
+- Khong xem draft lines, exception queue, snapshot raw data, calculation internals.
+
+---
+
+## 25. UAT Scenario Catalog (v1.2 — NEW)
+
+| UAT ID | Scenario | Expected Result |
+|---|---|---|
+| UAT-M10-001 | Tao contract khong overlap | Save thanh cong |
+| UAT-M10-002 | Tao contract overlap date range | Bi chan voi error overlap |
+| UAT-M10-003 | INBOUND_HANDLING event hop le | Tao billing_event CAPTURED |
+| UAT-M10-004 | Duplicate inbound event | Khong tao duplicate |
+| UAT-M10-005 | Snapshot ngay co inbound va outbound | billable_qty = opening + inbound |
+| UAT-M10-006 | Free-day theo 2 lot nhap khac ngay | Moi lot free-day doc lap |
+| UAT-M10-007 | Handling ngay nghi co OT | Dung combined multiplier 2.0 / 3.0 theo rule |
+| UAT-M10-008 | Bagging 1,200 MT | Tinh tach tier 1,000 + 200 |
+| UAT-M10-009 | Missing rate | Tao exception, khong tinh amount |
+| UAT-M10-010 | Generate DN cho ky hop le | Tao DRAFT DN + lines |
+| UAT-M10-011 | Review -> Approve -> Lock | Dung state machine, khong skip buoc |
+| UAT-M10-012 | Goi lock API lap lai | Khong push ERP duplicate |
+| UAT-M10-013 | ERP push fail 3 lan | DN giu FAILED + co lich su retry |
+| UAT-M10-014 | Late event sau ky da lock | Tao exception `LATE_EVENT_LOCKED_PERIOD` |
+| UAT-M10-015 | CUST_VIEWER truy cap DN DRAFT | Bi tu choi |
+
+---
+
+## 26. Open Decision Register (v1.2 — NEW)
+
+| Decision ID | Decision | Current Status | Default / Recommendation | Impacted Sections | Owner |
+|---|---|---|---|---|---|
+| ODR-M10-001 | EOD cut-off global hay per warehouse | OPEN | Phase 1 nen global 23:59 Vietnam de don gian hoa doi soat | 9, 19, batch schedule | Business + Ops |
+| ODR-M10-002 | WH_MANAGER co approve DN hay khong | OPEN | Neu governance don gian: BILLING_OFC tu review/approve, manager chi xem bao cao | 10, 11, 22 | Finance / Ops |
+| ODR-M10-003 | Tier pricing reset monthly hay rolling | OPEN | Khuyen nghi monthly theo billing period de de giai thich invoice | 8.4, 25 | Business Commercial |
+| ODR-M10-004 | DAMAGED/BLOCKED co bill storage hay khong | OPEN | Mac dinh tam thoi: AVAILABLE billable, DAMAGED/BLOCKED not billable neu chua chot | 9.4, 19.4 | Business + Customer Service |
+| ODR-M10-005 | Multi-warehouse gop 1 DN hay tach DN | OPEN | Khuyen nghi gop theo owner + period, line co warehouse dimension | 14, 22 | Finance |
+| ODR-M10-006 | Day 1 free-day counting inclusive hay exclusive | OPEN | Khuyen nghi inclusive de de thong nhat van hanh | 8.5, 19.3 | Business |
+
+---
+
+## 27. BA Recommendations for Next Handover Step (v1.2 — NEW)
+
+1. Chot toan bo Open Decision Register truoc khi freeze FS / API spec.
+2. Viet OpenAPI / request-response JSON chi tiet cho cac API side-effect.
+3. Thiet ke outbox + retry worker cho ERP push de dam bao idempotency.
+4. Bo sung test data matrix cho owner, cargo_form, day_type, OT, free_days, status.
+5. Dong bo Module 10 voi M4/M5/M9 ve external_id format va event payload schema.

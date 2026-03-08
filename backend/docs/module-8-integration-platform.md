@@ -486,3 +486,56 @@ const result = await erpPushService.enqueuePushJob({
 - OCR raw result immutable, corrections qua confirmed_snapshot
 - ERP push có retry với exponential backoff
 - Alert lifecycle: OPEN → ACKNOWLEDGED → RESOLVED
+- **Tất cả endpoints đều được bảo vệ bởi RBAC** (AuthGuard + PermissionGuard)
+- Weight calculations sử dụng **decimal.js** để đảm bảo độ chính xác
+- Multi-step operations sử dụng **$transaction** để đảm bảo atomicity
+
+---
+
+## 9. RBAC Permissions
+
+Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `PermissionGuard`.
+
+### Permission Codes
+
+| Resource | Permission Code | Mô tả |
+|----------|-----------------|-------|
+| **Weighbridge** | `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events |
+| | `INTEGRATION.WEIGHBRIDGE.READ` | Query weigh logs |
+| | `INTEGRATION.WEIGHBRIDGE.REPROCESS` | Reprocess callbacks |
+| **Weighbridge Device** | `INTEGRATION.WEIGHBRIDGE_DEVICE.READ` | List devices |
+| | `INTEGRATION.WEIGHBRIDGE_DEVICE.HEARTBEAT` | Send heartbeat |
+| **OCR** | `INTEGRATION.OCR.UPLOAD` | Upload for OCR |
+| | `INTEGRATION.OCR.READ` | Query OCR results |
+| | `INTEGRATION.OCR.CONFIRM` | Confirm OCR result |
+| | `INTEGRATION.OCR.LINK` | Link to receipt |
+| | `INTEGRATION.OCR.REJECT` | Reject OCR result |
+| **Mobile Sync** | `INTEGRATION.MOBILE_SYNC.SUBMIT` | Submit sync batch |
+| | `INTEGRATION.MOBILE_SYNC.READ` | Query batches/events |
+| | `INTEGRATION.MOBILE_SYNC.REPLAY` | Replay failed event |
+| **ERP Push** | `INTEGRATION.ERP_PUSH.ENQUEUE` | Enqueue push job |
+| | `INTEGRATION.ERP_PUSH.READ` | Query jobs |
+| | `INTEGRATION.ERP_PUSH.RETRY` | Manual retry |
+| | `INTEGRATION.ERP_PUSH.CANCEL` | Cancel job |
+| **Monitoring** | `INTEGRATION.MONITORING.VIEW` | View dashboard |
+| **Alerts** | `INTEGRATION.ALERT.READ` | Query alerts |
+| | `INTEGRATION.ALERT.ACKNOWLEDGE` | Acknowledge alert |
+| | `INTEGRATION.ALERT.RESOLVE` | Resolve alert |
+
+---
+
+## 10. OCR Confidence Thresholds
+
+OCR extraction sử dụng per-field confidence thresholds theo spec:
+
+| Field | Threshold | Mô tả |
+|-------|-----------|-------|
+| BL Number | ≥90% | Số BL phải có độ tin cậy cao |
+| Vehicle Number | ≥90% | Biển số xe phải rõ ràng |
+| Product Name | ≥85% | Tên sản phẩm |
+| Vessel Name | ≥85% | Tên tàu |
+| Quantity | ≥85% | Số lượng |
+
+- Nếu tất cả fields đạt threshold → Status: `EXTRACTED`
+- Nếu bất kỳ field nào dưới threshold → Status: `REVIEW_REQUIRED`
+- Phải có ít nhất BL hoặc Vehicle với confidence đạt threshold

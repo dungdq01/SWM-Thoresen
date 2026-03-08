@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { WeighbridgeLogRepository } from '../repositories/weighbridge-log.repository';
+import Decimal from 'decimal.js';
 import { WeighbridgeEventStateRepository } from '../repositories/weighbridge-event-state.repository';
 import { WeighbridgeDeviceService } from './weighbridge-device.service';
 import { CreateWeighEventDto } from '../dto/weighbridge/create-weigh-event.dto';
@@ -20,6 +22,7 @@ export class WeighbridgeIngestService {
   private readonly logger = new Logger(WeighbridgeIngestService.name);
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly logRepo: WeighbridgeLogRepository,
     private readonly eventStateRepo: WeighbridgeEventStateRepository,
     private readonly deviceService: WeighbridgeDeviceService,
@@ -58,10 +61,10 @@ export class WeighbridgeIngestService {
       }
     }
 
-    // 4. Calculate net weight if not provided
+    // 4. Calculate net weight if not provided (using decimal.js for precision)
     let netWeightKg = dto.netWeightKg;
     if (!netWeightKg && dto.grossWeightKg && dto.tareWeightKg) {
-      netWeightKg = dto.grossWeightKg - dto.tareWeightKg;
+      netWeightKg = new Decimal(dto.grossWeightKg).minus(dto.tareWeightKg).toNumber();
     }
 
     // 5. Determine reference fields
@@ -72,37 +75,47 @@ export class WeighbridgeIngestService {
     const eventTime = new Date(dto.eventTime);
     const latencyMs = Date.now() - eventTime.getTime();
 
-    // 7. Create immutable log entry
+    // 7. Create immutable log entry with transaction for atomicity
     const externalId = uuidv4();
-    const log = await this.logRepo.create({
-      weighbridgeEventId: dto.weighbridgeEventId,
-      receiptId,
-      shipmentId,
-      vehicleNumber: dto.vehicleNumber,
-      weighingType: dto.weighingType as any,
-      weighingSequence: dto.weighingSequence,
-      grossWeightKg: dto.grossWeightKg,
-      tareWeightKg: dto.tareWeightKg,
-      netWeightKg,
-      rawPayload: dto.rawPayload as any,
-      isStableWeight: true,
-      isDuplicateSignal: false,
-      isManualEntry: dto.isManualEntry || false,
-      manualReasonCode: dto.manualReasonCode,
-      approvedBy: dto.approvedBy,
-      latencyMs,
-      externalId,
-      correlationId: dto.correlationId,
-      sourceChannel: dto.sourceChannel,
-      weighingTimestamp: eventTime,
-      createdBy,
-      device: { connect: { deviceCode: dto.scaleDeviceId } },
-      eventState: {
-        create: {
+    const log = await this.prisma.$transaction(async (tx) => {
+      const createdLog = await tx.m8WeighbridgeLog.create({
+        data: {
+          weighbridgeEventId: dto.weighbridgeEventId,
+          receiptId,
+          shipmentId,
+          vehicleNumber: dto.vehicleNumber,
+          weighingType: dto.weighingType as any,
+          weighingSequence: dto.weighingSequence,
+          grossWeightKg: dto.grossWeightKg,
+          tareWeightKg: dto.tareWeightKg,
+          netWeightKg,
+          rawPayload: dto.rawPayload as any,
+          isStableWeight: true,
+          isDuplicateSignal: false,
+          isManualEntry: dto.isManualEntry || false,
+          manualReasonCode: dto.manualReasonCode,
+          approvedBy: dto.approvedBy,
+          latencyMs,
+          externalId,
+          correlationId: dto.correlationId,
+          sourceChannel: dto.sourceChannel,
+          weighingTimestamp: eventTime,
+          createdBy,
+          device: { connect: { deviceCode: dto.scaleDeviceId } },
+        },
+        include: { eventState: true },
+      });
+
+      // Create event state in same transaction
+      await tx.m8WeighbridgeEventState.create({
+        data: {
+          weighbridgeLogId: createdLog.id,
           processingStatus: WeighEventProcessingStatus.RECEIVED,
           callbackStatus: CallbackStatus.PENDING,
         },
-      },
+      });
+
+      return createdLog;
     });
 
     this.logger.log(`Weigh event ingested: ${dto.weighbridgeEventId}, log ID: ${log.id}`);
