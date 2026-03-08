@@ -7,6 +7,8 @@ const cycleCountRepo = require('../infra/cycle-count.repository');
 const adjustmentRepo = require('../infra/adjustment.repository');
 const validationService = require('./ic-validation.service');
 const stateMachine = require('./ic-state-machine.service');
+const postingAdapter = require('./ic-posting-adapter.service');
+const auditLogAdapter = require('./ic-audit-log.adapter');
 const statusHistoryRepo = require('../infra/ic-status-history.repository');
 const { calculateVariance, shouldRecount, determineAdjustmentType } = require('../domain/ic.policy');
 const { IcCycleCountStatus, IcCycleCountLineStatus, IcAdjustmentStatus, IcDocumentEntityType, IcExceptionType } = require('../domain/ic.enums');
@@ -40,7 +42,7 @@ async function createCycleCount(data, requestContext) {
 
   const existing = await cycleCountRepo.findCycleCountByExternalId(data.externalId);
   if (existing) {
-    throw new IcIdempotencyConflictError(data.externalId);
+    return { ...existing, idempotentReplay: true };
   }
 
   return prisma.$transaction(async (tx) => {
@@ -345,6 +347,17 @@ async function postCycleCount(id, requestContext) {
       lines: adjustmentLines,
     }, tx);
 
+    // Post adjustment to M3 Inventory Core
+    const adjustmentWithLines = await adjustmentRepo.findAdjustmentById(adjustment.id, tx);
+    await postingAdapter.postAdjustment(adjustmentWithLines, adjustmentWithLines.lines, correlationId, tx);
+
+    // Update adjustment status to POSTED
+    await adjustmentRepo.updateAdjustment(adjustment.id, {
+      status: IcAdjustmentStatus.POSTED,
+      postedAt: new Date(),
+      updatedBy: userId,
+    }, tx);
+
     for (const line of varianceLines) {
       await cycleCountRepo.updateCycleCountLine(line.id, {
         adjustmentHeaderId: adjustment.id,
@@ -358,7 +371,7 @@ async function postCycleCount(id, requestContext) {
       userId,
       correlationId,
       null,
-      'Posted with adjustment',
+      'Posted with adjustment via M3',
       tx
     );
 
