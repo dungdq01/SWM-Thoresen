@@ -2,16 +2,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ShipmentLineResponseDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiProperty()
-  lineNumber: number;
+  lineNumber!: number;
 
   @ApiPropertyOptional()
   soLineId?: string;
 
   @ApiProperty()
-  itemId: string;
+  itemId!: string;
 
   @ApiProperty()
   itemCode?: string;
@@ -20,28 +20,28 @@ export class ShipmentLineResponseDto {
   itemName?: string;
 
   @ApiProperty()
-  cargoForm: string;
+  cargoForm!: string;
 
   @ApiProperty()
-  uomId: string;
+  uomId!: string;
 
   @ApiProperty()
   uomCode?: string;
 
   @ApiProperty()
-  expectedQty: number;
+  expectedQty!: number;
 
   @ApiProperty()
-  expectedQtyKg: number;
+  expectedQtyKg!: number;
 
   @ApiProperty()
-  allocatedQty: number;
+  allocatedQty!: number;
 
   @ApiProperty()
-  pickedQty: number;
+  pickedQty!: number;
 
   @ApiProperty()
-  loadedQty: number;
+  loadedQty!: number;
 
   @ApiPropertyOptional()
   shippedQty?: number;
@@ -68,27 +68,27 @@ export class ShipmentLineResponseDto {
   weighSequenceNo?: number;
 
   @ApiProperty()
-  lineStatus: string;
+  lineStatus!: string;
 
   @ApiPropertyOptional()
   postedTransId?: string;
 
   @ApiProperty()
-  isDpmLine: boolean;
+  isDpmLine!: boolean;
 
   @ApiPropertyOptional()
   dpmNominalQtyKg?: number;
 
   @ApiProperty()
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty()
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export class ShipmentHeaderResponseDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiPropertyOptional()
   shipmentNumber?: string;
@@ -97,10 +97,10 @@ export class ShipmentHeaderResponseDto {
   soId?: string;
 
   @ApiProperty()
-  sourceType: string;
+  sourceType!: string;
 
   @ApiProperty()
-  ownerId: string;
+  ownerId!: string;
 
   @ApiPropertyOptional()
   ownerCode?: string;
@@ -112,7 +112,7 @@ export class ShipmentHeaderResponseDto {
   customerId?: string;
 
   @ApiProperty()
-  warehouseId: string;
+  warehouseId!: string;
 
   @ApiPropertyOptional()
   warehouseCode?: string;
@@ -121,7 +121,7 @@ export class ShipmentHeaderResponseDto {
   warehouseName?: string;
 
   @ApiProperty()
-  vehicleNumber: string;
+  vehicleNumber!: string;
 
   @ApiPropertyOptional()
   vehicleTypeId?: string;
@@ -130,7 +130,7 @@ export class ShipmentHeaderResponseDto {
   vehicleTypeName?: string;
 
   @ApiProperty()
-  status: string;
+  status!: string;
 
   @ApiPropertyOptional()
   tareWeightKg?: number;
@@ -142,13 +142,13 @@ export class ShipmentHeaderResponseDto {
   totalNetKg?: number;
 
   @ApiProperty()
-  allLinesPassed: boolean;
+  allLinesPassed!: boolean;
 
   @ApiProperty()
-  pendingApprovalCount: number;
+  pendingApprovalCount!: number;
 
   @ApiProperty()
-  isDpmShipment: boolean;
+  isDpmShipment!: boolean;
 
   @ApiPropertyOptional()
   cancelReasonCode?: string;
@@ -163,36 +163,36 @@ export class ShipmentHeaderResponseDto {
   closedAt?: Date;
 
   @ApiProperty()
-  externalId: string;
+  externalId!: string;
 
   @ApiProperty()
-  correlationId: string;
+  correlationId!: string;
 
   @ApiProperty()
-  sourceApp: string;
+  sourceApp!: string;
 
   @ApiProperty()
-  rowVersion: number;
+  rowVersion!: number;
 
   @ApiProperty()
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiPropertyOptional()
   createdBy?: string;
 
   @ApiProperty()
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @ApiPropertyOptional()
   updatedBy?: string;
 
   @ApiProperty({ type: [ShipmentLineResponseDto] })
-  lines: ShipmentLineResponseDto[];
+  lines!: ShipmentLineResponseDto[];
 }
 
 export class ShipmentListItemDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiPropertyOptional()
   shipmentNumber?: string;
@@ -201,25 +201,25 @@ export class ShipmentListItemDto {
   soId?: string;
 
   @ApiProperty()
-  sourceType: string;
+  sourceType!: string;
 
   @ApiProperty()
-  ownerCode: string;
+  ownerCode!: string;
 
   @ApiProperty()
-  ownerName: string;
+  ownerName!: string;
 
   @ApiProperty()
-  warehouseCode: string;
+  warehouseCode!: string;
 
   @ApiProperty()
-  vehicleNumber: string;
+  vehicleNumber!: string;
 
   @ApiProperty()
-  status: string;
+  status!: string;
 
   @ApiProperty()
-  lineCount: number;
+  lineCount!: number;
 
   @ApiPropertyOptional()
   totalExpectedQtyKg?: number;
@@ -228,10 +228,10 @@ export class ShipmentListItemDto {
   totalNetKg?: number;
 
   @ApiProperty()
-  pendingApprovalCount: number;
+  pendingApprovalCount!: number;
 
   @ApiProperty()
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiPropertyOptional()
   shippedAt?: Date;
@@ -239,17 +239,17 @@ export class ShipmentListItemDto {
 
 export class PaginatedShipmentListDto {
   @ApiProperty({ type: [ShipmentListItemDto] })
-  items: ShipmentListItemDto[];
+  items!: ShipmentListItemDto[];
 
   @ApiProperty()
-  total: number;
+  total!: number;
 
   @ApiProperty()
-  page: number;
+  page!: number;
 
   @ApiProperty()
-  pageSize: number;
+  pageSize!: number;
 
   @ApiProperty()
-  totalPages: number;
+  totalPages!: number;
 }

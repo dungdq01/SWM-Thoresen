@@ -13,17 +13,17 @@ import { WeighingService, RecordTareParams, RecordGrossParams } from '../service
 import { ShipmentQueryService } from '../services/shipment-query.service';
 
 class RecordTareDto {
-  rawWeightKg: number;
-  sourceMode: 'SCALE_AGENT' | 'MANUAL';
+  rawWeightKg!: number;
+  sourceMode!: 'SCALE_AGENT' | 'MANUAL';
   scaleTicketNo?: string;
   externalEventId?: string;
   reasonCode?: string;
 }
 
 class RecordGrossDto {
-  lineId: string;
-  rawWeightKg: number;
-  sourceMode: 'SCALE_AGENT' | 'MANUAL';
+  lineId!: string;
+  rawWeightKg!: number;
+  sourceMode!: 'SCALE_AGENT' | 'MANUAL';
   scaleTicketNo?: string;
   externalEventId?: string;
   reasonCode?: string;

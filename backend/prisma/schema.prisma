@@ -189,15 +189,15 @@ enum ImportErrorLevel {
 }
 
 model AppUser {
-  id          String     @id @default(uuid()) @db.Uuid
-  userCode    String     @unique @map("user_code") @db.VarChar(50)
-  username    String     @unique @db.VarChar(80)
-  fullName    String     @map("full_name") @db.VarChar(150)
-  email       String?    @unique @db.VarChar(150)
-  isActive    Boolean    @default(true) @map("is_active")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  userRoles   UserRole[]
+  id        String     @id @default(uuid()) @db.Uuid
+  userCode  String     @unique @map("user_code") @db.VarChar(50)
+  username  String     @unique @db.VarChar(80)
+  fullName  String     @map("full_name") @db.VarChar(150)
+  email     String?    @unique @db.VarChar(150)
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  userRoles UserRole[]
 
   @@map("app_user")
 }
@@ -299,21 +299,21 @@ model ReasonCode {
 }
 
 model NumberSequence {
-  id               String              @id @default(uuid()) @db.Uuid
-  sequenceCode     String              @unique @map("sequence_code") @db.VarChar(30)
-  description      String?             @db.VarChar(255)
-  scopeType        SequenceScopeType   @map("scope_type")
-  resetPolicy      SequenceResetPolicy @map("reset_policy")
-  prefixTemplate   String              @map("prefix_template") @db.VarChar(100)
-  formatTemplate   String              @map("format_template") @db.VarChar(150)
-  runningNoLength  Int                 @default(6) @map("running_no_length")
-  allowGap         Boolean             @default(true) @map("allow_gap")
-  isActive         Boolean             @default(true) @map("is_active")
-  createdBy        String?             @map("created_by") @db.Uuid
-  updatedBy        String?             @map("updated_by") @db.Uuid
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
-  counters         NumberSequenceCounter[]
+  id              String                  @id @default(uuid()) @db.Uuid
+  sequenceCode    String                  @unique @map("sequence_code") @db.VarChar(30)
+  description     String?                 @db.VarChar(255)
+  scopeType       SequenceScopeType       @map("scope_type")
+  resetPolicy     SequenceResetPolicy     @map("reset_policy")
+  prefixTemplate  String                  @map("prefix_template") @db.VarChar(100)
+  formatTemplate  String                  @map("format_template") @db.VarChar(150)
+  runningNoLength Int                     @default(6) @map("running_no_length")
+  allowGap        Boolean                 @default(true) @map("allow_gap")
+  isActive        Boolean                 @default(true) @map("is_active")
+  createdBy       String?                 @map("created_by") @db.Uuid
+  updatedBy       String?                 @map("updated_by") @db.Uuid
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  counters        NumberSequenceCounter[]
 
   @@map("number_sequence")
 }
@@ -322,7 +322,7 @@ model NumberSequenceCounter {
   id          String         @id @default(uuid()) @db.Uuid
   sequenceId  String         @map("sequence_id") @db.Uuid
   scopeKey    String         @map("scope_key") @db.VarChar(100)
-  counterDate DateTime       @db.Date @map("counter_date")
+  counterDate DateTime       @map("counter_date") @db.Date
   lastNumber  BigInt         @default(0) @map("last_number")
   versionNo   BigInt         @default(0) @map("version_no")
   updatedAt   DateTime       @updatedAt @map("updated_at")
@@ -395,26 +395,26 @@ model ChangeControlRecord {
 }
 
 model AuditLog {
-  id           String    @id @default(uuid()) @db.Uuid
-  entityType   String    @map("entity_type") @db.VarChar(50)
-  entityId     String    @map("entity_id") @db.VarChar(100)
-  action       String    @db.VarChar(50)
-  fieldName    String?   @map("field_name") @db.VarChar(100)
-  oldValue     String?   @map("old_value") @db.Text
-  newValue     String?   @map("new_value") @db.Text
-  userId       String?   @map("user_id") @db.Uuid
-  userRole     String?   @map("user_role") @db.VarChar(50)
-  ipAddress    String?   @map("ip_address") @db.VarChar(64)
-  deviceType   String?   @map("device_type") @db.VarChar(20)
-  occurredAt   DateTime  @default(now()) @map("occurred_at")
-  reasonCode   String?   @map("reason_code") @db.VarChar(50)
-  notes        String?   @db.Text
+  id            String   @id @default(uuid()) @db.Uuid
+  entityType    String   @map("entity_type") @db.VarChar(50)
+  entityId      String   @map("entity_id") @db.VarChar(100)
+  action        String   @db.VarChar(50)
+  fieldName     String?  @map("field_name") @db.VarChar(100)
+  oldValue      String?  @map("old_value") @db.Text
+  newValue      String?  @map("new_value") @db.Text
+  userId        String?  @map("user_id") @db.Uuid
+  userRole      String?  @map("user_role") @db.VarChar(50)
+  ipAddress     String?  @map("ip_address") @db.VarChar(64)
+  deviceType    String?  @map("device_type") @db.VarChar(20)
+  occurredAt    DateTime @default(now()) @map("occurred_at")
+  reasonCode    String?  @map("reason_code") @db.VarChar(50)
+  notes         String?  @db.Text
   correlationId String?  @map("correlation_id") @db.VarChar(100)
-  requestId    String?   @map("request_id") @db.VarChar(100)
-  sourceModule String?   @map("source_module") @db.VarChar(50)
+  requestId     String?  @map("request_id") @db.VarChar(100)
+  sourceModule  String?  @map("source_module") @db.VarChar(50)
   warehouseCode String?  @map("warehouse_code") @db.VarChar(50)
-  ownerId      String?   @map("owner_id") @db.VarChar(50)
-  metadata     Json?
+  ownerId       String?  @map("owner_id") @db.VarChar(50)
+  metadata      Json?
 
   @@index([entityType, entityId, occurredAt])
   @@index([userId, occurredAt])
@@ -490,18 +490,18 @@ model MdUom {
   deactivatedAt    DateTime? @map("deactivated_at")
   deactivatedBy    String?   @map("deactivated_by") @db.Uuid
 
-  itemsBaseUom       MdItem[]          @relation("ItemBaseUom")
-  itemsBillingUom    MdItem[]          @relation("ItemBillingUom")
-  itemsCatchWeightUom MdItem[]         @relation("ItemCatchWeightUom")
-  serviceCodes       MdServiceCode[]
-  rateReferences     MdRateReference[]
-  ownerItemPolicies  MdOwnerItemPolicy[]
-  conversionsFrom    MdUomConversion[] @relation("ConversionFrom")
-  conversionsTo      MdUomConversion[] @relation("ConversionTo")
-  inventTrans        InventTrans[]
-  onHandRecords      OnHand[]
-  receiptLines       ReceiptLine[]
-  shipmentLines      ShipmentLine[]
+  itemsBaseUom        MdItem[]            @relation("ItemBaseUom")
+  itemsBillingUom     MdItem[]            @relation("ItemBillingUom")
+  itemsCatchWeightUom MdItem[]            @relation("ItemCatchWeightUom")
+  serviceCodes        MdServiceCode[]
+  rateReferences      MdRateReference[]
+  ownerItemPolicies   MdOwnerItemPolicy[]
+  conversionsFrom     MdUomConversion[]   @relation("ConversionFrom")
+  conversionsTo       MdUomConversion[]   @relation("ConversionTo")
+  inventTrans         InventTrans[]
+  onHandRecords       OnHand[]
+  receiptLines        ReceiptLine[]
+  shipmentLines       ShipmentLine[]
 
   @@map("md_uom")
 }
@@ -520,49 +520,49 @@ model MdInventoryStatus {
   updatedAt      DateTime @updatedAt @map("updated_at")
   updatedBy      String?  @map("updated_by") @db.Uuid
 
-  inventDims     InventDim[]
+  inventDims InventDim[]
 
   @@map("md_inventory_status")
 }
 
 model MdWarehouse {
-  id                        String    @id @default(uuid()) @db.Uuid
-  warehouseCode             String    @unique @map("warehouse_code") @db.VarChar(50)
-  warehouseName             String    @map("warehouse_name") @db.VarChar(255)
-  siteId                    String    @default("TVL-SITE") @map("site_id") @db.VarChar(50)
-  warehouseType             WarehouseType @map("warehouse_type")
-  totalAreaM2               Decimal   @map("total_area_m2") @db.Decimal(18, 2)
-  usableAreaM2              Decimal?  @map("usable_area_m2") @db.Decimal(18, 2)
-  maxHeightM                Decimal   @map("max_height_m") @db.Decimal(18, 2)
-  maxCapacityMt             Decimal   @map("max_capacity_mt") @db.Decimal(18, 3)
-  address                   String?   @db.Text
-  hasWeighbridge            Boolean   @default(false) @map("has_weighbridge")
-  weighbridgeCount          Int?      @map("weighbridge_count")
-  isBonded                  Boolean   @default(false) @map("is_bonded")
-  capacityWarningPct        Decimal   @map("capacity_warning_pct") @db.Decimal(5, 2)
-  defaultReceivingLocationId String?  @map("default_receiving_location_id") @db.Uuid
-  defaultStagingLocationId  String?   @map("default_staging_location_id") @db.Uuid
-  defaultShippingLocationId String?   @map("default_shipping_location_id") @db.Uuid
-  isActive                  Boolean   @default(true) @map("is_active")
-  rowVersion                BigInt    @default(0) @map("row_version")
-  createdAt                 DateTime  @default(now()) @map("created_at")
-  createdBy                 String?   @map("created_by") @db.Uuid
-  updatedAt                 DateTime  @updatedAt @map("updated_at")
-  updatedBy                 String?   @map("updated_by") @db.Uuid
-  deactivatedAt             DateTime? @map("deactivated_at")
-  deactivatedBy             String?   @map("deactivated_by") @db.Uuid
+  id                         String        @id @default(uuid()) @db.Uuid
+  warehouseCode              String        @unique @map("warehouse_code") @db.VarChar(50)
+  warehouseName              String        @map("warehouse_name") @db.VarChar(255)
+  siteId                     String        @default("TVL-SITE") @map("site_id") @db.VarChar(50)
+  warehouseType              WarehouseType @map("warehouse_type")
+  totalAreaM2                Decimal       @map("total_area_m2") @db.Decimal(18, 2)
+  usableAreaM2               Decimal?      @map("usable_area_m2") @db.Decimal(18, 2)
+  maxHeightM                 Decimal       @map("max_height_m") @db.Decimal(18, 2)
+  maxCapacityMt              Decimal       @map("max_capacity_mt") @db.Decimal(18, 3)
+  address                    String?       @db.Text
+  hasWeighbridge             Boolean       @default(false) @map("has_weighbridge")
+  weighbridgeCount           Int?          @map("weighbridge_count")
+  isBonded                   Boolean       @default(false) @map("is_bonded")
+  capacityWarningPct         Decimal       @map("capacity_warning_pct") @db.Decimal(5, 2)
+  defaultReceivingLocationId String?       @map("default_receiving_location_id") @db.Uuid
+  defaultStagingLocationId   String?       @map("default_staging_location_id") @db.Uuid
+  defaultShippingLocationId  String?       @map("default_shipping_location_id") @db.Uuid
+  isActive                   Boolean       @default(true) @map("is_active")
+  rowVersion                 BigInt        @default(0) @map("row_version")
+  createdAt                  DateTime      @default(now()) @map("created_at")
+  createdBy                  String?       @map("created_by") @db.Uuid
+  updatedAt                  DateTime      @updatedAt @map("updated_at")
+  updatedBy                  String?       @map("updated_by") @db.Uuid
+  deactivatedAt              DateTime?     @map("deactivated_at")
+  deactivatedBy              String?       @map("deactivated_by") @db.Uuid
 
-  zones                     MdZone[]
-  locations                 MdLocation[]
-  owners                    MdOwner[]
-  rateReferences            MdRateReference[]
-  ownerItemPolicies         MdOwnerItemPolicy[]
-  inventDims                InventDim[]
-  reconciliationRuns        InventoryReconciliationRun[]
-  snapshotRuns              InventorySnapshotRun[]
-  dailySnapshots            DailyStorageSnapshot[]
-  receiptHeaders            ReceiptHeader[]
-  shipmentHeaders           ShipmentHeader[]
+  zones              MdZone[]
+  locations          MdLocation[]
+  owners             MdOwner[]
+  rateReferences     MdRateReference[]
+  ownerItemPolicies  MdOwnerItemPolicy[]
+  inventDims         InventDim[]
+  reconciliationRuns InventoryReconciliationRun[]
+  snapshotRuns       InventorySnapshotRun[]
+  dailySnapshots     DailyStorageSnapshot[]
+  receiptHeaders     ReceiptHeader[]
+  shipmentHeaders    ShipmentHeader[]
 
   @@map("md_warehouse")
 }
@@ -585,9 +585,9 @@ model MdZone {
   deactivatedAt   DateTime? @map("deactivated_at")
   deactivatedBy   String?   @map("deactivated_by") @db.Uuid
 
-  warehouse       MdWarehouse @relation(fields: [warehouseId], references: [id])
-  locations       MdLocation[]
-  items           MdItem[]
+  warehouse MdWarehouse  @relation(fields: [warehouseId], references: [id])
+  locations MdLocation[]
+  items     MdItem[]
 
   @@unique([warehouseId, zoneCode])
   @@map("md_zone")
@@ -619,8 +619,8 @@ model MdLocation {
   deactivatedAt     DateTime?      @map("deactivated_at")
   deactivatedBy     String?        @map("deactivated_by") @db.Uuid
 
-  warehouse         MdWarehouse    @relation(fields: [warehouseId], references: [id])
-  zone              MdZone         @relation(fields: [zoneId], references: [id])
+  warehouse         MdWarehouse                @relation(fields: [warehouseId], references: [id])
+  zone              MdZone                     @relation(fields: [zoneId], references: [id])
   inventDims        InventDim[]
   dailySnapshots    DailyStorageSnapshot[]
   receiptHeaders    ReceiptHeader[]
@@ -632,38 +632,38 @@ model MdLocation {
 }
 
 model MdOwner {
-  id                   String    @id @default(uuid()) @db.Uuid
-  ownerCode            String    @unique @map("owner_code") @db.VarChar(50)
-  ownerName            String    @map("owner_name") @db.VarChar(255)
-  shortName            String    @map("short_name") @db.VarChar(100)
-  ownerGroup           String    @map("owner_group") @db.VarChar(100)
-  ownerType            OwnerType @map("owner_type")
-  taxCode              String    @map("tax_code") @db.VarChar(50)
-  address              String    @db.Text
-  billingEmail         String?   @map("billing_email") @db.VarChar(255)
-  billingContact       String?   @map("billing_contact") @db.VarChar(255)
-  paymentTerms         String?   @map("payment_terms") @db.VarChar(30)
-  defaultTolerancePct  Decimal?  @map("default_tolerance_pct") @db.Decimal(8, 4)
-  defaultWarehouseId   String?   @map("default_warehouse_id") @db.Uuid
-  isActive             Boolean   @default(true) @map("is_active")
-  rowVersion           BigInt    @default(0) @map("row_version")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  createdBy            String?   @map("created_by") @db.Uuid
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-  updatedBy            String?   @map("updated_by") @db.Uuid
-  deactivatedAt        DateTime? @map("deactivated_at")
-  deactivatedBy        String?   @map("deactivated_by") @db.Uuid
+  id                  String    @id @default(uuid()) @db.Uuid
+  ownerCode           String    @unique @map("owner_code") @db.VarChar(50)
+  ownerName           String    @map("owner_name") @db.VarChar(255)
+  shortName           String    @map("short_name") @db.VarChar(100)
+  ownerGroup          String    @map("owner_group") @db.VarChar(100)
+  ownerType           OwnerType @map("owner_type")
+  taxCode             String    @map("tax_code") @db.VarChar(50)
+  address             String    @db.Text
+  billingEmail        String?   @map("billing_email") @db.VarChar(255)
+  billingContact      String?   @map("billing_contact") @db.VarChar(255)
+  paymentTerms        String?   @map("payment_terms") @db.VarChar(30)
+  defaultTolerancePct Decimal?  @map("default_tolerance_pct") @db.Decimal(8, 4)
+  defaultWarehouseId  String?   @map("default_warehouse_id") @db.Uuid
+  isActive            Boolean   @default(true) @map("is_active")
+  rowVersion          BigInt    @default(0) @map("row_version")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  createdBy           String?   @map("created_by") @db.Uuid
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  updatedBy           String?   @map("updated_by") @db.Uuid
+  deactivatedAt       DateTime? @map("deactivated_at")
+  deactivatedBy       String?   @map("deactivated_by") @db.Uuid
 
-  defaultWarehouse     MdWarehouse?       @relation(fields: [defaultWarehouseId], references: [id])
-  rateReferences       MdRateReference[]
-  ownerItemPolicies    MdOwnerItemPolicy[]
-  inventDims           InventDim[]
-  inventTrans          InventTrans[]
-  reconciliationRuns   InventoryReconciliationRun[]
-  dailySnapshots       DailyStorageSnapshot[]
-  receiptHeaders       ReceiptHeader[]
-  shipmentHeaders      ShipmentHeader[]
-  allocationRecords    ShipmentAllocationRecord[]
+  defaultWarehouse   MdWarehouse?                 @relation(fields: [defaultWarehouseId], references: [id])
+  rateReferences     MdRateReference[]
+  ownerItemPolicies  MdOwnerItemPolicy[]
+  inventDims         InventDim[]
+  inventTrans        InventTrans[]
+  reconciliationRuns InventoryReconciliationRun[]
+  dailySnapshots     DailyStorageSnapshot[]
+  receiptHeaders     ReceiptHeader[]
+  shipmentHeaders    ShipmentHeader[]
+  allocationRecords  ShipmentAllocationRecord[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -735,23 +735,23 @@ model MdItem {
   deactivatedAt           DateTime? @map("deactivated_at")
   deactivatedBy           String?   @map("deactivated_by") @db.Uuid
 
-  baseUom                 MdUom     @relation("ItemBaseUom", fields: [baseUomId], references: [id])
-  billingUom              MdUom     @relation("ItemBillingUom", fields: [billingUomId], references: [id])
-  catchWeightUom          MdUom?    @relation("ItemCatchWeightUom", fields: [catchWeightUomId], references: [id])
-  defaultZone             MdZone?   @relation(fields: [defaultZoneId], references: [id])
-  packagingMaterialItem   MdItem?   @relation("PackagingMaterial", fields: [packagingMaterialItemId], references: [id])
-  packagingItems          MdItem[]  @relation("PackagingMaterial")
-  uomConversions          MdUomConversion[]
-  ownerItemPolicies       MdOwnerItemPolicy[]
-  inventTrans             InventTrans[]
-  onHandRecords           OnHand[]
-  inventoryHolds          InventoryHold[]
-  reconciliationRuns      InventoryReconciliationRun[]
-  reconciliationResults   InventoryReconciliationResult[]
-  dailySnapshots          DailyStorageSnapshot[]
-  receiptLines            ReceiptLine[]
-  shipmentLines           ShipmentLine[]
-  allocationRecords       ShipmentAllocationRecord[]
+  baseUom               MdUom                           @relation("ItemBaseUom", fields: [baseUomId], references: [id])
+  billingUom            MdUom                           @relation("ItemBillingUom", fields: [billingUomId], references: [id])
+  catchWeightUom        MdUom?                          @relation("ItemCatchWeightUom", fields: [catchWeightUomId], references: [id])
+  defaultZone           MdZone?                         @relation(fields: [defaultZoneId], references: [id])
+  packagingMaterialItem MdItem?                         @relation("PackagingMaterial", fields: [packagingMaterialItemId], references: [id])
+  packagingItems        MdItem[]                        @relation("PackagingMaterial")
+  uomConversions        MdUomConversion[]
+  ownerItemPolicies     MdOwnerItemPolicy[]
+  inventTrans           InventTrans[]
+  onHandRecords         OnHand[]
+  inventoryHolds        InventoryHold[]
+  reconciliationRuns    InventoryReconciliationRun[]
+  reconciliationResults InventoryReconciliationResult[]
+  dailySnapshots        DailyStorageSnapshot[]
+  receiptLines          ReceiptLine[]
+  shipmentLines         ShipmentLine[]
+  allocationRecords     ShipmentAllocationRecord[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -777,7 +777,7 @@ model MdVehicleType {
   deactivatedAt       DateTime?       @map("deactivated_at")
   deactivatedBy       String?         @map("deactivated_by") @db.Uuid
 
-  shipmentHeaders     ShipmentHeader[]
+  shipmentHeaders ShipmentHeader[]
 
   @@map("md_vehicle_type")
 }
@@ -797,28 +797,28 @@ model MdUomConversion {
   deactivatedAt    DateTime? @map("deactivated_at")
   deactivatedBy    String?   @map("deactivated_by") @db.Uuid
 
-  fromUom          MdUom     @relation("ConversionFrom", fields: [fromUomId], references: [id])
-  toUom            MdUom     @relation("ConversionTo", fields: [toUomId], references: [id])
-  item             MdItem?   @relation(fields: [itemId], references: [id])
+  fromUom MdUom   @relation("ConversionFrom", fields: [fromUomId], references: [id])
+  toUom   MdUom   @relation("ConversionTo", fields: [toUomId], references: [id])
+  item    MdItem? @relation(fields: [itemId], references: [id])
 
   @@unique([fromUomId, toUomId, itemId])
   @@map("md_uom_conversion")
 }
 
 model MdServiceCode {
-  id            String       @id @default(uuid()) @db.Uuid
-  serviceCode   String       @unique @map("service_code") @db.VarChar(50)
-  serviceName   String       @map("service_name") @db.VarChar(255)
-  serviceGroup  ServiceGroup @map("service_group")
-  defaultUomId  String       @map("default_uom_id") @db.Uuid
-  isActive      Boolean      @default(true) @map("is_active")
-  rowVersion    BigInt       @default(0) @map("row_version")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  createdBy     String?      @map("created_by") @db.Uuid
-  updatedAt     DateTime     @updatedAt @map("updated_at")
-  updatedBy     String?      @map("updated_by") @db.Uuid
+  id           String       @id @default(uuid()) @db.Uuid
+  serviceCode  String       @unique @map("service_code") @db.VarChar(50)
+  serviceName  String       @map("service_name") @db.VarChar(255)
+  serviceGroup ServiceGroup @map("service_group")
+  defaultUomId String       @map("default_uom_id") @db.Uuid
+  isActive     Boolean      @default(true) @map("is_active")
+  rowVersion   BigInt       @default(0) @map("row_version")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  createdBy    String?      @map("created_by") @db.Uuid
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  updatedBy    String?      @map("updated_by") @db.Uuid
 
-  defaultUom    MdUom        @relation(fields: [defaultUomId], references: [id])
+  defaultUom     MdUom             @relation(fields: [defaultUomId], references: [id])
   rateReferences MdRateReference[]
 
   @@map("md_service_code")
@@ -862,11 +862,11 @@ model MdRateReference {
   deactivatedAt     DateTime? @map("deactivated_at")
   deactivatedBy     String?   @map("deactivated_by") @db.Uuid
 
-  owner             MdOwner       @relation(fields: [ownerId], references: [id])
-  serviceCode       MdServiceCode @relation(fields: [serviceCodeId], references: [id])
-  billingUom        MdUom         @relation(fields: [billingUomId], references: [id])
-  warehouse         MdWarehouse?  @relation(fields: [warehouseId], references: [id])
-  dayType           MdDayType?    @relation(fields: [dayTypeId], references: [id])
+  owner       MdOwner       @relation(fields: [ownerId], references: [id])
+  serviceCode MdServiceCode @relation(fields: [serviceCodeId], references: [id])
+  billingUom  MdUom         @relation(fields: [billingUomId], references: [id])
+  warehouse   MdWarehouse?  @relation(fields: [warehouseId], references: [id])
+  dayType     MdDayType?    @relation(fields: [dayTypeId], references: [id])
 
   @@index([ownerId, serviceCodeId, isActive])
   @@index([effectiveFrom, effectiveTo])
@@ -874,28 +874,28 @@ model MdRateReference {
 }
 
 model MdOwnerItemPolicy {
-  id                          String    @id @default(uuid()) @db.Uuid
-  ownerId                     String    @map("owner_id") @db.Uuid
-  itemId                      String    @map("item_id") @db.Uuid
-  tolerancePctInboundOverride Decimal?  @map("tolerance_pct_inbound_override") @db.Decimal(8, 4)
-  tolerancePctOutboundOverride Decimal? @map("tolerance_pct_outbound_override") @db.Decimal(8, 4)
-  billingUomOverrideId        String?   @map("billing_uom_override_id") @db.Uuid
-  isStorageBillableOverride   Boolean?  @map("is_storage_billable_override")
-  preferredWarehouseId        String?   @map("preferred_warehouse_id") @db.Uuid
-  handlingNote                String?   @map("handling_note") @db.Text
-  isActive                    Boolean   @default(true) @map("is_active")
-  rowVersion                  BigInt    @default(0) @map("row_version")
-  createdAt                   DateTime  @default(now()) @map("created_at")
-  createdBy                   String?   @map("created_by") @db.Uuid
-  updatedAt                   DateTime  @updatedAt @map("updated_at")
-  updatedBy                   String?   @map("updated_by") @db.Uuid
-  deactivatedAt               DateTime? @map("deactivated_at")
-  deactivatedBy               String?   @map("deactivated_by") @db.Uuid
+  id                           String    @id @default(uuid()) @db.Uuid
+  ownerId                      String    @map("owner_id") @db.Uuid
+  itemId                       String    @map("item_id") @db.Uuid
+  tolerancePctInboundOverride  Decimal?  @map("tolerance_pct_inbound_override") @db.Decimal(8, 4)
+  tolerancePctOutboundOverride Decimal?  @map("tolerance_pct_outbound_override") @db.Decimal(8, 4)
+  billingUomOverrideId         String?   @map("billing_uom_override_id") @db.Uuid
+  isStorageBillableOverride    Boolean?  @map("is_storage_billable_override")
+  preferredWarehouseId         String?   @map("preferred_warehouse_id") @db.Uuid
+  handlingNote                 String?   @map("handling_note") @db.Text
+  isActive                     Boolean   @default(true) @map("is_active")
+  rowVersion                   BigInt    @default(0) @map("row_version")
+  createdAt                    DateTime  @default(now()) @map("created_at")
+  createdBy                    String?   @map("created_by") @db.Uuid
+  updatedAt                    DateTime  @updatedAt @map("updated_at")
+  updatedBy                    String?   @map("updated_by") @db.Uuid
+  deactivatedAt                DateTime? @map("deactivated_at")
+  deactivatedBy                String?   @map("deactivated_by") @db.Uuid
 
-  owner                       MdOwner      @relation(fields: [ownerId], references: [id])
-  item                        MdItem       @relation(fields: [itemId], references: [id])
-  billingUomOverride          MdUom?       @relation(fields: [billingUomOverrideId], references: [id])
-  preferredWarehouse          MdWarehouse? @relation(fields: [preferredWarehouseId], references: [id])
+  owner              MdOwner      @relation(fields: [ownerId], references: [id])
+  item               MdItem       @relation(fields: [itemId], references: [id])
+  billingUomOverride MdUom?       @relation(fields: [billingUomOverrideId], references: [id])
+  preferredWarehouse MdWarehouse? @relation(fields: [preferredWarehouseId], references: [id])
 
   @@unique([ownerId, itemId])
   @@map("md_owner_item_policy")
@@ -923,8 +923,8 @@ model MdImportBatch {
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  lines           MdImportBatchLine[]
-  errors          MdImportError[]
+  lines  MdImportBatchLine[]
+  errors MdImportError[]
 
   @@index([entityName, status])
   @@index([requestedBy, createdAt])
@@ -932,21 +932,21 @@ model MdImportBatch {
 }
 
 model MdImportBatchLine {
-  id                String                  @id @default(uuid()) @db.Uuid
-  batchId           String                  @map("batch_id") @db.Uuid
-  rowNo             Int                     @map("row_no")
-  rowPayload        Json                    @map("row_payload")
-  actionType        ImportActionType?       @map("action_type")
-  processingStatus  ImportProcessingStatus  @map("processing_status")
-  targetEntityId    String?                 @map("target_entity_id") @db.Uuid
-  targetBusinessKey String?                 @map("target_business_key") @db.VarChar(100)
-  validationSummary Json?                   @map("validation_summary")
-  committedAt       DateTime?               @map("committed_at")
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
+  id                String                 @id @default(uuid()) @db.Uuid
+  batchId           String                 @map("batch_id") @db.Uuid
+  rowNo             Int                    @map("row_no")
+  rowPayload        Json                   @map("row_payload")
+  actionType        ImportActionType?      @map("action_type")
+  processingStatus  ImportProcessingStatus @map("processing_status")
+  targetEntityId    String?                @map("target_entity_id") @db.Uuid
+  targetBusinessKey String?                @map("target_business_key") @db.VarChar(100)
+  validationSummary Json?                  @map("validation_summary")
+  committedAt       DateTime?              @map("committed_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
 
-  batch             MdImportBatch           @relation(fields: [batchId], references: [id])
-  errors            MdImportError[]
+  batch  MdImportBatch   @relation(fields: [batchId], references: [id])
+  errors MdImportError[]
 
   @@unique([batchId, rowNo])
   @@map("md_import_batch_line")
@@ -964,8 +964,8 @@ model MdImportError {
   details      Json?
   createdAt    DateTime         @default(now()) @map("created_at")
 
-  batch        MdImportBatch      @relation(fields: [batchId], references: [id])
-  batchLine    MdImportBatchLine? @relation(fields: [batchLineId], references: [id])
+  batch     MdImportBatch      @relation(fields: [batchId], references: [id])
+  batchLine MdImportBatchLine? @relation(fields: [batchLineId], references: [id])
 
   @@index([batchId, rowNo])
   @@map("md_import_error")
@@ -1074,12 +1074,12 @@ model InventDim {
   owner           MdOwner           @relation(fields: [ownerId], references: [id])
   inventoryStatus MdInventoryStatus @relation(fields: [inventoryStatusId], references: [id])
 
-  transFrom       InventTrans[]     @relation("TransDimFrom")
-  transTo         InventTrans[]     @relation("TransDimTo")
-  onHandRecords   OnHand[]
-  holds           InventoryHold[]
-  reconcileResults InventoryReconciliationResult[]
-  snapshots       DailyStorageSnapshot[]
+  transFrom         InventTrans[]                   @relation("TransDimFrom")
+  transTo           InventTrans[]                   @relation("TransDimTo")
+  onHandRecords     OnHand[]
+  holds             InventoryHold[]
+  reconcileResults  InventoryReconciliationResult[]
+  snapshots         DailyStorageSnapshot[]
   allocationRecords ShipmentAllocationRecord[]
 
   @@index([warehouseId, locationId, ownerId, inventoryStatusId])
@@ -1087,37 +1087,37 @@ model InventDim {
 }
 
 model InventTrans {
-  id                 String             @id @default(uuid()) @db.Uuid
-  transId            String             @unique @map("trans_id") @db.VarChar(40)
-  refType            String             @map("ref_type") @db.VarChar(40)
-  refId              String             @map("ref_id") @db.VarChar(50)
-  refLineId          String?            @map("ref_line_id") @db.VarChar(50)
-  transType          InventoryTransType @map("trans_type")
-  itemId             String             @map("item_id") @db.Uuid
-  qty                Decimal            @db.Decimal(18, 3)
-  uomId              String             @map("uom_id") @db.Uuid
-  dimFromId          String?            @map("dim_from_id") @db.Uuid
-  dimToId            String?            @map("dim_to_id") @db.Uuid
-  statusFromCode     String?            @map("status_from_code") @db.VarChar(30)
-  statusToCode       String?            @map("status_to_code") @db.VarChar(30)
-  stage              InventoryStage     @default(PHYSICAL)
-  externalId         String             @map("external_id") @db.VarChar(120)
-  correlationId      String             @map("correlation_id") @db.VarChar(120)
-  reasonCode         String?            @map("reason_code") @db.VarChar(50)
-  sourceApp          SourceApp          @map("source_app")
-  postedBy           String?            @map("posted_by") @db.Uuid
-  postedAt           DateTime           @map("posted_at")
-  ownerId            String             @map("owner_id") @db.Uuid
-  weighbridgeTicketId String?           @map("weighbridge_ticket_id") @db.VarChar(50)
-  isReversal         Boolean            @default(false) @map("is_reversal")
-  reversalOfTransId  String?            @map("reversal_of_trans_id") @db.VarChar(40)
-  createdAt          DateTime           @default(now()) @map("created_at")
+  id                  String             @id @default(uuid()) @db.Uuid
+  transId             String             @unique @map("trans_id") @db.VarChar(40)
+  refType             String             @map("ref_type") @db.VarChar(40)
+  refId               String             @map("ref_id") @db.VarChar(50)
+  refLineId           String?            @map("ref_line_id") @db.VarChar(50)
+  transType           InventoryTransType @map("trans_type")
+  itemId              String             @map("item_id") @db.Uuid
+  qty                 Decimal            @db.Decimal(18, 3)
+  uomId               String             @map("uom_id") @db.Uuid
+  dimFromId           String?            @map("dim_from_id") @db.Uuid
+  dimToId             String?            @map("dim_to_id") @db.Uuid
+  statusFromCode      String?            @map("status_from_code") @db.VarChar(30)
+  statusToCode        String?            @map("status_to_code") @db.VarChar(30)
+  stage               InventoryStage     @default(PHYSICAL)
+  externalId          String             @map("external_id") @db.VarChar(120)
+  correlationId       String             @map("correlation_id") @db.VarChar(120)
+  reasonCode          String?            @map("reason_code") @db.VarChar(50)
+  sourceApp           SourceApp          @map("source_app")
+  postedBy            String?            @map("posted_by") @db.Uuid
+  postedAt            DateTime           @map("posted_at")
+  ownerId             String             @map("owner_id") @db.Uuid
+  weighbridgeTicketId String?            @map("weighbridge_ticket_id") @db.VarChar(50)
+  isReversal          Boolean            @default(false) @map("is_reversal")
+  reversalOfTransId   String?            @map("reversal_of_trans_id") @db.VarChar(40)
+  createdAt           DateTime           @default(now()) @map("created_at")
 
-  item     MdItem     @relation(fields: [itemId], references: [id])
-  uom      MdUom      @relation(fields: [uomId], references: [id])
-  dimFrom  InventDim? @relation("TransDimFrom", fields: [dimFromId], references: [id])
-  dimTo    InventDim? @relation("TransDimTo", fields: [dimToId], references: [id])
-  owner    MdOwner    @relation(fields: [ownerId], references: [id])
+  item    MdItem     @relation(fields: [itemId], references: [id])
+  uom     MdUom      @relation(fields: [uomId], references: [id])
+  dimFrom InventDim? @relation("TransDimFrom", fields: [dimFromId], references: [id])
+  dimTo   InventDim? @relation("TransDimTo", fields: [dimToId], references: [id])
+  owner   MdOwner    @relation(fields: [ownerId], references: [id])
 
   reversalLinksOriginal InventoryReversalLink[] @relation("OriginalTrans")
   reversalLinksReversal InventoryReversalLink[] @relation("ReversalTrans")
@@ -1188,16 +1188,16 @@ model InventoryHold {
 }
 
 model InventoryReversalLink {
-  id                  String   @id @default(uuid()) @db.Uuid
-  originalTransId     String   @map("original_trans_id") @db.Uuid
-  reversalTransId     String   @map("reversal_trans_id") @db.Uuid
-  reverseReasonCode   String   @map("reverse_reason_code") @db.VarChar(50)
-  reverseNote         String?  @map("reverse_note") @db.Text
-  reversedBy          String?  @map("reversed_by") @db.Uuid
-  reversedAt          DateTime @map("reversed_at")
-  correctionRefType   String?  @map("correction_ref_type") @db.VarChar(40)
-  correctionRefId     String?  @map("correction_ref_id") @db.VarChar(50)
-  correlationId       String   @map("correlation_id") @db.VarChar(120)
+  id                String   @id @default(uuid()) @db.Uuid
+  originalTransId   String   @map("original_trans_id") @db.Uuid
+  reversalTransId   String   @map("reversal_trans_id") @db.Uuid
+  reverseReasonCode String   @map("reverse_reason_code") @db.VarChar(50)
+  reverseNote       String?  @map("reverse_note") @db.Text
+  reversedBy        String?  @map("reversed_by") @db.Uuid
+  reversedAt        DateTime @map("reversed_at")
+  correctionRefType String?  @map("correction_ref_type") @db.VarChar(40)
+  correctionRefId   String?  @map("correction_ref_id") @db.VarChar(50)
+  correlationId     String   @map("correlation_id") @db.VarChar(120)
 
   originalTrans InventTrans @relation("OriginalTrans", fields: [originalTransId], references: [id])
   reversalTrans InventTrans @relation("ReversalTrans", fields: [reversalTransId], references: [id])
@@ -1207,19 +1207,19 @@ model InventoryReversalLink {
 }
 
 model InventoryReconciliationRun {
-  id            String                   @id @default(uuid()) @db.Uuid
-  runNo         String                   @unique @map("run_no") @db.VarChar(40)
-  runType       ReconciliationRunType    @map("run_type")
-  scopeType     ReconciliationScopeType  @map("scope_type")
-  warehouseId   String?                  @map("warehouse_id") @db.Uuid
-  ownerId       String?                  @map("owner_id") @db.Uuid
-  itemId        String?                  @map("item_id") @db.Uuid
-  startedAt     DateTime                 @map("started_at")
-  completedAt   DateTime?                @map("completed_at")
+  id            String                  @id @default(uuid()) @db.Uuid
+  runNo         String                  @unique @map("run_no") @db.VarChar(40)
+  runType       ReconciliationRunType   @map("run_type")
+  scopeType     ReconciliationScopeType @map("scope_type")
+  warehouseId   String?                 @map("warehouse_id") @db.Uuid
+  ownerId       String?                 @map("owner_id") @db.Uuid
+  itemId        String?                 @map("item_id") @db.Uuid
+  startedAt     DateTime                @map("started_at")
+  completedAt   DateTime?               @map("completed_at")
   status        ReconciliationRunStatus
-  mismatchCount Int                      @default(0) @map("mismatch_count")
-  requestedBy   String?                  @map("requested_by") @db.Uuid
-  correlationId String                   @map("correlation_id") @db.VarChar(120)
+  mismatchCount Int                     @default(0) @map("mismatch_count")
+  requestedBy   String?                 @map("requested_by") @db.Uuid
+  correlationId String                  @map("correlation_id") @db.VarChar(120)
 
   warehouse MdWarehouse? @relation(fields: [warehouseId], references: [id])
   owner     MdOwner?     @relation(fields: [ownerId], references: [id])
@@ -1232,19 +1232,19 @@ model InventoryReconciliationRun {
 }
 
 model InventoryReconciliationResult {
-  id               String                      @id @default(uuid()) @db.Uuid
-  runId            String                      @map("run_id") @db.Uuid
-  itemId           String                      @map("item_id") @db.Uuid
-  inventDimId      String                      @map("invent_dim_id") @db.Uuid
-  ledgerQty        Decimal                     @map("ledger_qty") @db.Decimal(18, 3)
+  id                String                     @id @default(uuid()) @db.Uuid
+  runId             String                     @map("run_id") @db.Uuid
+  itemId            String                     @map("item_id") @db.Uuid
+  inventDimId       String                     @map("invent_dim_id") @db.Uuid
+  ledgerQty         Decimal                    @map("ledger_qty") @db.Decimal(18, 3)
   onhandPhysicalQty Decimal                    @map("onhand_physical_qty") @db.Decimal(18, 3)
-  reservedQty      Decimal                     @map("reserved_qty") @db.Decimal(18, 3)
-  availableQty     Decimal                     @map("available_qty") @db.Decimal(18, 3)
-  diffQty          Decimal                     @map("diff_qty") @db.Decimal(18, 3)
-  severity         ReconciliationSeverity
-  ruleCode         String                      @map("rule_code") @db.VarChar(40)
-  resultStatus     ReconciliationResultStatus  @map("result_status")
-  createdAt        DateTime                    @default(now()) @map("created_at")
+  reservedQty       Decimal                    @map("reserved_qty") @db.Decimal(18, 3)
+  availableQty      Decimal                    @map("available_qty") @db.Decimal(18, 3)
+  diffQty           Decimal                    @map("diff_qty") @db.Decimal(18, 3)
+  severity          ReconciliationSeverity
+  ruleCode          String                     @map("rule_code") @db.VarChar(40)
+  resultStatus      ReconciliationResultStatus @map("result_status")
+  createdAt         DateTime                   @default(now()) @map("created_at")
 
   run       InventoryReconciliationRun @relation(fields: [runId], references: [id])
   item      MdItem                     @relation(fields: [itemId], references: [id])
@@ -1279,22 +1279,22 @@ model InventorySnapshotRun {
 }
 
 model DailyStorageSnapshot {
-  id              String   @id @default(uuid()) @db.Uuid
-  snapshotRunId   String   @map("snapshot_run_id") @db.Uuid
-  snapshotDate    DateTime @map("snapshot_date") @db.Date
-  warehouseId     String   @map("warehouse_id") @db.Uuid
-  locationId      String   @map("location_id") @db.Uuid
-  ownerId         String   @map("owner_id") @db.Uuid
-  itemId          String   @map("item_id") @db.Uuid
-  inventDimId     String   @map("invent_dim_id") @db.Uuid
-  openingQty      Decimal  @map("opening_qty") @db.Decimal(18, 3)
-  inboundTodayQty Decimal  @map("inbound_today_qty") @db.Decimal(18, 3)
-  outboundTodayQty Decimal @map("outbound_today_qty") @db.Decimal(18, 3)
-  closingQty      Decimal  @map("closing_qty") @db.Decimal(18, 3)
-  cutOffTime      DateTime @map("cut_off_time")
-  snapshotSource  String   @map("snapshot_source") @db.VarChar(50)
-  correlationId   String?  @map("correlation_id") @db.VarChar(120)
-  createdAt       DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid()) @db.Uuid
+  snapshotRunId    String   @map("snapshot_run_id") @db.Uuid
+  snapshotDate     DateTime @map("snapshot_date") @db.Date
+  warehouseId      String   @map("warehouse_id") @db.Uuid
+  locationId       String   @map("location_id") @db.Uuid
+  ownerId          String   @map("owner_id") @db.Uuid
+  itemId           String   @map("item_id") @db.Uuid
+  inventDimId      String   @map("invent_dim_id") @db.Uuid
+  openingQty       Decimal  @map("opening_qty") @db.Decimal(18, 3)
+  inboundTodayQty  Decimal  @map("inbound_today_qty") @db.Decimal(18, 3)
+  outboundTodayQty Decimal  @map("outbound_today_qty") @db.Decimal(18, 3)
+  closingQty       Decimal  @map("closing_qty") @db.Decimal(18, 3)
+  cutOffTime       DateTime @map("cut_off_time")
+  snapshotSource   String   @map("snapshot_source") @db.VarChar(50)
+  correlationId    String?  @map("correlation_id") @db.VarChar(120)
+  createdAt        DateTime @default(now()) @map("created_at")
 
   snapshotRun InventorySnapshotRun @relation(fields: [snapshotRunId], references: [id])
   warehouse   MdWarehouse          @relation(fields: [warehouseId], references: [id])
@@ -1309,17 +1309,17 @@ model DailyStorageSnapshot {
 }
 
 model InventoryEventMapping {
-  id            String  @id @default(uuid()) @db.Uuid
-  eventCode     String  @unique @map("event_code") @db.VarChar(50)
-  sourceModule  String  @map("source_module") @db.VarChar(20)
-  sourceObject  String  @map("source_object") @db.VarChar(40)
-  triggerState  String  @map("trigger_state") @db.VarChar(40)
-  transType     InventoryTransType @map("trans_type")
-  affectPhysical Boolean @map("affect_physical")
-  affectHold    Boolean @map("affect_hold")
-  reversible    Boolean
-  activeFlag    Boolean @default(true) @map("active_flag")
-  notes         String? @db.Text
+  id             String             @id @default(uuid()) @db.Uuid
+  eventCode      String             @unique @map("event_code") @db.VarChar(50)
+  sourceModule   String             @map("source_module") @db.VarChar(20)
+  sourceObject   String             @map("source_object") @db.VarChar(40)
+  triggerState   String             @map("trigger_state") @db.VarChar(40)
+  transType      InventoryTransType @map("trans_type")
+  affectPhysical Boolean            @map("affect_physical")
+  affectHold     Boolean            @map("affect_hold")
+  reversible     Boolean
+  activeFlag     Boolean            @default(true) @map("active_flag")
+  notes          String?            @db.Text
 
   @@map("inventory_event_mapping")
 }
@@ -1401,16 +1401,16 @@ model ReceiptHeader {
   updatedAt             DateTime      @updatedAt @map("updated_at")
   updatedBy             String?       @map("updated_by") @db.Uuid
 
-  owner              MdOwner      @relation(fields: [ownerId], references: [id])
-  vendor             MdVendor     @relation(fields: [vendorId], references: [id])
-  warehouse          MdWarehouse  @relation(fields: [warehouseId], references: [id])
-  receivingLocation  MdLocation   @relation(fields: [receivingLocationId], references: [id])
+  owner             MdOwner     @relation(fields: [ownerId], references: [id])
+  vendor            MdVendor    @relation(fields: [vendorId], references: [id])
+  warehouse         MdWarehouse @relation(fields: [warehouseId], references: [id])
+  receivingLocation MdLocation  @relation(fields: [receivingLocationId], references: [id])
 
-  lines              ReceiptLine[]
-  weighingLogs       ReceiptWeighingLog[]
-  statusHistory      ReceiptStatusHistory[]
-  exceptionLogs      ReceiptExceptionLog[]
-  integrationStates  ReceiptIntegrationState[]
+  lines             ReceiptLine[]
+  weighingLogs      ReceiptWeighingLog[]
+  statusHistory     ReceiptStatusHistory[]
+  exceptionLogs     ReceiptExceptionLog[]
+  integrationStates ReceiptIntegrationState[]
 
   @@index([vehicleNumber, status, createdAt(sort: Desc)])
   @@index([blNumber, status, createdAt(sort: Desc)])
@@ -1422,25 +1422,25 @@ model ReceiptHeader {
 }
 
 model ReceiptLine {
-  id                   String            @id @default(uuid()) @db.Uuid
-  receiptHeaderId      String            @map("receipt_header_id") @db.Uuid
-  lineNumber           Int               @map("line_number")
-  itemId               String            @map("item_id") @db.Uuid
-  uomId                String            @map("uom_id") @db.Uuid
-  expectedQty          Decimal           @map("expected_qty") @db.Decimal(18, 3)
-  receivedQty          Decimal?          @map("received_qty") @db.Decimal(18, 3)
-  bagCount             Int?              @map("bag_count")
-  nominalWeightPerBag  Decimal?          @map("nominal_weight_per_bag") @db.Decimal(18, 3)
-  cargoForm            CargoForm         @map("cargo_form")
-  status               ReceiptLineStatus @default(OPEN)
-  createdAt            DateTime          @default(now()) @map("created_at")
-  createdBy            String?           @map("created_by") @db.Uuid
-  updatedAt            DateTime          @updatedAt @map("updated_at")
-  updatedBy            String?           @map("updated_by") @db.Uuid
+  id                  String            @id @default(uuid()) @db.Uuid
+  receiptHeaderId     String            @map("receipt_header_id") @db.Uuid
+  lineNumber          Int               @map("line_number")
+  itemId              String            @map("item_id") @db.Uuid
+  uomId               String            @map("uom_id") @db.Uuid
+  expectedQty         Decimal           @map("expected_qty") @db.Decimal(18, 3)
+  receivedQty         Decimal?          @map("received_qty") @db.Decimal(18, 3)
+  bagCount            Int?              @map("bag_count")
+  nominalWeightPerBag Decimal?          @map("nominal_weight_per_bag") @db.Decimal(18, 3)
+  cargoForm           CargoForm         @map("cargo_form")
+  status              ReceiptLineStatus @default(OPEN)
+  createdAt           DateTime          @default(now()) @map("created_at")
+  createdBy           String?           @map("created_by") @db.Uuid
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  updatedBy           String?           @map("updated_by") @db.Uuid
 
-  header        ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
-  item          MdItem        @relation(fields: [itemId], references: [id])
-  uom           MdUom         @relation(fields: [uomId], references: [id])
+  header ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
+  item   MdItem        @relation(fields: [itemId], references: [id])
+  uom    MdUom         @relation(fields: [uomId], references: [id])
 
   @@unique([receiptHeaderId, lineNumber])
   @@index([itemId, cargoForm])
@@ -1477,18 +1477,18 @@ model ReceiptWeighingLog {
 }
 
 model ReceiptStatusHistory {
-  id               String    @id @default(uuid()) @db.Uuid
-  receiptHeaderId  String    @map("receipt_header_id") @db.Uuid
-  fromStatus       String?   @map("from_status") @db.VarChar(30)
-  toStatus         String    @map("to_status") @db.VarChar(30)
-  transitionCode   String    @map("transition_code") @db.VarChar(30)
-  triggeredBy      String?   @map("triggered_by") @db.Uuid
-  triggerRole      String?   @map("trigger_role") @db.VarChar(50)
-  reasonCode       String?   @map("reason_code") @db.VarChar(50)
-  note             String?   @db.Text
-  correlationId    String    @map("correlation_id") @db.VarChar(120)
-  occurredAt       DateTime  @default(now()) @map("occurred_at")
-  metadata         Json?
+  id              String   @id @default(uuid()) @db.Uuid
+  receiptHeaderId String   @map("receipt_header_id") @db.Uuid
+  fromStatus      String?  @map("from_status") @db.VarChar(30)
+  toStatus        String   @map("to_status") @db.VarChar(30)
+  transitionCode  String   @map("transition_code") @db.VarChar(30)
+  triggeredBy     String?  @map("triggered_by") @db.Uuid
+  triggerRole     String?  @map("trigger_role") @db.VarChar(50)
+  reasonCode      String?  @map("reason_code") @db.VarChar(50)
+  note            String?  @db.Text
+  correlationId   String   @map("correlation_id") @db.VarChar(120)
+  occurredAt      DateTime @default(now()) @map("occurred_at")
+  metadata        Json?
 
   receiptHeader ReceiptHeader @relation(fields: [receiptHeaderId], references: [id])
 
@@ -1658,48 +1658,48 @@ enum PostingStatus {
 // ========== Module 5: Outbound Operations Models ==========
 
 model ShipmentHeader {
-  id                    String           @id @default(uuid()) @db.Uuid
-  shipmentNumber        String?          @unique @map("shipment_number") @db.VarChar(40)
-  soId                  String?          @map("so_id") @db.VarChar(50)
-  sourceType            ShipmentSourceType @map("source_type")
-  ownerId               String           @map("owner_id") @db.Uuid
-  customerId            String?          @map("customer_id") @db.Uuid
-  warehouseId           String           @map("warehouse_id") @db.Uuid
-  vehicleNumber         String           @map("vehicle_number") @db.VarChar(30)
-  vehicleTypeId         String?          @map("vehicle_type_id") @db.Uuid
-  status                ShipmentStatus   @default(DRAFT)
-  tareWeightKg          Decimal?         @map("tare_weight_kg") @db.Decimal(18, 3)
-  totalGrossKg          Decimal?         @map("total_gross_kg") @db.Decimal(18, 3)
-  totalNetKg            Decimal?         @map("total_net_kg") @db.Decimal(18, 3)
-  allLinesPassed        Boolean          @default(false) @map("all_lines_passed")
-  pendingApprovalCount  Int              @default(0) @map("pending_approval_count")
-  isDpmShipment         Boolean          @default(false) @map("is_dpm_shipment")
-  cancelReasonCode      String?          @map("cancel_reason_code") @db.VarChar(50)
-  closeReasonCode       String?          @map("close_reason_code") @db.VarChar(50)
-  shippedAt             DateTime?        @map("shipped_at")
-  closedAt              DateTime?        @map("closed_at")
-  externalId            String           @unique @map("external_id") @db.VarChar(120)
-  correlationId         String           @map("correlation_id") @db.VarChar(120)
-  sourceApp             SourceApp        @map("source_app")
-  rowVersion            BigInt           @default(0) @map("row_version")
-  createdAt             DateTime         @default(now()) @map("created_at")
-  createdBy             String?          @map("created_by") @db.Uuid
-  updatedAt             DateTime         @updatedAt @map("updated_at")
-  updatedBy             String?          @map("updated_by") @db.Uuid
+  id                   String             @id @default(uuid()) @db.Uuid
+  shipmentNumber       String?            @unique @map("shipment_number") @db.VarChar(40)
+  soId                 String?            @map("so_id") @db.VarChar(50)
+  sourceType           ShipmentSourceType @map("source_type")
+  ownerId              String             @map("owner_id") @db.Uuid
+  customerId           String?            @map("customer_id") @db.Uuid
+  warehouseId          String             @map("warehouse_id") @db.Uuid
+  vehicleNumber        String             @map("vehicle_number") @db.VarChar(30)
+  vehicleTypeId        String?            @map("vehicle_type_id") @db.Uuid
+  status               ShipmentStatus     @default(DRAFT)
+  tareWeightKg         Decimal?           @map("tare_weight_kg") @db.Decimal(18, 3)
+  totalGrossKg         Decimal?           @map("total_gross_kg") @db.Decimal(18, 3)
+  totalNetKg           Decimal?           @map("total_net_kg") @db.Decimal(18, 3)
+  allLinesPassed       Boolean            @default(false) @map("all_lines_passed")
+  pendingApprovalCount Int                @default(0) @map("pending_approval_count")
+  isDpmShipment        Boolean            @default(false) @map("is_dpm_shipment")
+  cancelReasonCode     String?            @map("cancel_reason_code") @db.VarChar(50)
+  closeReasonCode      String?            @map("close_reason_code") @db.VarChar(50)
+  shippedAt            DateTime?          @map("shipped_at")
+  closedAt             DateTime?          @map("closed_at")
+  externalId           String             @unique @map("external_id") @db.VarChar(120)
+  correlationId        String             @map("correlation_id") @db.VarChar(120)
+  sourceApp            SourceApp          @map("source_app")
+  rowVersion           BigInt             @default(0) @map("row_version")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  createdBy            String?            @map("created_by") @db.Uuid
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  updatedBy            String?            @map("updated_by") @db.Uuid
 
-  owner                 MdOwner          @relation(fields: [ownerId], references: [id])
-  warehouse             MdWarehouse      @relation(fields: [warehouseId], references: [id])
-  vehicleType           MdVehicleType?   @relation(fields: [vehicleTypeId], references: [id])
+  owner       MdOwner        @relation(fields: [ownerId], references: [id])
+  warehouse   MdWarehouse    @relation(fields: [warehouseId], references: [id])
+  vehicleType MdVehicleType? @relation(fields: [vehicleTypeId], references: [id])
 
-  lines                 ShipmentLine[]
-  allocationRecords     ShipmentAllocationRecord[]
-  weighingAttempts      ShipmentWeighingAttempt[]
-  statusHistory         ShipmentStatusHistory[]
-  exceptionLogs         ShipmentExceptionLog[]
-  approvalDecisions     ShipmentApprovalDecision[]
-  pickWorkLinks         ShipmentPickWorkLink[]
-  postingLinks          ShipmentPostingLink[]
-  soLinks               ShipmentSoLink[]
+  lines             ShipmentLine[]
+  allocationRecords ShipmentAllocationRecord[]
+  weighingAttempts  ShipmentWeighingAttempt[]
+  statusHistory     ShipmentStatusHistory[]
+  exceptionLogs     ShipmentExceptionLog[]
+  approvalDecisions ShipmentApprovalDecision[]
+  pickWorkLinks     ShipmentPickWorkLink[]
+  postingLinks      ShipmentPostingLink[]
+  soLinks           ShipmentSoLink[]
 
   @@index([vehicleNumber, status, createdAt(sort: Desc)])
   @@index([soId, status, createdAt(sort: Desc)])
@@ -1710,44 +1710,44 @@ model ShipmentHeader {
 }
 
 model ShipmentLine {
-  id                    String              @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String              @map("shipment_header_id") @db.Uuid
-  lineNumber            Int                 @map("line_number")
-  soLineId              String?             @map("so_line_id") @db.VarChar(50)
-  itemId                String              @map("item_id") @db.Uuid
-  cargoForm             CargoForm           @map("cargo_form")
-  uomId                 String              @map("uom_id") @db.Uuid
-  expectedQty           Decimal             @map("expected_qty") @db.Decimal(18, 3)
-  expectedQtyKg         Decimal             @map("expected_qty_kg") @db.Decimal(18, 3)
-  allocatedQty          Decimal             @default(0) @map("allocated_qty") @db.Decimal(18, 3)
-  pickedQty             Decimal             @default(0) @map("picked_qty") @db.Decimal(18, 3)
-  loadedQty             Decimal             @default(0) @map("loaded_qty") @db.Decimal(18, 3)
-  shippedQty            Decimal?            @map("shipped_qty") @db.Decimal(18, 3)
-  bagCount              Int?                @map("bag_count")
-  nominalWeightPerBag   Decimal?            @map("nominal_weight_per_bag") @db.Decimal(18, 3)
-  tolerancePctApplied   Decimal?            @map("tolerance_pct_applied") @db.Decimal(8, 4)
-  variancePct           Decimal?            @map("variance_pct") @db.Decimal(8, 4)
-  grossWeightKg         Decimal?            @map("gross_weight_kg") @db.Decimal(18, 3)
-  netWeightKg           Decimal?            @map("net_weight_kg") @db.Decimal(18, 3)
-  weighSequenceNo       Int?                @map("weigh_sequence_no")
-  lineStatus            ShipmentLineStatus  @default(PENDING) @map("line_status")
-  postedTransId         String?             @map("posted_trans_id") @db.VarChar(40)
-  isDpmLine             Boolean             @default(false) @map("is_dpm_line")
-  dpmNominalQtyKg       Decimal?            @map("dpm_nominal_qty_kg") @db.Decimal(18, 3)
-  createdAt             DateTime            @default(now()) @map("created_at")
-  createdBy             String?             @map("created_by") @db.Uuid
-  updatedAt             DateTime            @updatedAt @map("updated_at")
-  updatedBy             String?             @map("updated_by") @db.Uuid
+  id                  String             @id @default(uuid()) @db.Uuid
+  shipmentHeaderId    String             @map("shipment_header_id") @db.Uuid
+  lineNumber          Int                @map("line_number")
+  soLineId            String?            @map("so_line_id") @db.VarChar(50)
+  itemId              String             @map("item_id") @db.Uuid
+  cargoForm           CargoForm          @map("cargo_form")
+  uomId               String             @map("uom_id") @db.Uuid
+  expectedQty         Decimal            @map("expected_qty") @db.Decimal(18, 3)
+  expectedQtyKg       Decimal            @map("expected_qty_kg") @db.Decimal(18, 3)
+  allocatedQty        Decimal            @default(0) @map("allocated_qty") @db.Decimal(18, 3)
+  pickedQty           Decimal            @default(0) @map("picked_qty") @db.Decimal(18, 3)
+  loadedQty           Decimal            @default(0) @map("loaded_qty") @db.Decimal(18, 3)
+  shippedQty          Decimal?           @map("shipped_qty") @db.Decimal(18, 3)
+  bagCount            Int?               @map("bag_count")
+  nominalWeightPerBag Decimal?           @map("nominal_weight_per_bag") @db.Decimal(18, 3)
+  tolerancePctApplied Decimal?           @map("tolerance_pct_applied") @db.Decimal(8, 4)
+  variancePct         Decimal?           @map("variance_pct") @db.Decimal(8, 4)
+  grossWeightKg       Decimal?           @map("gross_weight_kg") @db.Decimal(18, 3)
+  netWeightKg         Decimal?           @map("net_weight_kg") @db.Decimal(18, 3)
+  weighSequenceNo     Int?               @map("weigh_sequence_no")
+  lineStatus          ShipmentLineStatus @default(PENDING) @map("line_status")
+  postedTransId       String?            @map("posted_trans_id") @db.VarChar(40)
+  isDpmLine           Boolean            @default(false) @map("is_dpm_line")
+  dpmNominalQtyKg     Decimal?           @map("dpm_nominal_qty_kg") @db.Decimal(18, 3)
+  createdAt           DateTime           @default(now()) @map("created_at")
+  createdBy           String?            @map("created_by") @db.Uuid
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  updatedBy           String?            @map("updated_by") @db.Uuid
 
-  header                ShipmentHeader      @relation(fields: [shipmentHeaderId], references: [id])
-  item                  MdItem              @relation(fields: [itemId], references: [id])
-  uom                   MdUom               @relation(fields: [uomId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  item   MdItem         @relation(fields: [itemId], references: [id])
+  uom    MdUom          @relation(fields: [uomId], references: [id])
 
-  allocationRecords     ShipmentAllocationRecord[]
-  weighingAttempts      ShipmentWeighingAttempt[]
-  approvalDecisions     ShipmentApprovalDecision[]
-  pickWorkLinks         ShipmentPickWorkLink[]
-  postingLinks          ShipmentPostingLink[]
+  allocationRecords ShipmentAllocationRecord[]
+  weighingAttempts  ShipmentWeighingAttempt[]
+  approvalDecisions ShipmentApprovalDecision[]
+  pickWorkLinks     ShipmentPickWorkLink[]
+  postingLinks      ShipmentPostingLink[]
 
   @@unique([shipmentHeaderId, lineNumber])
   @@index([itemId, cargoForm])
@@ -1757,34 +1757,34 @@ model ShipmentLine {
 }
 
 model ShipmentAllocationRecord {
-  id                    String           @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String           @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String           @map("shipment_line_id") @db.Uuid
-  locationId            String           @map("location_id") @db.Uuid
-  inventDimId           String           @map("invent_dim_id") @db.Uuid
-  itemId                String           @map("item_id") @db.Uuid
-  ownerId               String           @map("owner_id") @db.Uuid
-  allocatedQty          Decimal          @map("allocated_qty") @db.Decimal(18, 3)
-  pickedQty             Decimal          @default(0) @map("picked_qty") @db.Decimal(18, 3)
-  releasedQty           Decimal          @default(0) @map("released_qty") @db.Decimal(18, 3)
-  postedQty             Decimal          @default(0) @map("posted_qty") @db.Decimal(18, 3)
-  lotDate               DateTime         @map("lot_date") @db.Date
-  fifoRank              Int?             @map("fifo_rank")
-  status                AllocationStatus @default(ALLOCATED)
-  holdRef               String?          @map("hold_ref") @db.VarChar(50)
-  externalId            String?          @map("external_id") @db.VarChar(120)
-  correlationId         String           @map("correlation_id") @db.VarChar(120)
-  createdAt             DateTime         @default(now()) @map("created_at")
-  createdBy             String?          @map("created_by") @db.Uuid
-  updatedAt             DateTime         @updatedAt @map("updated_at")
-  updatedBy             String?          @map("updated_by") @db.Uuid
+  id               String           @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String           @map("shipment_header_id") @db.Uuid
+  shipmentLineId   String           @map("shipment_line_id") @db.Uuid
+  locationId       String           @map("location_id") @db.Uuid
+  inventDimId      String           @map("invent_dim_id") @db.Uuid
+  itemId           String           @map("item_id") @db.Uuid
+  ownerId          String           @map("owner_id") @db.Uuid
+  allocatedQty     Decimal          @map("allocated_qty") @db.Decimal(18, 3)
+  pickedQty        Decimal          @default(0) @map("picked_qty") @db.Decimal(18, 3)
+  releasedQty      Decimal          @default(0) @map("released_qty") @db.Decimal(18, 3)
+  postedQty        Decimal          @default(0) @map("posted_qty") @db.Decimal(18, 3)
+  lotDate          DateTime         @map("lot_date") @db.Date
+  fifoRank         Int?             @map("fifo_rank")
+  status           AllocationStatus @default(ALLOCATED)
+  holdRef          String?          @map("hold_ref") @db.VarChar(50)
+  externalId       String?          @map("external_id") @db.VarChar(120)
+  correlationId    String           @map("correlation_id") @db.VarChar(120)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  createdBy        String?          @map("created_by") @db.Uuid
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  updatedBy        String?          @map("updated_by") @db.Uuid
 
-  header                ShipmentHeader   @relation(fields: [shipmentHeaderId], references: [id])
-  line                  ShipmentLine     @relation(fields: [shipmentLineId], references: [id])
-  location              MdLocation       @relation(fields: [locationId], references: [id])
-  inventDim             InventDim        @relation(fields: [inventDimId], references: [id])
-  item                  MdItem           @relation(fields: [itemId], references: [id])
-  owner                 MdOwner          @relation(fields: [ownerId], references: [id])
+  header    ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  line      ShipmentLine   @relation(fields: [shipmentLineId], references: [id])
+  location  MdLocation     @relation(fields: [locationId], references: [id])
+  inventDim InventDim      @relation(fields: [inventDimId], references: [id])
+  item      MdItem         @relation(fields: [itemId], references: [id])
+  owner     MdOwner        @relation(fields: [ownerId], references: [id])
 
   @@index([shipmentLineId, status])
   @@index([shipmentHeaderId, status])
@@ -1795,27 +1795,27 @@ model ShipmentAllocationRecord {
 }
 
 model ShipmentWeighingAttempt {
-  id                    String           @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String           @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String?          @map("shipment_line_id") @db.Uuid
-  weighType             WeighType        @map("weigh_type")
-  sequenceNo            Int              @map("sequence_no")
-  sourceMode            WeighSourceMode  @map("source_mode")
-  rawWeightKg           Decimal          @map("raw_weight_kg") @db.Decimal(18, 3)
-  calculatedNetKg       Decimal?         @map("calculated_net_kg") @db.Decimal(18, 3)
-  scaleTicketNo         String?          @map("scale_ticket_no") @db.VarChar(80)
-  externalEventId       String?          @map("external_event_id") @db.VarChar(120)
-  capturedAt            DateTime         @map("captured_at")
-  capturedBy            String?          @map("captured_by") @db.Uuid
-  duplicateOfAttemptId  String?          @map("duplicate_of_attempt_id") @db.Uuid
-  isValid               Boolean          @default(true) @map("is_valid")
-  reasonCode            String?          @map("reason_code") @db.VarChar(50)
-  remark                String?          @db.Text
-  correlationId         String           @map("correlation_id") @db.VarChar(120)
-  createdAt             DateTime         @default(now()) @map("created_at")
+  id                   String          @id @default(uuid()) @db.Uuid
+  shipmentHeaderId     String          @map("shipment_header_id") @db.Uuid
+  shipmentLineId       String?         @map("shipment_line_id") @db.Uuid
+  weighType            WeighType       @map("weigh_type")
+  sequenceNo           Int             @map("sequence_no")
+  sourceMode           WeighSourceMode @map("source_mode")
+  rawWeightKg          Decimal         @map("raw_weight_kg") @db.Decimal(18, 3)
+  calculatedNetKg      Decimal?        @map("calculated_net_kg") @db.Decimal(18, 3)
+  scaleTicketNo        String?         @map("scale_ticket_no") @db.VarChar(80)
+  externalEventId      String?         @map("external_event_id") @db.VarChar(120)
+  capturedAt           DateTime        @map("captured_at")
+  capturedBy           String?         @map("captured_by") @db.Uuid
+  duplicateOfAttemptId String?         @map("duplicate_of_attempt_id") @db.Uuid
+  isValid              Boolean         @default(true) @map("is_valid")
+  reasonCode           String?         @map("reason_code") @db.VarChar(50)
+  remark               String?         @db.Text
+  correlationId        String          @map("correlation_id") @db.VarChar(120)
+  createdAt            DateTime        @default(now()) @map("created_at")
 
-  header                ShipmentHeader   @relation(fields: [shipmentHeaderId], references: [id])
-  line                  ShipmentLine?    @relation(fields: [shipmentLineId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  line   ShipmentLine?  @relation(fields: [shipmentLineId], references: [id])
 
   @@index([shipmentHeaderId, capturedAt(sort: Desc)])
   @@index([shipmentLineId, capturedAt(sort: Desc)])
@@ -1825,20 +1825,20 @@ model ShipmentWeighingAttempt {
 }
 
 model ShipmentStatusHistory {
-  id                    String       @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String       @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String?      @map("shipment_line_id") @db.Uuid
-  entityLevel           String       @map("entity_level") @db.VarChar(10)
-  fromStatus            String?      @map("from_status") @db.VarChar(30)
-  toStatus              String       @map("to_status") @db.VarChar(30)
-  triggerAction         String       @map("trigger_action") @db.VarChar(50)
-  changedBy             String?      @map("changed_by") @db.Uuid
-  changedAt             DateTime     @default(now()) @map("changed_at")
-  reasonCode            String?      @map("reason_code") @db.VarChar(50)
-  note                  String?      @db.Text
-  correlationId         String       @map("correlation_id") @db.VarChar(120)
+  id               String   @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String   @map("shipment_header_id") @db.Uuid
+  shipmentLineId   String?  @map("shipment_line_id") @db.Uuid
+  entityLevel      String   @map("entity_level") @db.VarChar(10)
+  fromStatus       String?  @map("from_status") @db.VarChar(30)
+  toStatus         String   @map("to_status") @db.VarChar(30)
+  triggerAction    String   @map("trigger_action") @db.VarChar(50)
+  changedBy        String?  @map("changed_by") @db.Uuid
+  changedAt        DateTime @default(now()) @map("changed_at")
+  reasonCode       String?  @map("reason_code") @db.VarChar(50)
+  note             String?  @db.Text
+  correlationId    String   @map("correlation_id") @db.VarChar(120)
 
-  header                ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
 
   @@index([shipmentHeaderId, changedAt(sort: Desc)])
   @@index([shipmentLineId, changedAt(sort: Desc)])
@@ -1847,22 +1847,22 @@ model ShipmentStatusHistory {
 }
 
 model ShipmentExceptionLog {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String                   @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String?                  @map("shipment_line_id") @db.Uuid
-  exceptionType         ShipmentExceptionType    @map("exception_type")
-  exceptionCode         String                   @map("exception_code") @db.VarChar(50)
-  severity              ExceptionSeverity
-  status                ShipmentExceptionStatus  @default(OPEN)
-  reasonCode            String?                  @map("reason_code") @db.VarChar(50)
-  detailJson            Json?                    @map("detail_json")
-  createdAt             DateTime                 @default(now()) @map("created_at")
-  createdBy             String?                  @map("created_by") @db.Uuid
-  resolvedAt            DateTime?                @map("resolved_at")
-  resolvedBy            String?                  @map("resolved_by") @db.Uuid
-  correlationId         String                   @map("correlation_id") @db.VarChar(120)
+  id               String                  @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String                  @map("shipment_header_id") @db.Uuid
+  shipmentLineId   String?                 @map("shipment_line_id") @db.Uuid
+  exceptionType    ShipmentExceptionType   @map("exception_type")
+  exceptionCode    String                  @map("exception_code") @db.VarChar(50)
+  severity         ExceptionSeverity
+  status           ShipmentExceptionStatus @default(OPEN)
+  reasonCode       String?                 @map("reason_code") @db.VarChar(50)
+  detailJson       Json?                   @map("detail_json")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  createdBy        String?                 @map("created_by") @db.Uuid
+  resolvedAt       DateTime?               @map("resolved_at")
+  resolvedBy       String?                 @map("resolved_by") @db.Uuid
+  correlationId    String                  @map("correlation_id") @db.VarChar(120)
 
-  header                ShipmentHeader           @relation(fields: [shipmentHeaderId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
 
   @@index([shipmentHeaderId, status, createdAt(sort: Desc)])
   @@index([exceptionType, status, createdAt(sort: Desc)])
@@ -1870,21 +1870,21 @@ model ShipmentExceptionLog {
 }
 
 model ShipmentApprovalDecision {
-  id                    String               @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String               @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String?              @map("shipment_line_id") @db.Uuid
-  decisionType          ApprovalDecisionType @map("decision_type")
-  approvalScope         ApprovalScope        @map("approval_scope")
-  reasonCode            String               @map("reason_code") @db.VarChar(50)
-  note                  String?              @db.Text
-  decidedBy             String               @map("decided_by") @db.Uuid
-  decidedAt             DateTime             @default(now()) @map("decided_at")
-  beforeSnapshot        Json?                @map("before_snapshot")
-  afterSnapshot         Json?                @map("after_snapshot")
-  correlationId         String               @map("correlation_id") @db.VarChar(120)
+  id               String               @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String               @map("shipment_header_id") @db.Uuid
+  shipmentLineId   String?              @map("shipment_line_id") @db.Uuid
+  decisionType     ApprovalDecisionType @map("decision_type")
+  approvalScope    ApprovalScope        @map("approval_scope")
+  reasonCode       String               @map("reason_code") @db.VarChar(50)
+  note             String?              @db.Text
+  decidedBy        String               @map("decided_by") @db.Uuid
+  decidedAt        DateTime             @default(now()) @map("decided_at")
+  beforeSnapshot   Json?                @map("before_snapshot")
+  afterSnapshot    Json?                @map("after_snapshot")
+  correlationId    String               @map("correlation_id") @db.VarChar(120)
 
-  header                ShipmentHeader       @relation(fields: [shipmentHeaderId], references: [id])
-  line                  ShipmentLine?        @relation(fields: [shipmentLineId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  line   ShipmentLine?  @relation(fields: [shipmentLineId], references: [id])
 
   @@index([shipmentHeaderId, decidedAt(sort: Desc)])
   @@index([shipmentLineId, decidedAt(sort: Desc)])
@@ -1892,21 +1892,21 @@ model ShipmentApprovalDecision {
 }
 
 model ShipmentPickWorkLink {
-  id                    String           @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String           @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String?          @map("shipment_line_id") @db.Uuid
-  workType              WorkLinkType     @map("work_type")
-  workHeaderId          String           @map("work_header_id") @db.VarChar(50)
-  workLineId            String?          @map("work_line_id") @db.VarChar(50)
-  status                WorkLinkStatus   @default(REQUESTED)
-  externalId            String           @map("external_id") @db.VarChar(120)
-  correlationId         String           @map("correlation_id") @db.VarChar(120)
-  requestedAt           DateTime         @default(now()) @map("requested_at")
-  completedAt           DateTime?        @map("completed_at")
-  payloadJson           Json?            @map("payload_json")
+  id               String         @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String         @map("shipment_header_id") @db.Uuid
+  shipmentLineId   String?        @map("shipment_line_id") @db.Uuid
+  workType         WorkLinkType   @map("work_type")
+  workHeaderId     String         @map("work_header_id") @db.VarChar(50)
+  workLineId       String?        @map("work_line_id") @db.VarChar(50)
+  status           WorkLinkStatus @default(REQUESTED)
+  externalId       String         @map("external_id") @db.VarChar(120)
+  correlationId    String         @map("correlation_id") @db.VarChar(120)
+  requestedAt      DateTime       @default(now()) @map("requested_at")
+  completedAt      DateTime?      @map("completed_at")
+  payloadJson      Json?          @map("payload_json")
 
-  header                ShipmentHeader   @relation(fields: [shipmentHeaderId], references: [id])
-  line                  ShipmentLine?    @relation(fields: [shipmentLineId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  line   ShipmentLine?  @relation(fields: [shipmentLineId], references: [id])
 
   @@unique([externalId])
   @@index([shipmentHeaderId, status])
@@ -1915,21 +1915,21 @@ model ShipmentPickWorkLink {
 }
 
 model ShipmentPostingLink {
-  id                    String         @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String         @map("shipment_header_id") @db.Uuid
-  shipmentLineId        String         @map("shipment_line_id") @db.Uuid
-  postingAction         PostingAction  @map("posting_action")
-  m3ExternalId          String         @map("m3_external_id") @db.VarChar(120)
-  m3TransId             String?        @map("m3_trans_id") @db.VarChar(40)
-  status                PostingStatus  @default(PENDING)
-  requestPayload        Json?          @map("request_payload")
-  responsePayload       Json?          @map("response_payload")
-  requestedAt           DateTime       @default(now()) @map("requested_at")
-  finishedAt            DateTime?      @map("finished_at")
-  correlationId         String         @map("correlation_id") @db.VarChar(120)
+  id               String        @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String        @map("shipment_header_id") @db.Uuid
+  shipmentLineId   String        @map("shipment_line_id") @db.Uuid
+  postingAction    PostingAction @map("posting_action")
+  m3ExternalId     String        @map("m3_external_id") @db.VarChar(120)
+  m3TransId        String?       @map("m3_trans_id") @db.VarChar(40)
+  status           PostingStatus @default(PENDING)
+  requestPayload   Json?         @map("request_payload")
+  responsePayload  Json?         @map("response_payload")
+  requestedAt      DateTime      @default(now()) @map("requested_at")
+  finishedAt       DateTime?     @map("finished_at")
+  correlationId    String        @map("correlation_id") @db.VarChar(120)
 
-  header                ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
-  line                  ShipmentLine   @relation(fields: [shipmentLineId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  line   ShipmentLine   @relation(fields: [shipmentLineId], references: [id])
 
   @@unique([m3ExternalId])
   @@index([shipmentHeaderId, status])
@@ -1938,22 +1938,564 @@ model ShipmentPostingLink {
 }
 
 model ShipmentSoLink {
-  id                    String         @id @default(uuid()) @db.Uuid
-  shipmentHeaderId      String         @map("shipment_header_id") @db.Uuid
-  soId                  String         @map("so_id") @db.VarChar(50)
-  soLineId              String?        @map("so_line_id") @db.VarChar(50)
-  expectedQtyKg         Decimal        @map("expected_qty_kg") @db.Decimal(18, 3)
-  allocatedQtyKg        Decimal        @default(0) @map("allocated_qty_kg") @db.Decimal(18, 3)
-  shippedQtyKg          Decimal        @default(0) @map("shipped_qty_kg") @db.Decimal(18, 3)
-  isReconciled          Boolean        @default(false) @map("is_reconciled")
-  reconciledAt          DateTime?      @map("reconciled_at")
-  createdAt             DateTime       @default(now()) @map("created_at")
-  updatedAt             DateTime       @updatedAt @map("updated_at")
+  id               String    @id @default(uuid()) @db.Uuid
+  shipmentHeaderId String    @map("shipment_header_id") @db.Uuid
+  soId             String    @map("so_id") @db.VarChar(50)
+  soLineId         String?   @map("so_line_id") @db.VarChar(50)
+  expectedQtyKg    Decimal   @map("expected_qty_kg") @db.Decimal(18, 3)
+  allocatedQtyKg   Decimal   @default(0) @map("allocated_qty_kg") @db.Decimal(18, 3)
+  shippedQtyKg     Decimal   @default(0) @map("shipped_qty_kg") @db.Decimal(18, 3)
+  isReconciled     Boolean   @default(false) @map("is_reconciled")
+  reconciledAt     DateTime? @map("reconciled_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  header                ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
 
   @@unique([shipmentHeaderId, soId, soLineId])
   @@index([soId, soLineId])
   @@map("shipment_so_link")
 }
 
+// ========== Module 6: Inventory Control Enums ==========
+
+enum IcMoveOrderStatus {
+  DRAFT
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum IcMoveLineStatus {
+  OPEN
+  EXECUTING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum IcExecutionMode {
+  DIRECT
+  WORK_BASED
+}
+
+enum IcTransferOrderStatus {
+  CREATED
+  RELEASED
+  SHIPPED
+  IN_TRANSIT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+  FAILED
+}
+
+enum IcTransferLineStatus {
+  OPEN
+  SHIPPED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum IcStatusChangeStatus {
+  CREATED
+  POSTED
+  REVERSED
+  FAILED
+  CANCELLED
+}
+
+enum IcCycleCountPlanFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ADHOC
+}
+
+enum IcCycleCountScopeType {
+  LOCATION
+  ITEM
+  LOCATION_ITEM
+  OWNER
+}
+
+enum IcCycleCountStatus {
+  CREATED
+  RELEASED
+  COUNTING
+  SUBMITTED
+  APPROVED
+  POSTED
+  CANCELLED
+}
+
+enum IcCycleCountLineStatus {
+  OPEN
+  COUNTED
+  VARIANCE
+  APPROVED
+  POSTED
+  CANCELLED
+}
+
+enum IcAdjustmentType {
+  INCREASE
+  DECREASE
+  MIXED
+}
+
+enum IcAdjustmentSourceType {
+  MANUAL
+  COUNT
+  RECONCILIATION
+  TRANSFER_VARIANCE
+}
+
+enum IcAdjustmentStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  POSTED
+  CANCELLED
+  FAILED
+}
+
+enum IcAdjustmentLineStatus {
+  OPEN
+  APPROVED
+  POSTED
+  FAILED
+  CANCELLED
+}
+
+enum IcReconciliationScopeType {
+  WAREHOUSE
+  ITEM
+  OWNER
+  GLOBAL
+}
+
+enum IcReconciliationStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum IcReconciliationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IcResolutionType {
+  NO_ACTION
+  ADJUSTMENT
+  REVERSE
+  INVESTIGATION
+}
+
+enum IcDocumentEntityType {
+  MOVE
+  TRANSFER
+  STATUS_CHANGE
+  COUNT
+  ADJUSTMENT
+  RECONCILIATION
+}
+
+enum IcExceptionType {
+  RESERVED_STOCK
+  POST_FAIL
+  LIMIT_BREACH
+  VARIANCE
+  DUPLICATE
+  WORK_CALLBACK_MISS
+  VALIDATION_FAIL
+}
+
+enum IcExceptionStatus {
+  OPEN
+  ACK
+  RESOLVED
+  IGNORED
+}
+
+enum IcPostingStatus {
+  PENDING
+  POSTED
+  FAILED
+}
+
+// ========== Module 6: Inventory Control Models ==========
+
+model IcMoveOrder {
+  id            String            @id @default(uuid()) @db.Uuid
+  moveNumber    String            @unique @map("move_number") @db.VarChar(50)
+  warehouseId   String            @map("warehouse_id") @db.Uuid
+  executionMode IcExecutionMode   @map("execution_mode")
+  status        IcMoveOrderStatus @default(DRAFT)
+  reasonCode    String?           @map("reason_code") @db.VarChar(50)
+  remarks       String?           @db.Text
+  requestedBy   String            @map("requested_by") @db.Uuid
+  confirmedBy   String?           @map("confirmed_by") @db.Uuid
+  confirmedAt   DateTime?         @map("confirmed_at")
+  completedBy   String?           @map("completed_by") @db.Uuid
+  completedAt   DateTime?         @map("completed_at")
+  workHeaderId  String?           @map("work_header_id") @db.VarChar(50)
+  postingStatus IcPostingStatus   @default(PENDING) @map("posting_status")
+  postedRef     String?           @map("posted_ref") @db.VarChar(100)
+  externalId    String            @unique @map("external_id") @db.VarChar(100)
+  correlationId String            @map("correlation_id") @db.VarChar(50)
+  sourceApp     SourceApp         @map("source_app")
+  rowVersion    BigInt            @default(0) @map("row_version")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  createdBy     String            @map("created_by") @db.Uuid
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  updatedBy     String?           @map("updated_by") @db.Uuid
+
+  lines IcMoveOrderLine[]
+
+  @@index([warehouseId, status, createdAt(sort: Desc)])
+  @@index([correlationId])
+  @@map("ic_move_order")
+}
+
+model IcMoveOrderLine {
+  id                 String           @id @default(uuid()) @db.Uuid
+  moveOrderId        String           @map("move_order_id") @db.Uuid
+  lineNo             Int              @map("line_no")
+  itemId             String           @map("item_id") @db.Uuid
+  ownerId            String           @map("owner_id") @db.Uuid
+  fromLocationId     String           @map("from_location_id") @db.Uuid
+  toLocationId       String           @map("to_location_id") @db.Uuid
+  inventoryStatus    String           @map("inventory_status") @db.VarChar(30)
+  requestedQty       Decimal          @map("requested_qty") @db.Decimal(18, 3)
+  executedQty        Decimal?         @map("executed_qty") @db.Decimal(18, 3)
+  uom                String           @db.VarChar(20)
+  lineStatus         IcMoveLineStatus @default(OPEN) @map("line_status")
+  shortageReasonCode String?          @map("shortage_reason_code") @db.VarChar(50)
+  postedTransGroupId String?          @map("posted_trans_group_id") @db.VarChar(100)
+  rowVersion         BigInt           @default(0) @map("row_version")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  moveOrder IcMoveOrder @relation(fields: [moveOrderId], references: [id])
+
+  @@unique([moveOrderId, lineNo])
+  @@index([itemId, ownerId, fromLocationId])
+  @@index([toLocationId])
+  @@index([lineStatus])
+  @@map("ic_move_order_line")
+}
+
+model IcTransferOrder {
+  id                   String                @id @default(uuid()) @db.Uuid
+  transferNumber       String                @unique @map("transfer_number") @db.VarChar(50)
+  fromWarehouseId      String                @map("from_warehouse_id") @db.Uuid
+  toWarehouseId        String                @map("to_warehouse_id") @db.Uuid
+  executionMode        IcExecutionMode       @map("execution_mode")
+  status               IcTransferOrderStatus @default(CREATED)
+  requestedShipDate    DateTime?             @map("requested_ship_date") @db.Date
+  actualShipAt         DateTime?             @map("actual_ship_at")
+  actualReceiveAt      DateTime?             @map("actual_receive_at")
+  inTransitSlaHours    Int?                  @map("in_transit_sla_hours")
+  vehicleNumber        String?               @map("vehicle_number") @db.VarChar(50)
+  shippedBy            String?               @map("shipped_by") @db.Uuid
+  receivedBy           String?               @map("received_by") @db.Uuid
+  cancelReasonCode     String?               @map("cancel_reason_code") @db.VarChar(50)
+  closeReasonCode      String?               @map("close_reason_code") @db.VarChar(50)
+  postingShipStatus    IcPostingStatus       @default(PENDING) @map("posting_ship_status")
+  postingReceiveStatus IcPostingStatus       @default(PENDING) @map("posting_receive_status")
+  externalId           String                @unique @map("external_id") @db.VarChar(100)
+  correlationId        String                @map("correlation_id") @db.VarChar(50)
+  sourceApp            SourceApp             @map("source_app")
+  rowVersion           BigInt                @default(0) @map("row_version")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  createdBy            String                @map("created_by") @db.Uuid
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  updatedBy            String?               @map("updated_by") @db.Uuid
+
+  lines IcTransferOrderLine[]
+
+  @@index([fromWarehouseId, status, createdAt(sort: Desc)])
+  @@index([toWarehouseId, status, requestedShipDate])
+  @@index([actualShipAt])
+  @@index([actualReceiveAt])
+  @@map("ic_transfer_order")
+}
+
+model IcTransferOrderLine {
+  id                   String               @id @default(uuid()) @db.Uuid
+  transferOrderId      String               @map("transfer_order_id") @db.Uuid
+  lineNo               Int                  @map("line_no")
+  itemId               String               @map("item_id") @db.Uuid
+  ownerId              String               @map("owner_id") @db.Uuid
+  uom                  String               @db.VarChar(20)
+  requestedQty         Decimal              @map("requested_qty") @db.Decimal(18, 3)
+  shippedQty           Decimal?             @map("shipped_qty") @db.Decimal(18, 3)
+  receivedQty          Decimal?             @map("received_qty") @db.Decimal(18, 3)
+  varianceQty          Decimal?             @map("variance_qty") @db.Decimal(18, 3)
+  fromLocationId       String               @map("from_location_id") @db.Uuid
+  toLocationId         String?              @map("to_location_id") @db.Uuid
+  inventoryStatus      String               @map("inventory_status") @db.VarChar(30)
+  lineStatus           IcTransferLineStatus @default(OPEN) @map("line_status")
+  varianceReasonCode   String?              @map("variance_reason_code") @db.VarChar(50)
+  issueFlag            Boolean              @default(false) @map("issue_flag")
+  postedShipTransId    String?              @map("posted_ship_trans_id") @db.VarChar(100)
+  postedReceiveTransId String?              @map("posted_receive_trans_id") @db.VarChar(100)
+  rowVersion           BigInt               @default(0) @map("row_version")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  transferOrder IcTransferOrder @relation(fields: [transferOrderId], references: [id])
+
+  @@unique([transferOrderId, lineNo])
+  @@index([itemId, ownerId, lineStatus])
+  @@index([issueFlag])
+  @@map("ic_transfer_order_line")
+}
+
+model IcInventoryStatusChange {
+  id                 String               @id @default(uuid()) @db.Uuid
+  statusChangeNumber String               @unique @map("status_change_number") @db.VarChar(50)
+  warehouseId        String               @map("warehouse_id") @db.Uuid
+  locationId         String               @map("location_id") @db.Uuid
+  itemId             String               @map("item_id") @db.Uuid
+  ownerId            String               @map("owner_id") @db.Uuid
+  fromStatus         String               @map("from_status") @db.VarChar(30)
+  toStatus           String               @map("to_status") @db.VarChar(30)
+  qty                Decimal              @db.Decimal(18, 3)
+  uom                String               @db.VarChar(20)
+  reasonCode         String               @map("reason_code") @db.VarChar(50)
+  reasonText         String?              @map("reason_text") @db.Text
+  attachmentRef      String?              @map("attachment_ref") @db.VarChar(255)
+  status             IcStatusChangeStatus @default(CREATED)
+  postedTransGroupId String?              @map("posted_trans_group_id") @db.VarChar(100)
+  requestedBy        String               @map("requested_by") @db.Uuid
+  approvedBy         String?              @map("approved_by") @db.Uuid
+  postedAt           DateTime?            @map("posted_at")
+  externalId         String               @unique @map("external_id") @db.VarChar(100)
+  correlationId      String               @map("correlation_id") @db.VarChar(50)
+  sourceApp          SourceApp            @map("source_app")
+  rowVersion         BigInt               @default(0) @map("row_version")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  createdBy          String               @map("created_by") @db.Uuid
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  updatedBy          String?              @map("updated_by") @db.Uuid
+
+  @@index([warehouseId, status, createdAt(sort: Desc)])
+  @@index([itemId, ownerId, locationId])
+  @@index([correlationId])
+  @@map("ic_inventory_status_change")
+}
+
+model IcCycleCountPlan {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  planCode             String                    @unique @map("plan_code") @db.VarChar(50)
+  warehouseId          String                    @map("warehouse_id") @db.Uuid
+  scopeType            IcCycleCountScopeType     @map("scope_type")
+  frequency            IcCycleCountPlanFrequency
+  selectionRule        Json?                     @map("selection_rule")
+  blindCount           Boolean                   @default(true) @map("blind_count")
+  recountThresholdPct  Decimal?                  @map("recount_threshold_pct") @db.Decimal(8, 4)
+  autoPostThresholdPct Decimal?                  @map("auto_post_threshold_pct") @db.Decimal(8, 4)
+  maxRecount           Int                       @default(1) @map("max_recount")
+  isActive             Boolean                   @default(true) @map("is_active")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  createdBy            String                    @map("created_by") @db.Uuid
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+  updatedBy            String?                   @map("updated_by") @db.Uuid
+
+  cycleCountHeaders IcCycleCountHeader[]
+
+  @@index([warehouseId, isActive])
+  @@map("ic_cycle_count_plan")
+}
+
+model IcCycleCountHeader {
+  id                 String             @id @default(uuid()) @db.Uuid
+  countNumber        String             @unique @map("count_number") @db.VarChar(50)
+  cycleCountPlanId   String?            @map("cycle_count_plan_id") @db.Uuid
+  warehouseId        String             @map("warehouse_id") @db.Uuid
+  countScopeSnapshot Json               @map("count_scope_snapshot")
+  status             IcCycleCountStatus @default(CREATED)
+  blindCount         Boolean            @map("blind_count")
+  releasedAt         DateTime?          @map("released_at")
+  submittedAt        DateTime?          @map("submitted_at")
+  approvedAt         DateTime?          @map("approved_at")
+  postedAt           DateTime?          @map("posted_at")
+  externalId         String             @unique @map("external_id") @db.VarChar(100)
+  correlationId      String             @map("correlation_id") @db.VarChar(50)
+  sourceApp          SourceApp          @map("source_app")
+  rowVersion         BigInt             @default(0) @map("row_version")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  createdBy          String             @map("created_by") @db.Uuid
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  updatedBy          String?            @map("updated_by") @db.Uuid
+
+  plan  IcCycleCountPlan?  @relation(fields: [cycleCountPlanId], references: [id])
+  lines IcCycleCountLine[]
+
+  @@index([warehouseId, status, createdAt(sort: Desc)])
+  @@index([cycleCountPlanId])
+  @@map("ic_cycle_count_header")
+}
+
+model IcCycleCountLine {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  cycleCountHeaderId String                 @map("cycle_count_header_id") @db.Uuid
+  lineNo             Int                    @map("line_no")
+  itemId             String                 @map("item_id") @db.Uuid
+  ownerId            String                 @map("owner_id") @db.Uuid
+  warehouseId        String                 @map("warehouse_id") @db.Uuid
+  locationId         String                 @map("location_id") @db.Uuid
+  inventoryStatus    String                 @map("inventory_status") @db.VarChar(30)
+  systemQty          Decimal?               @map("system_qty") @db.Decimal(18, 3)
+  countedQty         Decimal?               @map("counted_qty") @db.Decimal(18, 3)
+  varianceQty        Decimal?               @map("variance_qty") @db.Decimal(18, 3)
+  variancePct        Decimal?               @map("variance_pct") @db.Decimal(8, 4)
+  recountNo          Int                    @default(0) @map("recount_no")
+  lineStatus         IcCycleCountLineStatus @default(OPEN) @map("line_status")
+  adjustmentHeaderId String?                @map("adjustment_header_id") @db.Uuid
+  evidenceRef        String?                @map("evidence_ref") @db.VarChar(255)
+  rowVersion         BigInt                 @default(0) @map("row_version")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  header IcCycleCountHeader @relation(fields: [cycleCountHeaderId], references: [id])
+
+  @@unique([cycleCountHeaderId, lineNo])
+  @@index([warehouseId, locationId, lineStatus])
+  @@index([itemId, ownerId])
+  @@map("ic_cycle_count_line")
+}
+
+model IcAdjustmentHeader {
+  id               String                 @id @default(uuid()) @db.Uuid
+  adjustmentNumber String                 @unique @map("adjustment_number") @db.VarChar(50)
+  warehouseId      String                 @map("warehouse_id") @db.Uuid
+  adjustmentType   IcAdjustmentType       @map("adjustment_type")
+  sourceType       IcAdjustmentSourceType @map("source_type")
+  status           IcAdjustmentStatus     @default(DRAFT)
+  totalLineCount   Int                    @default(0) @map("total_line_count")
+  totalAbsQty      Decimal                @default(0) @map("total_abs_qty") @db.Decimal(18, 3)
+  requestedBy      String                 @map("requested_by") @db.Uuid
+  approvedBy       String?                @map("approved_by") @db.Uuid
+  approvedAt       DateTime?              @map("approved_at")
+  postedAt         DateTime?              @map("posted_at")
+  reasonCode       String                 @map("reason_code") @db.VarChar(50)
+  remarks          String?                @db.Text
+  externalId       String                 @unique @map("external_id") @db.VarChar(100)
+  correlationId    String                 @map("correlation_id") @db.VarChar(50)
+  sourceApp        SourceApp              @map("source_app")
+  rowVersion       BigInt                 @default(0) @map("row_version")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  createdBy        String                 @map("created_by") @db.Uuid
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  updatedBy        String?                @map("updated_by") @db.Uuid
+
+  lines IcAdjustmentLine[]
+
+  @@index([warehouseId, status, createdAt(sort: Desc)])
+  @@index([sourceType, status])
+  @@index([correlationId])
+  @@map("ic_adjustment_header")
+}
+
+model IcAdjustmentLine {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  adjustmentHeaderId String                 @map("adjustment_header_id") @db.Uuid
+  lineNo             Int                    @map("line_no")
+  itemId             String                 @map("item_id") @db.Uuid
+  ownerId            String                 @map("owner_id") @db.Uuid
+  warehouseId        String                 @map("warehouse_id") @db.Uuid
+  locationId         String                 @map("location_id") @db.Uuid
+  inventoryStatus    String                 @map("inventory_status") @db.VarChar(30)
+  qtyDelta           Decimal                @map("qty_delta") @db.Decimal(18, 3)
+  uom                String                 @db.VarChar(20)
+  reasonCode         String                 @map("reason_code") @db.VarChar(50)
+  postedTransId      String?                @map("posted_trans_id") @db.VarChar(100)
+  lineStatus         IcAdjustmentLineStatus @default(OPEN) @map("line_status")
+  rowVersion         BigInt                 @default(0) @map("row_version")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  header IcAdjustmentHeader @relation(fields: [adjustmentHeaderId], references: [id])
+
+  @@unique([adjustmentHeaderId, lineNo])
+  @@index([itemId, ownerId, locationId, createdAt(sort: Desc)])
+  @@index([lineStatus])
+  @@map("ic_adjustment_line")
+}
+
+model IcReconciliationReview {
+  id                         String                    @id @default(uuid()) @db.Uuid
+  reconciliationReviewNumber String                    @unique @map("reconciliation_review_number") @db.VarChar(50)
+  warehouseId                String?                   @map("warehouse_id") @db.Uuid
+  scopeType                  IcReconciliationScopeType @map("scope_type")
+  sourceRunId                String?                   @map("source_run_id") @db.VarChar(100)
+  status                     IcReconciliationStatus    @default(OPEN)
+  mismatchCount              Int                       @default(0) @map("mismatch_count")
+  severity                   IcReconciliationSeverity
+  assignedTo                 String?                   @map("assigned_to") @db.Uuid
+  summary                    String?                   @db.Text
+  resolutionType             IcResolutionType?         @map("resolution_type")
+  resolutionRef              String?                   @map("resolution_ref") @db.VarChar(100)
+  externalId                 String                    @unique @map("external_id") @db.VarChar(100)
+  correlationId              String                    @map("correlation_id") @db.VarChar(50)
+  sourceApp                  SourceApp                 @map("source_app")
+  rowVersion                 BigInt                    @default(0) @map("row_version")
+  createdAt                  DateTime                  @default(now()) @map("created_at")
+  createdBy                  String                    @map("created_by") @db.Uuid
+  updatedAt                  DateTime                  @updatedAt @map("updated_at")
+  updatedBy                  String?                   @map("updated_by") @db.Uuid
+
+  @@index([warehouseId, status, createdAt(sort: Desc)])
+  @@index([severity, status])
+  @@index([assignedTo, status])
+  @@map("ic_reconciliation_review")
+}
+
+model IcDocumentStatusHistory {
+  id            String               @id @default(uuid()) @db.Uuid
+  entityType    IcDocumentEntityType @map("entity_type")
+  entityId      String               @map("entity_id") @db.Uuid
+  oldStatus     String?              @map("old_status") @db.VarChar(30)
+  newStatus     String               @map("new_status") @db.VarChar(30)
+  changedBy     String               @map("changed_by") @db.Uuid
+  changedAt     DateTime             @default(now()) @map("changed_at")
+  reasonCode    String?              @map("reason_code") @db.VarChar(50)
+  notes         String?              @db.Text
+  correlationId String               @map("correlation_id") @db.VarChar(50)
+
+  @@index([entityType, entityId, changedAt(sort: Desc)])
+  @@index([changedAt(sort: Desc)])
+  @@map("ic_document_status_history")
+}
+
+model IcExceptionLog {
+  id            String               @id @default(uuid()) @db.Uuid
+  entityType    IcDocumentEntityType @map("entity_type")
+  entityId      String               @map("entity_id") @db.Uuid
+  exceptionType IcExceptionType      @map("exception_type")
+  severity      ExceptionSeverity
+  message       String               @db.Text
+  payloadJson   Json?                @map("payload_json")
+  status        IcExceptionStatus    @default(OPEN)
+  createdAt     DateTime             @default(now()) @map("created_at")
+  createdBy     String?              @map("created_by") @db.Uuid
+  resolvedAt    DateTime?            @map("resolved_at")
+  resolvedBy    String?              @map("resolved_by") @db.Uuid
+  correlationId String               @map("correlation_id") @db.VarChar(50)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([exceptionType, status, createdAt(sort: Desc)])
+  @@map("ic_exception_log")
+}

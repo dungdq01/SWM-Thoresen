@@ -728,14 +728,14 @@ Kiểm kê chu kỳ để xác thực số lượng thực tế so với hệ th
 
 ### 16.4 Count Threshold Policy
 
-| Control               | Suggested P1 Rule                   |
-| -----------------------| -------------------------------------|
-| Blind count           | Mandatory                           |
-| Recount threshold qty | Config per warehouse/item class     |
-| Recount threshold pct | Config per warehouse/item class     |
-| Max recount attempts  | 1 trong P1                          |
-| Auto-post threshold   | Chỉ cho variance nhỏ và role hợp lệ |
-| Large variance        | Must require manager review         |
+| Control | Suggested P1 Rule |
+|--------|-------------------|
+| Blind count | Mandatory |
+| Recount threshold qty | Config per warehouse/item class |
+| Recount threshold pct | Config per warehouse/item class |
+| Max recount attempts | 1 trong P1 |
+| Auto-post threshold | Chỉ cho variance nhỏ và role hợp lệ |
+| Large variance | Must require manager review |
 
 ### 16.5 Business Rules
 1. Snapshot được cố định tại thời điểm release.
