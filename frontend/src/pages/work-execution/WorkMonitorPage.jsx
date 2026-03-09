@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useWorks, useWorkDashboardSummary } from '@domains/work-execution'
 import { useLookupWarehouses } from '@domains/master-data'
-import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Pagination, Select, SummaryDonut, MiniBarList, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const statusTone = (status) => {
   if (status === 'COMPLETED') return 'success'
@@ -45,38 +45,28 @@ export function WorkMonitorPage() {
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 mb-5">
-        <div className="wrs-card p-4">
-          <p className="text-3xl font-bold text-navy-900">{summary.totalOpen || 0}</p>
-          <p className="text-sm text-navy-500">Open Works</p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Work Status Overview</h3>
+          <SummaryDonut
+            centerLabel="Total"
+            data={[
+              { name: 'Open', value: summary.totalOpen || 0, color: '#1e3a5f' },
+              { name: 'In Progress', value: summary.totalInProgress || 0, color: '#d97706' },
+              { name: 'Completed Today', value: summary.totalCompleted || 0, color: '#059669' },
+              { name: 'Exceptions', value: summary.exceptionsOpen || 0, color: '#e11d48' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4">
-          <p className="text-3xl font-bold text-amber-600">{summary.totalInProgress || 0}</p>
-          <p className="text-sm text-navy-500">In Progress</p>
-        </div>
-        <div className="wrs-card p-4">
-          <p className="text-3xl font-bold text-emerald-600">{summary.totalCompleted || 0}</p>
-          <p className="text-sm text-navy-500">Completed Today</p>
-        </div>
-        <div className="wrs-card p-4">
-          <p className="text-3xl font-bold text-rose-600">{summary.exceptionsOpen || 0}</p>
-          <p className="text-sm text-navy-500">Open Exceptions</p>
-        </div>
-        <div className="wrs-card p-4">
-          <div className="flex gap-2">
-            <div className="text-center flex-1">
-              <p className="text-lg font-bold text-rose-600">{summary.pickOpen || 0}</p>
-              <p className="text-xs text-navy-400">Pick</p>
-            </div>
-            <div className="text-center flex-1">
-              <p className="text-lg font-bold text-emerald-600">{summary.putawayOpen || 0}</p>
-              <p className="text-xs text-navy-400">Putaway</p>
-            </div>
-            <div className="text-center flex-1">
-              <p className="text-lg font-bold text-blue-600">{summary.moveOpen || 0}</p>
-              <p className="text-xs text-navy-400">Move</p>
-            </div>
-          </div>
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Open by Work Type</h3>
+          <MiniBarList
+            data={[
+              { name: 'Pick', value: summary.pickOpen || 0, color: '#e11d48' },
+              { name: 'Putaway', value: summary.putawayOpen || 0, color: '#059669' },
+              { name: 'Move', value: summary.moveOpen || 0, color: '#3b82f6' },
+            ]}
+          />
         </div>
       </div>
 

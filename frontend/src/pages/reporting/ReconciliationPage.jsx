@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useReconResults } from '@domains/reporting'
-import { Badge, Button, Pagination, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Pagination, SummaryDonut, ProgressRing, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả' },
@@ -44,18 +44,31 @@ export function ReconciliationPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{passCount}</p>
-          <p className="text-xs text-navy-500">PASS (page hiện tại)</p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Results (current page)</h3>
+          <SummaryDonut
+            centerLabel="Total"
+            centerValue={passCount + failCount}
+            data={[
+              { name: 'PASS', value: passCount, color: '#059669' },
+              { name: 'FAIL', value: failCount, color: '#e11d48' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-rose-600">{failCount}</p>
-          <p className="text-xs text-navy-500">FAIL (page hiện tại)</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className={`text-2xl font-bold ${avgDuration > 300 ? 'text-rose-600' : 'text-navy-900'}`}>{formatDuration(avgDuration)}</p>
-          <p className="text-xs text-navy-500">Avg Duration (SLA: ≤5m)</p>
+        <div className="wrs-card p-5 flex items-center gap-6">
+          <ProgressRing
+            value={Math.min(avgDuration, 300)}
+            max={300}
+            size={100}
+            color={avgDuration > 300 ? '#e11d48' : '#059669'}
+            label="SLA ≤5m"
+          />
+          <div>
+            <p className={`text-3xl font-bold ${avgDuration > 300 ? 'text-rose-600' : 'text-navy-900'}`}>{formatDuration(avgDuration)}</p>
+            <p className="text-sm text-navy-500 mt-1">Avg Duration</p>
+            <p className="text-xs text-navy-400">SLA target: ≤ 5 minutes</p>
+          </div>
         </div>
       </div>
 

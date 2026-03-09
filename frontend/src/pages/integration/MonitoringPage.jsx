@@ -1,5 +1,5 @@
 import { useIntegrationOverview, useChannelHealth, useIntegrationStats } from '@domains/integration'
-import { Badge, Button } from '@shared/ui'
+import { Badge, Button, SummaryDonut, StatHighlight } from '@shared/ui'
 
 const statusTone = (status) => {
   if (status === 'HEALTHY') return 'success'
@@ -29,22 +29,26 @@ export function MonitoringPage() {
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <div className="wrs-card p-4 text-center">
-          <p className="text-3xl font-bold text-emerald-600">{overview.healthyChannels || 0}</p>
-          <p className="text-sm text-navy-500">Healthy Channels</p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Channel Health</h3>
+          <SummaryDonut
+            centerLabel="Channels"
+            data={[
+              { name: 'Healthy', value: overview.healthyChannels || 0, color: '#059669' },
+              { name: 'Degraded', value: overview.degradedChannels || 0, color: '#d97706' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-3xl font-bold text-amber-600">{overview.degradedChannels || 0}</p>
-          <p className="text-sm text-navy-500">Degraded</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Alerts & Devices</h3>
+          <StatHighlight value={overview.openAlerts || 0} label="Open Alerts" color="text-rose-600" bgColor="bg-rose-50" />
+          <StatHighlight value={overview.activeDevices || 0} label="Active Devices" color="text-navy-900" bgColor="bg-moon-50" />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-3xl font-bold text-rose-600">{overview.openAlerts || 0}</p>
-          <p className="text-sm text-navy-500">Open Alerts</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-3xl font-bold text-navy-900">{overview.activeDevices || 0}</p>
-          <p className="text-sm text-navy-500">Active Devices</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Weighbridge</h3>
+          <StatHighlight value={stats.weighbridgeStats?.totalEvents || 0} label="Total Events" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={`${stats.weighbridgeStats?.avgProcessingMs || 0}ms`} label="Avg Processing" color="text-blue-600" bgColor="bg-blue-50" />
         </div>
       </div>
 
@@ -69,44 +73,22 @@ export function MonitoringPage() {
 
         <div className="space-y-5">
           <div className="wrs-card p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-navy-900">Weighbridge Stats</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-2xl font-bold text-navy-900">{stats.weighbridgeStats?.totalEvents || 0}</p>
-                <p className="text-xs text-navy-500">Total Events</p>
-              </div>
-              <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-2xl font-bold text-navy-900">{stats.weighbridgeStats?.avgProcessingMs || 0}ms</p>
-                <p className="text-xs text-navy-500">Avg Processing</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="wrs-card p-5 space-y-3">
             <h3 className="text-sm font-semibold text-navy-900">ERP Sync Stats</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-2xl font-bold text-emerald-600">{stats.erpSyncStats?.successfulPushes || 0}</p>
-                <p className="text-xs text-navy-500">Successful Pushes</p>
-              </div>
-              <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-2xl font-bold text-rose-600">{stats.erpSyncStats?.failedPushes || 0}</p>
-                <p className="text-xs text-navy-500">Failed Pushes</p>
-              </div>
-            </div>
+            <SummaryDonut
+              centerLabel="Pushes"
+              size={120}
+              data={[
+                { name: 'Successful', value: stats.erpSyncStats?.successfulPushes || 0, color: '#059669' },
+                { name: 'Failed', value: stats.erpSyncStats?.failedPushes || 0, color: '#e11d48' },
+              ]}
+            />
           </div>
 
           <div className="wrs-card p-5 space-y-3">
             <h3 className="text-sm font-semibold text-navy-900">Mobile Sync Stats</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-2xl font-bold text-navy-900">{stats.mobileSyncStats?.totalSyncs || 0}</p>
-                <p className="text-xs text-navy-500">Total Syncs</p>
-              </div>
-              <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-2xl font-bold text-amber-600">{stats.mobileSyncStats?.pendingItems || 0}</p>
-                <p className="text-xs text-navy-500">Pending Items</p>
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              <StatHighlight value={stats.mobileSyncStats?.totalSyncs || 0} label="Total Syncs" color="text-navy-900" bgColor="bg-moon-50" />
+              <StatHighlight value={stats.mobileSyncStats?.pendingItems || 0} label="Pending Items" color="text-amber-600" bgColor="bg-amber-50" />
             </div>
           </div>
         </div>

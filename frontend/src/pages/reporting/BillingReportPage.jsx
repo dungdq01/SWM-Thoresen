@@ -1,5 +1,5 @@
 import { useBillingReport } from '@domains/reporting'
-import { Button } from '@shared/ui'
+import { Button, SummaryDonut, StatHighlight, MiniBarList } from '@shared/ui'
 
 export function BillingReportPage() {
   const { data: response, refetch, isLoading } = useBillingReport()
@@ -25,22 +25,31 @@ export function BillingReportPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-navy-900">{summary.totalRevenue?.toLocaleString() || 0}</p>
-          <p className="text-xs text-navy-500">Total Revenue (VND)</p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Revenue Breakdown</h3>
+          <SummaryDonut
+            centerLabel="Total"
+            data={[
+              { name: 'Approved', value: summary.approvedRevenue || 0, color: '#059669' },
+              { name: 'Draft/Pending', value: summary.pendingRevenue || 0, color: '#d97706' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{summary.approvedRevenue?.toLocaleString() || 0}</p>
-          <p className="text-xs text-navy-500">Approved DNs (VND)</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Revenue</h3>
+          <StatHighlight value={summary.totalRevenue?.toLocaleString() || '0'} label="Total Revenue (VND)" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={summary.outstandingDNs || 0} label="Outstanding DNs" color="text-rose-600" bgColor="bg-rose-50" />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{summary.pendingRevenue?.toLocaleString() || 0}</p>
-          <p className="text-xs text-navy-500">Draft/Pending (VND)</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-rose-600">{summary.outstandingDNs || 0}</p>
-          <p className="text-xs text-navy-500">Outstanding DNs</p>
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">DN Status</h3>
+          <MiniBarList
+            data={[
+              { name: 'Approved', value: summary.approvedRevenue || 0, color: '#059669' },
+              { name: 'Pending', value: summary.pendingRevenue || 0, color: '#d97706' },
+              { name: 'Outstanding', value: summary.outstandingDNs || 0, color: '#e11d48' },
+            ]}
+          />
         </div>
       </div>
 

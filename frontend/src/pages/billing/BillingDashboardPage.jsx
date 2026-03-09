@@ -1,5 +1,5 @@
 import { useBillingDashboard, useInvoices } from '@domains/billing'
-import { Badge, Button } from '@shared/ui'
+import { Badge, Button, SummaryDonut, StatHighlight } from '@shared/ui'
 
 const statusTone = (status) => {
   if (status === 'APPROVED') return 'success'
@@ -26,30 +26,27 @@ export function BillingDashboardPage() {
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-navy-900">{dashboard.totalInvoices || 0}</p>
-          <p className="text-xs text-navy-500">Total Invoices</p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Invoice Status</h3>
+          <SummaryDonut
+            centerLabel="Total"
+            data={[
+              { name: 'Draft', value: dashboard.draftCount || 0, color: '#d97706' },
+              { name: 'Approved', value: dashboard.approvedCount || 0, color: '#059669' },
+              { name: 'Pending Events', value: dashboard.pendingEvents || 0, color: '#e11d48' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{dashboard.draftCount || 0}</p>
-          <p className="text-xs text-navy-500">Draft</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Revenue</h3>
+          <StatHighlight value={dashboard.totalRevenue?.toLocaleString() || '0'} label="Total Revenue (VND)" color="text-ice" bgColor="bg-navy-800/5" />
+          <StatHighlight value={dashboard.activeRateCards || 0} label="Active Rate Cards" color="text-blue-600" bgColor="bg-blue-50" />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{dashboard.approvedCount || 0}</p>
-          <p className="text-xs text-navy-500">Approved</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-ice">{dashboard.totalRevenue?.toLocaleString() || 0}</p>
-          <p className="text-xs text-navy-500">Total Revenue (VND)</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-rose-600">{dashboard.pendingEvents || 0}</p>
-          <p className="text-xs text-navy-500">Pending Events</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">{dashboard.activeRateCards || 0}</p>
-          <p className="text-xs text-navy-500">Active Rate Cards</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Quick Stats</h3>
+          <StatHighlight value={dashboard.totalInvoices || 0} label="Total Invoices" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={dashboard.pendingEvents || 0} label="Pending Events" color="text-rose-600" bgColor="bg-rose-50" />
         </div>
       </div>
 

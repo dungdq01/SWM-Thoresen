@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useInventoryReport } from '@domains/reporting'
-import { Badge, Button, Input, Pagination, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Input, Pagination, SummaryDonut, StatHighlight, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả status' },
@@ -40,18 +40,23 @@ export function InventoryReportPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-navy-900">{totalOnHand.toLocaleString()}</p>
-          <p className="text-xs text-navy-500">Total On-Hand (KG)</p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+        <div className="wrs-card p-5">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">On-Hand Breakdown</h3>
+          <SummaryDonut
+            centerLabel="On-Hand"
+            centerValue={totalOnHand.toLocaleString()}
+            data={[
+              { name: 'Available', value: totalAvailable, color: '#059669' },
+              { name: 'Reserved', value: totalReserved, color: '#d97706' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{totalReserved.toLocaleString()}</p>
-          <p className="text-xs text-navy-500">Reserved (KG)</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{totalAvailable.toLocaleString()}</p>
-          <p className="text-xs text-navy-500">Available (KG)</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Inventory Summary</h3>
+          <StatHighlight value={totalOnHand.toLocaleString()} label="Total On-Hand (KG)" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={totalReserved.toLocaleString()} label="Reserved (KG)" color="text-amber-600" bgColor="bg-amber-50" />
+          <StatHighlight value={totalAvailable.toLocaleString()} label="Available (KG)" color="text-emerald-600" bgColor="bg-emerald-50" />
         </div>
       </div>
 

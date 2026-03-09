@@ -1,5 +1,5 @@
 import { useVasDashboard, useVasWorkOrders } from '@domains/vas'
-import { Badge, Button } from '@shared/ui'
+import { Badge, Button, SummaryDonut, StatHighlight } from '@shared/ui'
 
 const statusTone = (status) => {
   if (status === 'COMPLETED') return 'success'
@@ -26,34 +26,24 @@ export function VasDashboardPage() {
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-5">
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-navy-900">{dashboard.totalWorkOrders || 0}</p>
-          <p className="text-xs text-navy-500">Total WO</p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
+        <div className="wrs-card p-5 xl:col-span-2">
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Work Order Status</h3>
+          <SummaryDonut
+            centerLabel="Total"
+            centerValue={dashboard.totalWorkOrders || 0}
+            data={[
+              { name: 'Draft', value: dashboard.draftCount || 0, color: '#94a3b8' },
+              { name: 'Released', value: dashboard.releasedCount || 0, color: '#3b82f6' },
+              { name: 'In Progress', value: dashboard.inProgressCount || 0, color: '#d97706' },
+              { name: 'Completed', value: dashboard.completedCount || 0, color: '#059669' },
+            ]}
+          />
         </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-navy-500">{dashboard.draftCount || 0}</p>
-          <p className="text-xs text-navy-500">Draft</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">{dashboard.releasedCount || 0}</p>
-          <p className="text-xs text-navy-500">Released</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{dashboard.inProgressCount || 0}</p>
-          <p className="text-xs text-navy-500">In Progress</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{dashboard.completedCount || 0}</p>
-          <p className="text-xs text-navy-500">Completed</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-ice">{dashboard.activeSessions || 0}</p>
-          <p className="text-xs text-navy-500">Active Sessions</p>
-        </div>
-        <div className="wrs-card p-4 text-center">
-          <p className="text-2xl font-bold text-navy-900">{dashboard.totalBagsToday?.toLocaleString() || 0}</p>
-          <p className="text-xs text-navy-500">Bags Today</p>
+        <div className="wrs-card p-5 flex flex-col gap-3">
+          <h3 className="text-sm font-semibold text-navy-900">Live Metrics</h3>
+          <StatHighlight value={dashboard.activeSessions || 0} label="Active Sessions" color="text-ice" bgColor="bg-navy-800/5" />
+          <StatHighlight value={dashboard.totalBagsToday?.toLocaleString() || '0'} label="Bags Produced Today" color="text-emerald-600" bgColor="bg-emerald-50" />
         </div>
       </div>
 
