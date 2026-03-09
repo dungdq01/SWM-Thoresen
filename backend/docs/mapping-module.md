@@ -25,10 +25,18 @@
 
 # Module Auth: Authentication & Authorization
 
-**Status:** ✅ Completed  
+**Status:** ✅ Completed (v1.1)  
 **Code Path:** `src/modules/auth`  
 **Documentation:** [`docs/module-auth.md`](./module-auth.md)  
 **Database Docs:** [`prisma/docs/module-auth.md`](../prisma/docs/module-auth.md)
+
+### Guard System (v1.1 - Unified)
+
+> **Important:** Từ v1.1, guard system đã được thống nhất:
+> - **Single source of truth:** `common/guards/` chứa guards thật
+> - **Foundation re-export:** `modules/foundation/auth/` re-export từ common
+> - **JWT payload:** Sử dụng abbreviated keys (`ucd`, `sid`, `av`)
+> - **Permission decorator:** Sử dụng `@Permission()` từ `common/decorators/`
 
 ## Database Tables (7 tables)
 

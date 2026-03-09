@@ -1,7 +1,7 @@
 # Module Auth - Database Schema Documentation
 
 **Module:** Authentication, Authorization & Session Control  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Last Updated:** 2026-03-09
 
 ---
@@ -19,6 +19,8 @@ Module Auth quản lý 7 tables chính cho authentication và security:
 | `auth_login_attempt` | Log login success/fail | Many per user |
 | `auth_security_event` | Audit events bảo mật | Many |
 | `auth_account_lock` | Account lockout tracking | Many per user |
+
+> **v1.1 Changes:** Schema không thay đổi. Fixes liên quan đến code (guard unification, JWT field mapping).
 
 ---
 

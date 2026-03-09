@@ -24,10 +24,14 @@ import {
   RevokeAllSessionsDto,
 } from '../dto/admin-auth.dto';
 import { AuthGuard } from '../../../common/guards/auth.guard';
-import { RequirePermission } from '../../../common/decorators/require-permission.decorator';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
+import { Permission } from '../../../common/decorators/permission.decorator';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
+// HI-2 Fix: Add PermissionGuard to enforce permission checks
 @Controller('admin/auth/users')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissionGuard)
 export class AdminAuthController {
   constructor(
     private readonly prisma: PrismaService,
@@ -40,15 +44,16 @@ export class AdminAuthController {
     private readonly securityAuditService: SecurityAuditService,
   ) {}
 
+  // MD-4 Fix: Use @CurrentUser decorator for type safety
   @Post(':id/force-reset-password')
-  @RequirePermission('ADMIN.USER.RESET_PASSWORD')
+  @Permission('ADMIN.USER.RESET_PASSWORD')
   @HttpCode(HttpStatus.OK)
   async forceResetPassword(
     @Param('id') userId: string,
     @Body() dto: ForceResetPasswordDto,
+    @CurrentUser() adminUser: RequestUser,
     @Req() req: Request,
   ): Promise<{ message: string }> {
-    const adminUser = (req as any).user;
     const correlationId = (req as any).requestId;
 
     const targetUser = await this.prisma.appUser.findUnique({
@@ -79,7 +84,7 @@ export class AdminAuthController {
         {
           userId,
           passwordHash,
-          changedBy: adminUser.userId,
+          changedBy: adminUser.id,
           changeReason: 'ADMIN_RESET',
         },
         tx,
@@ -90,7 +95,7 @@ export class AdminAuthController {
 
     await this.sessionService.revokeAllSessions(
       userId,
-      adminUser.userId,
+      adminUser.id,
       'ADMIN_PASSWORD_RESET',
       undefined,
       correlationId,
@@ -98,7 +103,7 @@ export class AdminAuthController {
 
     await this.securityAuditService.logAdminPasswordReset(
       userId,
-      adminUser.userId,
+      adminUser.id,
       dto.reason,
       correlationId,
     );
@@ -107,14 +112,14 @@ export class AdminAuthController {
   }
 
   @Post(':id/unlock')
-  @RequirePermission('ADMIN.USER.UNLOCK')
+  @Permission('ADMIN.USER.UNLOCK')
   @HttpCode(HttpStatus.OK)
   async unlockAccount(
     @Param('id') userId: string,
     @Body() dto: UnlockAccountDto,
+    @CurrentUser() adminUser: RequestUser,
     @Req() req: Request,
   ): Promise<{ message: string }> {
-    const adminUser = (req as any).user;
     const correlationId = (req as any).requestId;
 
     const targetUser = await this.prisma.appUser.findUnique({
@@ -131,7 +136,7 @@ export class AdminAuthController {
 
     await this.lockoutService.unlockAccount(
       userId,
-      adminUser.userId,
+      adminUser.id,
       dto.reason,
       correlationId,
     );
@@ -140,14 +145,14 @@ export class AdminAuthController {
   }
 
   @Post(':id/revoke-all-sessions')
-  @RequirePermission('ADMIN.USER.REVOKE_SESSIONS')
+  @Permission('ADMIN.USER.REVOKE_SESSIONS')
   @HttpCode(HttpStatus.OK)
   async revokeAllSessions(
     @Param('id') userId: string,
     @Body() dto: RevokeAllSessionsDto,
+    @CurrentUser() adminUser: RequestUser,
     @Req() req: Request,
   ): Promise<{ message: string; revokedCount: number }> {
-    const adminUser = (req as any).user;
     const correlationId = (req as any).requestId;
 
     const targetUser = await this.prisma.appUser.findUnique({
@@ -164,7 +169,7 @@ export class AdminAuthController {
 
     const revokedCount = await this.sessionService.revokeAllSessions(
       userId,
-      adminUser.userId,
+      adminUser.id,
       dto.reason || 'ADMIN_REVOKE',
       undefined,
       correlationId,
