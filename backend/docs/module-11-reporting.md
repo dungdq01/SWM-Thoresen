@@ -1,5 +1,13 @@
 # Module 11: Reporting, Audit & Go-Live Control
 
+**Status:** ✅ Implemented  
+**Version:** 1.1.0  
+**Code Path:** `src/modules/reporting`  
+**Last Updated:** 2026-03-09  
+**Database Docs:** [`prisma/docs/module-11-reporting.md`](../prisma/docs/module-11-reporting.md)
+
+---
+
 ## 1. Mục đích
 
 Module 11 là **read-heavy control layer** của hệ thống SWM, cung cấp:
@@ -55,7 +63,37 @@ src/modules/reporting/
 
 ---
 
-## 3. API Endpoints
+## 3. Security & Authentication
+
+Tất cả endpoints được bảo vệ bởi:
+- **AuthGuard**: Xác thực JWT token
+- **PermissionGuard**: Kiểm tra quyền dựa trên role
+- **@Permission() decorator**: Khai báo permission code cho từng endpoint
+- **@CurrentUser() decorator**: Lấy thông tin user từ request
+
+### Guards Import
+```typescript
+import { AuthGuard, PermissionGuard, Permission, CurrentUser } from '../../foundation/auth';
+import { RequestUser } from '../../../common/interfaces/request-user.interface';
+```
+
+### Controller Pattern
+```typescript
+@ApiTags('Reporting - Dashboard')
+@Controller('api/v1/reporting/dashboard')
+@UseGuards(AuthGuard, PermissionGuard)
+export class DashboardController {
+  @Get('summary')
+  @Permission(REPORTING_CONSTANTS.PERMISSION_CODES.DASHBOARD_READ)
+  async getSummary(@CurrentUser() user: RequestUser) {
+    // user.id, user.roleCodes, user.warehouseScopes, user.ownerScopes
+  }
+}
+```
+
+---
+
+## 4. API Endpoints
 
 ### 3.1 Dashboard APIs
 

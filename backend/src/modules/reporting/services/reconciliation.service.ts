@@ -117,16 +117,9 @@ export class ReconciliationService {
   }
 
   async resolveResult(resultId: string, dto: ResolveReconciliationDto, userId: string): Promise<ReconciliationResultResponseDto> {
-    const result = await this.reconciliationRepository.findResultById(resultId);
-    if (!result) {
-      throw new ReconciliationResultNotFoundError(resultId);
-    }
-    if (result.isResolved) {
-      throw new ReconciliationAlreadyResolvedError(resultId);
-    }
-
-    const updated = await this.reconciliationRepository.resolveResult(
-      result.id,
+    // MD-6 Fix: Use atomic resolve with check inside transaction
+    const updated = await this.reconciliationRepository.resolveResultAtomic(
+      resultId,
       userId,
       dto.resolutionNote,
       dto.evidenceRef,
@@ -136,7 +129,7 @@ export class ReconciliationService {
 
     this.logger.log(`Reconciliation result ${resultId} resolved by ${userId}`);
 
-    return this.mapResultToResponse({ ...result, ...updated });
+    return this.mapResultToResponse(updated);
   }
 
   private buildIdempotencyKey(dto: RunReconciliationDto, userId: string): string {

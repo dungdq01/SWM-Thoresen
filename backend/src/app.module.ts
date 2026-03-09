@@ -8,6 +8,7 @@ import { PermissionGuard } from './common/guards/permission.guard';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { FoundationModule } from './modules/foundation/foundation.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MasterDataModule } from './modules/master-data/master-data.module';
     }),
     FoundationModule,
     MasterDataModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [

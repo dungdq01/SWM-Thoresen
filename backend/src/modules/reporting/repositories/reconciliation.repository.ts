@@ -7,6 +7,7 @@ import {
   RptReconciliationResultStatus,
   RptReconciliationSeverity,
   RptReconciliationResolutionAction,
+  Prisma,
 } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -55,7 +56,7 @@ export class ReconciliationRepository {
         triggerType: params.triggerType,
         requestedBy: params.requestedBy,
         checkIds: params.checkIds,
-        runScope: params.runScope,
+        runScope: params.runScope as Prisma.InputJsonValue,
         runStatus: RptReconciliationRunStatus.QUEUED,
         acceptedChecksCount: params.checkIds.length,
         correlationId: params.correlationId,
@@ -103,13 +104,13 @@ export class ReconciliationRepository {
         resultStatus: params.resultStatus,
         severity: params.severity,
         sourceModule: params.sourceModule,
-        dimensionKey: params.dimensionKey,
+        dimensionKey: params.dimensionKey as Prisma.InputJsonValue | undefined,
         sourceRefType: params.sourceRefType,
         sourceRefId: params.sourceRefId,
         expectedValue: params.expectedValue,
         actualValue: params.actualValue,
         varianceValue: params.varianceValue,
-        mismatchDetail: params.mismatchDetail,
+        mismatchDetail: params.mismatchDetail as Prisma.InputJsonValue | undefined,
       },
     });
   }
@@ -202,6 +203,58 @@ export class ReconciliationRepository {
           resolutionNote,
           evidenceRef,
         },
+      });
+    });
+  }
+
+  // MD-6 Fix: Atomic resolve with check inside transaction
+  async resolveResultAtomic(
+    resultId: string,
+    resolvedBy: string,
+    resolutionNote: string,
+    evidenceRef?: string,
+    sourceModule?: string,
+    sourceRefId?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // Find and check in same transaction
+      const result = await tx.rptReconciliationResult.findUnique({
+        where: { resultId },
+        include: { run: true, check: true },
+      });
+
+      if (!result) {
+        throw new Error(`RECON_RESULT_NOT_FOUND: ${resultId}`);
+      }
+
+      if (result.isResolved) {
+        throw new Error(`RECON_ALREADY_RESOLVED: ${resultId}`);
+      }
+
+      // Create resolution record
+      await tx.rptReconciliationResolution.create({
+        data: {
+          reconciliationResultId: result.id,
+          actionType: RptReconciliationResolutionAction.RESOLVED,
+          resolutionNote,
+          evidenceRef,
+          sourceModule,
+          sourceRefId,
+          createdBy: resolvedBy,
+        },
+      });
+
+      // Update result
+      return tx.rptReconciliationResult.update({
+        where: { id: result.id },
+        data: {
+          isResolved: true,
+          resolvedAt: new Date(),
+          resolvedBy,
+          resolutionNote,
+          evidenceRef,
+        },
+        include: { run: true, check: true },
       });
     });
   }

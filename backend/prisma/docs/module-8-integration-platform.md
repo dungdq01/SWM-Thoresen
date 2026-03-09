@@ -20,13 +20,13 @@ Module 8 quản lý các bảng dữ liệu cho:
 ## 2. Enums
 
 ### M8WeighingType
-| Value | Mô tả |
-|-------|-------|
-| `WEIGH_IN` | Cân vào (inbound) |
-| `WEIGH_OUT` | Cân ra (inbound) |
-| `TARE` | Tare weight (outbound) |
-| `GROSS_LINE` | Gross per line (outbound) |
-| `MANUAL_ENTRY` | Nhập tay |
+| Value          | Mô tả                     |
+| ----------------| ---------------------------|
+| `WEIGH_IN`     | Cân vào (inbound)         |
+| `WEIGH_OUT`    | Cân ra (inbound)          |
+| `TARE`         | Tare weight (outbound)    |
+| `GROSS_LINE`   | Gross per line (outbound) |
+| `MANUAL_ENTRY` | Nhập tay                  |
 
 ### M8DeviceStatus
 | Value | Mô tả |
