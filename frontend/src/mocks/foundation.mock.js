@@ -14,8 +14,11 @@ const foundationDb = {
     { id: 'role-003', roleCode: 'CUST_VIEWER', roleName: 'Customer Viewer', description: 'Khách hàng chỉ xem dữ liệu scope owner', isActive: true, permissions: ['perm-003'] },
   ],
   reasonCodes: [
-    { id: 'rc-001', reasonCode: 'DOCUMENT_ERROR', reasonName: 'Sai chứng từ', category: 'CORRECTION', description: 'Sai tham chiếu chứng từ', isActive: true },
-    { id: 'rc-002', reasonCode: 'MASTER_CLEANUP', reasonName: 'Dọn dữ liệu nền', category: 'GOVERNANCE', description: 'Ngừng record cũ sau chuẩn hóa', isActive: true },
+    { id: 'rc-001', code: 'DOCUMENT_ERROR', description: 'Sai tham chiếu chứng từ', category: 'INBOUND', domainCode: 'INBOUND', requiresApproval: false, requiresNote: true, affectsBilling: false, sortOrder: 1, isActive: true },
+    { id: 'rc-002', code: 'MASTER_CLEANUP', description: 'Ngừng record cũ sau chuẩn hóa', category: 'GENERAL', domainCode: 'FOUNDATION', requiresApproval: true, requiresNote: false, affectsBilling: false, sortOrder: 2, isActive: true },
+    { id: 'rc-003', code: 'DAMAGED_GOODS', description: 'Hàng hóa bị hư hỏng', category: 'ADJUSTMENT', domainCode: 'INVENTORY', requiresApproval: true, requiresNote: true, affectsBilling: true, sortOrder: 3, isActive: true },
+    { id: 'rc-004', code: 'SHORT_SHIP', description: 'Giao thiếu hàng', category: 'OUTBOUND', domainCode: 'OUTBOUND', requiresApproval: false, requiresNote: true, affectsBilling: true, sortOrder: 4, isActive: true },
+    { id: 'rc-005', code: 'CYCLE_COUNT_ADJ', description: 'Điều chỉnh sau kiểm kê', category: 'INVENTORY', domainCode: 'INVENTORY', requiresApproval: true, requiresNote: false, affectsBilling: false, sortOrder: 5, isActive: true },
   ],
   numberSequences: [
     { id: 'ns-001', sequenceCode: 'HOLD_NO', sequenceName: 'Hold Number', scopeType: 'GLOBAL', prefix: 'HLD', nextNumber: 1025, resetPolicy: 'NEVER', isActive: true },
@@ -63,12 +66,32 @@ export const foundationMockApi = {
     role.permissions = data.permissionIds || []
     return delay({ data: expandRole(role) })
   },
+  deleteRole: (id) => {
+    const index = foundationDb.roles.findIndex((item) => item.id === id)
+    if (index !== -1) foundationDb.roles.splice(index, 1)
+    return delay({ success: true })
+  },
   getPermissions: (params = {}) => {
     const filtered = foundationDb.permissions.filter((item) => byKeyword(item, params.keyword || params.search, ['permissionCode', 'permissionName', 'moduleCode']))
     return delay({ data: filtered })
   },
+  createPermission: (data) => {
+    const record = { id: `perm-${Date.now()}`, ...data }
+    foundationDb.permissions.unshift(record)
+    return delay({ data: record })
+  },
+  updatePermission: (id, data) => {
+    const index = foundationDb.permissions.findIndex((item) => item.id === id)
+    if (index !== -1) foundationDb.permissions[index] = { ...foundationDb.permissions[index], ...data }
+    return delay({ data: foundationDb.permissions[index] })
+  },
+  deletePermission: (id) => {
+    const index = foundationDb.permissions.findIndex((item) => item.id === id)
+    if (index !== -1) foundationDb.permissions.splice(index, 1)
+    return delay({ success: true })
+  },
   assignRoleToUser: () => delay({ success: true }),
-  getReasonCodes: (params = {}) => delay({ data: foundationDb.reasonCodes.filter((item) => byKeyword(item, params.keyword || params.search, ['reasonCode', 'reasonName', 'description'])) }),
+  getReasonCodes: (params = {}) => delay({ data: foundationDb.reasonCodes.filter((item) => byKeyword(item, params.keyword || params.search, ['code', 'description', 'category'])) }),
   createReasonCode: (data) => {
     const record = { id: `rc-${Date.now()}`, isActive: true, ...data }
     foundationDb.reasonCodes.unshift(record)

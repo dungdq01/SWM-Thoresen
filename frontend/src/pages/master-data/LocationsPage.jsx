@@ -2,12 +2,19 @@ import { useState, useCallback } from 'react'
 import { MapPin } from 'lucide-react'
 import {
   useLocationList,
+  useCreateLocation,
+  useUpdateLocation,
+  useDeactivateLocation,
+  useReactivateLocation,
   useLookupWarehouses,
   useLookupZones,
   PageHeader,
   FilterBar,
   StatusBadge,
   LocationStatusBadge,
+  ActionMenu,
+  DeactivateModal,
+  ReactivateModal,
   MasterDataTableWrapper,
   TableHeader,
   TableBody,
@@ -16,11 +23,12 @@ import {
   TableCell,
   LOCATION_TYPES,
 } from '@domains/master-data'
+import { LocationFormDrawer } from '@features/master-data'
 import { Badge } from '@shared/ui'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Hoạt động' },
-  { value: 'false', label: 'Ngừng hoạt động' },
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
 ]
 
 const formatNumber = (num) => {
@@ -38,6 +46,9 @@ export function LocationsPage() {
     zoneId: '',
     locationType: '',
   })
+  const [drawerState, setDrawerState] = useState({ isOpen: false, data: null })
+  const [deactivateState, setDeactivateState] = useState({ isOpen: false, data: null })
+  const [reactivateState, setReactivateState] = useState({ isOpen: false, data: null })
 
   const { data: warehouses = [] } = useLookupWarehouses()
   const { data: zones = [] } = useLookupZones(filters.warehouseId)
@@ -51,6 +62,11 @@ export function LocationsPage() {
     zoneId: filters.zoneId || undefined,
     locationType: filters.locationType || undefined,
   })
+
+  const createMutation = useCreateLocation()
+  const updateMutation = useUpdateLocation()
+  const deactivateMutation = useDeactivateLocation()
+  const reactivateMutation = useReactivateLocation()
 
   const locations = response?.data || []
   const meta = response?.meta || { total: 0, page: 1, totalPages: 1 }
@@ -87,17 +103,19 @@ export function LocationsPage() {
   }, [])
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
-    { key: 'warehouseId', placeholder: 'Kho', options: warehouseOptions },
+    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
+    { key: 'warehouseId', placeholder: 'Warehouse', options: warehouseOptions },
     { key: 'zoneId', placeholder: 'Zone', options: zoneOptions },
-    { key: 'locationType', placeholder: 'Loại vị trí', options: LOCATION_TYPES },
+    { key: 'locationType', placeholder: 'Location Type', options: LOCATION_TYPES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Quản lý vị trí"
-        description="Danh sách các vị trí lưu trữ trong kho"
+        title="Location Management"
+        description="List of all storage locations in the warehouses"
+        onAdd={() => setDrawerState({ isOpen: true, data: null })}
+        addLabel="Add Location"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -115,28 +133,29 @@ export function LocationsPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Tìm theo mã vị trí..."
+          placeholder="Search by location code..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={locations.length === 0}
-        emptyMessage="Chưa có vị trí nào"
-        colSpan={7}
+        emptyMessage="No locations available"
+        colSpan={8}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Mã vị trí</TableHead>
-            <TableHead>Kho / Zone</TableHead>
-            <TableHead>Loại</TableHead>
-            <TableHead>Diện tích</TableHead>
-            <TableHead>Sức chứa</TableHead>
-            <TableHead align="center">Trạng thái vị trí</TableHead>
-            <TableHead align="center">Hoạt động</TableHead>
+            <TableHead>Location Code</TableHead>
+            <TableHead>Warehouse / Zone</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Area</TableHead>
+            <TableHead>Capacity</TableHead>
+            <TableHead align="center">Location Status</TableHead>
+            <TableHead align="center">Active</TableHead>
+            <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
         {!isLoading && locations.length > 0 && (
@@ -178,11 +197,56 @@ export function LocationsPage() {
                 <TableCell align="center">
                   <StatusBadge isActive={loc.isActive} />
                 </TableCell>
+                <TableCell align="center">
+                  <ActionMenu
+                    onEdit={() => setDrawerState({ isOpen: true, data: loc })}
+                    onDeactivate={() => setDeactivateState({ isOpen: true, data: loc })}
+                    onReactivate={() => setReactivateState({ isOpen: true, data: loc })}
+                    isActive={loc.isActive}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         )}
       </MasterDataTableWrapper>
+
+      <LocationFormDrawer
+        isOpen={drawerState.isOpen}
+        onClose={() => setDrawerState({ isOpen: false, data: null })}
+        onSubmit={async (data) => {
+          if (drawerState.data) {
+            await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+          } else {
+            await createMutation.mutateAsync(data)
+          }
+          setDrawerState({ isOpen: false, data: null })
+        }}
+        initialData={drawerState.data}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <DeactivateModal
+        isOpen={deactivateState.isOpen}
+        onClose={() => setDeactivateState({ isOpen: false, data: null })}
+        onConfirm={async (reason) => {
+          await deactivateMutation.mutateAsync({ id: deactivateState.data.id, reason })
+          setDeactivateState({ isOpen: false, data: null })
+        }}
+        entityName={deactivateState.data?.locationCode}
+        isLoading={deactivateMutation.isPending}
+      />
+
+      <ReactivateModal
+        isOpen={reactivateState.isOpen}
+        onClose={() => setReactivateState({ isOpen: false, data: null })}
+        onConfirm={async () => {
+          await reactivateMutation.mutateAsync(reactivateState.data.id)
+          setReactivateState({ isOpen: false, data: null })
+        }}
+        entityName={reactivateState.data?.locationCode}
+        isLoading={reactivateMutation.isPending}
+      />
     </div>
   )
 }

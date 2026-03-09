@@ -6,7 +6,7 @@ export const SearchInput = forwardRef(
   ({ value, onChange, onClear, placeholder = 'Tìm kiếm...', className, ...props }, ref) => {
     return (
       <div className={cn('relative', className)}>
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gold" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ice" />
         <input
           ref={ref}
           type="text"

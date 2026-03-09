@@ -3,12 +3,15 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { 
   Box,
   Boxes,
+  CheckSquare,
   ClipboardCheck,
+  ClipboardList,
   ChevronDown, 
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   LayoutDashboard,
+  LayoutGrid,
   Settings,
   Database,
   Users, 
@@ -25,20 +28,25 @@ import {
   Grid3X3, 
   Scale, 
   Truck, 
+  TruckIcon,
   Tags,
   Waypoints,
   AlertTriangle,
+  BarChart3,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
+import { useLanguage } from '@shared/i18n'
+import { LanguageSwitcher } from '@shared/ui'
 
-const menuConfig = [
+const getMenuConfig = (t) => [
   {
     id: 'center',
-    groupLabel: 'Trung tâm',
+    groupLabel: t('sidebar.groups.center'),
     items: [
       {
         id: 'dashboard',
-        label: 'Dashboard',
+        label: t('sidebar.items.dashboard'),
         icon: LayoutDashboard,
         to: '/app',
         children: null,
@@ -47,79 +55,208 @@ const menuConfig = [
   },
   {
     id: 'master-data',
-    groupLabel: 'Dữ liệu nền',
+    groupLabel: t('sidebar.groups.masterData'),
     items: [
       {
         id: 'master-data-root',
-        label: 'Master Data',
+        label: t('sidebar.items.masterData'),
         icon: Database,
         basePath: '/app/master-data',
         children: [
-          { to: '/app/master-data/owners', label: 'Chủ hàng', icon: Building2 },
-          { to: '/app/master-data/vendors', label: 'Nhà cung cấp', icon: Ship },
-          { to: '/app/master-data/items', label: 'Mặt hàng', icon: Package },
-          { to: '/app/master-data/warehouses', label: 'Kho', icon: WarehouseIcon },
-          { to: '/app/master-data/zones', label: 'Zone', icon: Grid3X3 },
-          { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },
-          { to: '/app/master-data/uoms', label: 'Đơn vị tính', icon: Scale },
-          { to: '/app/master-data/vehicle-types', label: 'Loại phương tiện', icon: Truck },
-          { to: '/app/master-data/inventory-statuses', label: 'Trạng thái tồn kho', icon: Tags },
+          { to: '/app/master-data/owners', label: t('sidebar.items.owners'), icon: Building2 },
+          { to: '/app/master-data/vendors', label: t('sidebar.items.vendors'), icon: Ship },
+          { to: '/app/master-data/items', label: t('sidebar.items.items'), icon: Package },
+          { to: '/app/master-data/warehouses', label: t('sidebar.items.warehouses'), icon: WarehouseIcon },
+          { to: '/app/master-data/zones', label: t('sidebar.items.zones'), icon: Grid3X3 },
+          { to: '/app/master-data/locations', label: t('sidebar.items.locations'), icon: MapPin },
+          { to: '/app/master-data/uoms', label: t('sidebar.items.uoms'), icon: Scale },
+          { to: '/app/master-data/vehicle-types', label: t('sidebar.items.vehicleTypes'), icon: Truck },
+          { to: '/app/master-data/inventory-statuses', label: t('sidebar.items.inventoryStatuses'), icon: Tags },
         ],
       },
     ],
   },
   {
     id: 'inventory-core',
-    groupLabel: 'Inventory Truth',
+    groupLabel: t('sidebar.groups.inventoryTruth'),
     items: [
       {
         id: 'inventory-core-root',
-        label: 'Inventory Core',
+        label: t('sidebar.items.inventoryCore'),
         icon: Boxes,
         basePath: '/app/inventory-core',
         children: [
-          { to: '/app/inventory-core/on-hand', label: 'On-hand', icon: Boxes },
-          { to: '/app/inventory-core/transactions', label: 'Transactions', icon: FileText },
-          { to: '/app/inventory-core/holds', label: 'Holds', icon: Shield },
-          { to: '/app/inventory-core/workbench', label: 'Workbench', icon: BookOpen },
+          { to: '/app/inventory-core/on-hand', label: t('sidebar.items.onHand'), icon: Boxes },
+          { to: '/app/inventory-core/transactions', label: t('sidebar.items.transactions'), icon: FileText },
+          { to: '/app/inventory-core/holds', label: t('sidebar.items.holds'), icon: Shield },
+          { to: '/app/inventory-core/workbench', label: t('sidebar.items.workbench'), icon: BookOpen },
         ],
       },
     ],
   },
   {
     id: 'inbound-operations',
-    groupLabel: 'Inbound Flow',
+    groupLabel: t('sidebar.groups.inboundFlow'),
     items: [
       {
         id: 'inbound-operations-root',
-        label: 'Inbound Operations',
+        label: t('sidebar.items.inboundOperations'),
         icon: Truck,
         basePath: '/app/inbound-operations',
         children: [
-          { to: '/app/inbound-operations/receipts', label: 'Receipts', icon: ClipboardCheck },
-          { to: '/app/inbound-operations/execution', label: 'Execution', icon: Scale },
-          { to: '/app/inbound-operations/exceptions', label: 'Exceptions', icon: AlertTriangle },
-          { to: '/app/inbound-operations/putaway', label: 'Putaway', icon: Waypoints },
+          { to: '/app/inbound-operations/receipts', label: t('sidebar.items.receipts'), icon: ClipboardCheck },
+          { to: '/app/inbound-operations/execution', label: t('sidebar.items.execution'), icon: Scale },
+          { to: '/app/inbound-operations/exceptions', label: t('sidebar.items.exceptions'), icon: AlertTriangle },
+          { to: '/app/inbound-operations/putaway', label: t('sidebar.items.putaway'), icon: Waypoints },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'outbound-operations',
+    groupLabel: t('sidebar.groups.outboundFlow'),
+    items: [
+      {
+        id: 'outbound-operations-root',
+        label: t('sidebar.items.outboundOperations'),
+        icon: TruckIcon,
+        basePath: '/app/outbound-operations',
+        children: [
+          { to: '/app/outbound-operations/shipments', label: t('sidebar.items.shipments'), icon: ClipboardList },
+          { to: '/app/outbound-operations/allocation', label: t('sidebar.items.allocation'), icon: Package },
+          { to: '/app/outbound-operations/weighing', label: t('sidebar.items.weighing'), icon: Scale },
+          { to: '/app/outbound-operations/approvals', label: t('sidebar.items.approvals'), icon: CheckSquare },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'inventory-control',
+    groupLabel: t('sidebar.groups.inventoryControl'),
+    items: [
+      {
+        id: 'inventory-control-root',
+        label: t('sidebar.items.inventoryControlMenu'),
+        icon: Settings,
+        basePath: '/app/inventory-control',
+        children: [
+          { to: '/app/inventory-control/move-orders', label: t('sidebar.items.moveOrders'), icon: Waypoints },
+          { to: '/app/inventory-control/transfers', label: t('sidebar.items.transfers'), icon: Package },
+          { to: '/app/inventory-control/status-change', label: t('sidebar.items.statusChange'), icon: Tag },
+          { to: '/app/inventory-control/cycle-count', label: t('sidebar.items.cycleCount'), icon: ClipboardCheck },
+          { to: '/app/inventory-control/adjustments', label: t('sidebar.items.adjustments'), icon: Scale },
+          { to: '/app/inventory-control/history', label: t('sidebar.items.history'), icon: FileText },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'work-execution',
+    groupLabel: t('sidebar.groups.workExecution'),
+    items: [
+      {
+        id: 'work-execution-root',
+        label: t('sidebar.items.workExecutionMenu'),
+        icon: ClipboardList,
+        basePath: '/app/work-execution',
+        children: [
+          { to: '/app/work-execution/queue', label: t('sidebar.items.workQueue'), icon: ClipboardCheck },
+          { to: '/app/work-execution/my-work', label: t('sidebar.items.myWork'), icon: FileText },
+          { to: '/app/work-execution/execute', label: t('sidebar.items.execute'), icon: CheckSquare },
+          { to: '/app/work-execution/monitor', label: t('sidebar.items.monitor'), icon: Users },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'integration',
+    groupLabel: t('sidebar.groups.integration'),
+    items: [
+      {
+        id: 'integration-root',
+        label: t('sidebar.items.integrationHub'),
+        icon: Waypoints,
+        basePath: '/app/integration',
+        children: [
+          { to: '/app/integration/monitoring', label: t('sidebar.items.monitoring'), icon: Shield },
+          { to: '/app/integration/alerts', label: t('sidebar.items.alerts'), icon: AlertTriangle },
+          { to: '/app/integration/weighbridge', label: t('sidebar.items.weighbridge'), icon: Scale },
+          { to: '/app/integration/channels', label: t('sidebar.items.channels'), icon: Waypoints },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'vas',
+    groupLabel: t('sidebar.groups.vasBagging'),
+    items: [
+      {
+        id: 'vas-root',
+        label: t('sidebar.items.vasOperations'),
+        icon: Package,
+        basePath: '/app/vas',
+        children: [
+          { to: '/app/vas/work-orders', label: t('sidebar.items.workOrders'), icon: ClipboardList },
+          { to: '/app/vas/execution', label: t('sidebar.items.execution'), icon: CheckSquare },
+          { to: '/app/vas/dashboard', label: t('sidebar.items.dashboard'), icon: LayoutGrid },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'billing',
+    groupLabel: t('sidebar.groups.billing'),
+    items: [
+      {
+        id: 'billing-root',
+        label: t('sidebar.items.billingInvoices'),
+        icon: FileText,
+        basePath: '/app/billing',
+        children: [
+          { to: '/app/billing/invoices', label: t('sidebar.items.invoices'), icon: FileText },
+          { to: '/app/billing/rate-cards', label: t('sidebar.items.rateCards'), icon: Tag },
+          { to: '/app/billing/events', label: t('sidebar.items.billableEvents'), icon: ClipboardCheck },
+          { to: '/app/billing/dashboard', label: t('sidebar.items.dashboard'), icon: LayoutGrid },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'reporting',
+    groupLabel: t('sidebar.groups.reporting'),
+    items: [
+      {
+        id: 'reporting-root',
+        label: t('sidebar.items.reportingMenu'),
+        icon: BarChart3,
+        basePath: '/app/reporting',
+        children: [
+          { to: '/app/reporting/dashboard', label: t('sidebar.items.reportingDashboard'), icon: LayoutGrid },
+          { to: '/app/reporting/inventory', label: t('sidebar.items.inventoryReport'), icon: Boxes },
+          { to: '/app/reporting/billing', label: t('sidebar.items.billingReport'), icon: FileText },
+          { to: '/app/reporting/audit', label: t('sidebar.items.auditTrail'), icon: Shield },
+          { to: '/app/reporting/reconciliation', label: t('sidebar.items.reconciliation'), icon: RefreshCw },
+          { to: '/app/reporting/go-live', label: t('sidebar.items.goLiveChecklist'), icon: CheckSquare },
         ],
       },
     ],
   },
   {
     id: 'foundation',
-    groupLabel: 'Foundation',
+    groupLabel: t('sidebar.groups.foundation'),
     items: [
       {
         id: 'settings-root',
-        label: 'Foundation & Governance',
+        label: t('sidebar.items.foundationGovernance'),
         icon: Settings,
         basePath: '/app/settings',
         children: [
-          { to: '/app/settings/roles', label: 'Vai trò', icon: Users },
-          { to: '/app/settings/permissions', label: 'Quyền', icon: Shield },
-          { to: '/app/settings/reason-codes', label: 'Mã lý do', icon: Tag },
-          { to: '/app/settings/number-sequences', label: 'Number Sequence', icon: Hash },
-          { to: '/app/settings/governance', label: 'Governance', icon: BookOpen },
-          { to: '/app/settings/logs', label: 'System Logs', icon: FileText },
+          { to: '/app/settings/roles', label: t('sidebar.items.roles'), icon: Users },
+          { to: '/app/settings/permissions', label: t('sidebar.items.permissions'), icon: Shield },
+          { to: '/app/settings/reason-codes', label: t('sidebar.items.reasonCodes'), icon: Tag },
+          { to: '/app/settings/number-sequences', label: t('sidebar.items.numberSequence'), icon: Hash },
+          { to: '/app/settings/governance', label: t('sidebar.items.governance'), icon: BookOpen },
+          { to: '/app/settings/logs', label: t('sidebar.items.systemLogs'), icon: FileText },
         ],
       },
     ],
@@ -211,6 +348,9 @@ function MenuItem({ item, isCollapsed }) {
 }
 
 export function AppSidebar({ isCollapsed, onToggle }) {
+  const { t } = useLanguage()
+  const menuConfig = getMenuConfig(t)
+
   return (
     <aside
       className={cn(
@@ -221,19 +361,23 @@ export function AppSidebar({ isCollapsed, onToggle }) {
       <div className="flex h-16 items-center border-b border-sidebar-border px-4">
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold text-navy-900 shadow-glow-gold">
-              <Box className="h-5 w-5" />
-            </div>
+            <img 
+              src="/assets/logo.png" 
+              alt="SmartLog" 
+              className="h-9 w-auto brightness-0 invert"
+            />
             <div>
-              <h1 className="text-sm font-bold text-moon-50">SmartLog <span className="text-gold">SWM</span></h1>
+              <h1 className="text-sm font-bold text-moon-50">SmartLog <span className="text-ice-light">SWM</span></h1>
               <p className="text-xs text-moon-100/60">TVL Warehouse Platform</p>
             </div>
           </div>
         )}
         {isCollapsed && (
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gold text-navy-900 shadow-glow-gold">
-            <Box className="h-5 w-5" />
-          </div>
+          <img 
+            src="/assets/logo.png" 
+            alt="SmartLog" 
+            className="mx-auto h-8 w-auto brightness-0 invert"
+          />
         )}
       </div>
 
@@ -250,7 +394,8 @@ export function AppSidebar({ isCollapsed, onToggle }) {
         ))}
       </nav>
 
-      <div className="border-t border-sidebar-border p-3">
+      <div className="border-t border-sidebar-border p-3 space-y-2">
+        {!isCollapsed && <LanguageSwitcher variant="sidebar" />}
         <button
           onClick={onToggle}
           className={cn(
@@ -258,7 +403,7 @@ export function AppSidebar({ isCollapsed, onToggle }) {
             !isCollapsed && 'justify-between'
           )}
         >
-          {!isCollapsed ? <span>Thu gọn</span> : null}
+          {!isCollapsed ? <span>{t('sidebar.collapse')}</span> : null}
           {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
         </button>
       </div>

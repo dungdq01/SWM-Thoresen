@@ -59,13 +59,13 @@ export function InboundExecutionPage() {
         <div>
           <h2 className="section-title">Weighbridge execution & tolerance</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới dữ liệu</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
         <div className="wrs-card p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'WEIGHED_IN', label: 'WEIGHED_IN' }, { value: 'PROCESSING', label: 'PROCESSING' }, { value: 'WEIGHED_OUT', label: 'WEIGHED_OUT' }, { value: 'REJECTED', label: 'REJECTED' }]} placeholder="Execution status" className="max-w-xs" />
+            <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'WEIGHED_IN', label: 'WEIGHED_IN' }, { value: 'PROCESSING', label: 'PROCESSING' }, { value: 'WEIGHED_OUT', label: 'WEIGHED_OUT' }, { value: 'REJECTED', label: 'REJECTED' }]} placeholder="Execution status" className="max-w-xs" />
           </div>
 
           <Table>
@@ -80,7 +80,7 @@ export function InboundExecutionPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={5} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không có receipt trong execution queue" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No receipts in execution queue" /> : null}
               {!isLoading ? rows.map((row) => (
                 <TableRow key={row.id} onClick={() => setSelectedId(row.id)} className={selected?.id === row.id ? 'bg-muted/60' : ''}>
                   <TableCell>
@@ -115,8 +115,8 @@ export function InboundExecutionPage() {
         <div className="space-y-5">
           <div className="wrs-card p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-navy-900">Receipt đang chọn</h3>
-              <p className="text-sm text-navy-400">{selected?.receiptNumber || 'Chọn một receipt từ danh sách'}</p>
+              <h3 className="text-sm font-semibold text-navy-900">Selected Receipt</h3>
+              <p className="text-sm text-navy-400">{selected?.receiptNumber || 'Select a receipt from the list'}</p>
             </div>
             {selected ? (
               <div className="rounded-xl border border-moon-300 bg-moon-50/70 p-4 text-sm text-navy-700">
@@ -132,14 +132,14 @@ export function InboundExecutionPage() {
             <h3 className="text-sm font-semibold text-navy-900">Weigh-in</h3>
             <Input label="Gross weight (kg)" type="number" value={weighInForm.grossWeightKg} onChange={(e) => setWeighInForm((prev) => ({ ...prev, grossWeightKg: e.target.value }))} />
             <Input label="Ticket ID" value={weighInForm.ticketId} onChange={(e) => setWeighInForm((prev) => ({ ...prev, ticketId: e.target.value }))} />
-            <Button variant="gold" onClick={handleWeighIn} disabled={!selected || recordWeighIn.isPending}>Ghi weigh-in</Button>
+            <Button variant="accent" onClick={handleWeighIn} disabled={!selected || recordWeighIn.isPending}>Record Weigh-In</Button>
           </div>
 
           <div className="wrs-card p-5 space-y-4">
             <h3 className="text-sm font-semibold text-navy-900">Weigh-out & tolerance</h3>
             <Input label="Tare weight (kg)" type="number" value={weighOutForm.tareWeightKg} onChange={(e) => setWeighOutForm((prev) => ({ ...prev, tareWeightKg: e.target.value }))} />
             <Input label="Ticket ID" value={weighOutForm.ticketId} onChange={(e) => setWeighOutForm((prev) => ({ ...prev, ticketId: e.target.value }))} />
-            <Button variant="gold" onClick={handleWeighOut} disabled={!selected || recordWeighOut.isPending}>Ghi weigh-out</Button>
+            <Button variant="accent" onClick={handleWeighOut} disabled={!selected || recordWeighOut.isPending}>Record Weigh-Out</Button>
           </div>
 
           <div className="wrs-card p-5 space-y-4">
@@ -148,7 +148,7 @@ export function InboundExecutionPage() {
             <Input label="Tare weight" type="number" value={manualForm.tareWeightKg} onChange={(e) => setManualForm((prev) => ({ ...prev, tareWeightKg: e.target.value }))} />
             <Input label="Reason code" value={manualForm.reasonCode} onChange={(e) => setManualForm((prev) => ({ ...prev, reasonCode: e.target.value }))} />
             <Textarea label="Note" rows={3} value={manualForm.note} onChange={(e) => setManualForm((prev) => ({ ...prev, note: e.target.value }))} />
-            <Button variant="outline" onClick={handleManual} disabled={!selected || applyManualWeight.isPending}>Áp dụng manual weight</Button>
+            <Button variant="outline" onClick={handleManual} disabled={!selected || applyManualWeight.isPending}>Apply Manual Weight</Button>
           </div>
 
           <div className="wrs-card p-5 space-y-3">

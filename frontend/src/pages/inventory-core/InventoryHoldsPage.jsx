@@ -64,23 +64,23 @@ export function InventoryHoldsPage() {
         <div>
           <h2 className="section-title">Hold allocation</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới dữ liệu</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
         <div className="wrs-card p-5 space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <select className="wrs-input" value={filters.itemId} onChange={(e) => handleFilterChange('itemId', e.target.value)}>
-              <option value="">Tất cả item</option>
+              <option value="">All items</option>
               {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code}</option>)}
             </select>
             <select className="wrs-input" value={filters.ownerId} onChange={(e) => handleFilterChange('ownerId', e.target.value)}>
-              <option value="">Tất cả owner</option>
+              <option value="">All owners</option>
               {ownerOptions.map((option) => <option key={option.id} value={option.id}>{option.code}</option>)}
             </select>
             <Input placeholder="Shipment ID" value={filters.shipmentId} onChange={(e) => handleFilterChange('shipmentId', e.target.value)} />
             <select className="wrs-input" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}>
-              <option value="">Tất cả trạng thái</option>
+              <option value="">All statuses</option>
               <option value="ACTIVE">ACTIVE</option>
               <option value="PARTIALLY_RELEASED">PARTIALLY_RELEASED</option>
               <option value="RELEASED">RELEASED</option>
@@ -95,19 +95,19 @@ export function InventoryHoldsPage() {
                 <TableHead>Shipment</TableHead>
                 <TableHead>Item / Owner</TableHead>
                 <TableHead align="right">Qty</TableHead>
-                <TableHead align="center">Trạng thái</TableHead>
+                <TableHead align="center">Status</TableHead>
                 <TableHead align="center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={6} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có hold nào" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No holds available" /> : null}
               {!isLoading ? rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
                     <div>
                       <p className="font-semibold text-navy-900">{row.holdNo || row.id}</p>
-                      <p className="text-xs text-navy-400">{row.correlationId || 'Không có correlation'}</p>
+                      <p className="text-xs text-navy-400">{row.correlationId || 'No correlation'}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -136,24 +136,24 @@ export function InventoryHoldsPage() {
 
         <div className="wrs-card p-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-navy-900">Tạo hold nhanh</h3>
-            <p className="text-sm text-navy-400">Mô phỏng flow allocation từ outbound để reserve stock ở status `AVAILABLE`.</p>
+            <h3 className="text-sm font-semibold text-navy-900">Quick Hold Creation</h3>
+            <p className="text-sm text-navy-400">Simulate allocation flow from outbound to reserve stock at AVAILABLE status.</p>
           </div>
           <Input label="Shipment ID" value={draft.shipmentId} onChange={(e) => handleDraftChange('shipmentId', e.target.value)} />
           <Input label="Shipment line ID" value={draft.shipmentLineId} onChange={(e) => handleDraftChange('shipmentLineId', e.target.value)} />
           <select className="wrs-input" value={draft.itemId} onChange={(e) => handleDraftChange('itemId', e.target.value)}>
-            <option value="">Chọn item</option>
+            <option value="">Select item</option>
             {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
           </select>
-          <Input label="Số lượng hold" value={draft.qty} onChange={(e) => handleDraftChange('qty', e.target.value)} />
+          <Input label="Hold quantity" value={draft.qty} onChange={(e) => handleDraftChange('qty', e.target.value)} />
           <select className="wrs-input" value={draft.warehouseCode} onChange={(e) => handleDraftChange('warehouseCode', e.target.value)}>
-            <option value="">Chọn kho</option>
+            <option value="">Select warehouse</option>
             {warehouseOptions.map((option) => <option key={option.id} value={option.code}>{option.code} - {option.name}</option>)}
           </select>
           <Input label="Location code" value={draft.locationCode} onChange={(e) => handleDraftChange('locationCode', e.target.value)} />
           <Input label="Owner code" value={draft.ownerCode} onChange={(e) => handleDraftChange('ownerCode', e.target.value)} />
           <Input label="Status code" value={draft.statusCode} onChange={(e) => handleDraftChange('statusCode', e.target.value)} />
-          <Button variant="gold" onClick={handleCreateHold} disabled={createHold.isPending}>Tạo hold</Button>
+          <Button variant="accent" onClick={handleCreateHold} disabled={createHold.isPending}>Create Hold</Button>
         </div>
       </div>
     </div>

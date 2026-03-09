@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, Shield } from 'lucide-react'
+import { Plus, Edit2, Shield, Trash2 } from 'lucide-react'
 import {
   Button,
   Table,
@@ -12,7 +12,7 @@ import {
   TableLoading,
   SearchInput,
 } from '@shared/ui'
-import { useRoles, ActiveStatusBadge } from '@domains/auth'
+import { useRoles, useDeleteRole, ActiveStatusBadge } from '@domains/auth'
 import { RoleFormModal, AssignPermissionModal } from '@features/settings'
 import { SettingsLayout } from './components/SettingsLayout'
 
@@ -22,6 +22,13 @@ export function RolesPage() {
   const [permModal, setPermModal] = useState({ open: false, role: null })
 
   const { data: roles = [], isLoading } = useRoles()
+  const deleteRole = useDeleteRole()
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa vai trò này?')) {
+      await deleteRole.mutateAsync(id)
+    }
+  }
 
   const filteredRoles = roles.filter(
     (role) =>
@@ -38,11 +45,11 @@ export function RolesPage() {
 
   return (
     <SettingsLayout
-      title="Quản lý vai trò"
+      title="Role Management"
       description="Tạo và quản lý các vai trò trong hệ thống. Mỗi vai trò có thể được gán các quyền khác nhau."
       actions={
         <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-          Tạo vai trò
+          Create Role
         </Button>
       }
     >
@@ -51,19 +58,19 @@ export function RolesPage() {
           value={search}
           onChange={setSearch}
           onClear={() => setSearch('')}
-          placeholder="Tìm theo mã hoặc tên vai trò..."
+          placeholder="Search by role code or name..."
           className="max-w-md"
         />
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Mã vai trò</TableHead>
-              <TableHead>Tên vai trò</TableHead>
-              <TableHead>Mô tả</TableHead>
-              <TableHead>Số quyền</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead align="right">Thao tác</TableHead>
+              <TableHead>Role Code</TableHead>
+              <TableHead>Role Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Permissions</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead align="right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -72,7 +79,7 @@ export function RolesPage() {
             ) : filteredRoles.length === 0 ? (
               <TableEmpty
                 colSpan={6}
-                message={search ? 'Không tìm thấy vai trò phù hợp' : 'Chưa có vai trò nào'}
+                message={search ? 'No matching roles found' : 'No roles available'}
               />
             ) : (
               filteredRoles.map((role) => (
@@ -89,7 +96,7 @@ export function RolesPage() {
                     <span className="line-clamp-1 text-sm text-navy-400">{role.description || '—'}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-gold-dark">
+                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-ice-dark">
                       <Shield className="w-4 h-4" />
                       {role.permissions?.length || 0}
                     </span>
@@ -101,17 +108,24 @@ export function RolesPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openPermModal(role)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-gold-dark"
-                        title="Phân quyền"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-ice-dark"
+                        title="Assign Permissions"
                       >
                         <Shield className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEditModal(role)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
-                        title="Chỉnh sửa"
+                        title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(role.id)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-danger/5 hover:text-danger"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </TableCell>

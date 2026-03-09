@@ -22,3 +22,4 @@ export {
   TableLoading,
   Pagination,
 } from './Table'
+export { LanguageSwitcher } from './LanguageSwitcher'

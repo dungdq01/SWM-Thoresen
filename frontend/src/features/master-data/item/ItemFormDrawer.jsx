@@ -125,16 +125,13 @@ export function ItemFormDrawer({
                       className="uppercase"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Nhóm sản phẩm <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('productGroup')} error={errors.productGroup?.message}>
-                      {PRODUCT_GROUPS.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </Select>
-                  </div>
+                  <Select
+                    label="Nhóm sản phẩm"
+                    required
+                    options={PRODUCT_GROUPS}
+                    error={errors.productGroup?.message}
+                    {...register('productGroup')}
+                  />
                 </div>
 
                 <div>
@@ -160,27 +157,21 @@ export function ItemFormDrawer({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Dạng hàng <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('cargoForm')} error={errors.cargoForm?.message}>
-                      {CARGO_FORMS.map((f) => (
-                        <option key={f.value} value={f.value}>{f.label}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Đơn vị tính cơ bản <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('baseUomId')} error={errors.baseUomId?.message}>
-                      <option value="">Chọn đơn vị</option>
-                      {uoms.map((u) => (
-                        <option key={u.id} value={u.id}>{u.code} - {u.name}</option>
-                      ))}
-                    </Select>
-                  </div>
+                  <Select
+                    label="Dạng hàng"
+                    required
+                    options={CARGO_FORMS}
+                    error={errors.cargoForm?.message}
+                    {...register('cargoForm')}
+                  />
+                  <Select
+                    label="Đơn vị tính cơ bản"
+                    required
+                    placeholder="Chọn đơn vị"
+                    options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
+                    error={errors.baseUomId?.message}
+                    {...register('baseUomId')}
+                  />
                 </div>
 
                 <div className="border-t border-navy-100 pt-5">

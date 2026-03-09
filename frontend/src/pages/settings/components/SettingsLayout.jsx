@@ -13,8 +13,8 @@ export function SettingsLayout({ title, actions, children, className }) {
       <div className="content-section">
         <div className="space-y-6">
           <div>
-            <h2 className="section-title">Chi tiết vận hành</h2>
-            <p className="section-description">Danh sách, bảng biểu và các thao tác chuyên sâu nằm ở bên dưới.</p>
+            <h2 className="section-title">Operations Detail</h2>
+            <p className="section-description">Lists, tables, and advanced operations are displayed below.</p>
           </div>
           {children}
         </div>

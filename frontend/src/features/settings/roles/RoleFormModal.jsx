@@ -91,11 +91,13 @@ export function RoleFormModal({ isOpen, onClose, editData }) {
         <Input
           label="Mã vai trò"
           placeholder="VD: WH_MANAGER"
-          disabled={isEdit}
           error={errors.roleCode?.message}
           required
           {...register('roleCode')}
         />
+        {isEdit && (
+          <p className="text-xs text-amber-600 -mt-2">⚠️ Thay đổi mã vai trò có thể ảnh hưởng đến phân quyền hiện tại</p>
+        )}
 
         <Input
           label="Tên vai trò"

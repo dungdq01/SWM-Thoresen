@@ -3,15 +3,15 @@ import { Building2, Database, Package, MapPin, Scale, Ship, Tags, Truck, Warehou
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/master-data/owners', label: 'Chủ hàng', icon: Building2 },
-  { to: '/app/master-data/vendors', label: 'Nhà cung cấp', icon: Ship },
-  { to: '/app/master-data/items', label: 'Mặt hàng', icon: Package },
-  { to: '/app/master-data/warehouses', label: 'Kho', icon: Warehouse },
-  { to: '/app/master-data/zones', label: 'Zone', icon: Grid3X3 },
-  { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },
-  { to: '/app/master-data/uoms', label: 'Đơn vị tính', icon: Scale },
-  { to: '/app/master-data/vehicle-types', label: 'Loại phương tiện', icon: Truck },
-  { to: '/app/master-data/inventory-statuses', label: 'Trạng thái tồn kho', icon: Tags },
+  { to: '/app/master-data/owners', label: 'Owners', icon: Building2 },
+  { to: '/app/master-data/vendors', label: 'Vendors', icon: Ship },
+  { to: '/app/master-data/items', label: 'Items', icon: Package },
+  { to: '/app/master-data/warehouses', label: 'Warehouses', icon: Warehouse },
+  { to: '/app/master-data/zones', label: 'Zones', icon: Grid3X3 },
+  { to: '/app/master-data/locations', label: 'Locations', icon: MapPin },
+  { to: '/app/master-data/uoms', label: 'UoMs', icon: Scale },
+  { to: '/app/master-data/vehicle-types', label: 'Vehicle Types', icon: Truck },
+  { to: '/app/master-data/inventory-statuses', label: 'Inventory Statuses', icon: Tags },
 ]
 
 export function MasterDataLayout() {
@@ -29,8 +29,8 @@ export function MasterDataLayout() {
             <Database className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="module-nav-title">Điều hướng danh mục</h2>
-            <p className="module-nav-description">Chọn nhóm dữ liệu muốn quản trị trong cùng một module.</p>
+            <h2 className="module-nav-title">Master Data Navigation</h2>
+            <p className="module-nav-description">Select a data category to manage within this module.</p>
           </div>
         </div>
 

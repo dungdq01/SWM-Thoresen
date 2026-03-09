@@ -149,26 +149,20 @@ export function OwnerFormDrawer({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Nhóm chủ hàng <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('ownerGroup')} error={errors.ownerGroup?.message}>
-                      {OWNER_GROUPS.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Loại chủ hàng <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('ownerType')} error={errors.ownerType?.message}>
-                      {OWNER_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </Select>
-                  </div>
+                  <Select
+                    label="Nhóm chủ hàng"
+                    required
+                    options={OWNER_GROUPS}
+                    error={errors.ownerGroup?.message}
+                    {...register('ownerGroup')}
+                  />
+                  <Select
+                    label="Loại chủ hàng"
+                    required
+                    options={OWNER_TYPES}
+                    error={errors.ownerType?.message}
+                    {...register('ownerType')}
+                  />
                 </div>
 
                 <div className="border-t border-navy-100 pt-5">

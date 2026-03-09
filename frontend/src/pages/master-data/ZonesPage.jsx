@@ -22,11 +22,12 @@ import {
   TableCell,
   ZONE_TYPES,
 } from '@domains/master-data'
+import { ZoneFormDrawer } from '@features/master-data'
 import { Badge } from '@shared/ui'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Hoạt động' },
-  { value: 'false', label: 'Ngừng hoạt động' },
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
 ]
 
 const formatNumber = (num) => {
@@ -110,16 +111,18 @@ export function ZonesPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
-    { key: 'warehouseId', placeholder: 'Kho', options: warehouseOptions },
-    { key: 'zoneType', placeholder: 'Loại zone', options: ZONE_TYPES },
+    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
+    { key: 'warehouseId', placeholder: 'Warehouse', options: warehouseOptions },
+    { key: 'zoneType', placeholder: 'Zone Type', options: ZONE_TYPES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Quản lý Zone"
-        description="Danh sách các zone trong kho"
+        title="Zone Management"
+        description="List of all zones in the warehouses"
+        onAdd={() => setDrawerState({ isOpen: true, data: null })}
+        addLabel="Add Zone"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -136,27 +139,28 @@ export function ZonesPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Tìm theo mã hoặc tên zone..."
+          placeholder="Search by code or name..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={zones.length === 0}
-        emptyMessage="Chưa có zone nào"
-        colSpan={6}
+        emptyMessage="No zones available"
+        colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Mã Zone</TableHead>
-            <TableHead>Tên Zone</TableHead>
-            <TableHead>Kho</TableHead>
-            <TableHead>Loại</TableHead>
-            <TableHead>Sức chứa</TableHead>
-            <TableHead align="center">Trạng thái</TableHead>
+            <TableHead>Zone Code</TableHead>
+            <TableHead>Zone Name</TableHead>
+            <TableHead>Warehouse</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Capacity</TableHead>
+            <TableHead align="center">Status</TableHead>
+            <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
         {!isLoading && zones.length > 0 && (
@@ -175,7 +179,7 @@ export function ZonesPage() {
                   <div>
                     <p className="font-medium text-navy-900">{zone.zoneName}</p>
                     {zone.isBillingZone && (
-                      <Badge variant="success" className="mt-1">Zone tính phí</Badge>
+                      <Badge variant="success" className="mt-1">Billing Zone</Badge>
                     )}
                   </div>
                 </TableCell>
@@ -193,11 +197,34 @@ export function ZonesPage() {
                 <TableCell align="center">
                   <StatusBadge isActive={zone.isActive} />
                 </TableCell>
+                <TableCell align="center">
+                  <ActionMenu
+                    onEdit={() => setDrawerState({ isOpen: true, data: zone })}
+                    onDeactivate={() => handleDeactivate(zone)}
+                    onReactivate={() => handleReactivate(zone)}
+                    isActive={zone.isActive}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         )}
       </MasterDataTableWrapper>
+
+      <ZoneFormDrawer
+        isOpen={drawerState.isOpen}
+        onClose={() => setDrawerState({ isOpen: false, data: null })}
+        onSubmit={async (data) => {
+          if (drawerState.data) {
+            await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+          } else {
+            await createMutation.mutateAsync(data)
+          }
+          setDrawerState({ isOpen: false, data: null })
+        }}
+        initialData={drawerState.data}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
 
       <DeactivateModal
         isOpen={deactivateState.isOpen}

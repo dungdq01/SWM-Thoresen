@@ -29,14 +29,14 @@ export function InboundExceptionsPage() {
         <div>
           <h2 className="section-title">Tolerance fail & exception governance</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới dữ liệu</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: 'OPEN', label: 'OPEN' }, { value: 'RESOLVED', label: 'RESOLVED' }]} placeholder="Exception status" />
-          <Select value={filters.severity} onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value, page: 1 }))} options={[{ value: 'high', label: 'high' }, { value: 'medium', label: 'medium' }]} placeholder="Severity" />
-          <Select value={filters.type} onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value, page: 1 }))} options={[{ value: 'TOLERANCE_FAIL', label: 'TOLERANCE_FAIL' }, { value: 'MANUAL_WEIGHT', label: 'MANUAL_WEIGHT' }]} placeholder="Type" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'OPEN', label: 'OPEN' }, { value: 'RESOLVED', label: 'RESOLVED' }]} placeholder="Exception status" />
+          <Select value={filters.severity} onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'high', label: 'high' }, { value: 'medium', label: 'medium' }]} placeholder="Severity" />
+          <Select value={filters.type} onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'TOLERANCE_FAIL', label: 'TOLERANCE_FAIL' }, { value: 'MANUAL_WEIGHT', label: 'MANUAL_WEIGHT' }]} placeholder="Type" />
           <Input placeholder="Rule-based exception review" disabled />
         </div>
 
@@ -52,7 +52,7 @@ export function InboundExceptionsPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không có exception phù hợp" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No matching exceptions" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>

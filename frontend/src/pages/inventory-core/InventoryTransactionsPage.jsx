@@ -49,20 +49,20 @@ export function InventoryTransactionsPage() {
         <div>
           <h2 className="section-title">Transaction history</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới dữ liệu</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <select className="wrs-input" value={filters.itemId} onChange={(e) => handleChange('itemId', e.target.value)}>
-            <option value="">Tất cả item</option>
+            <option value="">All items</option>
             {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
           </select>
           <select className="wrs-input" value={filters.ownerId} onChange={(e) => handleChange('ownerId', e.target.value)}>
-            <option value="">Tất cả owner</option>
+            <option value="">All owners</option>
             {ownerOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
           </select>
-          <Input placeholder="Ref ID hoặc correlation ID" value={filters.refId} onChange={(e) => handleChange('refId', e.target.value)} />
+          <Input placeholder="Ref ID or correlation ID" value={filters.refId} onChange={(e) => handleChange('refId', e.target.value)} />
           <Input placeholder="Ref type (RECEIPT, SHIPMENT...)" value={filters.refType} onChange={(e) => handleChange('refType', e.target.value)} />
           <Input placeholder="Trans type" value={filters.transType} onChange={(e) => handleChange('transType', e.target.value)} />
           <Input placeholder="Correlation ID" value={filters.correlationId} onChange={(e) => handleChange('correlationId', e.target.value)} />
@@ -81,7 +81,7 @@ export function InventoryTransactionsPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có inventory transaction phù hợp" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No matching inventory transactions" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -93,7 +93,7 @@ export function InventoryTransactionsPage() {
                 <TableCell>
                   <div>
                     <p className="font-medium text-navy-800">{row.refType || 'N/A'}</p>
-                    <p className="text-xs text-navy-400">{row.refId || 'Không có chứng từ'}</p>
+                    <p className="text-xs text-navy-400">{row.refId || 'No document'}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -106,7 +106,7 @@ export function InventoryTransactionsPage() {
                 <TableCell>
                   <div>
                     <p className="font-medium text-navy-900">{row.item?.itemCode || row.itemId}</p>
-                    <p className="text-xs text-navy-400">{row.owner?.ownerCode || 'Không có owner'}</p>
+                    <p className="text-xs text-navy-400">{row.owner?.ownerCode || 'No owner'}</p>
                   </div>
                 </TableCell>
                 <TableCell>

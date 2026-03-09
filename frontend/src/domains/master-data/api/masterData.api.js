@@ -198,6 +198,10 @@ export const uomApi = {
     (id, reason) => masterDataMockApi.uomApi.deactivate(id, reason),
     (id, reason) => httpClient.post(`${BASE_URL}/uoms/${id}/deactivate`, { reason })
   ),
+  reactivate: withDataSource(
+    (id) => masterDataMockApi.uomApi.reactivate(id),
+    (id) => httpClient.post(`${BASE_URL}/uoms/${id}/reactivate`)
+  ),
 }
 
 // ==================== VEHICLE TYPE APIs ====================
@@ -221,6 +225,10 @@ export const vehicleTypeApi = {
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.vehicleTypeApi.deactivate(id, reason),
     (id, reason) => httpClient.post(`${BASE_URL}/vehicle-types/${id}/deactivate`, { reason })
+  ),
+  reactivate: withDataSource(
+    (id) => masterDataMockApi.vehicleTypeApi.reactivate(id),
+    (id) => httpClient.post(`${BASE_URL}/vehicle-types/${id}/reactivate`)
   ),
 }
 

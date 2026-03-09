@@ -72,3 +72,20 @@ export function useDeactivateVehicleType() {
     },
   })
 }
+
+export function useReactivateVehicleType() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id) => vehicleTypeApi.reactivate(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: MASTER_DATA_QUERY_KEYS.vehicleTypes })
+      queryClient.invalidateQueries({ queryKey: MASTER_DATA_QUERY_KEYS.vehicleTypeDetail(id) })
+      queryClient.invalidateQueries({ queryKey: MASTER_DATA_QUERY_KEYS.lookupVehicleTypes })
+      toast.success('Đã kích hoạt lại loại phương tiện')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể kích hoạt lại loại phương tiện')
+    },
+  })
+}

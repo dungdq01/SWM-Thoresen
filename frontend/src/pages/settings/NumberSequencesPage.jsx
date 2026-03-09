@@ -43,11 +43,11 @@ export function NumberSequencesPage() {
 
   return (
     <SettingsLayout
-      title="Quản lý Number Sequence"
+      title="Number Sequence Management"
       description="Cấu hình quy tắc sinh số tự động cho các loại chứng từ trong hệ thống."
       actions={
         <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-          Tạo sequence
+          Create Sequence
         </Button>
       }
     >
@@ -56,34 +56,34 @@ export function NumberSequencesPage() {
           value={search}
           onChange={setSearch}
           onClear={() => setSearch('')}
-          placeholder="Tìm theo mã hoặc mô tả..."
+          placeholder="Search by code or description..."
           className="max-w-md"
         />
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Mã</TableHead>
-              <TableHead>Mô tả</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Prefix</TableHead>
               <TableHead>Format</TableHead>
               <TableHead>Scope</TableHead>
               <TableHead>Reset</TableHead>
-              <TableHead>Độ dài số</TableHead>
-              <TableHead align="right">Thao tác</TableHead>
+              <TableHead>Number Length</TableHead>
+              <TableHead align="right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableLoading colSpan={8} />
             ) : filteredSequences.length === 0 ? (
-              <TableEmpty colSpan={8} message={search ? 'Không tìm thấy sequence phù hợp' : 'Chưa có sequence nào'} />
+              <TableEmpty colSpan={8} message={search ? 'No matching sequences found' : 'No sequences available'} />
             ) : (
               filteredSequences.map((seq) => (
                 <TableRow key={seq.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold/15 text-gold-dark">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice-dark">
                         <Hash className="w-4 h-4" />
                       </div>
                       <code className="font-mono font-semibold text-navy-900">
@@ -118,7 +118,7 @@ export function NumberSequencesPage() {
                     <button
                       onClick={() => openEditModal(seq)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
-                      title="Chỉnh sửa"
+                      title="Edit"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>

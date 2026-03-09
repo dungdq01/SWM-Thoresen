@@ -90,7 +90,7 @@ export function TableLoading({ colSpan = 1 }) {
     <tr>
       <td colSpan={colSpan} className="px-4 py-12 text-center">
         <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+          <Loader2 className="h-8 w-8 animate-spin text-ice" />
           <p className="text-sm text-muted-foreground">Đang tải dữ liệu...</p>
         </div>
       </td>

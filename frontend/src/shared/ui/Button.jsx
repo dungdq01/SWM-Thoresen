@@ -7,10 +7,10 @@ const variants = {
   secondary: 'border-2 border-moon-300 bg-white text-navy-800 shadow-sm hover:bg-moon-50',
   outline: 'border-2 border-moon-300 bg-background text-navy-700 shadow-sm hover:bg-moon-50 hover:text-navy-900',
   ghost: 'bg-transparent text-navy-600 hover:bg-moon-100 hover:text-navy-900',
-  gold: 'bg-gold text-navy-900 shadow-glow-gold hover:bg-primary-400',
+  accent: 'bg-ice text-white shadow-glow-ice hover:bg-ice-dark',
   danger: 'bg-danger text-white shadow-sm hover:bg-danger/90',
   destructive: 'bg-danger text-white shadow-sm hover:bg-danger/90',
-  link: 'h-auto p-0 text-gold-dark underline-offset-4 hover:underline',
+  link: 'h-auto p-0 text-ice-dark underline-offset-4 hover:underline',
 }
 
 const sizes = {
@@ -35,7 +35,7 @@ const Button = forwardRef(({
       type={props.type ?? 'button'}
       ref={ref}
       className={cn(
-        'btn-base inline-flex shrink-0 items-center justify-center whitespace-nowrap text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/30 focus-visible:ring-offset-2',
+        'btn-base inline-flex shrink-0 items-center justify-center whitespace-nowrap text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/30 focus-visible:ring-offset-2',
         variants[variant] ?? variants.primary,
         sizes[size] ?? sizes.md,
         isLoading && 'cursor-wait opacity-80',

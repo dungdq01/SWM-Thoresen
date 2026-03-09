@@ -1,22 +1,31 @@
-import { Box, Mail, Phone, MapPin, Facebook, Youtube, Linkedin } from 'lucide-react'
+import { Mail, Phone, MapPin, Facebook, Youtube, Linkedin, ArrowRight } from 'lucide-react'
 
 const footerLinks = {
-  product: {
-    title: 'Sản phẩm',
+  solutions: {
+    title: 'Giải pháp',
     links: [
-      { label: 'Tính năng', href: '#features' },
-      { label: 'Bảng giá', href: '#pricing' },
-      { label: 'Tích hợp', href: '#integrations' },
-      { label: 'Cập nhật', href: '#updates' },
+      { label: 'Quản lý Kho', href: '#warehouse' },
+      { label: 'Vận hành Logistics', href: '#logistics' },
+      { label: 'Kiểm soát Tồn kho', href: '#inventory' },
+      { label: 'Phân tích & Báo cáo', href: '#analytics' },
     ],
   },
   company: {
-    title: 'Công ty',
+    title: 'Về chúng tôi',
     links: [
-      { label: 'Về chúng tôi', href: '#about' },
-      { label: 'Blog', href: '#blog' },
+      { label: 'Giới thiệu', href: '#about' },
+      { label: 'Đội ngũ', href: '#team' },
       { label: 'Tuyển dụng', href: '#careers' },
-      { label: 'Liên hệ', href: '#contact' },
+      { label: 'Tin tức', href: '#news' },
+    ],
+  },
+  resources: {
+    title: 'Tài nguyên',
+    links: [
+      { label: 'Insights', href: '#insights' },
+      { label: 'Nghiên cứu', href: '#research' },
+      { label: 'Case Studies', href: '#case-studies' },
+      { label: 'Webinars', href: '#webinars' },
     ],
   },
   support: {
@@ -24,16 +33,8 @@ const footerLinks = {
     links: [
       { label: 'Trung tâm trợ giúp', href: '#help' },
       { label: 'Tài liệu API', href: '#api-docs' },
-      { label: 'Hướng dẫn sử dụng', href: '#guides' },
-      { label: 'Cộng đồng', href: '#community' },
-    ],
-  },
-  legal: {
-    title: 'Pháp lý',
-    links: [
-      { label: 'Điều khoản sử dụng', href: '#terms' },
-      { label: 'Chính sách bảo mật', href: '#privacy' },
-      { label: 'Cookie', href: '#cookies' },
+      { label: 'Liên hệ', href: '#contact' },
+      { label: 'FAQ', href: '#faq' },
     ],
   },
 }
@@ -47,38 +48,75 @@ const socialLinks = [
 export function Footer() {
   return (
     <footer id="contact" className="bg-navy-900 text-white">
+      {/* Newsletter Section */}
+      <div className="border-b border-navy-700">
+        <div className="container-custom py-12">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div>
+              <h3 className="text-xl font-bold text-white mb-2">
+                Nhận thông tin mới nhất
+              </h3>
+              <p className="text-moon-300">
+                Đăng ký nhận bản tin về xu hướng logistics và cập nhật sản phẩm.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <input 
+                type="email" 
+                placeholder="Email của bạn"
+                className="px-4 py-3 bg-navy-800 border border-navy-600 rounded-xl text-white placeholder:text-navy-400 focus:outline-none focus:border-ice w-64"
+              />
+              <button className="px-6 py-3 bg-ice text-navy-900 font-semibold rounded-xl hover:bg-ice-light transition-colors flex items-center gap-2">
+                Đăng ký
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Footer */}
       <div className="container-custom">
         <div className="py-16 lg:py-20">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-12">
+            {/* Brand Column */}
             <div className="col-span-2">
               <a href="#" className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-                  <Box className="w-6 h-6 text-white" />
+                <img 
+                  src="/assets/logo.png" 
+                  alt="SmartLog" 
+                  className="h-10 w-auto brightness-0 invert"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xl font-bold text-white">SmartLog</span>
+                  <span className="text-[10px] font-medium tracking-widest uppercase text-ice">
+                    Warehouse Solutions
+                  </span>
                 </div>
-                <span className="text-xl font-bold">WMS Pro</span>
               </a>
               
-              <p className="text-navy-300 text-sm mb-6 leading-relaxed max-w-xs">
-                Giải pháp quản lý kho thông minh hàng đầu cho doanh nghiệp Việt Nam. 
-                Đồng hành cùng bạn trong hành trình chuyển đổi số.
+              <p className="text-moon-300 text-sm mb-8 leading-relaxed max-w-xs">
+                Chúng tôi đưa logistics đi xa hơn, vận hành chuỗi cung ứng mạnh mẽ, 
+                thông minh và linh hoạt hơn bao giờ hết.
               </p>
 
-              <div className="space-y-3 text-sm text-navy-300">
-                <a href="mailto:contact@wmspro.vn" className="flex items-center gap-3 hover:text-white transition-colors">
-                  <Mail className="w-4 h-4" />
-                  contact@wmspro.vn
+              <div className="space-y-3 text-sm text-moon-300">
+                <a href="mailto:contact@smartlog.vn" className="flex items-center gap-3 hover:text-ice transition-colors">
+                  <Mail className="w-4 h-4 text-ice" />
+                  contact@smartlog.vn
                 </a>
-                <a href="tel:1900123456" className="flex items-center gap-3 hover:text-white transition-colors">
-                  <Phone className="w-4 h-4" />
+                <a href="tel:1900123456" className="flex items-center gap-3 hover:text-ice transition-colors">
+                  <Phone className="w-4 h-4 text-ice" />
                   1900 123 456
                 </a>
                 <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 mt-0.5" />
-                  <span>Tầng 15, Tòa nhà Viettel, 285 Cách Mạng Tháng 8, Q.10, TP.HCM</span>
+                  <MapPin className="w-4 h-4 mt-0.5 text-ice flex-shrink-0" />
+                  <span>Tầng 15, Landmark 81, TP. Hồ Chí Minh</span>
                 </div>
               </div>
             </div>
 
+            {/* Link Columns */}
             {Object.entries(footerLinks).map(([key, section]) => (
               <div key={key}>
                 <h3 className="font-semibold text-white mb-4">{section.title}</h3>
@@ -87,7 +125,7 @@ export function Footer() {
                     <li key={link.label}>
                       <a 
                         href={link.href}
-                        className="text-sm text-navy-300 hover:text-white transition-colors"
+                        className="text-sm text-moon-300 hover:text-ice transition-colors"
                       >
                         {link.label}
                       </a>
@@ -99,19 +137,24 @@ export function Footer() {
           </div>
         </div>
 
+        {/* Bottom Bar */}
         <div className="py-6 border-t border-navy-700 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-navy-400">
-            © 2024 WMS Pro. Bản quyền thuộc về Công ty TNHH WMS Pro Việt Nam.
-          </p>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-moon-400">
+            <span>© 2024 SmartLog. All rights reserved.</span>
+            <span className="hidden md:inline">·</span>
+            <a href="#privacy" className="hover:text-ice transition-colors">Chính sách bảo mật</a>
+            <span className="hidden md:inline">·</span>
+            <a href="#terms" className="hover:text-ice transition-colors">Điều khoản sử dụng</a>
+          </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {socialLinks.map((social) => {
               const Icon = social.icon
               return (
                 <a
                   key={social.label}
                   href={social.href}
-                  className="w-10 h-10 bg-navy-800 rounded-lg flex items-center justify-center text-navy-400 hover:bg-primary-600 hover:text-white transition-all"
+                  className="w-10 h-10 bg-navy-800 rounded-xl flex items-center justify-center text-moon-400 hover:bg-ice hover:text-navy-900 transition-all duration-300"
                   aria-label={social.label}
                 >
                   <Icon className="w-5 h-5" />

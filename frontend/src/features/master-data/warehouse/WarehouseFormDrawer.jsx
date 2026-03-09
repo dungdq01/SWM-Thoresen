@@ -126,16 +126,13 @@ export function WarehouseFormDrawer({
                       error={errors.warehouseCode?.message}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Loại kho <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('warehouseType')} error={errors.warehouseType?.message}>
-                      {WAREHOUSE_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </Select>
-                  </div>
+                  <Select
+                    label="Loại kho"
+                    required
+                    options={WAREHOUSE_TYPES}
+                    error={errors.warehouseType?.message}
+                    {...register('warehouseType')}
+                  />
                 </div>
 
                 <div>

@@ -24,8 +24,8 @@ import {
 import { WarehouseFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Hoạt động' },
-  { value: 'false', label: 'Ngừng hoạt động' },
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
 ]
 
 const formatNumber = (num) => {
@@ -123,17 +123,17 @@ export function WarehousesPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
-    { key: 'warehouseType', placeholder: 'Loại kho', options: WAREHOUSE_TYPES },
+    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
+    { key: 'warehouseType', placeholder: 'Warehouse Type', options: WAREHOUSE_TYPES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Quản lý kho"
-        description="Danh sách các kho trong hệ thống"
+        title="Warehouse Management"
+        description="List of all warehouses in the system"
         onAdd={handleAdd}
-        addLabel="Thêm kho"
+        addLabel="Add Warehouse"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -149,14 +149,14 @@ export function WarehousesPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Tìm theo mã hoặc tên kho..."
+          placeholder="Search by code or name..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={warehouses.length === 0}
-        emptyMessage="Chưa có kho nào"
+        emptyMessage="No warehouses available"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -164,11 +164,11 @@ export function WarehousesPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Mã kho</TableHead>
-            <TableHead>Tên kho</TableHead>
-            <TableHead>Loại</TableHead>
-            <TableHead>Sức chứa</TableHead>
-            <TableHead align="center">Trạng thái</TableHead>
+            <TableHead>Warehouse Code</TableHead>
+            <TableHead>Warehouse Name</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Capacity</TableHead>
+            <TableHead align="center">Status</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>

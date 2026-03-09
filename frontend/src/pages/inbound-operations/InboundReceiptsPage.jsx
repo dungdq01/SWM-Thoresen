@@ -73,18 +73,18 @@ export function InboundReceiptsPage() {
         <div>
           <h2 className="section-title">Receipt planning & creation</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới dữ liệu</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.45fr_1fr]">
         <div className="wrs-card p-5 space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <Input placeholder="Receipt/PO/ASN/B/L/biển số xe" value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
-            <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: 'DRAFT', label: 'DRAFT' }, { value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'REJECTED', label: 'REJECTED' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Trạng thái" />
-            <Select value={filters.receiptType} onChange={(e) => setFilters((prev) => ({ ...prev, receiptType: e.target.value, page: 1 }))} options={[{ value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} placeholder="Loại receipt" />
-            <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))} placeholder="Owner" />
-            <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))} placeholder="Warehouse" />
-            <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))} placeholder="Item" />
+            <Input placeholder="Receipt/PO/ASN/B/L/Vehicle No." value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
+            <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'REJECTED', label: 'REJECTED' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Status" />
+            <Select value={filters.receiptType} onChange={(e) => setFilters((prev) => ({ ...prev, receiptType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} placeholder="Receipt Type" />
+            <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Owner" />
+            <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Warehouse" />
+            <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Item" />
           </div>
 
           <Table>
@@ -100,7 +100,7 @@ export function InboundReceiptsPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={6} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có inbound receipt phù hợp" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No matching inbound receipts" /> : null}
               {!isLoading ? rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
@@ -112,7 +112,7 @@ export function InboundReceiptsPage() {
                   <TableCell>
                     <div>
                       <p className="font-medium text-navy-800">{row.poNumber || 'N/A'}</p>
-                      <p className="text-xs text-navy-400">{row.vehicleNumber || row.blNumber || 'Chưa có vehicle'}</p>
+                      <p className="text-xs text-navy-400">{row.vehicleNumber || row.blNumber || 'No vehicle'}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -140,8 +140,8 @@ export function InboundReceiptsPage() {
 
         <div className="wrs-card p-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-navy-900">Tạo receipt nhanh</h3>
-            <p className="text-sm text-navy-400">Khởi tạo receipt runtime theo nguyên tắc 1 receipt = 1 trip = 1 xe.</p>
+            <h3 className="text-sm font-semibold text-navy-900">Quick Receipt Creation</h3>
+            <p className="text-sm text-navy-400">Create receipt at runtime following the rule: 1 receipt = 1 trip = 1 vehicle.</p>
           </div>
           <Select label="Receipt type" value={draft.receiptType} onChange={(e) => setDraft((prev) => ({ ...prev, receiptType: e.target.value }))} options={[{ value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} />
           <Input label="PO number" value={draft.poNumber} onChange={(e) => setDraft((prev) => ({ ...prev, poNumber: e.target.value }))} />
@@ -156,7 +156,7 @@ export function InboundReceiptsPage() {
           <Input label="Expected qty (kg)" type="number" value={draft.expectedQty} onChange={(e) => setDraft((prev) => ({ ...prev, expectedQty: e.target.value }))} />
           <Select label="Cargo form" value={draft.cargoForm} onChange={(e) => setDraft((prev) => ({ ...prev, cargoForm: e.target.value }))} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
           <Input label="Bag count" type="number" value={draft.bagCount} onChange={(e) => setDraft((prev) => ({ ...prev, bagCount: e.target.value }))} />
-          <Button variant="gold" onClick={handleCreate} disabled={createReceipt.isPending}>Tạo receipt</Button>
+          <Button variant="accent" onClick={handleCreate} disabled={createReceipt.isPending}>Create Receipt</Button>
         </div>
       </div>
     </div>

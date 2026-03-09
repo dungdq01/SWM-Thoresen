@@ -3,18 +3,31 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal, Input, Textarea, Select, Switch, Button } from '@shared/ui'
-import { useCreateReasonCode, useUpdateReasonCode, REASON_CODE_CATEGORIES, REASON_CODE_DOMAINS } from '@domains/auth'
+import { useCreateReasonCode, useUpdateReasonCode, REASON_CODE_CATEGORIES } from '@domains/auth'
 
-const reasonCodeSchema = z.object({
-  code: z.string().min(1, 'Mã lý do là bắt buộc').max(50, 'Tối đa 50 ký tự'),
+const CATEGORY_TO_DOMAIN = {
+  INBOUND: 'INBOUND',
+  OUTBOUND: 'OUTBOUND',
+  ADJUSTMENT: 'INVENTORY',
+  INVENTORY: 'INVENTORY',
+  GENERAL: 'FOUNDATION',
+}
+
+const baseFields = {
   description: z.string().min(1, 'Mô tả là bắt buộc').max(200, 'Tối đa 200 ký tự'),
   category: z.string().min(1, 'Danh mục là bắt buộc'),
-  domainCode: z.string().min(1, 'Domain là bắt buộc'),
   requiresApproval: z.boolean().default(false),
   affectsBilling: z.boolean().default(false),
   requiresNote: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
+}
+
+const createSchema = z.object({
+  code: z.string().min(1, 'Mã lý do là bắt buộc').max(50, 'Tối đa 50 ký tự'),
+  ...baseFields,
 })
+
+const updateSchema = z.object({ ...baseFields })
 
 export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
   const isEdit = !!editData
@@ -30,12 +43,11 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
     setValue,
     formState: { errors },
   } = useForm({
-    resolver: zodResolver(reasonCodeSchema),
+    resolver: zodResolver(isEdit ? updateSchema : createSchema),
     defaultValues: {
       code: '',
       description: '',
       category: '',
-      domainCode: '',
       requiresApproval: false,
       affectsBilling: false,
       requiresNote: false,
@@ -49,7 +61,6 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
         code: editData.code,
         description: editData.description,
         category: editData.category,
-        domainCode: editData.domainCode,
         requiresApproval: editData.requiresApproval,
         affectsBilling: editData.affectsBilling,
         requiresNote: editData.requiresNote,
@@ -60,7 +71,6 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
         code: '',
         description: '',
         category: '',
-        domainCode: '',
         requiresApproval: false,
         affectsBilling: false,
         requiresNote: false,
@@ -71,10 +81,15 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
 
   const onSubmit = async (data) => {
     try {
+      const payload = {
+        ...data,
+        code: isEdit ? editData.code : data.code,
+        domainCode: CATEGORY_TO_DOMAIN[data.category] || 'FOUNDATION',
+      }
       if (isEdit) {
-        await updateReasonCode.mutateAsync({ id: editData.id, data })
+        await updateReasonCode.mutateAsync({ id: editData.id, data: payload })
       } else {
-        await createReasonCode.mutateAsync(data)
+        await createReasonCode.mutateAsync(payload)
       }
       onClose()
       reset()
@@ -105,14 +120,23 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
     >
       <form className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Mã lý do"
-            placeholder="VD: DAMAGED"
-            disabled={isEdit}
-            error={errors.code?.message}
-            required
-            {...register('code')}
-          />
+          {isEdit ? (
+            <div>
+              <p className="text-sm font-medium text-navy-700 mb-1">Mã lý do</p>
+              <div className="wrs-input bg-moon-50 text-navy-500 cursor-not-allowed select-none flex items-center h-9 px-3 rounded-lg border border-moon-200 text-sm font-mono">
+                {editData.code}
+              </div>
+              <p className="text-xs text-navy-400 mt-1">Mã không thể thay đổi sau khi tạo</p>
+            </div>
+          ) : (
+            <Input
+              label="Mã lý do"
+              placeholder="VD: DAMAGED"
+              error={errors.code?.message}
+              required
+              {...register('code')}
+            />
+          )}
 
           <Input
             label="Thứ tự sắp xếp"
@@ -132,25 +156,14 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
           {...register('description')}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <Select
-            label="Danh mục"
-            options={REASON_CODE_CATEGORIES}
-            placeholder="Chọn danh mục"
-            error={errors.category?.message}
-            required
-            {...register('category')}
-          />
-
-          <Select
-            label="Domain"
-            options={REASON_CODE_DOMAINS}
-            placeholder="Chọn domain"
-            error={errors.domainCode?.message}
-            required
-            {...register('domainCode')}
-          />
-        </div>
+        <Select
+          label="Danh mục"
+          options={REASON_CODE_CATEGORIES}
+          placeholder="Chọn danh mục"
+          error={errors.category?.message}
+          required
+          {...register('category')}
+        />
 
         <div className="pt-2 space-y-3 border-t border-navy-100">
           <p className="text-sm font-medium text-navy-700">Cấu hình bổ sung</p>

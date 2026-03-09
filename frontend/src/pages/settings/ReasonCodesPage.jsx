@@ -42,7 +42,7 @@ export function ReasonCodesPage() {
   const closeFormModal = () => setFormModal({ open: false, data: null })
 
   const handleDeactivate = async (id) => {
-    if (window.confirm('Bạn có chắc muốn vô hiệu hóa mã lý do này?')) {
+    if (window.confirm('Are you sure you want to deactivate this reason code?')) {
       await deactivate.mutateAsync(id)
     }
   }
@@ -53,11 +53,11 @@ export function ReasonCodesPage() {
 
   return (
     <SettingsLayout
-      title="Quản lý mã lý do"
+      title="Reason Code Management"
       description="Danh sách các mã lý do dùng khi thực hiện điều chỉnh, sửa đổi trong hệ thống."
       actions={
         <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-          Tạo mã lý do
+          Create Reason Code
         </Button>
       }
     >
@@ -67,13 +67,13 @@ export function ReasonCodesPage() {
             value={search}
             onChange={setSearch}
             onClear={() => setSearch('')}
-            placeholder="Tìm theo mã hoặc mô tả..."
+            placeholder="Search by code or description..."
             className="flex-1 max-w-md"
           />
           <Select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            options={[{ value: '', label: 'Tất cả danh mục' }, ...REASON_CODE_CATEGORIES]}
+            options={[{ value: '', label: 'All categories' }, ...REASON_CODE_CATEGORIES]}
             className="w-48"
           />
         </div>
@@ -81,20 +81,19 @@ export function ReasonCodesPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Mã</TableHead>
-              <TableHead>Mô tả</TableHead>
-              <TableHead>Danh mục</TableHead>
-              <TableHead>Domain</TableHead>
-              <TableHead>Yêu cầu</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead align="right">Thao tác</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Requirements</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead align="right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableLoading colSpan={7} />
+              <TableLoading colSpan={6} />
             ) : filteredCodes.length === 0 ? (
-              <TableEmpty colSpan={7} message={search ? 'Không tìm thấy mã lý do phù hợp' : 'Chưa có mã lý do nào'} />
+              <TableEmpty colSpan={6} message={search ? 'No matching reason codes found' : 'No reason codes available'} />
             ) : (
               filteredCodes.map((rc) => (
                 <TableRow key={rc.id}>
@@ -110,22 +109,19 @@ export function ReasonCodesPage() {
                     <Badge variant="info" size="sm">{getCategoryLabel(rc.category)}</Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="text-navy-600">{rc.domainCode}</span>
-                  </TableCell>
-                  <TableCell>
                     <div className="flex items-center gap-2">
                       {rc.requiresApproval && (
-                        <span title="Yêu cầu phê duyệt" className="text-amber-500">
+                        <span title="Requires Approval" className="text-amber-500">
                           <AlertCircle className="w-4 h-4" />
                         </span>
                       )}
                       {rc.requiresNote && (
-                        <span title="Yêu cầu ghi chú" className="text-blue-500">
+                        <span title="Requires Note" className="text-blue-500">
                           <FileText className="w-4 h-4" />
                         </span>
                       )}
                       {rc.affectsBilling && (
-                        <span title="Ảnh hưởng thanh toán" className="text-purple-500">
+                        <span title="Affects Billing" className="text-purple-500">
                           <CreditCard className="w-4 h-4" />
                         </span>
                       )}
@@ -140,7 +136,7 @@ export function ReasonCodesPage() {
                       <button
                         onClick={() => openEditModal(rc)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
-                        title="Chỉnh sửa"
+                        title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -148,7 +144,7 @@ export function ReasonCodesPage() {
                         <button
                           onClick={() => handleDeactivate(rc.id)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-danger/5 hover:text-danger"
-                          title="Vô hiệu hóa"
+                          title="Deactivate"
                         >
                           <Power className="w-4 h-4" />
                         </button>

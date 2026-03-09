@@ -3,7 +3,7 @@ import { cn } from '@shared/lib/cn'
 const variants = {
   default: 'bg-navy-100 text-navy-700',
   neutral: 'bg-moon-100 text-navy-600',
-  primary: 'bg-gold/15 text-gold-dark',
+  primary: 'bg-ice/15 text-ice-dark',
   success: 'bg-success/12 text-success',
   warning: 'bg-warning/12 text-warning',
   danger: 'bg-danger/12 text-danger',
@@ -40,7 +40,7 @@ export function Badge({
           variant === 'danger' && 'bg-danger',
           variant === 'info' && 'bg-info',
           variant === 'neutral' && 'bg-navy-400',
-          variant === 'primary' && 'bg-gold',
+          variant === 'primary' && 'bg-ice',
           variant === 'default' && 'bg-navy-500',
         )} />
       )}

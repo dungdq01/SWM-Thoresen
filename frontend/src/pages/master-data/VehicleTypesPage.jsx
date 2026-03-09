@@ -5,6 +5,7 @@ import {
   useCreateVehicleType,
   useUpdateVehicleType,
   useDeactivateVehicleType,
+  useReactivateVehicleType,
   PageHeader,
   FilterBar,
   StatusBadge,
@@ -22,8 +23,8 @@ import { Badge } from '@shared/ui'
 import { VehicleTypeFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Hoạt động' },
-  { value: 'false', label: 'Ngừng hoạt động' },
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
 ]
 
 const getCategoryLabel = (category) => {
@@ -57,6 +58,7 @@ export function VehicleTypesPage() {
   const createMutation = useCreateVehicleType()
   const updateMutation = useUpdateVehicleType()
   const deactivateMutation = useDeactivateVehicleType()
+  const reactivateMutation = useReactivateVehicleType()
 
   const vehicleTypes = response?.data || []
   const meta = response?.meta || { total: 0, page: 1, totalPages: 1 }
@@ -106,17 +108,17 @@ export function VehicleTypesPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
-    { key: 'category', placeholder: 'Loại', options: VEHICLE_CATEGORIES },
+    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
+    { key: 'category', placeholder: 'Category', options: VEHICLE_CATEGORIES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Quản lý loại phương tiện"
-        description="Danh sách các loại phương tiện vận chuyển"
+        title="Vehicle Type Management"
+        description="List of all vehicle types for transportation"
         onAdd={handleAdd}
-        addLabel="Thêm loại phương tiện"
+        addLabel="Add Vehicle Type"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -132,14 +134,14 @@ export function VehicleTypesPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Tìm theo mã hoặc tên loại phương tiện..."
+          placeholder="Search by code or name..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={vehicleTypes.length === 0}
-        emptyMessage="Chưa có loại phương tiện nào"
+        emptyMessage="No vehicle types available"
         colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -147,12 +149,12 @@ export function VehicleTypesPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Mã loại</TableHead>
-            <TableHead>Tên loại</TableHead>
-            <TableHead>Phân loại</TableHead>
-            <TableHead>Tải trọng tối đa</TableHead>
+            <TableHead>Type Code</TableHead>
+            <TableHead>Type Name</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Max Payload</TableHead>
             <TableHead>Tare Weight</TableHead>
-            <TableHead align="center">Trạng thái</TableHead>
+            <TableHead align="center">Status</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -191,6 +193,7 @@ export function VehicleTypesPage() {
                   <ActionMenu
                     onEdit={() => handleEdit(vt)}
                     onDeactivate={() => setDeactivateState({ isOpen: true, data: vt })}
+                    onReactivate={() => reactivateMutation.mutate(vt.id)}
                     isActive={vt.isActive}
                   />
                 </TableCell>

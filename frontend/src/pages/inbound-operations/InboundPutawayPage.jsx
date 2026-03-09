@@ -23,12 +23,12 @@ export function InboundPutawayPage() {
         <div>
           <h2 className="section-title">Putaway handoff & receipt closing</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới dữ liệu</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }]} placeholder="Queue status" className="max-w-xs" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }]} placeholder="Queue status" className="max-w-xs" />
         </div>
 
         <Table>
@@ -43,13 +43,13 @@ export function InboundPutawayPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Chưa có receipt trong putaway queue" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No receipts in putaway queue" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <div>
                     <p className="font-semibold text-navy-900">{row.receiptNumber}</p>
-                    <p className="text-xs text-navy-400">{row.putawayWorkId || 'Chưa có work id'}</p>
+                    <p className="text-xs text-navy-400">{row.putawayWorkId || 'No work ID'}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -65,8 +65,8 @@ export function InboundPutawayPage() {
                 </TableCell>
                 <TableCell align="center"><Badge variant={putawayTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
-                  <Button variant="gold" size="sm" onClick={() => completePutaway.mutate(row.id)}>
-                    {row.status === 'RECEIVED' ? 'Tạo handoff' : 'Close receipt'}
+                  <Button variant="accent" size="sm" onClick={() => completePutaway.mutate(row.id)}>
+                    {row.status === 'RECEIVED' ? 'Create Handoff' : 'Close Receipt'}
                   </Button>
                 </TableCell>
               </TableRow>

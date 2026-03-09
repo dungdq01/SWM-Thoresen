@@ -24,8 +24,8 @@ import { VendorFormDrawer } from '@features/master-data'
 import { Badge } from '@shared/ui'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Hoạt động' },
-  { value: 'false', label: 'Ngừng hoạt động' },
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
 ]
 
 const getSupplierGroupLabel = (group) => {
@@ -123,17 +123,17 @@ export function VendorsPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
-    { key: 'supplierGroup', placeholder: 'Nhóm', options: SUPPLIER_GROUPS },
+    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
+    { key: 'supplierGroup', placeholder: 'Group', options: SUPPLIER_GROUPS },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Quản lý nhà cung cấp"
-        description="Danh sách nhà cung cấp và tàu trong hệ thống"
+        title="Vendor Management"
+        description="List of vendors and vessels in the system"
         onAdd={handleAdd}
-        addLabel="Thêm nhà cung cấp"
+        addLabel="Add Vendor"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -149,14 +149,14 @@ export function VendorsPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Tìm theo mã, tên nhà cung cấp hoặc tên tàu..."
+          placeholder="Search by code, vendor name or vessel name..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={vendors.length === 0}
-        emptyMessage="Chưa có nhà cung cấp nào"
+        emptyMessage="No vendors available"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -164,11 +164,11 @@ export function VendorsPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Mã NCC</TableHead>
-            <TableHead>Tên nhà cung cấp</TableHead>
-            <TableHead>Nhóm</TableHead>
-            <TableHead>Liên hệ</TableHead>
-            <TableHead align="center">Trạng thái</TableHead>
+            <TableHead>Vendor Code</TableHead>
+            <TableHead>Vendor Name</TableHead>
+            <TableHead>Group</TableHead>
+            <TableHead>Contact</TableHead>
+            <TableHead align="center">Status</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -188,7 +188,7 @@ export function VendorsPage() {
                   <div>
                     <p className="font-medium text-navy-900">{vendor.vendorName}</p>
                     {vendor.vesselName && (
-                      <p className="text-xs text-navy-500">Tàu: {vendor.vesselName}</p>
+                      <p className="text-xs text-navy-500">Vessel: {vendor.vesselName}</p>
                     )}
                   </div>
                 </TableCell>

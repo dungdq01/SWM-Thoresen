@@ -64,7 +64,7 @@ export function GovernancePage() {
       actions={
         activeTab === 'rules' && (
           <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-            Tạo rule mới
+            Create Rule
           </Button>
         )
       }
@@ -88,13 +88,13 @@ export function GovernancePage() {
                 value={search}
                 onChange={setSearch}
                 onClear={() => setSearch('')}
-                placeholder="Tìm theo mã hoặc tên rule..."
+                placeholder="Search by rule code or name..."
                 className="flex-1 max-w-md"
               />
               <Select
                 value={domainFilter}
                 onChange={(e) => setDomainFilter(e.target.value)}
-                options={[{ value: '', label: 'Tất cả domain' }, ...RULE_DOMAINS]}
+                options={[{ value: '', label: 'All domains' }, ...RULE_DOMAINS]}
                 className="w-48"
               />
             </div>
@@ -102,19 +102,19 @@ export function GovernancePage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Mã Rule</TableHead>
-                  <TableHead>Tên Rule</TableHead>
+                  <TableHead>Rule Code</TableHead>
+                  <TableHead>Rule Name</TableHead>
                   <TableHead>Domain</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Mô tả</TableHead>
-                  <TableHead align="right">Thao tác</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead align="right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rulesLoading ? (
                   <TableLoading colSpan={6} />
                 ) : filteredRules.length === 0 ? (
-                  <TableEmpty colSpan={6} message="Chưa có business rule nào" />
+                  <TableEmpty colSpan={6} message="No business rules available" />
                 ) : (
                   filteredRules.map((rule) => (
                     <TableRow key={rule.id}>
@@ -157,25 +157,25 @@ export function GovernancePage() {
               value={search}
               onChange={setSearch}
               onClear={() => setSearch('')}
-              placeholder="Tìm theo mã hoặc tiêu đề decision..."
+              placeholder="Search by decision code or title..."
               className="max-w-md"
             />
 
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Mã Decision</TableHead>
-                  <TableHead>Tiêu đề</TableHead>
-                  <TableHead>Người quyết định</TableHead>
-                  <TableHead>Ngày quyết định</TableHead>
-                  <TableHead>Mô tả</TableHead>
+                  <TableHead>Decision Code</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Decided By</TableHead>
+                  <TableHead>Decision Date</TableHead>
+                  <TableHead>Description</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {logsLoading ? (
                   <TableLoading colSpan={5} />
                 ) : filteredLogs.length === 0 ? (
-                  <TableEmpty colSpan={5} message="Chưa có decision log nào" />
+                  <TableEmpty colSpan={5} message="No decision logs available" />
                 ) : (
                   filteredLogs.map((log) => (
                     <TableRow key={log.id}>

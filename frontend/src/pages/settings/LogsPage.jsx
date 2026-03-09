@@ -35,7 +35,7 @@ export function LogsPage() {
   const exceptionLogs = exceptionData?.data || []
 
   const handleResolve = async (id) => {
-    if (window.confirm('Đánh dấu exception này đã được xử lý?')) {
+    if (window.confirm('Mark this exception as resolved?')) {
       await resolveException.mutateAsync(id)
     }
   }
@@ -64,7 +64,7 @@ export function LogsPage() {
                 value={auditFilters.entity || ''}
                 onChange={(val) => setAuditFilters((f) => ({ ...f, entity: val, page: 1 }))}
                 onClear={() => setAuditFilters((f) => ({ ...f, entity: '', page: 1 }))}
-                placeholder="Lọc theo entity type..."
+                placeholder="Filter by entity type..."
                 className="max-w-md"
               />
             </div>
@@ -72,19 +72,19 @@ export function LogsPage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Timestamp</TableHead>
                   <TableHead>Entity</TableHead>
                   <TableHead>Action</TableHead>
                   <TableHead>User</TableHead>
                   <TableHead>Module</TableHead>
-                  <TableHead>Chi tiết</TableHead>
+                  <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {auditLoading ? (
                   <TableLoading colSpan={6} />
                 ) : auditLogs.length === 0 ? (
-                  <TableEmpty colSpan={6} message="Không có audit log nào" />
+                  <TableEmpty colSpan={6} message="No audit logs available" />
                 ) : (
                   auditLogs.map((log) => (
                     <TableRow key={log.id}>
@@ -139,9 +139,9 @@ export function LogsPage() {
                 value={exceptionFilters.resolved}
                 onChange={(e) => setExceptionFilters((f) => ({ ...f, resolved: e.target.value, page: 1 }))}
                 options={[
-                  { value: '', label: 'Tất cả trạng thái' },
-                  { value: 'false', label: 'Chưa xử lý' },
-                  { value: 'true', label: 'Đã xử lý' },
+                  { value: '', label: 'All statuses' },
+                  { value: 'false', label: 'Unresolved' },
+                  { value: 'true', label: 'Resolved' },
                 ]}
                 className="w-48"
               />
@@ -150,20 +150,20 @@ export function LogsPage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Thời gian</TableHead>
-                  <TableHead>Loại Exception</TableHead>
-                  <TableHead>Mức độ</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Exception Type</TableHead>
+                  <TableHead>Severity</TableHead>
                   <TableHead>Module</TableHead>
                   <TableHead>Message</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead align="right">Thao tác</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead align="right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {exceptionLoading ? (
                   <TableLoading colSpan={7} />
                 ) : exceptionLogs.length === 0 ? (
-                  <TableEmpty colSpan={7} message="Không có exception log nào" />
+                  <TableEmpty colSpan={7} message="No exception logs available" />
                 ) : (
                   exceptionLogs.map((log) => (
                     <TableRow key={log.id}>
@@ -196,7 +196,7 @@ export function LogsPage() {
                             onClick={() => handleResolve(log.id)}
                             disabled={resolveException.isPending}
                             className="p-2 text-navy-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Đánh dấu đã xử lý"
+                            title="Mark as Resolved"
                           >
                             <CheckCircle className="w-4 h-4" />
                           </button>

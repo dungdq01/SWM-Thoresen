@@ -38,6 +38,58 @@ const InboundExecutionPage = lazy(() => import('@pages/inbound-operations').then
 const InboundExceptionsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExceptionsPage })))
 const InboundPutawayPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundPutawayPage })))
 
+// Outbound Operations Pages
+const OutboundOperationsLayout = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundOperationsLayout })))
+const OutboundShipmentsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundShipmentsPage })))
+const OutboundAllocationPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundAllocationPage })))
+const OutboundWeighingPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundWeighingPage })))
+const OutboundApprovalsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundApprovalsPage })))
+
+// Inventory Control Pages
+const InventoryControlLayout = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.InventoryControlLayout })))
+const MoveOrdersPage = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.MoveOrdersPage })))
+const TransferOrdersPage = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.TransferOrdersPage })))
+const StatusChangePage = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.StatusChangePage })))
+const CycleCountPage = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.CycleCountPage })))
+const AdjustmentsPage = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.AdjustmentsPage })))
+const MovementHistoryPage = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.MovementHistoryPage })))
+
+// Work Execution Pages
+const WorkExecutionLayout = lazy(() => import('@pages/work-execution').then(m => ({ default: m.WorkExecutionLayout })))
+const WorkQueuePage = lazy(() => import('@pages/work-execution').then(m => ({ default: m.WorkQueuePage })))
+const MyWorkPage = lazy(() => import('@pages/work-execution').then(m => ({ default: m.MyWorkPage })))
+const WorkExecutePage = lazy(() => import('@pages/work-execution').then(m => ({ default: m.WorkExecutePage })))
+const WorkMonitorPage = lazy(() => import('@pages/work-execution').then(m => ({ default: m.WorkMonitorPage })))
+
+// Integration Pages
+const IntegrationLayout = lazy(() => import('@pages/integration').then(m => ({ default: m.IntegrationLayout })))
+const MonitoringPage = lazy(() => import('@pages/integration').then(m => ({ default: m.MonitoringPage })))
+const IntegrationAlertsPage = lazy(() => import('@pages/integration').then(m => ({ default: m.AlertsPage })))
+const WeighbridgePage = lazy(() => import('@pages/integration').then(m => ({ default: m.WeighbridgePage })))
+const ChannelsPage = lazy(() => import('@pages/integration').then(m => ({ default: m.ChannelsPage })))
+
+// VAS Pages
+const VasLayout = lazy(() => import('@pages/vas').then(m => ({ default: m.VasLayout })))
+const VasWorkOrdersPage = lazy(() => import('@pages/vas').then(m => ({ default: m.VasWorkOrdersPage })))
+const VasExecutionPage = lazy(() => import('@pages/vas').then(m => ({ default: m.VasExecutionPage })))
+const VasDashboardPage = lazy(() => import('@pages/vas').then(m => ({ default: m.VasDashboardPage })))
+
+// Billing Pages
+const BillingLayout = lazy(() => import('@pages/billing').then(m => ({ default: m.BillingLayout })))
+const InvoicesPage = lazy(() => import('@pages/billing').then(m => ({ default: m.InvoicesPage })))
+const RateCardsPage = lazy(() => import('@pages/billing').then(m => ({ default: m.RateCardsPage })))
+const BillableEventsPage = lazy(() => import('@pages/billing').then(m => ({ default: m.BillableEventsPage })))
+const BillingDashboardPage = lazy(() => import('@pages/billing').then(m => ({ default: m.BillingDashboardPage })))
+
+// Reporting Pages
+const ReportingLayout = lazy(() => import('@pages/reporting').then(m => ({ default: m.ReportingLayout })))
+const ReportingDashboardPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.ReportingDashboardPage })))
+const InventoryReportPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.InventoryReportPage })))
+const BillingReportPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.BillingReportPage })))
+const AuditTrailPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.AuditTrailPage })))
+const ReconciliationPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.ReconciliationPage })))
+const GoLiveChecklistPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.GoLiveChecklistPage })))
+
 const withSuspense = (Component) => (
   <Suspense fallback={<PageLoader />}>
     <Component />
@@ -189,6 +241,200 @@ export const router = createBrowserRouter([
           {
             path: 'putaway',
             element: withSuspense(InboundPutawayPage),
+          },
+        ],
+      },
+      {
+        path: 'outbound-operations',
+        element: withSuspense(OutboundOperationsLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/outbound-operations/shipments" replace />,
+          },
+          {
+            path: 'shipments',
+            element: withSuspense(OutboundShipmentsPage),
+          },
+          {
+            path: 'allocation',
+            element: withSuspense(OutboundAllocationPage),
+          },
+          {
+            path: 'weighing',
+            element: withSuspense(OutboundWeighingPage),
+          },
+          {
+            path: 'approvals',
+            element: withSuspense(OutboundApprovalsPage),
+          },
+        ],
+      },
+      {
+        path: 'inventory-control',
+        element: withSuspense(InventoryControlLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/inventory-control/move-orders" replace />,
+          },
+          {
+            path: 'move-orders',
+            element: withSuspense(MoveOrdersPage),
+          },
+          {
+            path: 'transfers',
+            element: withSuspense(TransferOrdersPage),
+          },
+          {
+            path: 'status-change',
+            element: withSuspense(StatusChangePage),
+          },
+          {
+            path: 'cycle-count',
+            element: withSuspense(CycleCountPage),
+          },
+          {
+            path: 'adjustments',
+            element: withSuspense(AdjustmentsPage),
+          },
+          {
+            path: 'history',
+            element: withSuspense(MovementHistoryPage),
+          },
+        ],
+      },
+      {
+        path: 'work-execution',
+        element: withSuspense(WorkExecutionLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/work-execution/queue" replace />,
+          },
+          {
+            path: 'queue',
+            element: withSuspense(WorkQueuePage),
+          },
+          {
+            path: 'my-work',
+            element: withSuspense(MyWorkPage),
+          },
+          {
+            path: 'execute',
+            element: withSuspense(WorkExecutePage),
+          },
+          {
+            path: 'monitor',
+            element: withSuspense(WorkMonitorPage),
+          },
+        ],
+      },
+      {
+        path: 'integration',
+        element: withSuspense(IntegrationLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/integration/monitoring" replace />,
+          },
+          {
+            path: 'monitoring',
+            element: withSuspense(MonitoringPage),
+          },
+          {
+            path: 'alerts',
+            element: withSuspense(IntegrationAlertsPage),
+          },
+          {
+            path: 'weighbridge',
+            element: withSuspense(WeighbridgePage),
+          },
+          {
+            path: 'channels',
+            element: withSuspense(ChannelsPage),
+          },
+        ],
+      },
+      {
+        path: 'vas',
+        element: withSuspense(VasLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/vas/work-orders" replace />,
+          },
+          {
+            path: 'work-orders',
+            element: withSuspense(VasWorkOrdersPage),
+          },
+          {
+            path: 'execution',
+            element: withSuspense(VasExecutionPage),
+          },
+          {
+            path: 'dashboard',
+            element: withSuspense(VasDashboardPage),
+          },
+        ],
+      },
+      {
+        path: 'billing',
+        element: withSuspense(BillingLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/billing/invoices" replace />,
+          },
+          {
+            path: 'invoices',
+            element: withSuspense(InvoicesPage),
+          },
+          {
+            path: 'rate-cards',
+            element: withSuspense(RateCardsPage),
+          },
+          {
+            path: 'events',
+            element: withSuspense(BillableEventsPage),
+          },
+          {
+            path: 'dashboard',
+            element: withSuspense(BillingDashboardPage),
+          },
+        ],
+      },
+      {
+        path: 'reporting',
+        element: withSuspense(ReportingLayout),
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/app/reporting/dashboard" replace />,
+          },
+          {
+            path: 'dashboard',
+            element: withSuspense(ReportingDashboardPage),
+          },
+          {
+            path: 'inventory',
+            element: withSuspense(InventoryReportPage),
+          },
+          {
+            path: 'billing',
+            element: withSuspense(BillingReportPage),
+          },
+          {
+            path: 'audit',
+            element: withSuspense(AuditTrailPage),
+          },
+          {
+            path: 'reconciliation',
+            element: withSuspense(ReconciliationPage),
+          },
+          {
+            path: 'go-live',
+            element: withSuspense(GoLiveChecklistPage),
           },
         ],
       },

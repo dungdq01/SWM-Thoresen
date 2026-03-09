@@ -24,8 +24,8 @@ export function InventoryCoreLayout() {
             <Boxes className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="module-nav-title">Điều hướng inventory truth</h2>
-            <p className="module-nav-description">Theo dõi tồn hiện tại, transaction history, allocation hold và thao tác posting/reversal ngay trong cùng module.</p>
+            <h2 className="module-nav-title">Inventory Truth Navigation</h2>
+            <p className="module-nav-description">Track current stock, transaction history, allocation holds, and posting/reversal operations within the same module.</p>
           </div>
         </div>
 

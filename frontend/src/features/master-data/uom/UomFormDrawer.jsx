@@ -60,7 +60,7 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed right-0 top-0 z-50 flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-moon-200 px-6 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy-800 text-gold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy-800 text-ice-light">
                   <Ruler className="h-5 w-5" />
                 </div>
                 <div>
@@ -87,14 +87,12 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
 
               <Input label="Mô tả" required placeholder="VD: Kilogram" error={errors.description?.message} {...register('description')} />
 
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-navy-700">Loại đơn vị</label>
-                <Select {...register('uomClass')} error={errors.uomClass?.message}>
-                  {UOM_CLASSES.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </Select>
-              </div>
+              <Select
+                label="Loại đơn vị"
+                options={UOM_CLASSES}
+                error={errors.uomClass?.message}
+                {...register('uomClass')}
+              />
 
               <Controller
                 name="isBaseUom"
@@ -105,7 +103,7 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
 
             <div className="flex items-center justify-end gap-3 border-t border-moon-200 bg-moon-50 px-6 py-4">
               <Button variant="outline" onClick={onClose} disabled={isLoading}>Hủy</Button>
-              <Button variant="gold" onClick={handleSubmit(handleFormSubmit)} disabled={isLoading}>{isEdit ? 'Cập nhật' : 'Tạo mới'}</Button>
+              <Button variant="accent" onClick={handleSubmit(handleFormSubmit)} disabled={isLoading}>{isEdit ? 'Cập nhật' : 'Tạo mới'}</Button>
             </div>
           </motion.div>
         </>

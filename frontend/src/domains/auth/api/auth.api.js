@@ -34,9 +34,29 @@ export const authApi = {
     (roleId, data) => httpClient.post(`/foundation/roles/${roleId}/permissions`, data)
   ),
 
+  deleteRole: withDataSource(
+    (id) => client.deleteRole(id),
+    (id) => httpClient.delete(`/foundation/roles/${id}`)
+  ),
+
   getPermissions: withDataSource(
     (params) => client.getPermissions(params),
     (params) => httpClient.get('/foundation/permissions', { params })
+  ),
+
+  createPermission: withDataSource(
+    (data) => client.createPermission(data),
+    (data) => httpClient.post('/foundation/permissions', data)
+  ),
+
+  updatePermission: withDataSource(
+    (id, data) => client.updatePermission(id, data),
+    (id, data) => httpClient.put(`/foundation/permissions/${id}`, data)
+  ),
+
+  deletePermission: withDataSource(
+    (id) => client.deletePermission(id),
+    (id) => httpClient.delete(`/foundation/permissions/${id}`)
   ),
 
   assignRoleToUser: withDataSource(

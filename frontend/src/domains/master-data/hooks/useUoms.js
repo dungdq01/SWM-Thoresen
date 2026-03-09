@@ -72,3 +72,20 @@ export function useDeactivateUom() {
     },
   })
 }
+
+export function useReactivateUom() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id) => uomApi.reactivate(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: MASTER_DATA_QUERY_KEYS.uoms })
+      queryClient.invalidateQueries({ queryKey: MASTER_DATA_QUERY_KEYS.uomDetail(id) })
+      queryClient.invalidateQueries({ queryKey: MASTER_DATA_QUERY_KEYS.lookupUoms })
+      toast.success('Đã kích hoạt lại đơn vị tính')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể kích hoạt lại đơn vị tính')
+    },
+  })
+}

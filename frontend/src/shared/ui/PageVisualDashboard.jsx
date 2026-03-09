@@ -2,16 +2,16 @@ import { cn } from '@shared/lib/cn'
 
 const toneClasses = {
   navy: {
-    chip: 'bg-navy-800 text-gold',
-    stroke: '#14213D',
-    fill: 'rgba(20, 33, 61, 0.14)',
-    accent: '#D4AF37',
+    chip: 'bg-navy-800 text-ice-light',
+    stroke: '#1e3055',
+    fill: 'rgba(30, 48, 85, 0.14)',
+    accent: '#60a5fa',
   },
-  gold: {
-    chip: 'bg-gold/20 text-gold-dark',
-    stroke: '#D4AF37',
-    fill: 'rgba(212, 175, 55, 0.18)',
-    accent: '#8C6A00',
+  ice: {
+    chip: 'bg-ice/20 text-ice-dark',
+    stroke: '#60a5fa',
+    fill: 'rgba(96, 165, 250, 0.18)',
+    accent: '#3b82f6',
   },
   success: {
     chip: 'bg-success/12 text-success',

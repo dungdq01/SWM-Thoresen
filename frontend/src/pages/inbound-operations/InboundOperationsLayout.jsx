@@ -24,8 +24,8 @@ export function InboundOperationsLayout() {
             <Truck className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="module-nav-title">Điều hướng operational gatekeeper</h2>
-            <p className="module-nav-description">Theo dõi planning receipt, weigh-in / weigh-out, tolerance fail, re-weigh và closing rule theo một flow thống nhất.</p>
+            <h2 className="module-nav-title">Operational Gatekeeper Navigation</h2>
+            <p className="module-nav-description">Track planning receipts, weigh-in/weigh-out, tolerance failures, re-weigh, and closing rules in a unified flow.</p>
           </div>
         </div>
 

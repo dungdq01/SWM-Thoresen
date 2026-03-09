@@ -41,6 +41,21 @@ export function useUpdateRole() {
   })
 }
 
+export function useDeleteRole() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id) => authApi.deleteRole(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all })
+      toast.success('Đã xóa vai trò')
+    },
+    onError: (error) => {
+      toast.error(error.error?.message || 'Không thể xóa vai trò')
+    },
+  })
+}
+
 export function useAssignPermissionToRole() {
   const queryClient = useQueryClient()
 

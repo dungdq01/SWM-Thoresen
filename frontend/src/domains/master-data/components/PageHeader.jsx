@@ -34,7 +34,7 @@ export function PageHeader({
           </Button>
         )}
         {onAdd && (
-          <Button variant="gold" onClick={onAdd} icon={<Plus className="h-4 w-4" />}>
+          <Button variant="accent" onClick={onAdd} icon={<Plus className="h-4 w-4" />}>
             {addLabel}
           </Button>
         )}

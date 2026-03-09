@@ -126,16 +126,13 @@ export function VendorFormDrawer({
                       className="uppercase"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Nhóm <span className="text-red-500">*</span>
-                    </label>
-                    <Select {...register('supplierGroup')} error={errors.supplierGroup?.message}>
-                      {SUPPLIER_GROUPS.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </Select>
-                  </div>
+                  <Select
+                    label="Nhóm"
+                    required
+                    options={SUPPLIER_GROUPS}
+                    error={errors.supplierGroup?.message}
+                    {...register('supplierGroup')}
+                  />
                 </div>
 
                 <div>

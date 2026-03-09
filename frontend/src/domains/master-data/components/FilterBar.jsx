@@ -35,12 +35,12 @@ export function FilterBar({
             variant="outline"
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className={cn(hasActiveFilters && 'border-gold text-gold-dark')}
+            className={cn(hasActiveFilters && 'border-ice text-ice-dark')}
           >
             <Filter className="w-4 h-4 mr-2" />
             Bộ lọc
             {hasActiveFilters && (
-              <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-gold text-[11px] font-bold text-navy-900">
+              <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-ice text-[11px] font-bold text-white">
                 {Object.values(filterValues).filter((v) => v !== '' && v !== undefined).length}
               </span>
             )}
