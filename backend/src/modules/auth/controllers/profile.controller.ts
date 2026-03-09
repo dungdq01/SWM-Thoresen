@@ -18,7 +18,7 @@ import { TokenService } from '../services/token.service';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { UserProfile, PermissionSnapshot } from '../interfaces/security-context.interface';
 
-@Controller('api/v1/auth')
+@Controller('auth')
 @UseGuards(AuthGuard)
 export class ProfileController {
   constructor(

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
+import { FoundationModule } from '../foundation/foundation.module';
 
 import {
   AuthController,
@@ -30,7 +31,7 @@ import {
 } from './repositories';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [PrismaModule, ConfigModule, FoundationModule],
   controllers: [
     AuthController,
     ProfileController,

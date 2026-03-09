@@ -16,7 +16,7 @@ import { Public } from '../../../common/decorators/public.decorator';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { LoginResult, RefreshResult } from '../interfaces/security-context.interface';
 
-@Controller('api/v1/auth')
+@Controller('auth')
 export class AuthController {
   constructor(
     private readonly authenticationService: AuthenticationService,
