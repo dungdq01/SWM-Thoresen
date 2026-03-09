@@ -1,7 +1,7 @@
 # Module Auth - Backend API Documentation
 
 **Module:** Authentication, Authorization & Session Control  
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Last Updated:** 2026-03-09
 
 ---
@@ -23,6 +23,18 @@ Module Auth là **security platform layer** của hệ thống SWM, cung cấp:
 | Token | JWT (HS256) |
 | Session storage | PostgreSQL |
 | Framework | NestJS |
+
+### Guard System (v1.1 - Unified)
+
+> **Note:** Từ v1.1, hệ thống sử dụng **single source of truth** cho guards:
+> - Guards thật nằm tại `common/guards/`
+> - `modules/foundation/auth/` re-export từ `common/guards/`
+> - JWT payload sử dụng abbreviated keys: `ucd` (userCode), `sid` (sessionId), `av` (authVersion)
+
+| Guard | Location | Description |
+|-------|----------|-------------|
+| AuthGuard | `common/guards/auth.guard.ts` | JWT verification + user resolution |
+| PermissionGuard | `common/guards/permission.guard.ts` | Permission + warehouse/owner scope check |
 
 ---
 
@@ -521,15 +533,17 @@ src/modules/auth/
 
 ## 7. Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| JWT_SECRET | - | Secret key cho JWT signing |
-| ACCESS_TOKEN_TTL_MINUTES | 15 | TTL access token (phút) |
-| REFRESH_TOKEN_TTL_DAYS | 7 | TTL refresh token (ngày) |
-| PASSWORD_MIN_LENGTH | 8 | Độ dài tối thiểu mật khẩu |
-| PASSWORD_HISTORY_COUNT | 5 | Số mật khẩu cũ không được dùng lại |
-| LOGIN_MAX_FAILED_ATTEMPTS | 5 | Số lần sai tối đa trước khi khóa |
-| LOGIN_LOCK_MINUTES | 15 | Thời gian khóa (phút) |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| JWT_SECRET | ✅ **Yes** | - | Secret key cho JWT signing (bắt buộc) |
+| ACCESS_TOKEN_TTL_MINUTES | ❌ | 15 | TTL access token (phút) |
+| REFRESH_TOKEN_TTL_DAYS | ❌ | 7 | TTL refresh token (ngày) |
+| PASSWORD_MIN_LENGTH | ❌ | 8 | Độ dài tối thiểu mật khẩu |
+| PASSWORD_HISTORY_COUNT | ❌ | 5 | Số mật khẩu cũ không được dùng lại |
+| LOGIN_MAX_FAILED_ATTEMPTS | ❌ | 5 | Số lần sai tối đa trước khi khóa |
+| LOGIN_LOCK_MINUTES | ❌ | 15 | Thời gian khóa (phút) |
+
+> **Note (v1.1):** `JWT_SECRET` không còn có fallback value. Nếu thiếu sẽ throw error khi khởi động.
 
 ---
 
