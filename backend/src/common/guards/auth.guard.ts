@@ -70,9 +70,10 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn.');
     }
 
+    // HI-1 Fix: Read 'ucd' key from JWT payload (matches TokenService)
     const userCode =
-      typeof payload === 'object' && payload !== null && 'userCode' in payload
-        ? String(payload.userCode)
+      typeof payload === 'object' && payload !== null && 'ucd' in payload
+        ? String(payload.ucd)
         : null;
 
     if (!userCode) {

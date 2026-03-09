@@ -11,7 +11,12 @@ export class TokenService {
   private readonly refreshTokenTtlDays: number;
 
   constructor(private readonly configService: ConfigService) {
-    this.jwtSecret = this.configService.get<string>('JWT_SECRET') || 'dev-secret-change-me';
+    // HI-3 Fix: Throw error if JWT_SECRET not configured instead of using fallback
+    const secret = this.configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required for token signing');
+    }
+    this.jwtSecret = secret;
     this.accessTokenTtlMinutes = this.configService.get<number>('ACCESS_TOKEN_TTL_MINUTES') || 15;
     this.refreshTokenTtlDays = this.configService.get<number>('REFRESH_TOKEN_TTL_DAYS') || 7;
   }

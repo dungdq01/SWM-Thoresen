@@ -1,7 +1,7 @@
 # Module Auth - Implementation Report
 
 **Module:** Authentication, Authorization & Session Control  
-**Status:** ✅ Completed  
+**Status:** ✅ Completed (v1.1)  
 **Date:** 2026-03-09  
 **Developer:** AI Assistant
 
@@ -16,6 +16,19 @@ Module Auth đã được implement thành công theo workflow skill-code (Step 
 - **6 services** xử lý business logic
 - **7 repositories** cho data access
 - **5 controllers** cho API routing
+
+### v1.1 Updates (Feedback Fixes)
+
+Sau code review, các issues đã được fix:
+
+| Issue ID | Severity | Description | Status |
+|----------|----------|-------------|--------|
+| CR-1 | CRITICAL | Foundation AuthGuard là stub | ✅ Fixed |
+| CR-2 | CRITICAL | Dual guard system xung đột | ✅ Fixed |
+| HI-1 | HIGH | JWT payload field mismatch (`ucd` vs `userCode`) | ✅ Fixed |
+| HI-2 | HIGH | @RequirePermission decorator không có guard | ✅ Fixed |
+| HI-3 | HIGH | JWT secret có fallback insecure | ✅ Fixed |
+| MD-4 | MEDIUM | Admin controller dùng `(req as any).user` | ✅ Fixed |
 
 ---
 
@@ -243,8 +256,110 @@ Module Auth đã được implement thành công theo workflow skill-code (Step 
 
 ---
 
-## 12. Notes
+## 12. Feedback Analysis & Fixes (v1.1)
+
+### Code Review Score: 8.0/10 → CONDITIONAL PASS
+
+The initial implementation received feedback identifying critical issues. All have been addressed:
+
+### CR-1 & CR-2: Guard System Unification
+
+**Problem:**
+- Foundation `auth.guard.ts` was a stub (`return !!request.user`)
+- Two conflicting guard systems with different metadata keys
+- Foundation used `'permissions'` (plural), Common used `'permission'` (singular)
+- Foundation PermissionGuard checked `user.permissions` (undefined field)
+
+**Fix:**
+```typescript
+// modules/foundation/auth/index.ts - Now re-exports from common
+export { AuthGuard } from '../../../common/guards/auth.guard';
+export { PermissionGuard } from '../../../common/guards/permission.guard';
+export { Permission, PERMISSION_KEY } from '../../../common/decorators/permission.decorator';
+```
+
+### HI-1: JWT Payload Field Mismatch
+
+**Problem:**
+- TokenService generated JWT with abbreviated keys (`ucd` for userCode)
+- AuthGuard read `payload.userCode` (full key) → always null in production
+
+**Fix:**
+```typescript
+// common/guards/auth.guard.ts
+const userCode =
+  typeof payload === 'object' && payload !== null && 'ucd' in payload
+    ? String(payload.ucd)  // Fixed: Read 'ucd' not 'userCode'
+    : null;
+```
+
+### HI-2: @RequirePermission No-Op
+
+**Problem:**
+- `@RequirePermission` decorator set metadata key `'requirePermission'`
+- No guard read this key → permission checks were no-ops
+- Admin actions had no real permission enforcement
+
+**Fix:**
+```typescript
+// admin-auth.controller.ts
+@UseGuards(AuthGuard, PermissionGuard)  // Added PermissionGuard
+export class AdminAuthController {
+  @Post(':id/force-reset-password')
+  @Permission('ADMIN.USER.RESET_PASSWORD')  // Changed from @RequirePermission
+  async forceResetPassword(
+    @CurrentUser() adminUser: RequestUser,  // Added type-safe decorator
+    ...
+  ) { ... }
+}
+```
+
+### HI-3: JWT Secret Fallback
+
+**Problem:**
+```typescript
+// Old code - insecure fallback
+this.jwtSecret = this.configService.get('JWT_SECRET') || 'dev-secret-change-me';
+```
+
+**Fix:**
+```typescript
+// New code - throws on missing secret
+const secret = this.configService.get<string>('JWT_SECRET');
+if (!secret) {
+  throw new Error('JWT_SECRET environment variable is required for token signing');
+}
+this.jwtSecret = secret;
+```
+
+### MD-4: Type Safety in Admin Controller
+
+**Problem:**
+```typescript
+const adminUser = (req as any).user;  // No type safety
+```
+
+**Fix:**
+```typescript
+@CurrentUser() adminUser: RequestUser  // Type-safe decorator
+```
+
+---
+
+## 13. Files Modified in v1.1
+
+| File | Change |
+|------|--------|
+| `common/guards/auth.guard.ts` | Read `ucd` instead of `userCode` from JWT |
+| `modules/foundation/auth/index.ts` | Re-export from common/guards |
+| `modules/auth/services/token.service.ts` | Remove JWT secret fallback |
+| `modules/auth/controllers/admin-auth.controller.ts` | Add PermissionGuard, use @CurrentUser |
+
+---
+
+## 14. Notes
 
 - IDE lint errors về Prisma types là do TypeScript server chưa refresh - build đã pass thành công
 - Cần restart IDE hoặc chạy "TypeScript: Restart TS Server" để clear lint errors
 - Test credentials: `admin` / `Admin@123`
+- **JWT_SECRET is now required** - application will not start without it
