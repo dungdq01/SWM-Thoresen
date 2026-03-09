@@ -77,7 +77,7 @@ export function MainLayout() {
 
               <Link to="/" className="hidden xl:block">
                 <Button variant="outline" size="sm" icon={<ArrowLeft className="h-4 w-4" />}>
-                  Landing page
+                  Trang chủ
                 </Button>
               </Link>
               <div className="relative w-full max-w-md min-w-0">
@@ -94,7 +94,7 @@ export function MainLayout() {
                 <Switch
                   checked={isMockEnabled}
                   onChange={handleToggleMock}
-                  label="Mock data"
+                  label="Dữ liệu mẫu"
                   description={isMockEnabled ? 'Đang dùng dữ liệu mẫu' : 'Đang dùng API thật'}
                   className="items-center"
                 />
@@ -111,7 +111,7 @@ export function MainLayout() {
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-semibold text-navy-900">Admin TVL</p>
-                  <p className="text-xs text-navy-400">Foundation Operator</p>
+                  <p className="text-xs text-navy-400">Vận hành nền tảng</p>
                 </div>
                 <ChevronDown className="hidden sm:block h-4 w-4 text-navy-400" />
               </button>

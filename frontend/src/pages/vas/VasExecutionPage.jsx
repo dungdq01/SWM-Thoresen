@@ -60,19 +60,19 @@ export function VasExecutionPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">VAS Execution</h2>
-        <Button variant="outline" size="sm" onClick={() => { refetchWo(); refetchSessions() }}>Refresh</Button>
+        <h2 className="section-title">Thực thi VAS</h2>
+        <Button variant="outline" size="sm" onClick={() => { refetchWo(); refetchSessions() }}>Làm mới</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
         <div className="wrs-card p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-navy-900">Work Orders In Progress</h3>
+          <h3 className="text-sm font-semibold text-navy-900">Lệnh đang thực hiện</h3>
           <Table>
             <TableHeader>
               <TableRow hoverable={false}>
-                <TableHead>Work Order</TableHead>
-                <TableHead align="right">Progress</TableHead>
-                <TableHead align="center">Select</TableHead>
+                <TableHead>Lệnh</TableHead>
+                <TableHead align="right">Tiến độ</TableHead>
+                <TableHead align="center">Chọn</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -90,7 +90,7 @@ export function VasExecutionPage() {
                   </TableCell>
                   <TableCell align="center">
                     <Button variant={selectedWoId === wo.id ? 'gold' : 'outline'} size="sm" onClick={() => setSelectedWoId(wo.id)}>
-                      {selectedWoId === wo.id ? 'Selected' : 'Select'}
+                      {selectedWoId === wo.id ? 'Đã chọn' : 'Chọn'}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -113,51 +113,51 @@ export function VasExecutionPage() {
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="rounded-xl bg-moon-50 p-3">
                     <p className="text-xl font-bold text-navy-900">{selectedWo.sourceQty?.toLocaleString()}</p>
-                    <p className="text-xs text-navy-500">Source (kg)</p>
+                    <p className="text-xs text-navy-500">Nguồn (kg)</p>
                   </div>
                   <div className="rounded-xl bg-moon-50 p-3">
                     <p className="text-xl font-bold text-navy-900">{selectedWo.targetQty?.toLocaleString()}</p>
-                    <p className="text-xs text-navy-500">Target (bags)</p>
+                    <p className="text-xs text-navy-500">Mục tiêu (bao)</p>
                   </div>
                   <div className="rounded-xl bg-ice/10 p-3">
                     <p className="text-xl font-bold text-ice">{selectedWo.actualBagsProduced?.toLocaleString()}</p>
-                    <p className="text-xs text-navy-500">Produced</p>
+                    <p className="text-xs text-navy-500">Đã sản xuất</p>
                   </div>
                 </div>
                 {selectedWo.actualBagsProduced >= selectedWo.targetQty && (
-                  <Button variant="accent" className="w-full" onClick={handleCompleteWorkOrder}>Complete Work Order</Button>
+                  <Button variant="accent" className="w-full" onClick={handleCompleteWorkOrder}>Hoàn thành lệnh</Button>
                 )}
               </div>
 
               <div className="wrs-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold text-navy-900">Session Control</h3>
+                <h3 className="text-sm font-semibold text-navy-900">Quản lý phiên</h3>
                 {activeSession ? (
                   <>
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-semibold text-navy-900">{activeSession.sessionNumber}</p>
-                          <p className="text-xs text-navy-500">Active · {activeSession.bagsRecorded} bags recorded</p>
+                          <p className="text-xs text-navy-500">Hoạt động · {activeSession.bagsRecorded} bao đã ghi</p>
                         </div>
                         <Badge variant="success">ACTIVE</Badge>
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <Input label="Bag Weight (kg)" type="number" value={bagWeight} onChange={(e) => setBagWeight(e.target.value)} className="flex-1" />
+                      <Input label="Trọng lượng bao (kg)" type="number" value={bagWeight} onChange={(e) => setBagWeight(e.target.value)} className="flex-1" />
                       <Input label="Số lượng (bao)" type="number" min="1" value={bagCount} onChange={(e) => setBagCount(e.target.value)} className="w-28" />
                       <Button variant="accent" onClick={handleRecordBag} disabled={recordBag.isPending} className="self-end">
-                        {recordBag.isPending ? 'Đang ghi...' : `Record ${Number(bagCount) > 1 ? bagCount + ' Bags' : 'Bag'}`}
+                        {recordBag.isPending ? 'Đang ghi...' : `Ghi ${Number(bagCount) > 1 ? bagCount + ' bao' : 'bao'}`}
                       </Button>
                     </div>
-                    <Button variant="outline" className="w-full" onClick={handleEndSession}>End Session</Button>
+                    <Button variant="outline" className="w-full" onClick={handleEndSession}>Kết thúc phiên</Button>
                   </>
                 ) : (
-                  <Button variant="accent" className="w-full" onClick={handleStartSession}>Start New Session</Button>
+                  <Button variant="accent" className="w-full" onClick={handleStartSession}>Bắt đầu phiên mới</Button>
                 )}
               </div>
 
               <div className="wrs-card p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-navy-900">Session History</h3>
+                <h3 className="text-sm font-semibold text-navy-900">Lịch sử phiên</h3>
                 {sessions.map((session) => (
                   <div key={session.id} className="flex items-center justify-between border-b border-moon-200 pb-2">
                     <div>
@@ -171,7 +171,7 @@ export function VasExecutionPage() {
             </>
           ) : (
             <div className="wrs-card p-8 text-center">
-              <p className="text-navy-500">Select a Work Order to start execution.</p>
+              <p className="text-navy-500">Chọn lệnh để bắt đầu thực thi.</p>
             </div>
           )}
         </div>

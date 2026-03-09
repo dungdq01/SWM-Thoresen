@@ -3,7 +3,7 @@ import { useInventoryReport } from '@domains/reporting'
 import { Badge, Button, Input, Pagination, SummaryDonut, StatHighlight, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Tất cả status' },
+  { value: '', label: 'Tất cả trạng thái' },
   { value: 'AVAIL', label: 'AVAIL' },
   { value: 'QC_HOLD', label: 'QC_HOLD' },
   { value: 'DAMAGED', label: 'DAMAGED' },
@@ -35,28 +35,28 @@ export function InventoryReportPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Inventory Report — On-Hand Summary</h2>
+        <h2 className="section-title">Báo cáo tồn kho</h2>
         <p className="text-xs text-navy-400">Chỉ đọc · Dữ liệu = SUM(InventTrans) signed qty theo từng InventDim</p>
       </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">On-Hand Breakdown</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Phân bổ tồn kho</h3>
           <SummaryDonut
-            centerLabel="On-Hand"
+            centerLabel="Tồn kho"
             centerValue={totalOnHand.toLocaleString()}
             data={[
-              { name: 'Available', value: totalAvailable, color: '#059669' },
-              { name: 'Reserved', value: totalReserved, color: '#d97706' },
+              { name: 'Có sẵn', value: totalAvailable, color: '#059669' },
+              { name: 'Đã đặt', value: totalReserved, color: '#d97706' },
             ]}
           />
         </div>
         <div className="wrs-card p-5 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-navy-900">Inventory Summary</h3>
-          <StatHighlight value={totalOnHand.toLocaleString()} label="Total On-Hand (KG)" color="text-navy-900" bgColor="bg-moon-50" />
-          <StatHighlight value={totalReserved.toLocaleString()} label="Reserved (KG)" color="text-amber-600" bgColor="bg-amber-50" />
-          <StatHighlight value={totalAvailable.toLocaleString()} label="Available (KG)" color="text-emerald-600" bgColor="bg-emerald-50" />
+          <h3 className="text-sm font-semibold text-navy-900">Tổng hợp tồn kho</h3>
+          <StatHighlight value={totalOnHand.toLocaleString()} label="Tổng tồn (KG)" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={totalReserved.toLocaleString()} label="Đã đặt (KG)" color="text-amber-600" bgColor="bg-amber-50" />
+          <StatHighlight value={totalAvailable.toLocaleString()} label="Có sẵn (KG)" color="text-emerald-600" bgColor="bg-emerald-50" />
         </div>
       </div>
 
@@ -64,7 +64,7 @@ export function InventoryReportPage() {
       <div className="wrs-card p-4 mb-4">
         <div className="flex flex-wrap gap-3">
           <Input
-            placeholder="Tìm item code, tên, location..."
+            placeholder="Tìm mã hàng, tên, vị trí..."
             value={filters.keyword}
             onChange={(e) => setFilter('keyword', e.target.value)}
             className="w-64"
@@ -83,7 +83,7 @@ export function InventoryReportPage() {
             size="sm"
             onClick={() => setFilters({ keyword: '', statusCode: '', page: 1, limit: 20 })}
           >
-            Reset
+            Đặt lại
           </Button>
         </div>
       </div>
@@ -93,15 +93,15 @@ export function InventoryReportPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Owner</TableHead>
-              <TableHead>Item Code</TableHead>
-              <TableHead>Item Name</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">On-Hand (KG)</TableHead>
-              <TableHead className="text-right">Reserved (KG)</TableHead>
-              <TableHead className="text-right">Available (KG)</TableHead>
-              <TableHead className="text-right">Bags</TableHead>
+              <TableHead>Chủ hàng</TableHead>
+              <TableHead>Mã hàng</TableHead>
+              <TableHead>Tên hàng</TableHead>
+              <TableHead>Vị trí</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead className="text-right">Tồn (KG)</TableHead>
+              <TableHead className="text-right">Đặt (KG)</TableHead>
+              <TableHead className="text-right">Có sẵn (KG)</TableHead>
+              <TableHead className="text-right">Bao</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

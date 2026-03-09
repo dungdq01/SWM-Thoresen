@@ -3,7 +3,7 @@ import { useAuditLogs } from '@domains/reporting'
 import { Badge, Button, Input, Pagination, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const ENTITY_TYPE_OPTIONS = [
-  { value: '', label: 'Tất cả entity' },
+  { value: '', label: 'Tất cả đối tượng' },
   { value: 'PURCHASE_ORDER', label: 'Purchase Order' },
   { value: 'SHIPMENT', label: 'Shipment' },
   { value: 'INVENT_TRANS', label: 'Invent Trans' },
@@ -16,7 +16,7 @@ const ENTITY_TYPE_OPTIONS = [
 ]
 
 const ACTION_OPTIONS = [
-  { value: '', label: 'Tất cả action' },
+  { value: '', label: 'Tất cả thao tác' },
   { value: 'CREATE', label: 'CREATE' },
   { value: 'UPDATE', label: 'UPDATE' },
   { value: 'STATUS_CHANGE', label: 'STATUS_CHANGE' },
@@ -69,15 +69,15 @@ export function AuditTrailPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Audit Trail</h2>
-        <p className="text-xs text-navy-400">Chỉ đọc · AC-AUD-1..3: searchable, date filter, entity type filter</p>
+        <h2 className="section-title">Nhật ký hệ thống</h2>
+        <p className="text-xs text-navy-400">Chỉ đọc · AC-AUD-1..3: tìm kiếm, lọc ngày, lọc đối tượng</p>
       </div>
 
       {/* Filters */}
       <div className="wrs-card p-4 mb-4">
         <div className="flex flex-wrap gap-3">
           <Input
-            placeholder="Tìm entity ID, user..."
+            placeholder="Tìm ID đối tượng, người dùng..."
             value={filters.keyword}
             onChange={(e) => setFilter('keyword', e.target.value)}
             className="w-52"
@@ -118,7 +118,7 @@ export function AuditTrailPage() {
             size="sm"
             onClick={() => setFilters({ keyword: '', entityType: '', action: '', dateFrom: '', dateTo: '', page: 1, limit: 15 })}
           >
-            Reset
+            Đặt lại
           </Button>
         </div>
       </div>
@@ -128,12 +128,12 @@ export function AuditTrailPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Entity Type</TableHead>
-              <TableHead>Entity ID</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Changes</TableHead>
+              <TableHead>Thời gian</TableHead>
+              <TableHead>Đối tượng</TableHead>
+              <TableHead>ID</TableHead>
+              <TableHead>Thao tác</TableHead>
+              <TableHead>Người dùng</TableHead>
+              <TableHead>Thay đổi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

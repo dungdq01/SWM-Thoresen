@@ -35,8 +35,8 @@ export function AlertsPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Integration Alerts</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Cảnh báo tích hợp</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -49,17 +49,17 @@ export function AlertsPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Alert</TableHead>
-              <TableHead>Source / Severity</TableHead>
-              <TableHead>Message</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Cảnh báo</TableHead>
+              <TableHead>Nguồn / Mức độ</TableHead>
+              <TableHead>Nội dung</TableHead>
+              <TableHead>Thời gian</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No alerts" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không có cảnh báo" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -79,10 +79,10 @@ export function AlertsPage() {
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
                     {row.status === 'OPEN' && (
-                      <Button variant="outline" size="sm" onClick={() => acknowledgeAlert.mutate({ id: row.id, data: {} })}>Acknowledge</Button>
+                      <Button variant="outline" size="sm" onClick={() => acknowledgeAlert.mutate({ id: row.id, data: {} })}>Xác nhận</Button>
                     )}
                     {['OPEN', 'ACKNOWLEDGED'].includes(row.status) && (
-                      <Button variant="accent" size="sm" onClick={() => setResolvingId(row.id)}>Resolve</Button>
+                      <Button variant="accent" size="sm" onClick={() => setResolvingId(row.id)}>Xử lý</Button>
                     )}
                   </div>
                 </TableCell>
@@ -97,11 +97,11 @@ export function AlertsPage() {
       {resolvingId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="wrs-card p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-semibold text-navy-900">Resolve Alert</h3>
-            <Textarea label="Resolution Note" rows={3} value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} placeholder="Enter resolution details..." />
+            <h3 className="text-lg font-semibold text-navy-900">Xử lý cảnh báo</h3>
+            <Textarea label="Ghi chú xử lý" rows={3} value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} placeholder="Nhập chi tiết xử lý..." />
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setResolvingId('')}>Cancel</Button>
-              <Button variant="accent" onClick={() => handleResolve(resolvingId)} disabled={resolveAlert.isPending}>Resolve</Button>
+              <Button variant="outline" onClick={() => setResolvingId('')}>Hủy</Button>
+              <Button variant="accent" onClick={() => handleResolve(resolvingId)} disabled={resolveAlert.isPending}>Xử lý</Button>
             </div>
           </div>
         </div>

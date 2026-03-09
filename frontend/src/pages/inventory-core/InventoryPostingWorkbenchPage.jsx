@@ -68,48 +68,48 @@ export function InventoryPostingWorkbenchPage() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h2 className="section-title">Posting & reversal workbench</h2>
+          <h2 className="section-title">Bàn làm việc ghi sổ & hoàn nhập</h2>
         </div>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
         <div className="form-section">
-          <h3 className="form-section-title"><Send className="h-5 w-5 text-ice" /> Create Posting</h3>
+          <h3 className="form-section-title"><Send className="h-5 w-5 text-ice" /> Tạo bút toán</h3>
           <div className="form-grid">
-            <Input label="Event code" value={posting.eventCode} onChange={(e) => setPosting((prev) => ({ ...prev, eventCode: e.target.value }))} />
-            <Input label="Reference type" value={posting.refType} onChange={(e) => setPosting((prev) => ({ ...prev, refType: e.target.value }))} />
-            <Input label="Reference ID" value={posting.refId} onChange={(e) => setPosting((prev) => ({ ...prev, refId: e.target.value }))} />
-            <Input label="Reference line ID" value={posting.refLineId} onChange={(e) => setPosting((prev) => ({ ...prev, refLineId: e.target.value }))} />
+            <Input label="Mã sự kiện" value={posting.eventCode} onChange={(e) => setPosting((prev) => ({ ...prev, eventCode: e.target.value }))} />
+            <Input label="Loại tham chiếu" value={posting.refType} onChange={(e) => setPosting((prev) => ({ ...prev, refType: e.target.value }))} />
+            <Input label="Mã tham chiếu" value={posting.refId} onChange={(e) => setPosting((prev) => ({ ...prev, refId: e.target.value }))} />
+            <Input label="Mã dòng tham chiếu" value={posting.refLineId} onChange={(e) => setPosting((prev) => ({ ...prev, refLineId: e.target.value }))} />
             <select className="wrs-input" value={posting.itemId} onChange={(e) => setPosting((prev) => ({ ...prev, itemId: e.target.value }))}>
-              <option value="">Select item</option>
+              <option value="">Chọn mặt hàng</option>
               {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
             </select>
-            <Input label="Qty" value={posting.qty} onChange={(e) => setPosting((prev) => ({ ...prev, qty: e.target.value }))} />
-            <Input label="UOM code" value={posting.uomCode} onChange={(e) => setPosting((prev) => ({ ...prev, uomCode: e.target.value }))} />
+            <Input label="Số lượng" value={posting.qty} onChange={(e) => setPosting((prev) => ({ ...prev, qty: e.target.value }))} />
+            <Input label="Mã ĐVT" value={posting.uomCode} onChange={(e) => setPosting((prev) => ({ ...prev, uomCode: e.target.value }))} />
             <select className="wrs-input" value={posting.warehouseCode} onChange={(e) => setPosting((prev) => ({ ...prev, warehouseCode: e.target.value }))}>
-              <option value="">Select warehouse</option>
+              <option value="">Chọn kho</option>
               {warehouseOptions.map((option) => <option key={option.id} value={option.code}>{option.code} - {option.name}</option>)}
             </select>
-            <Input label="Location code" value={posting.locationCode} onChange={(e) => setPosting((prev) => ({ ...prev, locationCode: e.target.value }))} />
-            <Input label="Owner code" value={posting.ownerCode} onChange={(e) => setPosting((prev) => ({ ...prev, ownerCode: e.target.value }))} />
-            <Input label="Status code" value={posting.statusCode} onChange={(e) => setPosting((prev) => ({ ...prev, statusCode: e.target.value }))} />
+            <Input label="Mã vị trí" value={posting.locationCode} onChange={(e) => setPosting((prev) => ({ ...prev, locationCode: e.target.value }))} />
+            <Input label="Mã chủ hàng" value={posting.ownerCode} onChange={(e) => setPosting((prev) => ({ ...prev, ownerCode: e.target.value }))} />
+            <Input label="Mã trạng thái" value={posting.statusCode} onChange={(e) => setPosting((prev) => ({ ...prev, statusCode: e.target.value }))} />
           </div>
           <div className="form-footer">
-            <Button variant="outline" onClick={() => setPosting(initialPosting)}>Reset</Button>
-            <Button variant="accent" onClick={handlePosting} disabled={createPosting.isPending}>Post transaction</Button>
+            <Button variant="outline" onClick={() => setPosting(initialPosting)}>Đặt lại</Button>
+            <Button variant="accent" onClick={handlePosting} disabled={createPosting.isPending}>Ghi bút toán</Button>
           </div>
         </div>
 
         <div className="form-section">
-          <h3 className="form-section-title"><RefreshCcw className="h-5 w-5 text-ice" /> Reverse transaction</h3>
+          <h3 className="form-section-title"><RefreshCcw className="h-5 w-5 text-ice" /> Hoàn nhập giao dịch</h3>
           <div className="space-y-4">
-            <Input label="Original trans ID" value={reverse.originalTransId} onChange={(e) => setReverse((prev) => ({ ...prev, originalTransId: e.target.value }))} />
-            <Input label="Reason code" value={reverse.reasonCode} onChange={(e) => setReverse((prev) => ({ ...prev, reasonCode: e.target.value }))} />
-            <Textarea label="Note" rows={5} value={reverse.note} onChange={(e) => setReverse((prev) => ({ ...prev, note: e.target.value }))} />
+            <Input label="Mã GD gốc" value={reverse.originalTransId} onChange={(e) => setReverse((prev) => ({ ...prev, originalTransId: e.target.value }))} />
+            <Input label="Mã lý do" value={reverse.reasonCode} onChange={(e) => setReverse((prev) => ({ ...prev, reasonCode: e.target.value }))} />
+            <Textarea label="Ghi chú" rows={5} value={reverse.note} onChange={(e) => setReverse((prev) => ({ ...prev, note: e.target.value }))} />
           </div>
           <div className="form-footer">
-            <Button variant="outline" onClick={() => setReverse(initialReverse)}>Reset</Button>
-            <Button variant="destructive" onClick={handleReverse} disabled={reversePosting.isPending}>Reverse transaction</Button>
+            <Button variant="outline" onClick={() => setReverse(initialReverse)}>Đặt lại</Button>
+            <Button variant="destructive" onClick={handleReverse} disabled={reversePosting.isPending}>Hoàn nhập giao dịch</Button>
           </div>
         </div>
       </div>

@@ -47,41 +47,41 @@ export function InventoryTransactionsPage() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h2 className="section-title">Transaction history</h2>
+          <h2 className="section-title">Lịch sử giao dịch</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <select className="wrs-input" value={filters.itemId} onChange={(e) => handleChange('itemId', e.target.value)}>
-            <option value="">All items</option>
+            <option value="">Tất cả mặt hàng</option>
             {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
           </select>
           <select className="wrs-input" value={filters.ownerId} onChange={(e) => handleChange('ownerId', e.target.value)}>
-            <option value="">All owners</option>
+            <option value="">Tất cả chủ hàng</option>
             {ownerOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
           </select>
-          <Input placeholder="Ref ID or correlation ID" value={filters.refId} onChange={(e) => handleChange('refId', e.target.value)} />
-          <Input placeholder="Ref type (RECEIPT, SHIPMENT...)" value={filters.refType} onChange={(e) => handleChange('refType', e.target.value)} />
-          <Input placeholder="Trans type" value={filters.transType} onChange={(e) => handleChange('transType', e.target.value)} />
-          <Input placeholder="Correlation ID" value={filters.correlationId} onChange={(e) => handleChange('correlationId', e.target.value)} />
+          <Input placeholder="Mã tham chiếu hoặc mã tương quan" value={filters.refId} onChange={(e) => handleChange('refId', e.target.value)} />
+          <Input placeholder="Loại tham chiếu (RECEIPT, SHIPMENT...)" value={filters.refType} onChange={(e) => handleChange('refType', e.target.value)} />
+          <Input placeholder="Loại giao dịch" value={filters.transType} onChange={(e) => handleChange('transType', e.target.value)} />
+          <Input placeholder="Mã tương quan" value={filters.correlationId} onChange={(e) => handleChange('correlationId', e.target.value)} />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Trans ID</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead align="right">Qty</TableHead>
-              <TableHead>Item / Owner</TableHead>
-              <TableHead>Posted</TableHead>
+              <TableHead>Mã GD</TableHead>
+              <TableHead>Tham chiếu</TableHead>
+              <TableHead>Loại</TableHead>
+              <TableHead align="right">SL</TableHead>
+              <TableHead>Hàng / Chủ hàng</TableHead>
+              <TableHead>Đã ghi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No matching inventory transactions" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không tìm thấy giao dịch tồn kho phù hợp" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -93,20 +93,20 @@ export function InventoryTransactionsPage() {
                 <TableCell>
                   <div>
                     <p className="font-medium text-navy-800">{row.refType || 'N/A'}</p>
-                    <p className="text-xs text-navy-400">{row.refId || 'No document'}</p>
+                    <p className="text-xs text-navy-400">{row.refId || 'Không có chứng từ'}</p>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">
                     <Badge variant={transTypeTone(row.transType)}>{row.transType}</Badge>
-                    {row.isReversal ? <Badge variant="danger">Reversal</Badge> : null}
+                    {row.isReversal ? <Badge variant="danger">Hoàn nhập</Badge> : null}
                   </div>
                 </TableCell>
                 <TableCell align="right" className={String(row.qty).startsWith('-') ? 'text-warning font-semibold' : 'text-success font-semibold'}>{row.qty}</TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium text-navy-900">{row.item?.itemCode || row.itemId}</p>
-                    <p className="text-xs text-navy-400">{row.owner?.ownerCode || 'No owner'}</p>
+                    <p className="text-xs text-navy-400">{row.owner?.ownerCode || 'Không có chủ hàng'}</p>
                   </div>
                 </TableCell>
                 <TableCell>

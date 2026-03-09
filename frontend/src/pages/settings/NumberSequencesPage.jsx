@@ -43,11 +43,11 @@ export function NumberSequencesPage() {
 
   return (
     <SettingsLayout
-      title="Number Sequence Management"
+      title="Quản lý dãy số"
       description="Cấu hình quy tắc sinh số tự động cho các loại chứng từ trong hệ thống."
       actions={
         <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-          Create Sequence
+          Tạo dãy số
         </Button>
       }
     >
@@ -56,28 +56,28 @@ export function NumberSequencesPage() {
           value={search}
           onChange={setSearch}
           onClear={() => setSearch('')}
-          placeholder="Search by code or description..."
+          placeholder="Tìm theo mã hoặc mô tả..."
           className="max-w-md"
         />
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Code</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Prefix</TableHead>
-              <TableHead>Format</TableHead>
-              <TableHead>Scope</TableHead>
+              <TableHead>Mã</TableHead>
+              <TableHead>Mô tả</TableHead>
+              <TableHead>Tiền tố</TableHead>
+              <TableHead>Định dạng</TableHead>
+              <TableHead>Phạm vi</TableHead>
               <TableHead>Reset</TableHead>
-              <TableHead>Number Length</TableHead>
-              <TableHead align="right">Actions</TableHead>
+              <TableHead>Độ dài số</TableHead>
+              <TableHead align="right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableLoading colSpan={8} />
             ) : filteredSequences.length === 0 ? (
-              <TableEmpty colSpan={8} message={search ? 'No matching sequences found' : 'No sequences available'} />
+              <TableEmpty colSpan={8} message={search ? 'Không tìm thấy dãy số phù hợp' : 'Chưa có dãy số nào'} />
             ) : (
               filteredSequences.map((seq) => (
                 <TableRow key={seq.id}>
@@ -118,7 +118,7 @@ export function NumberSequencesPage() {
                     <button
                       onClick={() => openEditModal(seq)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
-                      title="Edit"
+                      title="Chỉnh sửa"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>

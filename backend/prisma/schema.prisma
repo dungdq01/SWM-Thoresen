@@ -1648,6 +1648,7 @@ enum ShipmentExceptionType {
   SHORT_PICK
   WORK_CREATE_FAIL
   INTEGRATION_FAIL
+  HOLD_RELEASE_WARN
 }
 
 enum ShipmentExceptionStatus {

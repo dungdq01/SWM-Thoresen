@@ -58,8 +58,8 @@ export function InventoryStatusesPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Inventory Status"
-        description="List of all inventory statuses in the system (cannot add new)"
+        title="Trạng thái tồn kho"
+        description="Danh sách trạng thái tồn kho trong hệ thống (không thể thêm mới)"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -72,21 +72,21 @@ export function InventoryStatusesPage() {
           filterValues={{}}
           onFilterChange={() => {}}
           onClearFilters={() => setFilters((prev) => ({ ...prev, keyword: '', page: 1 }))}
-          placeholder="Search by code or description..."
+          placeholder="Tìm theo mã hoặc mô tả..."
         />
       </div>
 
       <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
         <p className="text-sm text-blue-800">
-          <strong>Note:</strong> Inventory statuses are system data and cannot be created. 
-          You can only update descriptions for statuses that are not system locked.
+          <strong>Lưu ý:</strong> Trạng thái tồn kho là dữ liệu hệ thống, không thể tạo mới. 
+          Chỉ có thể cập nhật mô tả cho các trạng thái chưa bị khóa hệ thống.
         </p>
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={statuses.length === 0}
-        emptyMessage="No inventory statuses available"
+        emptyMessage="Chưa có trạng thái tồn kho nào"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -94,12 +94,12 @@ export function InventoryStatusesPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Status Code</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead align="center">Allocatable</TableHead>
-            <TableHead align="center">System Locked</TableHead>
-            <TableHead align="center">Badge</TableHead>
-            <TableHead align="center" className="w-16">Actions</TableHead>
+            <TableHead>Mã trạng thái</TableHead>
+            <TableHead>Mô tả</TableHead>
+            <TableHead align="center">Cho phép xuất</TableHead>
+            <TableHead align="center">Khóa hệ thống</TableHead>
+            <TableHead align="center">Nhãn</TableHead>
+            <TableHead align="center" className="w-16">Thao tác</TableHead>
           </TableRow>
         </TableHeader>
         {!isLoading && statuses.length > 0 && (
@@ -119,14 +119,14 @@ export function InventoryStatusesPage() {
                 </TableCell>
                 <TableCell align="center">
                   {status.isAllocatable ? (
-                    <Badge variant="success">Yes</Badge>
+                    <Badge variant="success">Có</Badge>
                   ) : (
-                    <Badge variant="neutral">No</Badge>
+                    <Badge variant="neutral">Không</Badge>
                   )}
                 </TableCell>
                 <TableCell align="center">
                   {status.isSystemLocked ? (
-                    <Badge variant="warning">Locked</Badge>
+                    <Badge variant="warning">Đã khóa</Badge>
                   ) : (
                     <span className="text-navy-400">—</span>
                   )}
@@ -142,7 +142,7 @@ export function InventoryStatusesPage() {
                     <button
                       onClick={() => openEdit(status)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
-                      title="Edit description"
+                      title="Chỉnh sửa mô tả"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>

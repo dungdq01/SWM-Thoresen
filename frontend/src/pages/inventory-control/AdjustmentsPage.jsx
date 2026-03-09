@@ -38,12 +38,12 @@ export function AdjustmentsPage() {
 
   const validate = () => {
     const e = {}
-    if (!draft.warehouseId) e.warehouseId = 'Warehouse là bắt buộc'
-    if (!draft.lines[0].locationId) e.locationId = 'Location là bắt buộc'
-    if (!draft.lines[0].itemId) e.itemId = 'Item là bắt buộc'
-    if (!draft.lines[0].ownerId) e.ownerId = 'Owner là bắt buộc'
-    if (!draft.lines[0].adjustQty || Number(draft.lines[0].adjustQty) === 0) e.adjustQty = 'Adjust Qty không được bằng 0'
-    if (!draft.lines[0].reasonCode) e.reasonCode = 'Reason Code là bắt buộc'
+    if (!draft.warehouseId) e.warehouseId = 'Kho là bắt buộc'
+    if (!draft.lines[0].locationId) e.locationId = 'Vị trí là bắt buộc'
+    if (!draft.lines[0].itemId) e.itemId = 'Mặt hàng là bắt buộc'
+    if (!draft.lines[0].ownerId) e.ownerId = 'Chủ hàng là bắt buộc'
+    if (!draft.lines[0].adjustQty || Number(draft.lines[0].adjustQty) === 0) e.adjustQty = 'Số lượng điều chỉnh không được bằng 0'
+    if (!draft.lines[0].reasonCode) e.reasonCode = 'Mã lý do là bắt buộc'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -65,10 +65,10 @@ export function AdjustmentsPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Inventory Adjustments</h2>
+        <h2 className="section-title">Điều chỉnh tồn kho</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Create Adjustment</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo điều chỉnh</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
@@ -81,16 +81,16 @@ export function AdjustmentsPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Adjustment #</TableHead>
-              <TableHead>Warehouse / Source</TableHead>
-              <TableHead align="right">Lines / Qty</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Số điều chỉnh</TableHead>
+              <TableHead>Kho / Nguồn</TableHead>
+              <TableHead align="right">Dòng / SL</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No adjustments available" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Chưa có điều chỉnh nào" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -102,15 +102,15 @@ export function AdjustmentsPage() {
                   <p className="text-xs text-navy-400">{row.sourceType}</p>
                 </TableCell>
                 <TableCell align="right">
-                  <p className="font-semibold text-navy-900">{row.lines?.length || 0} line(s)</p>
+                  <p className="font-semibold text-navy-900">{row.lines?.length || 0} dòng</p>
                   <p className="text-xs text-navy-400">{row.lines?.reduce((sum, l) => sum + (l.adjustQty || 0), 0).toLocaleString()} kg</p>
                 </TableCell>
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => submitAdjustment.mutate(row.id)}>Submit</Button>}
-                    {row.status === 'PENDING_APPROVAL' && <Button variant="accent" size="sm" onClick={() => approveAdjustment.mutate(row.id)}>Approve</Button>}
-                    {row.status === 'APPROVED' && <Button variant="accent" size="sm" onClick={() => postAdjustment.mutate(row.id)}>Post</Button>}
+                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => submitAdjustment.mutate(row.id)}>Gửi duyệt</Button>}
+                    {row.status === 'PENDING_APPROVAL' && <Button variant="accent" size="sm" onClick={() => approveAdjustment.mutate(row.id)}>Duyệt</Button>}
+                    {row.status === 'APPROVED' && <Button variant="accent" size="sm" onClick={() => postAdjustment.mutate(row.id)}>Ghi sổ</Button>}
                   </div>
                 </TableCell>
               </TableRow>
@@ -124,48 +124,48 @@ export function AdjustmentsPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Create Adjustment"
-        description="Adjust inventory manually or from cycle count results."
+        title="Tạo điều chỉnh"
+        description="Điều chỉnh tồn kho thủ công hoặc từ kết quả kiểm kê."
         size="lg"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleCreate} disabled={createAdjustment.isPending}>
-              {createAdjustment.isPending ? 'Đang xử lý...' : 'Create Adjustment'}
+              {createAdjustment.isPending ? 'Đang xử lý...' : 'Tạo điều chỉnh'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
 
           <div className="border-t border-moon-200 pt-4">
-            <p className="text-sm font-semibold text-navy-900 mb-3">Line 1</p>
+            <p className="text-sm font-semibold text-navy-900 mb-3">Dòng 1</p>
             <div className="space-y-3">
               <div>
-                <Select label="Location" value={draft.lines[0].locationId} onChange={(e) => updateLine(0, 'locationId', e.target.value)} options={[{ value: '', label: '-- Chọn Location --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+                <Select label="Vị trí" value={draft.lines[0].locationId} onChange={(e) => updateLine(0, 'locationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
                 {errors.locationId && <p className="text-xs text-danger mt-1">{errors.locationId}</p>}
               </div>
               <div>
-                <Select label="Item" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
+                <Select label="Mặt hàng" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
                 {errors.itemId && <p className="text-xs text-danger mt-1">{errors.itemId}</p>}
               </div>
               <div>
-                <Select label="Owner" value={draft.lines[0].ownerId} onChange={(e) => updateLine(0, 'ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+                <Select label="Chủ hàng" value={draft.lines[0].ownerId} onChange={(e) => updateLine(0, 'ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
                 {errors.ownerId && <p className="text-xs text-danger mt-1">{errors.ownerId}</p>}
               </div>
               <div>
-                <Input label="Adjust Qty (kg, ± value)" type="number" value={draft.lines[0].adjustQty} onChange={(e) => updateLine(0, 'adjustQty', e.target.value)} />
+                <Input label="SL điều chỉnh (kg, ±)" type="number" value={draft.lines[0].adjustQty} onChange={(e) => updateLine(0, 'adjustQty', e.target.value)} />
                 {errors.adjustQty && <p className="text-xs text-danger mt-1">{errors.adjustQty}</p>}
               </div>
               <div>
-                <Select label="Reason Code" value={draft.lines[0].reasonCode} onChange={(e) => updateLine(0, 'reasonCode', e.target.value)} options={[{ value: '', label: '-- Chọn Reason --' }, { value: 'COUNT_SHORTAGE', label: 'COUNT_SHORTAGE' }, { value: 'COUNT_OVERAGE', label: 'COUNT_OVERAGE' }, { value: 'FOUND_STOCK', label: 'FOUND_STOCK' }, { value: 'DAMAGE_WRITEOFF', label: 'DAMAGE_WRITEOFF' }, { value: 'MANUAL_CORRECTION', label: 'MANUAL_CORRECTION' }]} />
+                <Select label="Mã lý do" value={draft.lines[0].reasonCode} onChange={(e) => updateLine(0, 'reasonCode', e.target.value)} options={[{ value: '', label: '-- Chọn lý do --' }, { value: 'COUNT_SHORTAGE', label: 'COUNT_SHORTAGE' }, { value: 'COUNT_OVERAGE', label: 'COUNT_OVERAGE' }, { value: 'FOUND_STOCK', label: 'FOUND_STOCK' }, { value: 'DAMAGE_WRITEOFF', label: 'DAMAGE_WRITEOFF' }, { value: 'MANUAL_CORRECTION', label: 'MANUAL_CORRECTION' }]} />
                 {errors.reasonCode && <p className="text-xs text-danger mt-1">{errors.reasonCode}</p>}
               </div>
-              <Textarea label="Note" rows={2} value={draft.lines[0].note} onChange={(e) => updateLine(0, 'note', e.target.value)} />
+              <Textarea label="Ghi chú" rows={2} value={draft.lines[0].note} onChange={(e) => updateLine(0, 'note', e.target.value)} />
             </div>
           </div>
         </div>

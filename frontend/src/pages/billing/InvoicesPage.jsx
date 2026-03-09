@@ -36,11 +36,11 @@ export function InvoicesPage() {
 
   const validate = () => {
     const e = {}
-    if (!draft.ownerId) e.ownerId = 'Owner là bắt buộc'
-    if (!draft.warehouseId) e.warehouseId = 'Warehouse là bắt buộc'
-    if (!draft.periodFrom) e.periodFrom = 'Period From là bắt buộc'
-    if (!draft.periodTo) e.periodTo = 'Period To là bắt buộc'
-    if (draft.periodFrom && draft.periodTo && draft.periodFrom > draft.periodTo) e.periodTo = 'Period To phải sau Period From'
+    if (!draft.ownerId) e.ownerId = 'Chủ hàng là bắt buộc'
+    if (!draft.warehouseId) e.warehouseId = 'Kho là bắt buộc'
+    if (!draft.periodFrom) e.periodFrom = 'Từ ngày là bắt buộc'
+    if (!draft.periodTo) e.periodTo = 'Đến ngày là bắt buộc'
+    if (draft.periodFrom && draft.periodTo && draft.periodFrom > draft.periodTo) e.periodTo = 'Đến ngày phải sau Từ ngày'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -56,10 +56,10 @@ export function InvoicesPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Invoices</h2>
+        <h2 className="section-title">Hóa đơn</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Generate Invoice</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo hóa đơn</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
@@ -72,22 +72,22 @@ export function InvoicesPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Invoice #</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead align="right">Amount</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Số HĐ</TableHead>
+              <TableHead>Chủ hàng</TableHead>
+              <TableHead>Kỳ</TableHead>
+              <TableHead align="right">Số tiền</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No invoices" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có hóa đơn" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <p className="font-semibold text-navy-900">{row.invoiceNumber}</p>
-                  <p className="text-xs text-navy-400">{row.lineCount} lines</p>
+                  <p className="text-xs text-navy-400">{row.lineCount} dòng</p>
                 </TableCell>
                 <TableCell>
                   <p className="font-medium text-navy-800">{row.owner?.code || row.ownerId}</p>
@@ -105,8 +105,8 @@ export function InvoicesPage() {
                   <div className="flex justify-center gap-2">
                     {row.status === 'DRAFT' && (
                       <>
-                        <Button variant="accent" size="sm" onClick={() => approveInvoice.mutate(row.id)}>Approve</Button>
-                        <Button variant="ghost" size="sm" onClick={() => cancelInvoice.mutate({ id: row.id, data: {} })}>Cancel</Button>
+                        <Button variant="accent" size="sm" onClick={() => approveInvoice.mutate(row.id)}>Duyệt</Button>
+                        <Button variant="ghost" size="sm" onClick={() => cancelInvoice.mutate({ id: row.id, data: {} })}>Hủy</Button>
                       </>
                     )}
                   </div>
@@ -122,33 +122,33 @@ export function InvoicesPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Generate Invoice"
-        description="Generate invoice for owner based on billable events."
+        title="Tạo hóa đơn"
+        description="Tạo hóa đơn cho chủ hàng dựa trên sự kiện tính phí."
         size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleGenerate} disabled={generateInvoice.isPending}>
-              {generateInvoice.isPending ? 'Đang xử lý...' : 'Generate Invoice'}
+              {generateInvoice.isPending ? 'Đang xử lý...' : 'Tạo hóa đơn'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <Select label="Owner" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+            <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
             {errors.ownerId && <p className="text-xs text-danger mt-1">{errors.ownerId}</p>}
           </div>
           <div>
-            <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
           <div>
-            <Input label="Period From" type="date" value={draft.periodFrom} onChange={(e) => setDraft((prev) => ({ ...prev, periodFrom: e.target.value }))} />
+            <Input label="Từ ngày" type="date" value={draft.periodFrom} onChange={(e) => setDraft((prev) => ({ ...prev, periodFrom: e.target.value }))} />
             {errors.periodFrom && <p className="text-xs text-danger mt-1">{errors.periodFrom}</p>}
           </div>
           <div>
-            <Input label="Period To" type="date" value={draft.periodTo} onChange={(e) => setDraft((prev) => ({ ...prev, periodTo: e.target.value }))} />
+            <Input label="Đến ngày" type="date" value={draft.periodTo} onChange={(e) => setDraft((prev) => ({ ...prev, periodTo: e.target.value }))} />
             {errors.periodTo && <p className="text-xs text-danger mt-1">{errors.periodTo}</p>}
           </div>
         </div>

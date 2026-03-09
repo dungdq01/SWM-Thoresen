@@ -40,9 +40,9 @@ export function OutboundApprovalsPage() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h2 className="section-title">Pending approvals & exception governance</h2>
+          <h2 className="section-title">Chờ duyệt & quản lý ngoại lệ</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
@@ -50,15 +50,15 @@ export function OutboundApprovalsPage() {
           <Table>
             <TableHeader>
               <TableRow hoverable={false}>
-                <TableHead>Shipment</TableHead>
-                <TableHead>Owner / Vehicle</TableHead>
-                <TableHead>Exception</TableHead>
-                <TableHead align="center">Action</TableHead>
+                <TableHead>Phiếu xuất</TableHead>
+                <TableHead>Chủ hàng / Xe</TableHead>
+                <TableHead>Ngoại lệ</TableHead>
+                <TableHead align="center">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={4} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={4} message="No shipments pending approval" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={4} message="Không có phiếu xuất chờ duyệt" /> : null}
               {!isLoading ? rows.map((row) => {
                 const linesPending = row.lines?.filter((l) => l.lineStatus === 'PENDING_APPROVAL') || []
                 return (
@@ -66,7 +66,7 @@ export function OutboundApprovalsPage() {
                     <TableCell>
                       <div>
                         <p className="font-semibold text-navy-900">{row.shipmentNumber}</p>
-                        <p className="text-xs text-navy-400">{linesPending.length} line(s) pending</p>
+                        <p className="text-xs text-navy-400">{linesPending.length} dòng chờ duyệt</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -77,7 +77,7 @@ export function OutboundApprovalsPage() {
                       <Badge variant="warning">TOLERANCE_FAIL</Badge>
                     </TableCell>
                     <TableCell align="center">
-                      <span className="text-xs text-navy-400">Select row</span>
+                      <span className="text-xs text-navy-400">Chọn dòng</span>
                     </TableCell>
                   </TableRow>
                 )
@@ -89,38 +89,38 @@ export function OutboundApprovalsPage() {
         <div className="space-y-5">
           <div className="wrs-card p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-navy-900">Selected Shipment</h3>
-              <p className="text-sm text-navy-400">{selected?.shipmentNumber || 'Select a shipment from the list'}</p>
+              <h3 className="text-sm font-semibold text-navy-900">Phiếu xuất đã chọn</h3>
+              <p className="text-sm text-navy-400">{selected?.shipmentNumber || 'Chọn phiếu xuất từ danh sách'}</p>
             </div>
             {selected ? (
               <div className="rounded-xl border border-moon-300 bg-moon-50/70 p-4 text-sm text-navy-700 space-y-1">
-                <p><strong>Status:</strong> {selected.status}</p>
-                <p><strong>Owner:</strong> {selected.owner?.code || selected.ownerId}</p>
-                <p><strong>Vehicle:</strong> {selected.vehicleNumber || 'N/A'}</p>
-                <p><strong>DPM Shipment:</strong> {selected.isDpmShipment ? 'Yes' : 'No'}</p>
-                <p><strong>Total Net:</strong> {selected.totalNetKg?.toLocaleString() || '—'} kg</p>
+                <p><strong>Trạng thái:</strong> {selected.status}</p>
+                <p><strong>Chủ hàng:</strong> {selected.owner?.code || selected.ownerId}</p>
+                <p><strong>Xe:</strong> {selected.vehicleNumber || 'N/A'}</p>
+                <p><strong>Phiếu DPM:</strong> {selected.isDpmShipment ? 'Có' : 'Không'}</p>
+                <p><strong>Tổng tịnh:</strong> {selected.totalNetKg?.toLocaleString() || '—'} kg</p>
               </div>
             ) : null}
           </div>
 
           <div className="wrs-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-navy-900">Lines Pending Approval</h3>
+            <h3 className="text-sm font-semibold text-navy-900">Dòng chờ duyệt</h3>
             {selected?.lines?.filter((l) => l.lineStatus === 'PENDING_APPROVAL').map((line) => (
               <div key={line.id} className="rounded-xl border border-danger/30 bg-danger/5 p-3 space-y-1">
                 <div className="flex items-center justify-between">
-                  <p className="font-semibold text-navy-800">Line {line.lineNumber}: {line.item?.code || line.itemId}</p>
+                  <p className="font-semibold text-navy-800">Dòng {line.lineNumber}: {line.item?.code || line.itemId}</p>
                   <Badge variant="danger">{line.lineStatus}</Badge>
                 </div>
-                <p className="text-xs text-navy-500">Expected: {line.expectedQty?.toLocaleString()} kg · Net: {line.netWeightKg?.toLocaleString()} kg</p>
-                <p className="text-xs text-danger">Variance: {line.variancePct}% (tolerance: {line.tolerancePctApplied}%)</p>
+                <p className="text-xs text-navy-500">Dự kiến: {line.expectedQty?.toLocaleString()} kg · Tịnh: {line.netWeightKg?.toLocaleString()} kg</p>
+                <p className="text-xs text-danger">Chênh lệch: {line.variancePct}% (dung sai: {line.tolerancePctApplied}%)</p>
               </div>
             ))}
           </div>
 
           <div className="wrs-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-navy-900">Exception Details</h3>
+            <h3 className="text-sm font-semibold text-navy-900">Chi tiết ngoại lệ</h3>
             {exceptions.length === 0 ? (
-              <p className="text-sm text-navy-400">No exceptions</p>
+              <p className="text-sm text-navy-400">Không có ngoại lệ</p>
             ) : (
               exceptions.map((exc) => (
                 <div key={exc.id} className="rounded-xl border border-moon-200 p-3 space-y-1">
@@ -136,15 +136,15 @@ export function OutboundApprovalsPage() {
           </div>
 
           <div className="wrs-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-navy-900">Manager Decision</h3>
-            <Select label="Reason code" value={approvalForm.reasonCode} onChange={(e) => setApprovalForm((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: 'MANAGER_OVERRIDE', label: 'MANAGER_OVERRIDE' }, { value: 'CUSTOMER_ACCEPTED', label: 'CUSTOMER_ACCEPTED' }, { value: 'MEASUREMENT_ERROR', label: 'MEASUREMENT_ERROR' }, { value: 'REJECTED_BY_MANAGER', label: 'REJECTED_BY_MANAGER' }]} placeholder="Select reason code" />
-            <Textarea label="Note" rows={3} value={approvalForm.note} onChange={(e) => setApprovalForm((prev) => ({ ...prev, note: e.target.value }))} />
+            <h3 className="text-sm font-semibold text-navy-900">Quyết định quản lý</h3>
+            <Select label="Mã lý do" value={approvalForm.reasonCode} onChange={(e) => setApprovalForm((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: 'MANAGER_OVERRIDE', label: 'MANAGER_OVERRIDE' }, { value: 'CUSTOMER_ACCEPTED', label: 'CUSTOMER_ACCEPTED' }, { value: 'MEASUREMENT_ERROR', label: 'MEASUREMENT_ERROR' }, { value: 'REJECTED_BY_MANAGER', label: 'REJECTED_BY_MANAGER' }]} placeholder="Chọn mã lý do" />
+            <Textarea label="Ghi chú" rows={3} value={approvalForm.note} onChange={(e) => setApprovalForm((prev) => ({ ...prev, note: e.target.value }))} />
             <div className="flex gap-3">
               <Button variant="accent" onClick={handleApprove} disabled={!selected || approveShipment.isPending}>
-                Approve & Ship
+                Duyệt & xuất hàng
               </Button>
               <Button variant="outline" onClick={handleReject} disabled={!selected || rejectShipment.isPending}>
-                Reject & Cancel
+                Từ chối & hủy
               </Button>
             </div>
           </div>

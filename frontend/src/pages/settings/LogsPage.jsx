@@ -35,25 +35,25 @@ export function LogsPage() {
   const exceptionLogs = exceptionData?.data || []
 
   const handleResolve = async (id) => {
-    if (window.confirm('Mark this exception as resolved?')) {
+    if (window.confirm('Đánh dấu ngoại lệ này là đã xử lý?')) {
       await resolveException.mutateAsync(id)
     }
   }
 
   return (
     <SettingsLayout
-      title="System Logs"
-      description="Tra cứu audit logs và exception logs để giám sát hoạt động hệ thống."
+      title="Nhật ký hệ thống"
+      description="Tra cứu nhật ký kiểm toán và nhật ký ngoại lệ để giám sát hoạt động hệ thống."
     >
       <Tabs value={activeTab} onChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="audit">
             <FileText className="w-4 h-4 mr-2" />
-            Audit Logs
+            Nhật ký kiểm toán
           </TabsTrigger>
           <TabsTrigger value="exception">
             <AlertTriangle className="w-4 h-4 mr-2" />
-            Exception Logs
+            Nhật ký ngoại lệ
           </TabsTrigger>
         </TabsList>
 
@@ -64,7 +64,7 @@ export function LogsPage() {
                 value={auditFilters.entity || ''}
                 onChange={(val) => setAuditFilters((f) => ({ ...f, entity: val, page: 1 }))}
                 onClear={() => setAuditFilters((f) => ({ ...f, entity: '', page: 1 }))}
-                placeholder="Filter by entity type..."
+                placeholder="Lọc theo loại thực thể..."
                 className="max-w-md"
               />
             </div>
@@ -72,19 +72,19 @@ export function LogsPage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>User</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Thực thể</TableHead>
+                  <TableHead>Hành động</TableHead>
+                  <TableHead>Người dùng</TableHead>
                   <TableHead>Module</TableHead>
-                  <TableHead>Details</TableHead>
+                  <TableHead>Chi tiết</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {auditLoading ? (
                   <TableLoading colSpan={6} />
                 ) : auditLogs.length === 0 ? (
-                  <TableEmpty colSpan={6} message="No audit logs available" />
+                  <TableEmpty colSpan={6} message="Chưa có nhật ký kiểm toán nào" />
                 ) : (
                   auditLogs.map((log) => (
                     <TableRow key={log.id}>
@@ -139,9 +139,9 @@ export function LogsPage() {
                 value={exceptionFilters.resolved}
                 onChange={(e) => setExceptionFilters((f) => ({ ...f, resolved: e.target.value, page: 1 }))}
                 options={[
-                  { value: '', label: 'All statuses' },
-                  { value: 'false', label: 'Unresolved' },
-                  { value: 'true', label: 'Resolved' },
+                  { value: '', label: 'Tất cả trạng thái' },
+                  { value: 'false', label: 'Chưa xử lý' },
+                  { value: 'true', label: 'Đã xử lý' },
                 ]}
                 className="w-48"
               />
@@ -150,20 +150,20 @@ export function LogsPage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Exception Type</TableHead>
-                  <TableHead>Severity</TableHead>
+                  <TableHead>Thời gian</TableHead>
+                  <TableHead>Loại ngoại lệ</TableHead>
+                  <TableHead>Mức độ</TableHead>
                   <TableHead>Module</TableHead>
-                  <TableHead>Message</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead align="right">Actions</TableHead>
+                  <TableHead>Thông điệp</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead align="right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {exceptionLoading ? (
                   <TableLoading colSpan={7} />
                 ) : exceptionLogs.length === 0 ? (
-                  <TableEmpty colSpan={7} message="No exception logs available" />
+                  <TableEmpty colSpan={7} message="Chưa có nhật ký ngoại lệ nào" />
                 ) : (
                   exceptionLogs.map((log) => (
                     <TableRow key={log.id}>
@@ -196,7 +196,7 @@ export function LogsPage() {
                             onClick={() => handleResolve(log.id)}
                             disabled={resolveException.isPending}
                             className="p-2 text-navy-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Mark as Resolved"
+                            title="Đánh dấu đã xử lý"
                           >
                             <CheckCircle className="w-4 h-4" />
                           </button>

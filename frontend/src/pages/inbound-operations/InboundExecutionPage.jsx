@@ -57,9 +57,9 @@ export function InboundExecutionPage() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h2 className="section-title">Weighbridge execution & tolerance</h2>
+          <h2 className="section-title">Thực thi cân & dung sai</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
@@ -71,22 +71,22 @@ export function InboundExecutionPage() {
           <Table>
             <TableHeader>
               <TableRow hoverable={false}>
-                <TableHead>Receipt</TableHead>
-                <TableHead>Vehicle</TableHead>
-                <TableHead align="right">Gross / Tare / Net</TableHead>
-                <TableHead align="center">Status</TableHead>
-                <TableHead align="center">Action</TableHead>
+                <TableHead>Phiếu nhập</TableHead>
+                <TableHead>Xe</TableHead>
+                <TableHead align="right">Tổng / Bì / Tịnh</TableHead>
+                <TableHead align="center">Trạng thái</TableHead>
+                <TableHead align="center">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={5} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No receipts in execution queue" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không có phiếu nhập trong hàng đợi thực thi" /> : null}
               {!isLoading ? rows.map((row) => (
                 <TableRow key={row.id} onClick={() => setSelectedId(row.id)} className={selected?.id === row.id ? 'bg-muted/60' : ''}>
                   <TableCell>
                     <div>
                       <p className="font-semibold text-navy-900">{row.receiptNumber}</p>
-                      <p className="text-xs text-navy-400">Attempt {row.attemptNumber}</p>
+                      <p className="text-xs text-navy-400">Lần {row.attemptNumber}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -102,7 +102,7 @@ export function InboundExecutionPage() {
                   </TableCell>
                   <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                   <TableCell align="center">
-                    {row.status === 'WEIGHED_IN' ? <Button variant="outline" size="sm" onClick={() => startProcessing.mutate(row.id)}>Start processing</Button> : <span className="text-xs text-navy-400">Select row</span>}
+                    {row.status === 'WEIGHED_IN' ? <Button variant="outline" size="sm" onClick={() => startProcessing.mutate(row.id)}>Bắt đầu xử lý</Button> : <span className="text-xs text-navy-400">Chọn dòng</span>}
                   </TableCell>
                 </TableRow>
               )) : null}
@@ -115,44 +115,44 @@ export function InboundExecutionPage() {
         <div className="space-y-5">
           <div className="wrs-card p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-navy-900">Selected Receipt</h3>
-              <p className="text-sm text-navy-400">{selected?.receiptNumber || 'Select a receipt from the list'}</p>
+              <h3 className="text-sm font-semibold text-navy-900">Phiếu nhập đã chọn</h3>
+              <p className="text-sm text-navy-400">{selected?.receiptNumber || 'Chọn phiếu nhập từ danh sách'}</p>
             </div>
             {selected ? (
               <div className="rounded-xl border border-moon-300 bg-moon-50/70 p-4 text-sm text-navy-700">
-                <p><strong>Status:</strong> {selected.status}</p>
-                <p><strong>Expected:</strong> {selected.expectedQty} kg</p>
-                <p><strong>Tolerance:</strong> {selected.tolerancePctApplied ?? '—'}%</p>
-                <p><strong>Variance:</strong> {selected.variancePct ?? '—'}%</p>
+                <p><strong>Trạng thái:</strong> {selected.status}</p>
+                <p><strong>Dự kiến:</strong> {selected.expectedQty} kg</p>
+                <p><strong>Dung sai:</strong> {selected.tolerancePctApplied ?? '—'}%</p>
+                <p><strong>Chênh lệch:</strong> {selected.variancePct ?? '—'}%</p>
               </div>
             ) : null}
           </div>
 
           <div className="wrs-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-navy-900">Weigh-in</h3>
-            <Input label="Gross weight (kg)" type="number" value={weighInForm.grossWeightKg} onChange={(e) => setWeighInForm((prev) => ({ ...prev, grossWeightKg: e.target.value }))} />
-            <Input label="Ticket ID" value={weighInForm.ticketId} onChange={(e) => setWeighInForm((prev) => ({ ...prev, ticketId: e.target.value }))} />
-            <Button variant="accent" onClick={handleWeighIn} disabled={!selected || recordWeighIn.isPending}>Record Weigh-In</Button>
+            <h3 className="text-sm font-semibold text-navy-900">Cân vào</h3>
+            <Input label="Trọng lượng tổng (kg)" type="number" value={weighInForm.grossWeightKg} onChange={(e) => setWeighInForm((prev) => ({ ...prev, grossWeightKg: e.target.value }))} />
+            <Input label="Mã phiếu cân" value={weighInForm.ticketId} onChange={(e) => setWeighInForm((prev) => ({ ...prev, ticketId: e.target.value }))} />
+            <Button variant="accent" onClick={handleWeighIn} disabled={!selected || recordWeighIn.isPending}>Ghi cân vào</Button>
           </div>
 
           <div className="wrs-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-navy-900">Weigh-out & tolerance</h3>
-            <Input label="Tare weight (kg)" type="number" value={weighOutForm.tareWeightKg} onChange={(e) => setWeighOutForm((prev) => ({ ...prev, tareWeightKg: e.target.value }))} />
-            <Input label="Ticket ID" value={weighOutForm.ticketId} onChange={(e) => setWeighOutForm((prev) => ({ ...prev, ticketId: e.target.value }))} />
-            <Button variant="accent" onClick={handleWeighOut} disabled={!selected || recordWeighOut.isPending}>Record Weigh-Out</Button>
+            <h3 className="text-sm font-semibold text-navy-900">Cân ra & dung sai</h3>
+            <Input label="Trọng lượng bì (kg)" type="number" value={weighOutForm.tareWeightKg} onChange={(e) => setWeighOutForm((prev) => ({ ...prev, tareWeightKg: e.target.value }))} />
+            <Input label="Mã phiếu cân" value={weighOutForm.ticketId} onChange={(e) => setWeighOutForm((prev) => ({ ...prev, ticketId: e.target.value }))} />
+            <Button variant="accent" onClick={handleWeighOut} disabled={!selected || recordWeighOut.isPending}>Ghi cân ra</Button>
           </div>
 
           <div className="wrs-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-navy-900">Manual weight fallback</h3>
-            <Input label="Gross weight" type="number" value={manualForm.grossWeightKg} onChange={(e) => setManualForm((prev) => ({ ...prev, grossWeightKg: e.target.value }))} />
-            <Input label="Tare weight" type="number" value={manualForm.tareWeightKg} onChange={(e) => setManualForm((prev) => ({ ...prev, tareWeightKg: e.target.value }))} />
-            <Input label="Reason code" value={manualForm.reasonCode} onChange={(e) => setManualForm((prev) => ({ ...prev, reasonCode: e.target.value }))} />
-            <Textarea label="Note" rows={3} value={manualForm.note} onChange={(e) => setManualForm((prev) => ({ ...prev, note: e.target.value }))} />
-            <Button variant="outline" onClick={handleManual} disabled={!selected || applyManualWeight.isPending}>Apply Manual Weight</Button>
+            <h3 className="text-sm font-semibold text-navy-900">Nhập cân thủ công</h3>
+            <Input label="Trọng lượng tổng" type="number" value={manualForm.grossWeightKg} onChange={(e) => setManualForm((prev) => ({ ...prev, grossWeightKg: e.target.value }))} />
+            <Input label="Trọng lượng bì" type="number" value={manualForm.tareWeightKg} onChange={(e) => setManualForm((prev) => ({ ...prev, tareWeightKg: e.target.value }))} />
+            <Input label="Mã lý do" value={manualForm.reasonCode} onChange={(e) => setManualForm((prev) => ({ ...prev, reasonCode: e.target.value }))} />
+            <Textarea label="Ghi chú" rows={3} value={manualForm.note} onChange={(e) => setManualForm((prev) => ({ ...prev, note: e.target.value }))} />
+            <Button variant="outline" onClick={handleManual} disabled={!selected || applyManualWeight.isPending}>Áp dụng cân thủ công</Button>
           </div>
 
           <div className="wrs-card p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-navy-900">History & weigh logs</h3>
+            <h3 className="text-sm font-semibold text-navy-900">Lịch sử & nhật ký cân</h3>
             <div className="space-y-2 text-sm text-navy-700">
               {historyRows.slice(0, 4).map((item) => (
                 <div key={item.id} className="rounded-xl border border-moon-200 p-3">

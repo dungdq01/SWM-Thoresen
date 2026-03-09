@@ -22,33 +22,33 @@ export function VasDashboardPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">VAS Dashboard</h2>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
+        <h2 className="section-title">Tổng quan VAS</h2>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>Làm mới</Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
         <div className="wrs-card p-5 xl:col-span-2">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Work Order Status</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Trạng thái lệnh</h3>
           <SummaryDonut
-            centerLabel="Total"
+            centerLabel="Tổng"
             centerValue={dashboard.totalWorkOrders || 0}
             data={[
-              { name: 'Draft', value: dashboard.draftCount || 0, color: '#94a3b8' },
-              { name: 'Released', value: dashboard.releasedCount || 0, color: '#3b82f6' },
-              { name: 'In Progress', value: dashboard.inProgressCount || 0, color: '#d97706' },
-              { name: 'Completed', value: dashboard.completedCount || 0, color: '#059669' },
+              { name: 'Nháp', value: dashboard.draftCount || 0, color: '#94a3b8' },
+              { name: 'Đã phát hành', value: dashboard.releasedCount || 0, color: '#3b82f6' },
+              { name: 'Đang thực hiện', value: dashboard.inProgressCount || 0, color: '#d97706' },
+              { name: 'Hoàn thành', value: dashboard.completedCount || 0, color: '#059669' },
             ]}
           />
         </div>
         <div className="wrs-card p-5 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-navy-900">Live Metrics</h3>
-          <StatHighlight value={dashboard.activeSessions || 0} label="Active Sessions" color="text-ice" bgColor="bg-navy-800/5" />
-          <StatHighlight value={dashboard.totalBagsToday?.toLocaleString() || '0'} label="Bags Produced Today" color="text-emerald-600" bgColor="bg-emerald-50" />
+          <h3 className="text-sm font-semibold text-navy-900">Chỉ số trực tiếp</h3>
+          <StatHighlight value={dashboard.activeSessions || 0} label="Phiên hoạt động" color="text-ice" bgColor="bg-navy-800/5" />
+          <StatHighlight value={dashboard.totalBagsToday?.toLocaleString() || '0'} label="Bao sản xuất hôm nay" color="text-emerald-600" bgColor="bg-emerald-50" />
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-navy-900">Recent Work Orders</h3>
+        <h3 className="text-sm font-semibold text-navy-900">Lệnh gần đây</h3>
         <div className="space-y-3">
           {recentWos.map((wo) => (
             <div key={wo.id} className="flex items-center justify-between border-b border-moon-200 pb-3">

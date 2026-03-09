@@ -23,8 +23,8 @@ import { Badge } from '@shared/ui'
 import { UomFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 const getUomClassLabel = (uomClass) => {
@@ -103,17 +103,17 @@ export function UomsPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'uomClass', placeholder: 'UoM Class', options: UOM_CLASSES },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'uomClass', placeholder: 'Nhóm ĐVT', options: UOM_CLASSES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="UoM Management"
-        description="List of all units of measurement in the system"
+        title="Quản lý đơn vị tính"
+        description="Danh sách tất cả đơn vị tính trong hệ thống"
         onAdd={handleAdd}
-        addLabel="Add UoM"
+        addLabel="Thêm ĐVT"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -129,14 +129,14 @@ export function UomsPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by code or description..."
+          placeholder="Tìm theo mã hoặc mô tả..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={uoms.length === 0}
-        emptyMessage="No UoMs available"
+        emptyMessage="Chưa có đơn vị tính nào"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -144,11 +144,11 @@ export function UomsPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>UoM Code</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Class</TableHead>
-            <TableHead align="center">Base UoM</TableHead>
-            <TableHead align="center">Status</TableHead>
+            <TableHead>Mã ĐVT</TableHead>
+            <TableHead>Mô tả</TableHead>
+            <TableHead>Nhóm</TableHead>
+            <TableHead align="center">ĐVT gốc</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -172,7 +172,7 @@ export function UomsPage() {
                 </TableCell>
                 <TableCell align="center">
                   {uom.isBaseUom ? (
-                    <Badge variant="success">Yes</Badge>
+                    <Badge variant="success">Có</Badge>
                   ) : (
                     <span className="text-navy-400">—</span>
                   )}

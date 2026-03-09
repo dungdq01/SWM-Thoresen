@@ -17,11 +17,11 @@ export const REASON_CODE_CATEGORIES = [
 ]
 
 export const REASON_CODE_DOMAINS = [
-  { value: 'FOUNDATION', label: 'Foundation' },
-  { value: 'INBOUND', label: 'Inbound' },
-  { value: 'OUTBOUND', label: 'Outbound' },
-  { value: 'INVENTORY', label: 'Inventory' },
-  { value: 'BILLING', label: 'Billing' },
+  { value: 'FOUNDATION', label: 'Nền tảng' },
+  { value: 'INBOUND', label: 'Nhập kho' },
+  { value: 'OUTBOUND', label: 'Xuất kho' },
+  { value: 'INVENTORY', label: 'Tồn kho' },
+  { value: 'BILLING', label: 'Thanh toán' },
 ]
 
 export const SEQUENCE_SCOPE_TYPES = [
@@ -44,11 +44,11 @@ export const RULE_STATUS = [
 ]
 
 export const RULE_DOMAINS = [
-  { value: 'FOUNDATION', label: 'Foundation' },
-  { value: 'INBOUND', label: 'Inbound' },
-  { value: 'OUTBOUND', label: 'Outbound' },
-  { value: 'INVENTORY', label: 'Inventory' },
-  { value: 'BILLING', label: 'Billing' },
+  { value: 'FOUNDATION', label: 'Nền tảng' },
+  { value: 'INBOUND', label: 'Nhập kho' },
+  { value: 'OUTBOUND', label: 'Xuất kho' },
+  { value: 'INVENTORY', label: 'Tồn kho' },
+  { value: 'BILLING', label: 'Thanh toán' },
 ]
 
 export const EXCEPTION_SEVERITY = [

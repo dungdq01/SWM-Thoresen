@@ -33,8 +33,8 @@ export function RateCardsPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Rate Cards</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Biểu giá dịch vụ</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
@@ -47,17 +47,17 @@ export function RateCardsPage() {
           <Table>
             <TableHeader>
               <TableRow hoverable={false}>
-                <TableHead>Owner</TableHead>
-                <TableHead>Service Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead align="right">Unit Price</TableHead>
-                <TableHead>Effective</TableHead>
-                <TableHead align="center">Active</TableHead>
+                <TableHead>Chủ hàng</TableHead>
+                <TableHead>Loại dịch vụ</TableHead>
+                <TableHead>Mô tả</TableHead>
+                <TableHead align="right">Đơn giá</TableHead>
+                <TableHead>Hiệu lực</TableHead>
+                <TableHead align="center">Trạng thái</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={6} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No rate cards" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có biểu giá" /> : null}
               {!isLoading ? rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
@@ -77,7 +77,7 @@ export function RateCardsPage() {
                     <p className="text-xs text-navy-400">→ {row.effectiveTo}</p>
                   </TableCell>
                   <TableCell align="center">
-                    <Badge variant={row.isActive ? 'success' : 'default'}>{row.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <Badge variant={row.isActive ? 'success' : 'default'}>{row.isActive ? 'Hoạt động' : 'Ngừng'}</Badge>
                   </TableCell>
                 </TableRow>
               )) : null}
@@ -89,22 +89,22 @@ export function RateCardsPage() {
 
         <div className="wrs-card p-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-navy-900">Create Rate Card</h3>
-            <p className="text-sm text-navy-400">Set up service pricing for each owner.</p>
+            <h3 className="text-sm font-semibold text-navy-900">Tạo biểu giá</h3>
+            <p className="text-sm text-navy-400">Thiết lập giá dịch vụ cho từng chủ hàng.</p>
           </div>
-          <Select label="Owner" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))} />
-          <Select label="Service Type" value={draft.serviceType} onChange={(e) => setDraft((prev) => ({ ...prev, serviceType: e.target.value }))} options={[{ value: 'STORAGE', label: 'STORAGE' }, { value: 'HANDLING_IN', label: 'HANDLING_IN' }, { value: 'HANDLING_OUT', label: 'HANDLING_OUT' }, { value: 'VAS_BAGGING', label: 'VAS_BAGGING' }]} />
-          <Input label="Description" value={draft.description} onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))} />
+          <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))} />
+          <Select label="Loại dịch vụ" value={draft.serviceType} onChange={(e) => setDraft((prev) => ({ ...prev, serviceType: e.target.value }))} options={[{ value: 'STORAGE', label: 'STORAGE' }, { value: 'HANDLING_IN', label: 'HANDLING_IN' }, { value: 'HANDLING_OUT', label: 'HANDLING_OUT' }, { value: 'VAS_BAGGING', label: 'VAS_BAGGING' }]} />
+          <Input label="Mô tả" value={draft.description} onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))} />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Unit Price (VND)" type="number" value={draft.unitPrice} onChange={(e) => setDraft((prev) => ({ ...prev, unitPrice: e.target.value }))} />
-            <Select label="UOM" value={draft.uom} onChange={(e) => setDraft((prev) => ({ ...prev, uom: e.target.value }))} options={[{ value: 'KG', label: 'KG' }, { value: 'BAG', label: 'BAG' }, { value: 'PALLET', label: 'PALLET' }]} />
+            <Input label="Đơn giá (VND)" type="number" value={draft.unitPrice} onChange={(e) => setDraft((prev) => ({ ...prev, unitPrice: e.target.value }))} />
+            <Select label="ĐVT" value={draft.uom} onChange={(e) => setDraft((prev) => ({ ...prev, uom: e.target.value }))} options={[{ value: 'KG', label: 'KG' }, { value: 'BAG', label: 'BAG' }, { value: 'PALLET', label: 'PALLET' }]} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Effective From" type="date" value={draft.effectiveFrom} onChange={(e) => setDraft((prev) => ({ ...prev, effectiveFrom: e.target.value }))} />
-            <Input label="Effective To" type="date" value={draft.effectiveTo} onChange={(e) => setDraft((prev) => ({ ...prev, effectiveTo: e.target.value }))} />
+            <Input label="Hiệu lực từ" type="date" value={draft.effectiveFrom} onChange={(e) => setDraft((prev) => ({ ...prev, effectiveFrom: e.target.value }))} />
+            <Input label="Hiệu lực đến" type="date" value={draft.effectiveTo} onChange={(e) => setDraft((prev) => ({ ...prev, effectiveTo: e.target.value }))} />
           </div>
 
-          <Button variant="accent" onClick={handleCreate} disabled={createRateCard.isPending}>Create Rate Card</Button>
+          <Button variant="accent" onClick={handleCreate} disabled={createRateCard.isPending}>Tạo biểu giá</Button>
         </div>
       </div>
     </div>

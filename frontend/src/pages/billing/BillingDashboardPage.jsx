@@ -22,36 +22,36 @@ export function BillingDashboardPage() {
   return (
     <div className="page-section">
       <div className="page-header">
-        <h2 className="section-title">Billing Dashboard</h2>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
+        <h2 className="section-title">Tổng quan thanh toán</h2>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>Làm mới</Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Invoice Status</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Trạng thái hóa đơn</h3>
           <SummaryDonut
-            centerLabel="Total"
+            centerLabel="Tổng"
             data={[
-              { name: 'Draft', value: dashboard.draftCount || 0, color: '#d97706' },
-              { name: 'Approved', value: dashboard.approvedCount || 0, color: '#059669' },
-              { name: 'Pending Events', value: dashboard.pendingEvents || 0, color: '#e11d48' },
+              { name: 'Nháp', value: dashboard.draftCount || 0, color: '#d97706' },
+              { name: 'Đã duyệt', value: dashboard.approvedCount || 0, color: '#059669' },
+              { name: 'SK chờ', value: dashboard.pendingEvents || 0, color: '#e11d48' },
             ]}
           />
         </div>
         <div className="wrs-card p-5 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-navy-900">Revenue</h3>
-          <StatHighlight value={dashboard.totalRevenue?.toLocaleString() || '0'} label="Total Revenue (VND)" color="text-ice" bgColor="bg-navy-800/5" />
-          <StatHighlight value={dashboard.activeRateCards || 0} label="Active Rate Cards" color="text-blue-600" bgColor="bg-blue-50" />
+          <h3 className="text-sm font-semibold text-navy-900">Doanh thu</h3>
+          <StatHighlight value={dashboard.totalRevenue?.toLocaleString() || '0'} label="Tổng doanh thu (VND)" color="text-ice" bgColor="bg-navy-800/5" />
+          <StatHighlight value={dashboard.activeRateCards || 0} label="Biểu giá hoạt động" color="text-blue-600" bgColor="bg-blue-50" />
         </div>
         <div className="wrs-card p-5 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-navy-900">Quick Stats</h3>
-          <StatHighlight value={dashboard.totalInvoices || 0} label="Total Invoices" color="text-navy-900" bgColor="bg-moon-50" />
-          <StatHighlight value={dashboard.pendingEvents || 0} label="Pending Events" color="text-rose-600" bgColor="bg-rose-50" />
+          <h3 className="text-sm font-semibold text-navy-900">Thống kê nhanh</h3>
+          <StatHighlight value={dashboard.totalInvoices || 0} label="Tổng hóa đơn" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={dashboard.pendingEvents || 0} label="Sự kiện chờ" color="text-rose-600" bgColor="bg-rose-50" />
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-navy-900">Recent Invoices</h3>
+        <h3 className="text-sm font-semibold text-navy-900">Hóa đơn gần đây</h3>
         <div className="space-y-3">
           {recentInvoices.map((inv) => (
             <div key={inv.id} className="flex items-center justify-between border-b border-moon-200 pb-3">

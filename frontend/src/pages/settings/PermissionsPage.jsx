@@ -61,8 +61,8 @@ export function PermissionsPage() {
 
   const validateCreate = () => {
     const e = {}
-    if (!draft.permissionCode) e.permissionCode = 'Permission code là bắt buộc'
-    if (!draft.moduleCode) e.moduleCode = 'Module là bắt buộc'
+    if (!draft.permissionCode) e.permissionCode = 'Mã quyền là bắt buộc'
+    if (!draft.moduleCode) e.moduleCode = 'Mã module là bắt buộc'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -93,11 +93,11 @@ export function PermissionsPage() {
 
   return (
     <SettingsLayout
-      title="Permissions Catalog"
+      title="Danh mục quyền"
       description="Xem danh sách các quyền có trong hệ thống. Quyền được gán cho vai trò để kiểm soát truy cập."
       actions={
         <Button icon={<Plus className="w-5 h-5" />} onClick={() => setCreateOpen(true)}>
-          Create Permission
+          Tạo quyền
         </Button>
       }
     >
@@ -107,25 +107,25 @@ export function PermissionsPage() {
             value={search}
             onChange={setSearch}
             onClear={() => setSearch('')}
-            placeholder="Search by permission code or description..."
+            placeholder="Tìm theo mã quyền hoặc mô tả..."
             className="flex-1 max-w-md"
           />
           <Select
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
-            options={[{ value: '', label: 'All modules' }, ...modules]}
+            options={[{ value: '', label: 'Tất cả module' }, ...modules]}
             className="w-48"
           />
         </div>
 
         <div className="text-sm text-navy-600">
-          Total: <span className="font-semibold">{filteredPermissions.length}</span> permissions
+          Tổng: <span className="font-semibold">{filteredPermissions.length}</span> quyền
         </div>
 
         {isLoading ? (
-          <div className="py-12 text-center text-navy-500">Loading...</div>
+          <div className="py-12 text-center text-navy-500">Đang tải...</div>
         ) : Object.keys(groupedPermissions).length === 0 ? (
-          <div className="py-12 text-center text-navy-500">No matching permissions found</div>
+          <div className="py-12 text-center text-navy-500">Không tìm thấy quyền phù hợp</div>
         ) : (
           <div className="space-y-4">
             {Object.entries(groupedPermissions).map(([module, perms]) => (
@@ -138,11 +138,11 @@ export function PermissionsPage() {
                 <Table className="border-0 rounded-none">
                   <TableHeader>
                     <TableRow hoverable={false}>
-                      <TableHead className="w-1/4">Permission Code</TableHead>
-                      <TableHead>Resource</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead align="right">Actions</TableHead>
+                      <TableHead className="w-1/4">Mã quyền</TableHead>
+                      <TableHead>Tài nguyên</TableHead>
+                      <TableHead>Hành động</TableHead>
+                      <TableHead>Mô tả</TableHead>
+                      <TableHead align="right">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -209,15 +209,15 @@ export function PermissionsPage() {
       >
         <div className="space-y-4">
           <div>
-            <Input label="Permission Code" placeholder="VD: inventory.item.create" value={draft.permissionCode} onChange={(e) => setDraft((prev) => ({ ...prev, permissionCode: e.target.value }))} required />
+            <Input label="Mã quyền" placeholder="VD: inventory.item.create" value={draft.permissionCode} onChange={(e) => setDraft((prev) => ({ ...prev, permissionCode: e.target.value }))} required />
             {errors.permissionCode && <p className="text-xs text-danger mt-1">{errors.permissionCode}</p>}
           </div>
           <div>
-            <Input label="Module Code" placeholder="VD: INVENTORY" value={draft.moduleCode} onChange={(e) => setDraft((prev) => ({ ...prev, moduleCode: e.target.value }))} required />
+            <Input label="Mã module" placeholder="VD: INVENTORY" value={draft.moduleCode} onChange={(e) => setDraft((prev) => ({ ...prev, moduleCode: e.target.value }))} required />
             {errors.moduleCode && <p className="text-xs text-danger mt-1">{errors.moduleCode}</p>}
           </div>
-          <Input label="Resource Code" placeholder="VD: item" value={draft.resourceCode} onChange={(e) => setDraft((prev) => ({ ...prev, resourceCode: e.target.value }))} />
-          <Input label="Action Code" placeholder="VD: create" value={draft.actionCode} onChange={(e) => setDraft((prev) => ({ ...prev, actionCode: e.target.value }))} />
+          <Input label="Mã tài nguyên" placeholder="VD: item" value={draft.resourceCode} onChange={(e) => setDraft((prev) => ({ ...prev, resourceCode: e.target.value }))} />
+          <Input label="Mã hành động" placeholder="VD: create" value={draft.actionCode} onChange={(e) => setDraft((prev) => ({ ...prev, actionCode: e.target.value }))} />
           <Input label="Mô tả" placeholder="Mô tả quyền..." value={draft.description} onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))} />
         </div>
       </Modal>
@@ -239,12 +239,12 @@ export function PermissionsPage() {
       >
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-navy-700 mb-1">Permission Code</p>
+            <p className="text-sm font-medium text-navy-700 mb-1">Mã quyền</p>
             <div className="wrs-input bg-moon-50 text-navy-500 cursor-not-allowed">{editData?.permissionCode}</div>
-            <p className="text-xs text-navy-400 mt-1">Permission code không thể thay đổi</p>
+            <p className="text-xs text-navy-400 mt-1">Mã quyền không thể thay đổi</p>
           </div>
-          <Input label="Resource Code" placeholder="VD: item" value={editDraft.resourceCode} onChange={(e) => setEditDraft((prev) => ({ ...prev, resourceCode: e.target.value }))} />
-          <Input label="Action Code" placeholder="VD: create" value={editDraft.actionCode} onChange={(e) => setEditDraft((prev) => ({ ...prev, actionCode: e.target.value }))} />
+          <Input label="Mã tài nguyên" placeholder="VD: item" value={editDraft.resourceCode} onChange={(e) => setEditDraft((prev) => ({ ...prev, resourceCode: e.target.value }))} />
+          <Input label="Mã hành động" placeholder="VD: create" value={editDraft.actionCode} onChange={(e) => setEditDraft((prev) => ({ ...prev, actionCode: e.target.value }))} />
           <Input label="Mô tả" placeholder="Mô tả quyền..." value={editDraft.description} onChange={(e) => setEditDraft((prev) => ({ ...prev, description: e.target.value }))} />
         </div>
       </Modal>

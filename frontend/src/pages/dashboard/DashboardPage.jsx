@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload, label }) => {
         <p className="mb-2 font-semibold text-navy-800">{label}</p>
         {payload.map((entry, index) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {entry.name === 'inbound' ? 'Nhập kho' : 'Xuất kho'}: <span className="font-semibold">{entry.value}</span>
+            {entry.name === 'inbound' ? 'Nhập kho' : 'Xuất kho'}: <span className="font-semibold">{entry.value.toLocaleString()}</span>
           </p>
         ))}
       </div>
@@ -323,7 +323,7 @@ export function DashboardPage() {
                   width={80}
                 />
                 <Tooltip 
-                  formatter={(value) => [`${value} SP`, 'Số lượng']}
+                  formatter={(value) => [`${value.toLocaleString()} SP`, 'Số lượng']}
                   contentStyle={{ 
                     borderRadius: '8px', 
                     border: '1px solid #E2E8F0',
