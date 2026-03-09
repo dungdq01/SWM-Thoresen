@@ -18,8 +18,8 @@ export function FilterBar({
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 min-w-0 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-400" />
           <Input
             type="text"
@@ -56,9 +56,9 @@ export function FilterBar({
       </div>
 
       {showFilters && filters.length > 0 && (
-        <div className="wrs-card flex flex-wrap items-center gap-3 p-4">
+        <div className="wrs-card flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4">
           {filters.map((filter) => (
-            <div key={filter.key} className="min-w-[160px]">
+            <div key={filter.key} className="min-w-[120px] sm:min-w-[160px] flex-1 sm:flex-none">
               <Select
                 value={filterValues[filter.key] || ''}
                 onChange={(e) => onFilterChange(filter.key, e.target.value)}

@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   BarChart3,
   RefreshCw,
+  X,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { useLanguage } from '@shared/i18n'
@@ -347,47 +348,63 @@ function MenuItem({ item, isCollapsed }) {
   )
 }
 
-export function AppSidebar({ isCollapsed, onToggle }) {
+export function AppSidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }) {
   const { t } = useLanguage()
   const menuConfig = getMenuConfig(t)
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-sidebar-border bg-gradient-to-b from-navy-900 to-navy-800 transition-all duration-300',
-        isCollapsed ? 'w-[68px]' : 'w-60'
+        'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-sidebar-border bg-gradient-to-b from-navy-900 to-navy-800 transition-all duration-300',
+        // Mobile: drawer overlay, ẩn mặc định
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full',
+        'lg:translate-x-0',
+        // Desktop: collapse theo state
+        isCollapsed ? 'lg:w-[68px]' : 'lg:w-60',
+        // Mobile: luôn w-72 khi mở
+        'w-72 lg:w-auto'
       )}
     >
-      <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-        {!isCollapsed && (
-          <div className="flex items-center gap-3">
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className="flex items-center gap-3">
+          {(!isCollapsed || isMobileOpen) && (
+            <>
+              <img 
+                src="/assets/logo.png" 
+                alt="SmartLog" 
+                className="h-9 w-auto brightness-0 invert"
+              />
+              <div>
+                <h1 className="text-sm font-bold text-moon-50">SmartLog <span className="text-ice-light">SWM</span></h1>
+                <p className="text-xs text-moon-100/60">TVL Warehouse Platform</p>
+              </div>
+            </>
+          )}
+          {isCollapsed && !isMobileOpen && (
             <img 
               src="/assets/logo.png" 
               alt="SmartLog" 
-              className="h-9 w-auto brightness-0 invert"
+              className="mx-auto h-8 w-auto brightness-0 invert"
             />
-            <div>
-              <h1 className="text-sm font-bold text-moon-50">SmartLog <span className="text-ice-light">SWM</span></h1>
-              <p className="text-xs text-moon-100/60">TVL Warehouse Platform</p>
-            </div>
-          </div>
-        )}
-        {isCollapsed && (
-          <img 
-            src="/assets/logo.png" 
-            alt="SmartLog" 
-            className="mx-auto h-8 w-auto brightness-0 invert"
-          />
-        )}
+          )}
+        </div>
+        {/* Mobile close button */}
+        <button
+          onClick={onMobileClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-moon-100/60 transition-colors hover:bg-sidebar-hover hover:text-moon-50 lg:hidden"
+          aria-label="Đóng menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5 overscroll-contain">
         {menuConfig.map((group) => (
           <div key={group.id} className="space-y-2">
-            {!isCollapsed && <p className="sidebar-group-title">{group.groupLabel}</p>}
+            {(!isCollapsed || isMobileOpen) && <p className="sidebar-group-title">{group.groupLabel}</p>}
             <div className="space-y-1">
               {group.items.map((item) => (
-                <MenuItem key={item.id} item={item} isCollapsed={isCollapsed} />
+                <MenuItem key={item.id} item={item} isCollapsed={isCollapsed && !isMobileOpen} />
               ))}
             </div>
           </div>
@@ -395,11 +412,11 @@ export function AppSidebar({ isCollapsed, onToggle }) {
       </nav>
 
       <div className="border-t border-sidebar-border p-3 space-y-2">
-        {!isCollapsed && <LanguageSwitcher variant="sidebar" />}
+        {(!isCollapsed || isMobileOpen) && <LanguageSwitcher variant="sidebar" />}
         <button
           onClick={onToggle}
           className={cn(
-            'sidebar-item sidebar-item-hover w-full justify-center text-moon-100/80',
+            'sidebar-item sidebar-item-hover w-full justify-center text-moon-100/80 hidden lg:flex',
             !isCollapsed && 'justify-between'
           )}
         >

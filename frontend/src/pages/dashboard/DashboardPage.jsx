@@ -66,12 +66,12 @@ function MockDataBanner({ onReset }) {
   const seededAt = getSeededAt()
   
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-ice/30 bg-ice/5 px-4 py-2.5">
-      <Database className="h-4 w-4 text-ice" />
-      <span className="text-sm font-medium text-navy-700">
-        Dữ liệu mẫu (localStorage)
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 rounded-xl border border-ice/30 bg-ice/5 px-3 py-2 sm:px-4 sm:py-2.5">
+      <Database className="h-4 w-4 text-ice flex-shrink-0" />
+      <span className="text-xs sm:text-sm font-medium text-navy-700">
+        Dữ liệu mẫu
       </span>
-      <span className="text-xs text-navy-400">
+      <span className="hidden sm:inline text-xs text-navy-400">
         Persist qua refresh · Tự xóa sau 24h
         {seededAt && (
           <> · Tạo lúc {seededAt.toLocaleTimeString('vi-VN')}</>
@@ -79,11 +79,12 @@ function MockDataBanner({ onReset }) {
       </span>
       <button
         onClick={onReset}
-        className="ml-auto flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-navy-600 shadow-sm border border-moon-200 hover:bg-moon-50 transition-colors"
+        className="ml-auto flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs font-medium text-navy-600 shadow-sm border border-moon-200 hover:bg-moon-50 transition-colors"
         title="Reset về dữ liệu mặc định"
       >
         <RefreshCw className="h-3 w-3" />
-        Reset data
+        <span className="hidden sm:inline">Reset data</span>
+        <span className="sm:hidden">Reset</span>
       </button>
     </div>
   )
@@ -121,7 +122,7 @@ export function DashboardPage() {
       <MockDataBanner onReset={handleReset} />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 xl:grid-cols-4">
         {statsData.map((stat, index) => {
           const iconCfg = STAT_ICONS[index] || STAT_ICONS[0]
           const IconComp = iconCfg.icon
@@ -129,7 +130,7 @@ export function DashboardPage() {
             <div key={stat.id} className={`stat-card animate-slide-up stagger-${Math.min(index + 1, 5)}`}>
               <div className="stat-card-row">
                 <div className={`stat-card-icon shrink-0 ${iconCfg.iconBg}`}>
-                  <IconComp className={`h-6 w-6 ${iconCfg.iconColor}`} />
+                  <IconComp className={`h-5 w-5 sm:h-6 sm:w-6 ${iconCfg.iconColor}`} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
@@ -150,7 +151,7 @@ export function DashboardPage() {
       </div>
 
       {/* Row 1: Main Chart + Low Stock Alerts */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6 xl:grid-cols-3">
         {/* Biểu đồ xuất nhập kho */}
         <div className="content-section xl:col-span-2">
           <div className="content-section-header">
@@ -169,7 +170,7 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="mt-6 h-72">
+          <div className="mt-4 h-56 sm:mt-6 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={flowData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>
@@ -253,7 +254,7 @@ export function DashboardPage() {
       </div>
 
       {/* Row 2: Warehouse Distribution + Top Products + Recent Activities */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3">
         {/* Phân bổ tồn kho theo kho */}
         <div className="content-section">
           <div className="content-section-header">
@@ -262,7 +263,7 @@ export function DashboardPage() {
               <h2 className="section-title">Phân bổ tồn kho</h2>
             </div>
           </div>
-          <div className="mt-4 h-52">
+          <div className="mt-3 h-44 sm:mt-4 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -308,7 +309,7 @@ export function DashboardPage() {
               <h2 className="section-title">Top xuất kho</h2>
             </div>
           </div>
-          <div className="mt-4 h-56">
+          <div className="mt-3 h-48 sm:mt-4 sm:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topData} layout="vertical" margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" horizontal={false} />

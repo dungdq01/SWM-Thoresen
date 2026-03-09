@@ -15,7 +15,7 @@ export function PageHeader({
       <div>
         <h1 className="page-title">{title}</h1>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {children}
         {onRefresh && (
           <Button
@@ -25,12 +25,12 @@ export function PageHeader({
             disabled={isRefreshing}
             icon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
           >
-            Làm mới
+            <span className="hidden sm:inline">Làm mới</span>
           </Button>
         )}
         {onExport && (
           <Button variant="outline" size="sm" onClick={onExport} icon={<Download className="h-4 w-4" />}>
-            Xuất Excel
+            <span className="hidden sm:inline">Xuất Excel</span>
           </Button>
         )}
         {onAdd && (
