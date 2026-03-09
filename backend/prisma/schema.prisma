@@ -189,16 +189,34 @@ enum ImportErrorLevel {
 }
 
 model AppUser {
-  id        String     @id @default(uuid()) @db.Uuid
-  userCode  String     @unique @map("user_code") @db.VarChar(50)
-  username  String     @unique @db.VarChar(80)
-  fullName  String     @map("full_name") @db.VarChar(150)
-  email     String?    @unique @db.VarChar(150)
-  isActive  Boolean    @default(true) @map("is_active")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  userRoles UserRole[]
+  id                    String    @id @default(uuid()) @db.Uuid
+  userCode              String    @unique @map("user_code") @db.VarChar(50)
+  username              String    @unique @db.VarChar(80)
+  fullName              String    @map("full_name") @db.VarChar(150)
+  email                 String?   @unique @db.VarChar(150)
+  phone                 String?   @db.VarChar(50)
+  userType              String    @default("INTERNAL") @map("user_type") @db.VarChar(30)
+  defaultWarehouseId    String?   @map("default_warehouse_id") @db.Uuid
+  isActive              Boolean   @default(true) @map("is_active")
+  authVersion           BigInt    @default(1) @map("auth_version")
+  lastLoginAt           DateTime? @map("last_login_at")
+  lastPasswordChangedAt DateTime? @map("last_password_changed_at")
+  failedLoginCount      Int       @default(0) @map("failed_login_count")
+  lockedUntil           DateTime? @map("locked_until")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  createdBy             String?   @map("created_by") @db.Uuid
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  updatedBy             String?   @map("updated_by") @db.Uuid
 
+  userRoles        UserRole[]
+  credential       AuthLocalCredential?
+  passwordHistory  AuthPasswordHistory[]
+  sessions         AuthSession[]
+  loginAttempts    AuthLoginAttempt[]
+  securityEvents   AuthSecurityEvent[]
+  accountLocks     AuthAccountLock[]
+
+  @@index([isActive, userType])
   @@map("app_user")
 }
 
@@ -4247,5 +4265,190 @@ model RptDashboardCache {
   @@unique([widgetCode, cacheKey])
   @@index([expiresAt])
   @@map("rpt_dashboard_cache")
+}
+
+// ========== Module Auth: Authentication & Authorization ==========
+
+enum AuthChannel {
+  WEB
+  MOBILE
+  API
+}
+
+enum AuthSecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAIL
+  LOGOUT
+  LOGOUT_ALL
+  TOKEN_REFRESH
+  TOKEN_REFRESH_FAIL
+  REFRESH_REPLAY_DETECTED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_ADMIN
+  SESSION_REVOKED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  ACCESS_DENIED
+  WAREHOUSE_CONTEXT_SWITCHED
+  USER_DEACTIVATED
+}
+
+enum AuthSecurityEventSeverity {
+  INFO
+  WARN
+  HIGH
+  CRITICAL
+}
+
+model AuthLocalCredential {
+  id                 String    @id @default(uuid()) @db.Uuid
+  userId             String    @unique @map("user_id") @db.Uuid
+  passwordHash       String    @map("password_hash") @db.Text
+  passwordAlgo       String    @default("ARGON2ID") @map("password_algo") @db.VarChar(30)
+  passwordChangedAt  DateTime  @default(now()) @map("password_changed_at")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  passwordExpiresAt  DateTime? @map("password_expires_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user AppUser @relation(fields: [userId], references: [id])
+
+  @@map("auth_local_credential")
+}
+
+model AuthPasswordHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  passwordHash String   @map("password_hash") @db.Text
+  changedAt    DateTime @default(now()) @map("changed_at")
+  changedBy    String?  @map("changed_by") @db.Uuid
+  changeReason String   @map("change_reason") @db.VarChar(30)
+
+  user AppUser @relation(fields: [userId], references: [id])
+
+  @@index([userId, changedAt(sort: Desc)])
+  @@map("auth_password_history")
+}
+
+model AuthSession {
+  id                   String       @id @default(uuid()) @db.Uuid
+  sessionCode          String       @unique @map("session_code") @db.VarChar(40)
+  userId               String       @map("user_id") @db.Uuid
+  channel              AuthChannel
+  deviceId             String?      @map("device_id") @db.VarChar(120)
+  deviceName           String?      @map("device_name") @db.VarChar(255)
+  userAgent            String?      @map("user_agent") @db.Text
+  ipAddress            String?      @map("ip_address") @db.VarChar(64)
+  loginAt              DateTime     @default(now()) @map("login_at")
+  lastSeenAt           DateTime     @default(now()) @map("last_seen_at")
+  expiresAt            DateTime     @map("expires_at")
+  isCurrent            Boolean      @default(true) @map("is_current")
+  revokedAt            DateTime?    @map("revoked_at")
+  revokedBy            String?      @map("revoked_by") @db.Uuid
+  revokeReason         String?      @map("revoke_reason") @db.VarChar(50)
+  authVersionAtIssue   BigInt       @map("auth_version_at_issue")
+  selectedWarehouseId  String?      @map("selected_warehouse_id") @db.Uuid
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  user          AppUser            @relation(fields: [userId], references: [id])
+  refreshTokens AuthRefreshToken[]
+
+  @@index([userId, isCurrent])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([channel, isCurrent])
+  @@map("auth_session")
+}
+
+model AuthRefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  sessionId     String    @map("session_id") @db.Uuid
+  tokenHash     String    @unique @map("token_hash") @db.VarChar(255)
+  tokenFamily   String    @map("token_family") @db.VarChar(80)
+  issuedAt      DateTime  @default(now()) @map("issued_at")
+  expiresAt     DateTime  @map("expires_at")
+  rotatedFromId String?   @unique @map("rotated_from_id") @db.Uuid
+  isRevoked     Boolean   @default(false) @map("is_revoked")
+  revokedAt     DateTime? @map("revoked_at")
+  revokeReason  String?   @map("revoke_reason") @db.VarChar(50)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  session     AuthSession       @relation(fields: [sessionId], references: [id])
+  rotatedFrom AuthRefreshToken? @relation("RefreshTokenRotation", fields: [rotatedFromId], references: [id])
+  rotatedTo   AuthRefreshToken? @relation("RefreshTokenRotation")
+
+  @@index([sessionId, isRevoked])
+  @@index([expiresAt])
+  @@index([tokenFamily])
+  @@map("auth_refresh_token")
+}
+
+model AuthLoginAttempt {
+  id            String      @id @default(uuid()) @db.Uuid
+  username      String      @db.VarChar(100)
+  userId        String?     @map("user_id") @db.Uuid
+  attemptAt     DateTime    @default(now()) @map("attempt_at")
+  ipAddress     String?     @map("ip_address") @db.VarChar(64)
+  userAgent     String?     @map("user_agent") @db.Text
+  channel       AuthChannel
+  success       Boolean
+  failureReason String?     @map("failure_reason") @db.VarChar(50)
+  correlationId String?     @map("correlation_id") @db.VarChar(80)
+
+  user AppUser? @relation(fields: [userId], references: [id])
+
+  @@index([username, attemptAt(sort: Desc)])
+  @@index([userId, attemptAt(sort: Desc)])
+  @@index([ipAddress, attemptAt(sort: Desc)])
+  @@map("auth_login_attempt")
+}
+
+model AuthSecurityEvent {
+  id            String                    @id @default(uuid()) @db.Uuid
+  eventType     AuthSecurityEventType     @map("event_type")
+  severity      AuthSecurityEventSeverity
+  userId        String?                   @map("user_id") @db.Uuid
+  sessionId     String?                   @map("session_id") @db.Uuid
+  channel       AuthChannel?
+  ipAddress     String?                   @map("ip_address") @db.VarChar(64)
+  userAgent     String?                   @map("user_agent") @db.Text
+  correlationId String?                   @map("correlation_id") @db.VarChar(80)
+  resourceType  String?                   @map("resource_type") @db.VarChar(50)
+  resourceId    String?                   @map("resource_id") @db.VarChar(100)
+  action        String?                   @db.VarChar(50)
+  errorCode     String?                   @map("error_code") @db.VarChar(50)
+  eventPayload  Json?                     @map("event_payload")
+  occurredAt    DateTime                  @default(now()) @map("occurred_at")
+  createdAt     DateTime                  @default(now()) @map("created_at")
+
+  user AppUser? @relation(fields: [userId], references: [id])
+
+  @@index([eventType, occurredAt(sort: Desc)])
+  @@index([userId, occurredAt(sort: Desc)])
+  @@index([severity, occurredAt(sort: Desc)])
+  @@index([correlationId])
+  @@map("auth_security_event")
+}
+
+model AuthAccountLock {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  lockedAt      DateTime  @default(now()) @map("locked_at")
+  lockedUntil   DateTime  @map("locked_until")
+  lockReason    String    @map("lock_reason") @db.VarChar(50)
+  failedCount   Int       @map("failed_count")
+  unlockedAt    DateTime? @map("unlocked_at")
+  unlockedBy    String?   @map("unlocked_by") @db.Uuid
+  unlockReason  String?   @map("unlock_reason") @db.VarChar(50)
+  correlationId String?   @map("correlation_id") @db.VarChar(80)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user AppUser @relation(fields: [userId], references: [id])
+
+  @@index([userId, lockedAt(sort: Desc)])
+  @@index([lockedUntil])
+  @@map("auth_account_lock")
 }
 
