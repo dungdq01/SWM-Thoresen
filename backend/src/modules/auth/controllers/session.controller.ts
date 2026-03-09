@@ -15,7 +15,7 @@ import { SessionService } from '../services/session.service';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { SessionInfo } from '../interfaces/security-context.interface';
 
-@Controller('api/v1/auth')
+@Controller('auth')
 @UseGuards(AuthGuard)
 export class SessionController {
   constructor(private readonly sessionService: SessionService) {}

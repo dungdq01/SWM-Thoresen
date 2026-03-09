@@ -26,7 +26,7 @@ import {
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { RequirePermission } from '../../../common/decorators/require-permission.decorator';
 
-@Controller('api/v1/admin/auth/users')
+@Controller('admin/auth/users')
 @UseGuards(AuthGuard)
 export class AdminAuthController {
   constructor(

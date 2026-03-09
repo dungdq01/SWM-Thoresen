@@ -12,7 +12,7 @@ import { AuthenticationService } from '../services/authentication.service';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 
-@Controller('api/v1/auth')
+@Controller('auth')
 @UseGuards(AuthGuard)
 export class PasswordController {
   constructor(private readonly authenticationService: AuthenticationService) {}
