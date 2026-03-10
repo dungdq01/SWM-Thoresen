@@ -72,7 +72,9 @@ export function NumberSequenceFormModal({ isOpen, onClose, editData }) {
   const onSubmit = async (data) => {
     try {
       if (isEdit) {
-        await updateSequence.mutateAsync({ id: editData.id, data })
+        // Remove sequenceCode for update - backend doesn't accept it
+        const { sequenceCode, ...updateData } = data
+        await updateSequence.mutateAsync({ id: editData.id, data: updateData })
       } else {
         await createSequence.mutateAsync(data)
       }
