@@ -128,6 +128,7 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
             placeholder="Chọn phạm vi"
             error={errors.domain?.message}
             required
+            disabled={isEdit}
             {...register('domain')}
           />
         </div>
