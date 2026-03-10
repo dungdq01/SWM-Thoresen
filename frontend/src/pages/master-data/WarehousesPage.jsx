@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { Warehouse } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Warehouse, Eye } from 'lucide-react'
 import {
   useWarehouseList,
   useCreateWarehouse,
@@ -34,6 +35,8 @@ const formatNumber = (num) => {
 }
 
 export function WarehousesPage() {
+  const navigate = useNavigate()
+
   const [filters, setFilters] = useState({
     page: 1,
     pageSize: 20,
@@ -177,12 +180,15 @@ export function WarehousesPage() {
             {warehouses.map((wh) => (
               <TableRow key={wh.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/app/master-data/warehouses/${wh.id}`)}
+                    className="flex items-center gap-2 group"
+                  >
                     <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
                       <Warehouse className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <span className="font-medium text-navy-900">{wh.warehouseCode}</span>
-                  </div>
+                    <span className="font-medium text-navy-900 group-hover:text-blue-600 transition-colors">{wh.warehouseCode}</span>
+                  </button>
                 </TableCell>
                 <TableCell>
                   <div>
