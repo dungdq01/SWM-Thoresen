@@ -65,11 +65,9 @@ export function InventoryPostingWorkbenchPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h2 className="section-title">Posting & reversal workbench</h2>
-        </div>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Posting & reversal workbench</h2>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
@@ -113,6 +111,6 @@ export function InventoryPostingWorkbenchPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

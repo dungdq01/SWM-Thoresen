@@ -23,7 +23,7 @@ export function ReportingLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <BarChart3 className="h-5 w-5" />
+            <BarChart3 className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Reporting, Audit & Go-Live</h2>

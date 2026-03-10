@@ -1,4 +1,4 @@
-import { useBillingDashboard, useInvoices } from '@domains/billing'
+import { useBillingDashboard, useDebitNotes } from '@domains/billing'
 import { Badge, Button, SummaryDonut, StatHighlight } from '@shared/ui'
 
 const statusTone = (status) => {
@@ -9,10 +9,10 @@ const statusTone = (status) => {
 
 export function BillingDashboardPage() {
   const { data: dashboardResponse, refetch: refetchDashboard } = useBillingDashboard()
-  const { data: recentResponse, refetch: refetchRecent } = useInvoices({ page: 1, limit: 5 })
+  const { data: recentResponse, refetch: refetchRecent } = useDebitNotes({ page: 1, limit: 5 })
 
   const dashboard = dashboardResponse?.data || {}
-  const recentInvoices = recentResponse?.data || []
+  const recentDebitNotes = recentResponse?.data || []
 
   const handleRefresh = () => {
     refetchDashboard()
@@ -20,9 +20,9 @@ export function BillingDashboardPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Billing Dashboard</h2>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Dashboard</h2>
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
 
@@ -53,20 +53,20 @@ export function BillingDashboardPage() {
       <div className="wrs-card p-5 space-y-4">
         <h3 className="text-sm font-semibold text-navy-900">Recent Invoices</h3>
         <div className="space-y-3">
-          {recentInvoices.map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between border-b border-moon-200 pb-3">
+          {recentDebitNotes.map((dn) => (
+            <div key={dn.id} className="flex items-center justify-between border-b border-moon-200 pb-3">
               <div>
-                <p className="font-semibold text-navy-900">{inv.invoiceNumber}</p>
-                <p className="text-xs text-navy-400">{inv.owner?.code || inv.ownerId} · {inv.periodFrom} → {inv.periodTo}</p>
+                <p className="font-semibold text-navy-900">{dn.dnNumber || dn.invoiceNumber}</p>
+                <p className="text-xs text-navy-400">{dn.owner?.code || dn.ownerId} · {dn.periodStart || dn.periodFrom} → {dn.periodEnd || dn.periodTo}</p>
               </div>
               <div className="text-right">
-                <Badge variant={statusTone(inv.status)}>{inv.status}</Badge>
-                <p className="text-sm font-semibold text-navy-900 mt-1">{inv.totalAmount?.toLocaleString()} VND</p>
+                <Badge variant={statusTone(dn.status)}>{dn.status}</Badge>
+                <p className="text-sm font-semibold text-navy-900 mt-1">{dn.totalAmount?.toLocaleString()} VND</p>
               </div>
             </div>
           ))}
         </div>
       </div>
-    </div>
+    </>
   )
 }

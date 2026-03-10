@@ -36,11 +36,9 @@ export function InventoryOnHandPage() {
   }, [])
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h2 className="section-title">Current Inventory On-Hand</h2>
-        </div>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Current Inventory On-Hand</h2>
         <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
@@ -123,6 +121,6 @@ export function InventoryOnHandPage() {
           <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
         </CardContent>
       </Card>
-    </div>
+    </>
   )
 }

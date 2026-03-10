@@ -34,8 +34,8 @@ export function ReconciliationPage() {
   const avgDuration = rows.length > 0 ? Math.round(rows.reduce((sum, r) => sum + r.durationSec, 0) / rows.length) : 0
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Reconciliation — RECON-001</h2>
         <div className="flex items-center gap-2">
           <p className="text-xs text-navy-400">Hourly · SLA ≤5 phút · OnHand = SUM(InventTrans)</p>
@@ -143,6 +143,6 @@ export function ReconciliationPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

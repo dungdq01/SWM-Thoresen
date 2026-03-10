@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useInvoices, useGenerateInvoice, useApproveInvoice, useCancelInvoice } from '@domains/billing'
+import { useDebitNotes, useGenerateDebitNote, useReviewDebitNote, useApproveDebitNote, useLockDebitNote } from '@domains/billing'
 import { useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const statusTone = (status) => {
-  if (status === 'APPROVED') return 'success'
-  if (status === 'CANCELLED') return 'danger'
+  if (status === 'APPROVED' || status === 'LOCKED') return 'success'
+  if (status === 'REVIEWED') return 'info'
   if (status === 'DRAFT') return 'warning'
   return 'default'
 }
@@ -13,8 +13,8 @@ const statusTone = (status) => {
 const initialDraft = {
   ownerId: '',
   warehouseId: '',
-  periodFrom: '',
-  periodTo: '',
+  periodStart: '',
+  periodEnd: '',
 }
 
 export function InvoicesPage() {
@@ -23,10 +23,11 @@ export function InvoicesPage() {
   const [draft, setDraft] = useState(initialDraft)
   const [errors, setErrors] = useState({})
 
-  const { data: response, isLoading, refetch } = useInvoices(filters)
-  const generateInvoice = useGenerateInvoice()
-  const approveInvoice = useApproveInvoice()
-  const cancelInvoice = useCancelInvoice()
+  const { data: response, isLoading, refetch } = useDebitNotes(filters)
+  const generateDebitNote = useGenerateDebitNote()
+  const reviewDebitNote = useReviewDebitNote()
+  const approveDebitNote = useApproveDebitNote()
+  const lockDebitNote = useLockDebitNote()
 
   const { data: owners = [] } = useLookupOwners()
   const { data: warehouses = [] } = useLookupWarehouses()
@@ -38,41 +39,41 @@ export function InvoicesPage() {
     const e = {}
     if (!draft.ownerId) e.ownerId = 'Owner là bắt buộc'
     if (!draft.warehouseId) e.warehouseId = 'Warehouse là bắt buộc'
-    if (!draft.periodFrom) e.periodFrom = 'Period From là bắt buộc'
-    if (!draft.periodTo) e.periodTo = 'Period To là bắt buộc'
-    if (draft.periodFrom && draft.periodTo && draft.periodFrom > draft.periodTo) e.periodTo = 'Period To phải sau Period From'
+    if (!draft.periodStart) e.periodStart = 'Period Start là bắt buộc'
+    if (!draft.periodEnd) e.periodEnd = 'Period End là bắt buộc'
+    if (draft.periodStart && draft.periodEnd && draft.periodStart > draft.periodEnd) e.periodEnd = 'Period End phải sau Period Start'
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
   const handleGenerate = async () => {
     if (!validate()) return
-    await generateInvoice.mutateAsync(draft)
+    await generateDebitNote.mutateAsync(draft)
     setDraft(initialDraft)
     setErrors({})
     setShowCreate(false)
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Invoices</h2>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Debit Notes</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Generate Invoice</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Generate Debit Note</Button>
           <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'CANCELLED', label: 'CANCELLED' }]} placeholder="Status" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'REVIEWED', label: 'REVIEWED' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'LOCKED', label: 'LOCKED' }]} placeholder="Status" />
           <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Owner" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Invoice #</TableHead>
+              <TableHead>Debit Note #</TableHead>
               <TableHead>Owner</TableHead>
               <TableHead>Period</TableHead>
               <TableHead align="right">Amount</TableHead>
@@ -86,7 +87,7 @@ export function InvoicesPage() {
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
-                  <p className="font-semibold text-navy-900">{row.invoiceNumber}</p>
+                  <p className="font-semibold text-navy-900">{row.dnNumber || row.invoiceNumber}</p>
                   <p className="text-xs text-navy-400">{row.lineCount} lines</p>
                 </TableCell>
                 <TableCell>
@@ -94,8 +95,8 @@ export function InvoicesPage() {
                   <p className="text-xs text-navy-400">{row.owner?.name}</p>
                 </TableCell>
                 <TableCell>
-                  <p className="text-sm text-navy-700">{row.periodFrom}</p>
-                  <p className="text-xs text-navy-400">→ {row.periodTo}</p>
+                  <p className="text-sm text-navy-700">{row.periodStart || row.periodFrom}</p>
+                  <p className="text-xs text-navy-400">→ {row.periodEnd || row.periodTo}</p>
                 </TableCell>
                 <TableCell align="right">
                   <p className="font-semibold text-navy-900">{row.totalAmount?.toLocaleString()} {row.currency}</p>
@@ -103,12 +104,9 @@ export function InvoicesPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'DRAFT' && (
-                      <>
-                        <Button variant="accent" size="sm" onClick={() => approveInvoice.mutate(row.id)}>Approve</Button>
-                        <Button variant="ghost" size="sm" onClick={() => cancelInvoice.mutate({ id: row.id, data: {} })}>Cancel</Button>
-                      </>
-                    )}
+                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => reviewDebitNote.mutate(row.id)}>Review</Button>}
+                    {row.status === 'REVIEWED' && <Button variant="accent" size="sm" onClick={() => approveDebitNote.mutate(row.id)}>Approve</Button>}
+                    {row.status === 'APPROVED' && <Button variant="gold" size="sm" onClick={() => lockDebitNote.mutate(row.id)}>Lock</Button>}
                   </div>
                 </TableCell>
               </TableRow>
@@ -122,14 +120,14 @@ export function InvoicesPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Generate Invoice"
-        description="Generate invoice for owner based on billable events."
+        title="Generate Debit Note"
+        description="Generate debit note for owner based on billing events."
         size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleGenerate} disabled={generateInvoice.isPending}>
-              {generateInvoice.isPending ? 'Đang xử lý...' : 'Generate Invoice'}
+            <Button variant="accent" onClick={handleGenerate} disabled={generateDebitNote.isPending}>
+              {generateDebitNote.isPending ? 'Đang xử lý...' : 'Generate Debit Note'}
             </Button>
           </>
         }
@@ -144,15 +142,15 @@ export function InvoicesPage() {
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
           <div>
-            <Input label="Period From" type="date" value={draft.periodFrom} onChange={(e) => setDraft((prev) => ({ ...prev, periodFrom: e.target.value }))} />
-            {errors.periodFrom && <p className="text-xs text-danger mt-1">{errors.periodFrom}</p>}
+            <Input label="Period Start" type="date" value={draft.periodStart} onChange={(e) => setDraft((prev) => ({ ...prev, periodStart: e.target.value }))} />
+            {errors.periodStart && <p className="text-xs text-danger mt-1">{errors.periodStart}</p>}
           </div>
           <div>
-            <Input label="Period To" type="date" value={draft.periodTo} onChange={(e) => setDraft((prev) => ({ ...prev, periodTo: e.target.value }))} />
-            {errors.periodTo && <p className="text-xs text-danger mt-1">{errors.periodTo}</p>}
+            <Input label="Period End" type="date" value={draft.periodEnd} onChange={(e) => setDraft((prev) => ({ ...prev, periodEnd: e.target.value }))} />
+            {errors.periodEnd && <p className="text-xs text-danger mt-1">{errors.periodEnd}</p>}
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

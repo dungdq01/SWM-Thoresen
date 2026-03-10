@@ -23,8 +23,8 @@ export function MonitoringPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Integration Monitoring</h2>
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
@@ -93,6 +93,6 @@ export function MonitoringPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

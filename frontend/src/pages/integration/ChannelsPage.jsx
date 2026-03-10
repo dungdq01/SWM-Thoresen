@@ -19,8 +19,8 @@ export function ChannelsPage() {
   const channels = response?.data || []
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Integration Channels</h2>
         <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
@@ -49,6 +49,6 @@ export function ChannelsPage() {
           </div>
         ))}
       </div>
-    </div>
+    </>
   )
 }

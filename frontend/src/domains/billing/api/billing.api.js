@@ -2,51 +2,55 @@ import { httpClient } from '@shared/api/httpClient'
 import { billingMockApi } from '@mocks/billing.mock'
 import { isMockApiEnabled } from '@mocks/utils'
 
-const BASE_URL = '/api/v1/billing'
+const BASE_URL = '/billing'
 
 const withDataSource = (mockHandler, apiHandler) => (...args) => {
   return isMockApiEnabled() ? mockHandler(...args) : apiHandler(...args)
 }
 
 export const billingApi = {
-  getInvoices: withDataSource(
+  getDebitNotes: withDataSource(
     (params) => billingMockApi.getInvoices(params),
-    (params) => httpClient.get(`${BASE_URL}/invoices`, { params })
+    (params) => httpClient.get(`${BASE_URL}/debit-notes`, { params })
   ),
-  getInvoiceById: withDataSource(
+  getDebitNoteById: withDataSource(
     (id) => billingMockApi.getInvoiceById(id),
-    (id) => httpClient.get(`${BASE_URL}/invoices/${id}`)
+    (id) => httpClient.get(`${BASE_URL}/debit-notes/${id}`)
   ),
-  generateInvoice: withDataSource(
+  generateDebitNote: withDataSource(
     (data) => billingMockApi.generateInvoice(data),
-    (data) => httpClient.post(`${BASE_URL}/invoices/generate`, data)
+    (data) => httpClient.post(`${BASE_URL}/debit-notes`, data)
   ),
-  approveInvoice: withDataSource(
+  reviewDebitNote: withDataSource(
+    (id) => billingMockApi.approveInvoice?.(id) || Promise.resolve({ data: {} }),
+    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/review`)
+  ),
+  approveDebitNote: withDataSource(
     (id) => billingMockApi.approveInvoice(id),
-    (id) => httpClient.post(`${BASE_URL}/invoices/${id}/approve`)
+    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/approve`)
   ),
-  cancelInvoice: withDataSource(
-    (id, data) => billingMockApi.cancelInvoice(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/invoices/${id}/cancel`, data)
+  lockDebitNote: withDataSource(
+    (id) => Promise.resolve({ data: {} }),
+    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/lock`)
   ),
-  getRateCards: withDataSource(
+  getContracts: withDataSource(
     (params) => billingMockApi.getRateCards(params),
-    (params) => httpClient.get(`${BASE_URL}/rate-cards`, { params })
+    (params) => httpClient.get(`${BASE_URL}/contracts`, { params })
   ),
-  createRateCard: withDataSource(
+  createContract: withDataSource(
     (data) => billingMockApi.createRateCard(data),
-    (data) => httpClient.post(`${BASE_URL}/rate-cards`, data)
+    (data) => httpClient.post(`${BASE_URL}/contracts`, data)
   ),
-  updateRateCard: withDataSource(
+  updateContract: withDataSource(
     (id, data) => billingMockApi.updateRateCard(id, data),
-    (id, data) => httpClient.put(`${BASE_URL}/rate-cards/${id}`, data)
+    (id, data) => httpClient.put(`${BASE_URL}/contracts/${id}`, data)
   ),
-  getBillableEvents: withDataSource(
+  getEvents: withDataSource(
     (params) => billingMockApi.getBillableEvents(params),
-    (params) => httpClient.get(`${BASE_URL}/billable-events`, { params })
+    (params) => httpClient.get(`${BASE_URL}/events`, { params })
   ),
   getDashboard: withDataSource(
     (params) => billingMockApi.getDashboard(params),
-    (params) => httpClient.get(`${BASE_URL}/dashboard`, { params })
+    (params) => httpClient.get(`${BASE_URL}/debit-notes`, { params })
   ),
 }

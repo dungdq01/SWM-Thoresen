@@ -20,7 +20,7 @@ export function VasLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <Box className="h-5 w-5" />
+            <Box className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Value-Added Services</h2>

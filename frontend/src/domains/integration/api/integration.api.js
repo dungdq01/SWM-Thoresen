@@ -2,7 +2,7 @@ import { httpClient } from '@shared/api/httpClient'
 import { integrationMockApi } from '@mocks/integration.mock'
 import { isMockApiEnabled } from '@mocks/utils'
 
-const BASE_URL = '/api/v1/integration'
+const BASE_URL = '/integration'
 
 const withDataSource = (mockHandler, apiHandler) => (...args) => {
   return isMockApiEnabled() ? mockHandler(...args) : apiHandler(...args)

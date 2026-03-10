@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useVasWorkOrders, useCreateVasWorkOrder, useReleaseVasWorkOrder, useStartVasWorkOrder, useCancelVasWorkOrder } from '@domains/vas'
+import { useVasWorkOrders, useCreateVasWorkOrder, useConfirmVasWorkOrder, useCancelVasWorkOrder } from '@domains/vas'
 import { useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
@@ -7,7 +7,7 @@ const statusTone = (status) => {
   if (status === 'COMPLETED') return 'success'
   if (status === 'CANCELLED') return 'danger'
   if (status === 'IN_PROGRESS') return 'warning'
-  if (status === 'RELEASED') return 'info'
+  if (status === 'CONFIRMED') return 'info'
   return 'default'
 }
 
@@ -29,8 +29,7 @@ export function VasWorkOrdersPage() {
 
   const { data: response, isLoading, refetch } = useVasWorkOrders(filters)
   const createWorkOrder = useCreateVasWorkOrder()
-  const releaseWorkOrder = useReleaseVasWorkOrder()
-  const startWorkOrder = useStartVasWorkOrder()
+  const confirmWorkOrder = useConfirmVasWorkOrder()
   const cancelWorkOrder = useCancelVasWorkOrder()
 
   const { data: owners = [] } = useLookupOwners()
@@ -61,8 +60,8 @@ export function VasWorkOrdersPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">VAS Work Orders</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Create Work Order</Button>
@@ -72,7 +71,7 @@ export function VasWorkOrdersPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'RELEASED', label: 'RELEASED' }, { value: 'IN_PROGRESS', label: 'IN_PROGRESS' }, { value: 'COMPLETED', label: 'COMPLETED' }, { value: 'CANCELLED', label: 'CANCELLED' }]} placeholder="Status" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'CONFIRMED', label: 'CONFIRMED' }, { value: 'IN_PROGRESS', label: 'IN_PROGRESS' }, { value: 'COMPLETED', label: 'COMPLETED' }, { value: 'CANCELLED', label: 'CANCELLED' }]} placeholder="Status" />
           <Select value={filters.vasType} onChange={(e) => setFilters((prev) => ({ ...prev, vasType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'BAGGING', label: 'BAGGING' }, { value: 'REPACKING', label: 'REPACKING' }]} placeholder="VAS Type" />
         </div>
 
@@ -110,9 +109,8 @@ export function VasWorkOrdersPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => releaseWorkOrder.mutate(row.id)}>Release</Button>}
-                    {row.status === 'RELEASED' && <Button variant="accent" size="sm" onClick={() => startWorkOrder.mutate(row.id)}>Start</Button>}
-                    {['DRAFT', 'RELEASED'].includes(row.status) && <Button variant="ghost" size="sm" onClick={() => cancelWorkOrder.mutate({ id: row.id, data: {} })}>Cancel</Button>}
+                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => confirmWorkOrder.mutate(row.id)}>Confirm</Button>}
+                    {['DRAFT', 'CONFIRMED'].includes(row.status) && <Button variant="ghost" size="sm" onClick={() => cancelWorkOrder.mutate({ id: row.id, data: {} })}>Cancel</Button>}
                   </div>
                 </TableCell>
               </TableRow>
@@ -166,6 +164,6 @@ export function VasWorkOrdersPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

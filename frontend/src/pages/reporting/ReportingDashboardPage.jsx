@@ -8,8 +8,8 @@ export function ReportingDashboardPage() {
   const movementTrend = dashboard.movementTrend || []
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">KPI Dashboard</h2>
         <Button variant="outline" size="sm" onClick={() => refetch()}>Refresh</Button>
       </div>
@@ -97,6 +97,6 @@ export function ReportingDashboardPage() {
           <StatHighlight value={dashboard.totalOwners || 0} label="Total Owners" color="text-navy-900" bgColor="bg-moon-50" />
         </div>
       </div>
-    </div>
+    </>
   )
 }

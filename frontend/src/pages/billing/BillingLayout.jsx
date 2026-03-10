@@ -21,7 +21,7 @@ export function BillingLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <CreditCard className="h-5 w-5" />
+            <CreditCard className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Billing & Invoicing</h2>

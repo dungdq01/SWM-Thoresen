@@ -67,8 +67,8 @@ export function AuditTrailPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Audit Trail</h2>
         <p className="text-xs text-navy-400">Chỉ đọc · AC-AUD-1..3: searchable, date filter, entity type filter</p>
       </div>
@@ -171,6 +171,6 @@ export function AuditTrailPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

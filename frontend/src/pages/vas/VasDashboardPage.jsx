@@ -20,8 +20,8 @@ export function VasDashboardPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">VAS Dashboard</h2>
         <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
       </div>
@@ -64,6 +64,6 @@ export function VasDashboardPage() {
           ))}
         </div>
       </div>
-    </div>
+    </>
   )
 }

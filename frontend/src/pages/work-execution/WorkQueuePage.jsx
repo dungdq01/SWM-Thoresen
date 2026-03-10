@@ -39,8 +39,8 @@ export function WorkQueuePage() {
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Work Queue (All Tasks)</h2>
         <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
@@ -131,6 +131,6 @@ export function WorkQueuePage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

@@ -64,8 +64,8 @@ export function OutboundShipmentsPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Shipment planning & creation</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Create Shipment</Button>
@@ -171,6 +171,6 @@ export function OutboundShipmentsPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

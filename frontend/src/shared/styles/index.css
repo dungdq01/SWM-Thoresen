@@ -33,19 +33,19 @@
   }
 
   .app-main {
-    @apply min-h-screen p-6;
+    @apply min-h-screen px-6 py-4;
   }
 
   .page-section {
-    @apply space-y-6 animate-fade-in;
+    @apply space-y-3 animate-fade-in;
   }
 
   .page-header {
-    @apply flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between;
+    @apply flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between;
   }
 
   .page-title {
-    @apply text-xl font-bold tracking-tight text-navy-900;
+    @apply text-base font-bold tracking-tight text-navy-900;
   }
 
   .page-description {
@@ -93,15 +93,15 @@
   }
 
   .module-nav-shell {
-    @apply wrs-card p-4;
+    @apply wrs-card px-4 py-2.5;
   }
 
   .module-nav-header {
-    @apply flex items-center gap-3 border-b-2 border-moon-200 pb-4;
+    @apply flex items-center gap-2.5 border-b border-moon-200 pb-2;
   }
 
   .module-nav-icon {
-    @apply flex h-10 w-10 items-center justify-center rounded-xl bg-navy-800 text-ice;
+    @apply flex h-7 w-7 items-center justify-center rounded-lg bg-navy-800 text-ice;
   }
 
   .module-nav-title {
@@ -113,11 +113,11 @@
   }
 
   .module-nav-list {
-    @apply mt-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap;
+    @apply mt-2 flex items-center gap-1 overflow-x-auto whitespace-nowrap;
   }
 
   .module-nav-item {
-    @apply inline-flex items-center gap-2 rounded-xl border border-transparent px-4 py-2.5 text-sm font-semibold text-navy-500 transition-all duration-200 hover:bg-moon-50 hover:text-navy-900;
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-[13px] font-semibold text-navy-500 transition-all duration-200 hover:bg-moon-50 hover:text-navy-900;
   }
 
   .module-nav-item-active {

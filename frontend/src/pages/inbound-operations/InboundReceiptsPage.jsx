@@ -70,8 +70,8 @@ export function InboundReceiptsPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Receipt planning & creation</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Create Receipt</Button>
@@ -179,6 +179,6 @@ export function InboundReceiptsPage() {
           <Select label="Cargo form" value={draft.cargoForm} onChange={(e) => setDraft((prev) => ({ ...prev, cargoForm: e.target.value }))} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

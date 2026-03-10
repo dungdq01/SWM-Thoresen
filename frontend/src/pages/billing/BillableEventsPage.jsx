@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBillableEvents } from '@domains/billing'
+import { useBillingEvents } from '@domains/billing'
 import { useLookupOwners } from '@domains/master-data'
 import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
@@ -13,16 +13,16 @@ const eventTypeTone = (eventType) => {
 export function BillableEventsPage() {
   const [filters, setFilters] = useState({ page: 1, limit: 30, ownerId: '', eventType: '', invoiced: undefined })
 
-  const { data: response, isLoading, refetch } = useBillableEvents(filters)
+  const { data: response, isLoading, refetch } = useBillingEvents(filters)
   const { data: owners = [] } = useLookupOwners()
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Billable Events</h2>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Billing Events</h2>
         <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
@@ -76,6 +76,6 @@ export function BillableEventsPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

@@ -33,8 +33,8 @@ export function InventoryReportPage() {
   const totalAvailable = rows.reduce((s, r) => s + r.availableKg, 0)
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Inventory Report — On-Hand Summary</h2>
         <p className="text-xs text-navy-400">Chỉ đọc · Dữ liệu = SUM(InventTrans) signed qty theo từng InventDim</p>
       </div>
@@ -145,6 +145,6 @@ export function InventoryReportPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

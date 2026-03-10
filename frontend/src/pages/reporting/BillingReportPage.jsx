@@ -9,8 +9,8 @@ export function BillingReportPage() {
   const byServiceType = report.byServiceType || []
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Billing Report</h2>
         <div className="flex items-center gap-2">
           <p className="text-xs text-navy-400">
@@ -113,6 +113,6 @@ export function BillingReportPage() {
           )}
         </div>
       </div>
-    </div>
+    </>
   )
 }

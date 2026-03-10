@@ -60,8 +60,8 @@ export function StatusChangePage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Inventory Status Change</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Create Status Change</Button>
@@ -167,6 +167,6 @@ export function StatusChangePage() {
           <Textarea label="Reason Text" rows={2} value={draft.reasonText} onChange={(e) => setDraft((prev) => ({ ...prev, reasonText: e.target.value }))} />
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

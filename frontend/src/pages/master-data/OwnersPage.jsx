@@ -128,7 +128,7 @@ export function OwnersPage() {
   ]
 
   return (
-    <div className="page-section">
+    <>
       <PageHeader
         title="Owner Management"
         description="List of all owners in the system"
@@ -239,6 +239,6 @@ export function OwnersPage() {
         entityName={reactivateState.data?.ownerName}
         isLoading={reactivateMutation.isPending}
       />
-    </div>
+    </>
   )
 }

@@ -65,8 +65,8 @@ export function MoveOrdersPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Move Orders (Internal Movement)</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Create Move Order</Button>
@@ -169,6 +169,6 @@ export function MoveOrdersPage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   )
 }
