@@ -81,15 +81,17 @@ export function ReasonCodeFormModal({ isOpen, onClose, editData }) {
 
   const onSubmit = async (data) => {
     try {
-      const payload = {
-        ...data,
-        code: isEdit ? editData.code : data.code,
-        domainCode: CATEGORY_TO_DOMAIN[data.category] || 'FOUNDATION',
-      }
+      const domainCode = CATEGORY_TO_DOMAIN[data.category] || 'FOUNDATION'
+
       if (isEdit) {
-        await updateReasonCode.mutateAsync({ id: editData.id, data: payload })
+        // Remove code for update - backend doesn't accept it
+        const { code, ...updateData } = data
+        await updateReasonCode.mutateAsync({
+          id: editData.id,
+          data: { ...updateData, domainCode }
+        })
       } else {
-        await createReasonCode.mutateAsync(payload)
+        await createReasonCode.mutateAsync({ ...data, domainCode })
       }
       onClose()
       reset()

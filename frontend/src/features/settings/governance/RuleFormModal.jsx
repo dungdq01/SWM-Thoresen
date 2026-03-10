@@ -78,7 +78,9 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
   const onSubmit = async (data) => {
     try {
       if (isEdit) {
-        await updateRule.mutateAsync({ id: editData.id, data })
+        // Remove ruleCode and domain for update - backend doesn't accept them
+        const { ruleCode, domain, ...updateData } = data
+        await updateRule.mutateAsync({ id: editData.id, data: updateData })
       } else {
         await createRule.mutateAsync(data)
       }
