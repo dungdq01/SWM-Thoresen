@@ -37,7 +37,7 @@ export function GovernancePage() {
       const matchesSearch =
         !search ||
         r.ruleCode?.toLowerCase().includes(search.toLowerCase()) ||
-        r.ruleName?.toLowerCase().includes(search.toLowerCase())
+        r.title?.toLowerCase().includes(search.toLowerCase())
       const matchesDomain = !domainFilter || r.domain === domainFilter
       return matchesSearch && matchesDomain
     })
@@ -124,13 +124,13 @@ export function GovernancePage() {
                         </code>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-navy-900">{rule.ruleName}</span>
+                        <span className="font-medium text-navy-900">{rule.title}</span>
                       </TableCell>
                       <TableCell>
                         <Badge variant="info" size="sm">{rule.domain}</Badge>
                       </TableCell>
                       <TableCell>
-                        <RuleStatusBadge status={rule.status} />
+                        <RuleStatusBadge status={rule.currentStatus} />
                       </TableCell>
                       <TableCell>
                         <span className="text-navy-600 line-clamp-1">{rule.description || '—'}</span>
