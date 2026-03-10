@@ -2,7 +2,7 @@ import { httpClient } from '@shared/api/httpClient'
 import { inboundOperationsMockApi } from '@mocks/inboundOperations.mock'
 import { isMockApiEnabled } from '@mocks/utils'
 
-const BASE_URL = '/api/v1/inbound'
+const BASE_URL = '/inbound'
 
 const withDataSource = (mockHandler, apiHandler) => (...args) => {
   return isMockApiEnabled() ? mockHandler(...args) : apiHandler(...args)
@@ -55,11 +55,11 @@ export const inboundOperationsApi = {
   ),
   getExceptions: withDataSource(
     (params) => inboundOperationsMockApi.getExceptions(params),
-    (params) => httpClient.get(`${BASE_URL}/exceptions`, { params })
+    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'REJECTED,CANCELLED' } })
   ),
   getPutawayQueue: withDataSource(
     (params) => inboundOperationsMockApi.getPutawayQueue(params),
-    (params) => httpClient.get(`${BASE_URL}/putaway-queue`, { params })
+    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'RECEIVED' } })
   ),
   completePutaway: withDataSource(
     (id) => inboundOperationsMockApi.completePutaway(id),
@@ -71,6 +71,6 @@ export const inboundOperationsApi = {
   ),
   getWeighLogs: withDataSource(
     (id) => inboundOperationsMockApi.getWeighLogs(id),
-    (id) => httpClient.get(`${BASE_URL}/receipts/${id}/weigh-logs`)
+    (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`)
   ),
 }

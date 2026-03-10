@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBillableEvents } from '@domains/billing'
+import { useBillingEvents } from '@domains/billing'
 import { useLookupOwners } from '@domains/master-data'
 import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
@@ -13,40 +13,40 @@ const eventTypeTone = (eventType) => {
 export function BillableEventsPage() {
   const [filters, setFilters] = useState({ page: 1, limit: 30, ownerId: '', eventType: '', invoiced: undefined })
 
-  const { data: response, isLoading, refetch } = useBillableEvents(filters)
+  const { data: response, isLoading, refetch } = useBillingEvents(filters)
   const { data: owners = [] } = useLookupOwners()
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Sự kiện tính phí</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Billing Events</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Owner" />
           <Select value={filters.eventType} onChange={(e) => setFilters((prev) => ({ ...prev, eventType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'RECEIPT_RECEIVED', label: 'RECEIPT_RECEIVED' }, { value: 'SHIPMENT_SHIPPED', label: 'SHIPMENT_SHIPPED' }, { value: 'VAS_COMPLETED', label: 'VAS_COMPLETED' }, { value: 'STORAGE_DAILY', label: 'STORAGE_DAILY' }]} placeholder="Event Type" />
-          <Select value={filters.invoiced === undefined ? '' : filters.invoiced.toString()} onChange={(e) => setFilters((prev) => ({ ...prev, invoiced: e.target.value === '' ? undefined : e.target.value === 'true', page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'true', label: 'Đã xuất HĐ' }, { value: 'false', label: 'Chưa xuất HĐ' }]} placeholder="Invoiced Status" />
+          <Select value={filters.invoiced === undefined ? '' : filters.invoiced.toString()} onChange={(e) => setFilters((prev) => ({ ...prev, invoiced: e.target.value === '' ? undefined : e.target.value === 'true', page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'true', label: 'Invoiced' }, { value: 'false', label: 'Not Invoiced' }]} placeholder="Invoiced Status" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Loại sự kiện</TableHead>
-              <TableHead>Nguồn</TableHead>
-              <TableHead>Chủ hàng / Kho</TableHead>
-              <TableHead align="right">SL</TableHead>
-              <TableHead>Thời gian</TableHead>
-              <TableHead align="center">Xuất HĐ</TableHead>
+              <TableHead>Event Type</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Owner / Warehouse</TableHead>
+              <TableHead align="right">Qty</TableHead>
+              <TableHead>Event At</TableHead>
+              <TableHead align="center">Invoiced</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có sự kiện tính phí" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No billable events" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -66,7 +66,7 @@ export function BillableEventsPage() {
                   <p className="text-xs text-navy-500">{new Date(row.eventAt).toLocaleString('vi-VN')}</p>
                 </TableCell>
                 <TableCell align="center">
-                  <Badge variant={row.invoiced ? 'success' : 'warning'}>{row.invoiced ? 'Rồi' : 'Chưa'}</Badge>
+                  <Badge variant={row.invoiced ? 'success' : 'warning'}>{row.invoiced ? 'Yes' : 'No'}</Badge>
                   {row.invoiceId && <p className="text-xs text-navy-400 mt-1">{row.invoiceId}</p>}
                 </TableCell>
               </TableRow>
@@ -76,6 +76,6 @@ export function BillableEventsPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

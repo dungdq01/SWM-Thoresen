@@ -21,7 +21,7 @@ export function WorkExecutionLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <Smartphone className="h-5 w-5" />
+            <Smartphone className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Mobile & Task Execution</h2>

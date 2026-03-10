@@ -21,7 +21,7 @@ export function InventoryCoreLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <Boxes className="h-5 w-5" />
+            <Boxes className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Inventory Truth Navigation</h2>

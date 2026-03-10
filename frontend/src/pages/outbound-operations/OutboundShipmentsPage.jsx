@@ -64,18 +64,18 @@ export function OutboundShipmentsPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Lập kế hoạch & tạo phiếu xuất</h2>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Shipment planning & creation</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Tạo phiếu xuất</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Create Shipment</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Input placeholder="Số phiếu xuất" value={filters.shipmentNumber} onChange={(e) => setFilters((prev) => ({ ...prev, shipmentNumber: e.target.value, page: 1 }))} />
+          <Input placeholder="Shipment number" value={filters.shipmentNumber} onChange={(e) => setFilters((prev) => ({ ...prev, shipmentNumber: e.target.value, page: 1 }))} />
           <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'CONFIRMED', label: 'CONFIRMED' }, { value: 'ALLOCATED', label: 'ALLOCATED' }, { value: 'PICKING', label: 'PICKING' }, { value: 'PENDING_APPROVAL', label: 'PENDING_APPROVAL' }, { value: 'SHIPPED', label: 'SHIPPED' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Status" />
           <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Owner" />
         </div>
@@ -83,29 +83,29 @@ export function OutboundShipmentsPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Phiếu xuất</TableHead>
-              <TableHead>Xe / SO</TableHead>
-              <TableHead>Chủ hàng / Hàng</TableHead>
-              <TableHead align="right">Dự kiến</TableHead>
-              <TableHead align="center">Trạng thái</TableHead>
-              <TableHead align="center">Thao tác</TableHead>
+              <TableHead>Shipment</TableHead>
+              <TableHead>Vehicle / SO</TableHead>
+              <TableHead>Owner / Items</TableHead>
+              <TableHead align="right">Expected</TableHead>
+              <TableHead align="center">Status</TableHead>
+              <TableHead align="center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không tìm thấy phiếu xuất phù hợp" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No matching shipments" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <div>
                     <p className="font-semibold text-navy-900">{row.shipmentNumber}</p>
-                    <p className="text-xs text-navy-400">{row.lines?.length || 0} dòng</p>
+                    <p className="text-xs text-navy-400">{row.lines?.length || 0} line(s)</p>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium text-navy-800">{row.vehicleNumber || 'N/A'}</p>
-                    <p className="text-xs text-navy-400">{row.soId || 'Độc lập'}</p>
+                    <p className="text-xs text-navy-400">{row.soId || 'Standalone'}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -122,11 +122,11 @@ export function OutboundShipmentsPage() {
                   <div className="flex justify-center gap-2">
                     {row.status === 'DRAFT' ? (
                       <>
-                        <Button variant="outline" size="sm" onClick={() => confirmShipment.mutate(row.id)}>Xác nhận</Button>
-                        <Button variant="ghost" size="sm" onClick={() => cancelShipment.mutate({ id: row.id, data: { reasonCode: 'CANCELLED' } })}>Hủy</Button>
+                        <Button variant="outline" size="sm" onClick={() => confirmShipment.mutate(row.id)}>Confirm</Button>
+                        <Button variant="ghost" size="sm" onClick={() => cancelShipment.mutate({ id: row.id, data: { reasonCode: 'CANCELLED' } })}>Cancel</Button>
                       </>
                     ) : (
-                      <span className="text-xs text-navy-400">Tiếp: {row.status === 'CONFIRMED' ? 'Phân bổ' : row.status === 'ALLOCATED' ? 'Lấy hàng' : 'Cân'}</span>
+                      <span className="text-xs text-navy-400">Next: {row.status === 'CONFIRMED' ? 'Allocate' : row.status === 'ALLOCATED' ? 'Pick' : 'Weigh'}</span>
                     )}
                   </div>
                 </TableCell>
@@ -141,36 +141,36 @@ export function OutboundShipmentsPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Tạo phiếu xuất"
-        description="Tạo phiếu xuất: 1 phiếu = 1 chuyến = 1 xe."
+        title="Create Shipment"
+        description="Create shipment at runtime: 1 shipment = 1 trip = 1 vehicle."
         size="lg"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleCreate} disabled={createShipment.isPending}>
-              {createShipment.isPending ? 'Đang xử lý...' : 'Tạo phiếu xuất'}
+              {createShipment.isPending ? 'Đang xử lý...' : 'Create Shipment'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input label="Mã SO (không bắt buộc)" value={draft.soId} onChange={(e) => setDraft((prev) => ({ ...prev, soId: e.target.value }))} />
-          <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <Input label="Mã khách hàng" value={draft.customerId} onChange={(e) => setDraft((prev) => ({ ...prev, customerId: e.target.value }))} />
-          <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <Input label="Biển số xe" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
+          <Input label="SO ID (optional)" value={draft.soId} onChange={(e) => setDraft((prev) => ({ ...prev, soId: e.target.value }))} />
+          <Select label="Owner" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+          <Input label="Customer ID" value={draft.customerId} onChange={(e) => setDraft((prev) => ({ ...prev, customerId: e.target.value }))} />
+          <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+          <Input label="Vehicle number" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
 
           <div className="border-t border-moon-200 pt-4">
-            <p className="text-sm font-semibold text-navy-900 mb-3">Dòng 1</p>
+            <p className="text-sm font-semibold text-navy-900 mb-3">Line 1</p>
             <div className="space-y-3">
-              <Select label="Mặt hàng" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-              <Select label="Dạng hàng" value={draft.lines[0].cargoForm} onChange={(e) => updateLine(0, 'cargoForm', e.target.value)} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
-              <Input label="Số lượng dự kiến (kg)" type="number" value={draft.lines[0].expectedQty} onChange={(e) => updateLine(0, 'expectedQty', e.target.value)} />
-              <Input label="Số bao (nếu đóng bao)" type="number" value={draft.lines[0].bagCount} onChange={(e) => updateLine(0, 'bagCount', e.target.value)} />
+              <Select label="Item" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+              <Select label="Cargo form" value={draft.lines[0].cargoForm} onChange={(e) => updateLine(0, 'cargoForm', e.target.value)} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
+              <Input label="Expected qty (kg)" type="number" value={draft.lines[0].expectedQty} onChange={(e) => updateLine(0, 'expectedQty', e.target.value)} />
+              <Input label="Bag count (if bagged)" type="number" value={draft.lines[0].bagCount} onChange={(e) => updateLine(0, 'bagCount', e.target.value)} />
             </div>
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   )
 }

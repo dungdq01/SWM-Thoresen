@@ -24,12 +24,10 @@ export function InboundExceptionsPage() {
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h2 className="section-title">Vi phạm dung sai & quản lý ngoại lệ</h2>
-        </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Tolerance fail & exception governance</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -37,22 +35,22 @@ export function InboundExceptionsPage() {
           <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'OPEN', label: 'OPEN' }, { value: 'RESOLVED', label: 'RESOLVED' }]} placeholder="Exception status" />
           <Select value={filters.severity} onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'high', label: 'high' }, { value: 'medium', label: 'medium' }]} placeholder="Severity" />
           <Select value={filters.type} onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'TOLERANCE_FAIL', label: 'TOLERANCE_FAIL' }, { value: 'MANUAL_WEIGHT', label: 'MANUAL_WEIGHT' }]} placeholder="Type" />
-          <Input placeholder="Xem xét ngoại lệ theo quy tắc" disabled />
+          <Input placeholder="Rule-based exception review" disabled />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Ngoại lệ</TableHead>
-              <TableHead>Phiếu nhập</TableHead>
-              <TableHead>Ghi chú</TableHead>
-              <TableHead align="center">Mức độ</TableHead>
-              <TableHead align="center">Thao tác</TableHead>
+              <TableHead>Exception</TableHead>
+              <TableHead>Receipt</TableHead>
+              <TableHead>Note</TableHead>
+              <TableHead align="center">Severity</TableHead>
+              <TableHead align="center">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không tìm thấy ngoại lệ phù hợp" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No matching exceptions" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -79,15 +77,15 @@ export function InboundExceptionsPage() {
                       disabled={!row.receipt || row.receipt.status !== 'REJECTED' || row.receipt.attemptNumber >= 3}
                       onClick={() => reweighReceipt.mutate(row.receipt.id)}
                     >
-                      Cân lại
+                      Re-weigh
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       disabled={!row.receipt || !['REJECTED', 'AWAITING_WEIGHING', 'WEIGHED_IN', 'PROCESSING', 'DRAFT'].includes(row.receipt.status)}
-                      onClick={() => cancelReceipt.mutate({ id: row.receipt.id, data: { reasonCode: 'INBOUND_CANCELLED', note: 'Hủy từ bảng ngoại lệ' } })}
+                      onClick={() => cancelReceipt.mutate({ id: row.receipt.id, data: { reasonCode: 'INBOUND_CANCELLED', note: 'Cancelled from exception console' } })}
                     >
-                      Hủy
+                      Cancel
                     </Button>
                   </div>
                 </TableCell>
@@ -98,6 +96,6 @@ export function InboundExceptionsPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

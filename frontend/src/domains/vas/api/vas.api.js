@@ -2,7 +2,7 @@ import { httpClient } from '@shared/api/httpClient'
 import { vasMockApi } from '@mocks/vas.mock'
 import { isMockApiEnabled } from '@mocks/utils'
 
-const BASE_URL = '/api/v1/vas'
+const BASE_URL = '/vas-wo'
 
 const withDataSource = (mockHandler, apiHandler) => (...args) => {
   return isMockApiEnabled() ? mockHandler(...args) : apiHandler(...args)
@@ -11,50 +11,38 @@ const withDataSource = (mockHandler, apiHandler) => (...args) => {
 export const vasApi = {
   getWorkOrders: withDataSource(
     (params) => vasMockApi.getWorkOrders(params),
-    (params) => httpClient.get(`${BASE_URL}/work-orders`, { params })
+    (params) => httpClient.get(`${BASE_URL}`, { params })
   ),
   getWorkOrderById: withDataSource(
     (id) => vasMockApi.getWorkOrderById(id),
-    (id) => httpClient.get(`${BASE_URL}/work-orders/${id}`)
+    (id) => httpClient.get(`${BASE_URL}/${id}`)
   ),
   createWorkOrder: withDataSource(
     (data) => vasMockApi.createWorkOrder(data),
-    (data) => httpClient.post(`${BASE_URL}/work-orders`, data)
+    (data) => httpClient.post(`${BASE_URL}`, data)
   ),
-  releaseWorkOrder: withDataSource(
-    (id) => vasMockApi.releaseWorkOrder(id),
-    (id) => httpClient.post(`${BASE_URL}/work-orders/${id}/release`)
-  ),
-  startWorkOrder: withDataSource(
-    (id) => vasMockApi.startWorkOrder(id),
-    (id) => httpClient.post(`${BASE_URL}/work-orders/${id}/start`)
+  confirmWorkOrder: withDataSource(
+    (id) => vasMockApi.releaseWorkOrder?.(id) || vasMockApi.confirmWorkOrder?.(id),
+    (id) => httpClient.post(`${BASE_URL}/${id}/confirm`)
   ),
   completeWorkOrder: withDataSource(
     (id, data) => vasMockApi.completeWorkOrder(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/work-orders/${id}/complete`, data)
+    (id, data) => httpClient.post(`${BASE_URL}/${id}/complete`, data)
   ),
   cancelWorkOrder: withDataSource(
     (id, data) => vasMockApi.cancelWorkOrder(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/work-orders/${id}/cancel`, data)
+    (id, data) => httpClient.post(`${BASE_URL}/${id}/cancel`, data)
+  ),
+  addSession: withDataSource(
+    (woId, data) => vasMockApi.startSession?.(data) || Promise.resolve({ data: {} }),
+    (woId, data) => httpClient.post(`${BASE_URL}/${woId}/session`, data)
   ),
   getSessions: withDataSource(
-    (params) => vasMockApi.getSessions(params),
-    (params) => httpClient.get(`${BASE_URL}/sessions`, { params })
-  ),
-  startSession: withDataSource(
-    (data) => vasMockApi.startSession(data),
-    (data) => httpClient.post(`${BASE_URL}/sessions/start`, data)
-  ),
-  endSession: withDataSource(
-    (id) => vasMockApi.endSession(id),
-    (id) => httpClient.post(`${BASE_URL}/sessions/${id}/end`)
-  ),
-  recordBag: withDataSource(
-    (sessionId, data) => vasMockApi.recordBag(sessionId, data),
-    (sessionId, data) => httpClient.post(`${BASE_URL}/sessions/${sessionId}/bags`, data)
+    (woId) => vasMockApi.getSessions?.({ woId }) || Promise.resolve({ data: [] }),
+    (woId) => httpClient.get(`${BASE_URL}/${woId}/sessions`)
   ),
   getDashboard: withDataSource(
     (params) => vasMockApi.getDashboard(params),
-    (params) => httpClient.get(`${BASE_URL}/dashboard`, { params })
+    (params) => httpClient.get(`${BASE_URL}`, { params })
   ),
 }

@@ -18,12 +18,10 @@ export function InboundPutawayPage() {
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h2 className="section-title">Bàn giao lưu kho & đóng phiếu nhập</h2>
-        </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Putaway handoff & receipt closing</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -34,22 +32,22 @@ export function InboundPutawayPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Phiếu nhập</TableHead>
-              <TableHead>Chủ hàng / Hàng</TableHead>
-              <TableHead>Tích hợp</TableHead>
-              <TableHead align="center">Trạng thái</TableHead>
-              <TableHead align="center">Thao tác</TableHead>
+              <TableHead>Receipt</TableHead>
+              <TableHead>Owner / Item</TableHead>
+              <TableHead>Integration</TableHead>
+              <TableHead align="center">Status</TableHead>
+              <TableHead align="center">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không có phiếu nhập trong hàng đợi lưu kho" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No receipts in putaway queue" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <div>
                     <p className="font-semibold text-navy-900">{row.receiptNumber}</p>
-                    <p className="text-xs text-navy-400">{row.putawayWorkId || 'Chưa có mã công việc'}</p>
+                    <p className="text-xs text-navy-400">{row.putawayWorkId || 'No work ID'}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -66,7 +64,7 @@ export function InboundPutawayPage() {
                 <TableCell align="center"><Badge variant={putawayTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <Button variant="accent" size="sm" onClick={() => completePutaway.mutate(row.id)}>
-                    {row.status === 'RECEIVED' ? 'Tạo bàn giao' : 'Đóng phiếu nhập'}
+                    {row.status === 'RECEIVED' ? 'Create Handoff' : 'Close Receipt'}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -76,6 +74,6 @@ export function InboundPutawayPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

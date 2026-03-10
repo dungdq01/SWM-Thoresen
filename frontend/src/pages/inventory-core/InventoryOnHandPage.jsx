@@ -36,45 +36,43 @@ export function InventoryOnHandPage() {
   }, [])
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h2 className="section-title">Tồn kho hiện tại</h2>
-        </div>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Current Inventory On-Hand</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <Card hover={false}>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">Bộ lọc tồn kho</CardTitle>
+          <CardTitle className="text-base">On-Hand Filters</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <Input placeholder="Lọc theo mã mặt hàng..." value={filters.itemId} onChange={(e) => handleChange('itemId', e.target.value)} />
+            <Input placeholder="Filter by item ID..." value={filters.itemId} onChange={(e) => handleChange('itemId', e.target.value)} />
             <Select
               value={filters.ownerId}
               onChange={(e) => handleChange('ownerId', e.target.value)}
-              placeholder="Tất cả chủ hàng"
+              placeholder="All owners"
               options={ownerOptions.map((option) => ({ value: option.id, label: `${option.code} - ${option.name}` }))}
             />
             <Select
               value={filters.warehouseId}
               onChange={(e) => handleChange('warehouseId', e.target.value)}
-              placeholder="Tất cả kho"
+              placeholder="All warehouses"
               options={warehouseOptions.map((option) => ({ value: option.id, label: `${option.code} - ${option.name}` }))}
             />
             <Select
               value={filters.inventoryStatusId}
               onChange={(e) => handleChange('inventoryStatusId', e.target.value)}
-              placeholder="Tất cả trạng thái"
+              placeholder="All statuses"
               options={statusOptions.map((option) => ({ value: option.id, label: `${option.code} - ${option.name}` }))}
             />
             <Select
               value={String(filters.hasStock)}
               onChange={(e) => handleChange('hasStock', e.target.value === 'true')}
               options={[
-                { value: 'true', label: 'Chỉ bản ghi có tồn' },
-                { value: 'false', label: 'Bao gồm tồn bằng 0' },
+                { value: 'true', label: 'Only records with stock' },
+                { value: 'false', label: 'Include zero stock' },
               ]}
             />
           </div>
@@ -82,30 +80,30 @@ export function InventoryOnHandPage() {
           <Table>
             <TableHeader>
               <TableRow hoverable={false}>
-                <TableHead>Mặt hàng</TableHead>
-                <TableHead>Chiều</TableHead>
-                <TableHead align="right">Thực tế</TableHead>
-                <TableHead align="right">Đã giữ</TableHead>
-                <TableHead align="right">Khả dụng</TableHead>
-                <TableHead>ĐVT</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead>Dimension</TableHead>
+                <TableHead align="right">Physical</TableHead>
+                <TableHead align="right">Reserved</TableHead>
+                <TableHead align="right">Available</TableHead>
+                <TableHead>UOM</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? <TableLoading colSpan={6} /> : null}
-              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không tìm thấy bản ghi tồn kho phù hợp" /> : null}
+              {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No matching on-hand records" /> : null}
               {!isLoading ? rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
                     <div>
                       <p className="font-semibold text-navy-900">{row.item?.itemCode || row.itemId}</p>
-                      <p className="text-xs text-navy-400">{row.item?.itemName || 'Không có tên'}</p>
+                      <p className="text-xs text-navy-400">{row.item?.itemName || 'No item name'}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1 text-xs text-navy-500">
-                      <p><span className="font-semibold text-navy-700">Kho:</span> {row.inventDim?.warehouse?.warehouseCode || '—'}</p>
-                      <p><span className="font-semibold text-navy-700">Vị trí:</span> {row.inventDim?.location?.locationCode || '—'}</p>
-                      <p><span className="font-semibold text-navy-700">Chủ hàng:</span> {row.inventDim?.owner?.ownerCode || '—'}</p>
+                      <p><span className="font-semibold text-navy-700">Warehouse:</span> {row.inventDim?.warehouse?.warehouseCode || '—'}</p>
+                      <p><span className="font-semibold text-navy-700">Location:</span> {row.inventDim?.location?.locationCode || '—'}</p>
+                      <p><span className="font-semibold text-navy-700">Owner:</span> {row.inventDim?.owner?.ownerCode || '—'}</p>
                       <Badge variant={row.inventDim?.inventoryStatus?.isAllocatable ? 'success' : 'warning'}>
                         {row.inventDim?.inventoryStatus?.statusCode || 'N/A'}
                       </Badge>
@@ -123,6 +121,6 @@ export function InventoryOnHandPage() {
           <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
         </CardContent>
       </Card>
-    </div>
+    </>
   )
 }

@@ -24,10 +24,10 @@ export function MovementHistoryPage() {
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Lịch sử di chuyển</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Movement History</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -40,18 +40,18 @@ export function MovementHistoryPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Loại GD</TableHead>
-              <TableHead>Tham chiếu</TableHead>
-              <TableHead>Hàng / Chủ hàng</TableHead>
-              <TableHead>Vị trí</TableHead>
-              <TableHead align="right">SL</TableHead>
-              <TableHead>Chiều</TableHead>
-              <TableHead>Thời gian</TableHead>
+              <TableHead>Trans Type</TableHead>
+              <TableHead>Reference</TableHead>
+              <TableHead>Item / Owner</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead align="right">Qty</TableHead>
+              <TableHead>Direction</TableHead>
+              <TableHead>Trans At</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={7} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={7} message="Chưa có lịch sử di chuyển" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={7} message="No movement history available" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -86,6 +86,6 @@ export function MovementHistoryPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

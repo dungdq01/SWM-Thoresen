@@ -32,8 +32,8 @@ export function MyWorkPage() {
   }
 
   return (
-    <div className="page-section">
-      <div className="page-header">
+    <>
+      <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">My Work (Claimed Tasks)</h2>
         <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
@@ -92,6 +92,6 @@ export function MyWorkPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
-    </div>
+    </>
   )
 }

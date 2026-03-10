@@ -21,7 +21,7 @@ export function InboundOperationsLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <Truck className="h-5 w-5" />
+            <Truck className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Operational Gatekeeper Navigation</h2>

@@ -128,7 +128,7 @@ export function OwnersPage() {
   ]
 
   return (
-    <div className="page-section">
+    <>
       <PageHeader
         title="Quản lý chủ hàng"
         description="Danh sách tất cả chủ hàng trong hệ thống"
@@ -239,6 +239,6 @@ export function OwnersPage() {
         entityName={reactivateState.data?.ownerName}
         isLoading={reactivateMutation.isPending}
       />
-    </div>
+    </>
   )
 }

@@ -112,7 +112,7 @@ export function useStartWork() {
 export function useStartLine() {
   const { queryClient, onError } = useInvalidateQueries([], 'Đã start line', 'Không thể start line')
   return useMutation({
-    mutationFn: ({ workId, lineId, data }) => workExecutionApi.startLine(workId, lineId, data),
+    mutationFn: ({ workId, lineNum, data }) => workExecutionApi.startLine(workId, lineNum, data),
     onSuccess: (_, { workId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workDetail(workId) })
       toast.success('Đã start line')
@@ -124,7 +124,7 @@ export function useStartLine() {
 export function useCompleteLine() {
   const { queryClient, onError } = useInvalidateQueries([], 'Đã complete line', 'Không thể complete line')
   return useMutation({
-    mutationFn: ({ workId, lineId, data }) => workExecutionApi.completeLine(workId, lineId, data),
+    mutationFn: ({ workId, lineNum, data }) => workExecutionApi.completeLine(workId, lineNum, data),
     onSuccess: (_, { workId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workDetail(workId) })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.works })
@@ -138,7 +138,7 @@ export function useCompleteLine() {
 export function useSkipLine() {
   const { queryClient, onError } = useInvalidateQueries([], 'Đã skip line', 'Không thể skip line')
   return useMutation({
-    mutationFn: ({ workId, lineId, data }) => workExecutionApi.skipLine(workId, lineId, data),
+    mutationFn: ({ workId, lineNum, data }) => workExecutionApi.skipLine(workId, lineNum, data),
     onSuccess: (_, { workId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workDetail(workId) })
       toast.success('Đã skip line')

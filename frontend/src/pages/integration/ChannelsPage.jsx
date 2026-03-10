@@ -19,10 +19,10 @@ export function ChannelsPage() {
   const channels = response?.data || []
 
   return (
-    <div className="page-section">
-      <div className="page-header">
-        <h2 className="section-title">Kênh tích hợp</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Integration Channels</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -38,17 +38,17 @@ export function ChannelsPage() {
             </div>
             <div className="border-t border-moon-200 pt-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-navy-500">Hoạt động</span>
+                <span className="text-navy-500">Uptime</span>
                 <span className="font-semibold text-navy-800">{channel.uptimePercent}%</span>
               </div>
               <div className="w-full bg-moon-200 rounded-full h-2 mt-2">
                 <div className={`h-2 rounded-full ${channel.status === 'HEALTHY' ? 'bg-emerald-500' : channel.status === 'DEGRADED' ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${channel.uptimePercent}%` }} />
               </div>
             </div>
-            <p className="text-xs text-navy-400">Ping cuối: {new Date(channel.lastPingAt).toLocaleString('vi-VN')}</p>
+            <p className="text-xs text-navy-400">Last ping: {new Date(channel.lastPingAt).toLocaleString('vi-VN')}</p>
           </div>
         ))}
       </div>
-    </div>
+    </>
   )
 }

@@ -26,7 +26,7 @@ export function MasterDataLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <Database className="h-5 w-5" />
+            <Database className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">Master Data Navigation</h2>

@@ -3,41 +3,41 @@ import toast from 'react-hot-toast'
 import { billingApi } from '../api/billing.api'
 
 const QUERY_KEYS = {
-  invoices: ['billing', 'invoices'],
-  invoiceDetail: (id) => ['billing', 'invoices', id],
-  rateCards: ['billing', 'rate-cards'],
-  billableEvents: ['billing', 'billable-events'],
+  debitNotes: ['billing', 'debit-notes'],
+  debitNoteDetail: (id) => ['billing', 'debit-notes', id],
+  contracts: ['billing', 'contracts'],
+  events: ['billing', 'events'],
   dashboard: ['billing', 'dashboard'],
 }
 
-export function useInvoices(filters = {}) {
+export function useDebitNotes(filters = {}) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.invoices, filters],
-    queryFn: () => billingApi.getInvoices(filters),
+    queryKey: [...QUERY_KEYS.debitNotes, filters],
+    queryFn: () => billingApi.getDebitNotes(filters),
     staleTime: 15000,
   })
 }
 
-export function useInvoiceDetail(id) {
+export function useDebitNoteDetail(id) {
   return useQuery({
-    queryKey: QUERY_KEYS.invoiceDetail(id),
-    queryFn: () => billingApi.getInvoiceById(id),
+    queryKey: QUERY_KEYS.debitNoteDetail(id),
+    queryFn: () => billingApi.getDebitNoteById(id),
     enabled: Boolean(id),
   })
 }
 
-export function useRateCards(filters = {}) {
+export function useContracts(filters = {}) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.rateCards, filters],
-    queryFn: () => billingApi.getRateCards(filters),
+    queryKey: [...QUERY_KEYS.contracts, filters],
+    queryFn: () => billingApi.getContracts(filters),
     staleTime: 30000,
   })
 }
 
-export function useBillableEvents(filters = {}) {
+export function useBillingEvents(filters = {}) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.billableEvents, filters],
-    queryFn: () => billingApi.getBillableEvents(filters),
+    queryKey: [...QUERY_KEYS.events, filters],
+    queryFn: () => billingApi.getEvents(filters),
     staleTime: 15000,
   })
 }
@@ -62,29 +62,34 @@ function useInvalidateQueries(keys, successMessage, errorMessage) {
   }
 }
 
-export function useGenerateInvoice() {
-  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.invoices, QUERY_KEYS.dashboard, QUERY_KEYS.billableEvents], 'Đã generate invoice', 'Không thể generate invoice')
-  return useMutation({ mutationFn: (data) => billingApi.generateInvoice(data), onSuccess, onError })
+export function useGenerateDebitNote() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.debitNotes, QUERY_KEYS.dashboard, QUERY_KEYS.events], 'Đã generate debit note', 'Không thể generate debit note')
+  return useMutation({ mutationFn: (data) => billingApi.generateDebitNote(data), onSuccess, onError })
 }
 
-export function useApproveInvoice() {
-  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.invoices, QUERY_KEYS.dashboard], 'Đã approve invoice', 'Không thể approve invoice')
-  return useMutation({ mutationFn: (id) => billingApi.approveInvoice(id), onSuccess, onError })
+export function useReviewDebitNote() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.debitNotes], 'Đã review debit note', 'Không thể review debit note')
+  return useMutation({ mutationFn: (id) => billingApi.reviewDebitNote(id), onSuccess, onError })
 }
 
-export function useCancelInvoice() {
-  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.invoices], 'Đã cancel invoice', 'Không thể cancel invoice')
-  return useMutation({ mutationFn: ({ id, data }) => billingApi.cancelInvoice(id, data), onSuccess, onError })
+export function useApproveDebitNote() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.debitNotes, QUERY_KEYS.dashboard], 'Đã approve debit note', 'Không thể approve debit note')
+  return useMutation({ mutationFn: (id) => billingApi.approveDebitNote(id), onSuccess, onError })
 }
 
-export function useCreateRateCard() {
-  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.rateCards], 'Đã tạo rate card', 'Không thể tạo rate card')
-  return useMutation({ mutationFn: (data) => billingApi.createRateCard(data), onSuccess, onError })
+export function useLockDebitNote() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.debitNotes, QUERY_KEYS.dashboard], 'Đã lock debit note', 'Không thể lock debit note')
+  return useMutation({ mutationFn: (id) => billingApi.lockDebitNote(id), onSuccess, onError })
 }
 
-export function useUpdateRateCard() {
-  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.rateCards], 'Đã cập nhật rate card', 'Không thể cập nhật rate card')
-  return useMutation({ mutationFn: ({ id, data }) => billingApi.updateRateCard(id, data), onSuccess, onError })
+export function useCreateContract() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.contracts], 'Đã tạo contract', 'Không thể tạo contract')
+  return useMutation({ mutationFn: (data) => billingApi.createContract(data), onSuccess, onError })
+}
+
+export function useUpdateContract() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.contracts], 'Đã cập nhật contract', 'Không thể cập nhật contract')
+  return useMutation({ mutationFn: ({ id, data }) => billingApi.updateContract(id, data), onSuccess, onError })
 }
 
 export { QUERY_KEYS as BILLING_QUERY_KEYS }

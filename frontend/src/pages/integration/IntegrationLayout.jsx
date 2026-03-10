@@ -21,7 +21,7 @@ export function IntegrationLayout() {
       <div className="module-nav-shell">
         <div className="module-nav-header">
           <div className="module-nav-icon">
-            <Radio className="h-5 w-5" />
+            <Radio className="h-4 w-4" />
           </div>
           <div>
             <h2 className="module-nav-title">System Integration</h2>

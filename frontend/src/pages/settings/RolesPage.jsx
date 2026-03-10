@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit2, Shield, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Shield } from 'lucide-react'
 import {
   Button,
   Table,
@@ -12,7 +12,7 @@ import {
   TableLoading,
   SearchInput,
 } from '@shared/ui'
-import { useRoles, useDeleteRole, ActiveStatusBadge } from '@domains/auth'
+import { useRoles, ActiveStatusBadge } from '@domains/auth'
 import { RoleFormModal, AssignPermissionModal } from '@features/settings'
 import { SettingsLayout } from './components/SettingsLayout'
 
@@ -22,14 +22,6 @@ export function RolesPage() {
   const [permModal, setPermModal] = useState({ open: false, role: null })
 
   const { data: roles = [], isLoading } = useRoles()
-  const deleteRole = useDeleteRole()
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa vai trò này?')) {
-      await deleteRole.mutateAsync(id)
-    }
-  }
-
   const filteredRoles = roles.filter(
     (role) =>
       role.roleCode?.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,13 +111,6 @@ export function RolesPage() {
                         title="Chỉnh sửa"
                       >
                         <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(role.id)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-danger/5 hover:text-danger"
-                        title="Xóa"
-                      >
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </TableCell>
