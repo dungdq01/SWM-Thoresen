@@ -26,7 +26,7 @@ class OnHandRepository {
             inventoryStatus: { select: { statusCode: true } },
           },
         },
-        uom: { select: { uomCode: true } },
+        uom: { select: { uomCode: true, description: true, decimalPrecision: true } },
       },
     });
   }
@@ -184,7 +184,7 @@ class OnHandRepository {
               inventoryStatus: { select: { statusCode: true, description: true, isAllocatable: true } },
             },
           },
-          uom: { select: { uomCode: true, description: true } },
+          uom: { select: { uomCode: true, description: true, decimalPrecision: true } },
         },
         skip: (page - 1) * pageSize,
         take: pageSize,

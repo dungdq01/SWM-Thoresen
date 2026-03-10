@@ -3,6 +3,15 @@ import { vendorApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
 
+export function useVendorNextCode(enabled = false) {
+  return useQuery({
+    queryKey: [...MASTER_DATA_QUERY_KEYS.vendors, 'next-code'],
+    queryFn: () => vendorApi.getNextCode(),
+    enabled,
+    staleTime: 0,
+  })
+}
+
 export function useVendorList(filters = {}) {
   return useQuery({
     queryKey: [...MASTER_DATA_QUERY_KEYS.vendors, filters],

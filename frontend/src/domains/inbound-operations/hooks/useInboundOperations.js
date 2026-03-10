@@ -10,6 +10,8 @@ const QUERY_KEYS = {
   weighLogs: (id) => ['inbound-operations', 'weigh-logs', id],
   exceptions: ['inbound-operations', 'exceptions'],
   putawayQueue: ['inbound-operations', 'putaway-queue'],
+  purchaseOrders: ['inbound-operations', 'purchase-orders'],
+  purchaseOrderDetail: (id) => ['inbound-operations', 'purchase-orders', id],
 }
 
 export function useInboundDashboardSummary() {
@@ -138,6 +140,79 @@ export function useCancelInboundReceipt() {
 export function useCompleteInboundPutaway() {
   const { onSuccess, onError } = useInvalidateInboundQueries('Đã cập nhật handoff/close receipt', 'Không thể cập nhật putaway receipt')
   return useMutation({ mutationFn: (id) => inboundOperationsApi.completePutaway(id), onSuccess, onError })
+}
+
+// ── Purchase Order hooks ──
+export function usePurchaseOrders(filters = {}) {
+  return useQuery({
+    queryKey: [...QUERY_KEYS.purchaseOrders, filters],
+    queryFn: () => inboundOperationsApi.getPurchaseOrders(filters),
+    staleTime: 15000,
+  })
+}
+
+export function usePurchaseOrderDetail(id) {
+  return useQuery({
+    queryKey: QUERY_KEYS.purchaseOrderDetail(id),
+    queryFn: () => inboundOperationsApi.getPurchaseOrderById(id),
+    enabled: Boolean(id),
+  })
+}
+
+function useInvalidatePOQueries(successMessage, errorMessage) {
+  const queryClient = useQueryClient()
+  return {
+    queryClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.purchaseOrders })
+      toast.success(successMessage)
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || errorMessage)
+    },
+  }
+}
+
+export function useNextPoNumber(enabled = false) {
+  return useQuery({
+    queryKey: [...QUERY_KEYS.purchaseOrders, 'next-number'],
+    queryFn: () => inboundOperationsApi.getNextPoNumber(),
+    enabled,
+    staleTime: 0,
+  })
+}
+
+export function useCreatePurchaseOrder() {
+  const { onSuccess, onError } = useInvalidatePOQueries('Đã tạo Purchase Order', 'Không thể tạo Purchase Order')
+  return useMutation({ mutationFn: (data) => inboundOperationsApi.createPurchaseOrder(data), onSuccess, onError })
+}
+
+export function useUpdatePurchaseOrder() {
+  const { queryClient, onError } = useInvalidatePOQueries('Đã cập nhật Purchase Order', 'Không thể cập nhật Purchase Order')
+  return useMutation({
+    mutationFn: ({ id, data }) => inboundOperationsApi.updatePurchaseOrder(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.purchaseOrders })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.purchaseOrderDetail(id) })
+      toast.success('Đã cập nhật Purchase Order')
+    },
+    onError,
+  })
+}
+
+export function useConfirmPurchaseOrder() {
+  const { onSuccess, onError } = useInvalidatePOQueries('Đã xác nhận Purchase Order', 'Không thể xác nhận Purchase Order')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.confirmPurchaseOrder(id), onSuccess, onError })
+}
+
+export function useClosePurchaseOrder() {
+  const { onSuccess, onError } = useInvalidatePOQueries('Đã đóng Purchase Order', 'Không thể đóng Purchase Order')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.closePurchaseOrder(id), onSuccess, onError })
+}
+
+export function useCancelPurchaseOrder() {
+  const { onSuccess, onError } = useInvalidatePOQueries('Đã hủy Purchase Order', 'Không thể hủy Purchase Order')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.cancelPurchaseOrder(id), onSuccess, onError })
 }
 
 export { QUERY_KEYS as INBOUND_OPERATIONS_QUERY_KEYS }

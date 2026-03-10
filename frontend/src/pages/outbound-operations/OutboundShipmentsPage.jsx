@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useOutboundShipments, useCreateOutboundShipment, useConfirmOutboundShipment, useCancelOutboundShipment, useOutboundDashboardSummary } from '@domains/outbound-operations'
 import { useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
+import { Plus, Trash2 } from 'lucide-react'
 import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const statusTone = (status) => {
@@ -11,6 +12,8 @@ const statusTone = (status) => {
   return 'default'
 }
 
+const emptyLine = { itemId: '', cargoForm: 'BULK', expectedQty: '', bagCount: '', nominalWeightPerBag: '' }
+
 const initialDraft = {
   soId: '',
   ownerId: '',
@@ -18,7 +21,7 @@ const initialDraft = {
   warehouseId: '',
   vehicleNumber: '',
   isDpmShipment: false,
-  lines: [{ itemId: '', cargoForm: 'BULK', expectedQty: '', bagCount: '', nominalWeightPerBag: '' }],
+  lines: [{ ...emptyLine }],
 }
 
 export function OutboundShipmentsPage() {
@@ -57,11 +60,20 @@ export function OutboundShipmentsPage() {
     setShowCreate(false)
   }
 
-  const updateLine = (index, field, value) => {
-    const newLines = [...draft.lines]
-    newLines[index] = { ...newLines[index], [field]: value }
-    setDraft((prev) => ({ ...prev, lines: newLines }))
-  }
+  const updateLine = useCallback((index, field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => (i === index ? { ...l, [field]: value } : l)),
+    }))
+  }, [])
+
+  const addLine = useCallback(() => {
+    setDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyLine }] }))
+  }, [])
+
+  const removeLine = useCallback((index) => {
+    setDraft((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== index) }))
+  }, [])
 
   return (
     <>
@@ -160,14 +172,34 @@ export function OutboundShipmentsPage() {
           <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
           <Input label="Vehicle number" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
 
-          <div className="border-t border-moon-200 pt-4">
-            <p className="text-sm font-semibold text-navy-900 mb-3">Line 1</p>
-            <div className="space-y-3">
-              <Select label="Item" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-              <Select label="Cargo form" value={draft.lines[0].cargoForm} onChange={(e) => updateLine(0, 'cargoForm', e.target.value)} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
-              <Input label="Expected qty (kg)" type="number" value={draft.lines[0].expectedQty} onChange={(e) => updateLine(0, 'expectedQty', e.target.value)} />
-              <Input label="Bag count (if bagged)" type="number" value={draft.lines[0].bagCount} onChange={(e) => updateLine(0, 'bagCount', e.target.value)} />
+          <div className="border-t border-moon-200 pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-navy-900">Shipment Lines</h4>
+              <Button variant="outline" size="sm" onClick={addLine}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Thêm line
+              </Button>
             </div>
+            {draft.lines.map((line, idx) => (
+              <div key={idx} className="rounded-xl border border-moon-200 p-3 space-y-2 bg-moon-50/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-navy-400">Line {idx + 1}</span>
+                  {draft.lines.length > 1 && (
+                    <button onClick={() => removeLine(idx)} className="text-red-400 hover:text-red-600 p-1">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Select label="Item *" value={line.itemId} onChange={(e) => updateLine(idx, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+                  <Select label="Cargo form" value={line.cargoForm} onChange={(e) => updateLine(idx, 'cargoForm', e.target.value)} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Input label="Expected qty (kg) *" type="number" value={line.expectedQty} onChange={(e) => updateLine(idx, 'expectedQty', e.target.value)} />
+                  <Input label="Bag count" type="number" value={line.bagCount} onChange={(e) => updateLine(idx, 'bagCount', e.target.value)} />
+                  <Input label="Weight/bag (kg)" type="number" value={line.nominalWeightPerBag} onChange={(e) => updateLine(idx, 'nominalWeightPerBag', e.target.value)} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </Modal>

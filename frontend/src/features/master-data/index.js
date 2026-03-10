@@ -1,5 +1,6 @@
 export * from './owner'
 export * from './vendor'
+export * from './customer'
 export * from './item'
 export * from './warehouse'
 export * from './zone'

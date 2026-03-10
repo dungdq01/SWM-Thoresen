@@ -191,4 +191,8 @@ export class ItemService {
   async findAllActive(): Promise<MdItem[]> {
     return this.itemRepository.findAllActive();
   }
+
+  async getNextCode(): Promise<string> {
+    return this.itemRepository.getNextCode();
+  }
 }

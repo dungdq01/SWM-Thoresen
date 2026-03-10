@@ -1,15 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Building2, Database, Package, MapPin, Scale, Ship, Tags, Truck, Warehouse, Grid3X3 } from 'lucide-react'
+import { Building2, Database, Package, MapPin, Scale, Ship, Tags, Truck, Warehouse, Grid3X3, Users, ArrowRightLeft } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
   { to: '/app/master-data/owners', label: 'Owners', icon: Building2 },
   { to: '/app/master-data/vendors', label: 'Vendors', icon: Ship },
+  { to: '/app/master-data/customers', label: 'Customers', icon: Users },
   { to: '/app/master-data/items', label: 'Items', icon: Package },
   { to: '/app/master-data/warehouses', label: 'Warehouses', icon: Warehouse },
   { to: '/app/master-data/zones', label: 'Zones', icon: Grid3X3 },
   { to: '/app/master-data/locations', label: 'Locations', icon: MapPin },
   { to: '/app/master-data/uoms', label: 'UoMs', icon: Scale },
+  { to: '/app/master-data/uom-conversions', label: 'UOM Conversions', icon: ArrowRightLeft },
   { to: '/app/master-data/vehicle-types', label: 'Vehicle Types', icon: Truck },
   { to: '/app/master-data/inventory-statuses', label: 'Inventory Statuses', icon: Tags },
 ]

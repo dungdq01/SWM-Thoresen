@@ -1,0 +1,454 @@
+import React, { useState, useCallback } from 'react'
+import { FileText, Plus, Trash2, Check, X as XIcon, Lock, Ban, ChevronDown, ChevronUp, Package, Sparkles } from 'lucide-react'
+import {
+  usePurchaseOrders,
+  useCreatePurchaseOrder,
+  useUpdatePurchaseOrder,
+  useConfirmPurchaseOrder,
+  useClosePurchaseOrder,
+  useCancelPurchaseOrder,
+  useNextPoNumber,
+} from '@domains/inbound-operations'
+import { useLookupOwners, useLookupVendors, useLookupWarehouses, useLookupItems, useLookupUoms } from '@domains/master-data'
+import {
+  Badge, Button, Input, Modal, Pagination, Select,
+  Table, TableBody, TableCell, TableEmpty, TableHead,
+  TableHeader, TableLoading, TableRow, Textarea,
+} from '@shared/ui'
+
+const PO_STATUSES = [
+  { value: '', label: 'Tất cả' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+]
+
+const statusTone = (status) => {
+  if (status === 'CONFIRMED') return 'success'
+  if (status === 'CLOSED') return 'default'
+  if (status === 'CANCELLED') return 'danger'
+  return 'warning'
+}
+
+const emptyLine = { itemId: '', expectedQty: '', uomId: '', unitPrice: '', notes: '' }
+
+const emptyDraft = {
+  ownerId: '',
+  vendorId: '',
+  warehouseId: '',
+  externalPoNumber: '',
+  expectedDeliveryDate: '',
+  notes: '',
+  currency: 'VND',
+  lines: [{ ...emptyLine }],
+}
+
+export function PurchaseOrdersPage() {
+  const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '', vendorId: '' })
+  const [showCreate, setShowCreate] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
+  const [draft, setDraft] = useState(emptyDraft)
+  const [editDraft, setEditDraft] = useState(null)
+
+  const { data: nextPoResponse } = useNextPoNumber(showCreate)
+  const nextPoNumber = nextPoResponse?.data?.code || ''
+
+  const { data: response, isLoading, refetch } = usePurchaseOrders({
+    ...filters,
+    keyword: filters.keyword || undefined,
+    status: filters.status || undefined,
+    ownerId: filters.ownerId || undefined,
+    vendorId: filters.vendorId || undefined,
+  })
+
+  const createPo = useCreatePurchaseOrder()
+  const updatePo = useUpdatePurchaseOrder()
+  const confirmPo = useConfirmPurchaseOrder()
+  const closePo = useClosePurchaseOrder()
+  const cancelPo = useCancelPurchaseOrder()
+
+  const { data: owners = [] } = useLookupOwners()
+  const { data: vendors = [] } = useLookupVendors()
+  const { data: warehouses = [] } = useLookupWarehouses()
+  const { data: items = [] } = useLookupItems()
+  const { data: uoms = [] } = useLookupUoms()
+
+  const rows = response?.data || []
+  const pagination = response?.pagination || { page: 1, totalPages: 1 }
+
+  // ── Draft line helpers ──
+  const updateDraftLine = useCallback((idx, field, value) => {
+    setDraft((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
+    }))
+  }, [])
+
+  const addDraftLine = useCallback(() => {
+    setDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyLine }] }))
+  }, [])
+
+  const removeDraftLine = useCallback((idx) => {
+    setDraft((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== idx) }))
+  }, [])
+
+  // ── Edit line helpers ──
+  const updateEditLine = useCallback((idx, field, value) => {
+    setEditDraft((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
+    }))
+  }, [])
+
+  const addEditLine = useCallback(() => {
+    setEditDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyLine }] }))
+  }, [])
+
+  const removeEditLine = useCallback((idx) => {
+    setEditDraft((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== idx) }))
+  }, [])
+
+  // ── Actions ──
+  const handleCreate = async () => {
+    const payload = {
+      ...draft,
+      externalPoNumber: draft.externalPoNumber || '',
+      lines: draft.lines.filter((l) => l.itemId).map((l) => ({
+        ...l,
+        expectedQty: Number(l.expectedQty || 0),
+        unitPrice: Number(l.unitPrice || 0),
+      })),
+    }
+    await createPo.mutateAsync(payload)
+    setDraft(emptyDraft)
+    setShowCreate(false)
+  }
+
+  const handleOpenEdit = (po) => {
+    setEditDraft({
+      id: po.id,
+      poNumber: po.poNumber,
+      ownerId: po.ownerId,
+      vendorId: po.vendorId,
+      warehouseId: po.warehouseId,
+      externalPoNumber: po.externalPoNumber || '',
+      expectedDeliveryDate: po.expectedDeliveryDate || '',
+      notes: po.notes || '',
+      currency: po.currency || 'VND',
+      lines: po.lines.map((l) => ({
+        id: l.id,
+        itemId: l.itemId,
+        expectedQty: l.expectedQty,
+        receivedQty: l.receivedQty,
+        uomId: l.uomId,
+        unitPrice: l.unitPrice,
+        notes: l.notes || '',
+        status: l.status,
+      })),
+    })
+    setShowEdit(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!editDraft) return
+    const payload = {
+      ...editDraft,
+      lines: editDraft.lines.filter((l) => l.itemId).map((l) => ({
+        ...l,
+        expectedQty: Number(l.expectedQty || 0),
+        unitPrice: Number(l.unitPrice || 0),
+        receivedQty: Number(l.receivedQty || 0),
+      })),
+    }
+    await updatePo.mutateAsync({ id: editDraft.id, data: payload })
+    setEditDraft(null)
+    setShowEdit(false)
+  }
+
+  const toggleExpand = (id) => setExpandedId((prev) => (prev === id ? null : id))
+
+  const itemOptions = [{ value: '', label: '-- Chọn Item --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
+  const uomOptions = [{ value: '', label: '-- UoM --' }, ...uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))]
+
+  // ── Render line editor ──
+  const renderLineEditor = (lines, updateFn, addFn, removeFn) => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-navy-900">PO Lines</h4>
+        <Button variant="outline" size="sm" onClick={addFn}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Thêm dòng
+        </Button>
+      </div>
+      {lines.map((line, idx) => (
+        <div key={idx} className="rounded-xl border border-moon-200 p-3 space-y-2 bg-moon-50/50">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-navy-400">Line {idx + 1}</span>
+            {lines.length > 1 && (
+              <button onClick={() => removeFn(idx)} className="text-red-400 hover:text-red-600 p-1">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Mặt hàng *" value={line.itemId} onChange={(e) => updateFn(idx, 'itemId', e.target.value)} options={itemOptions} />
+            <Select label="Đơn vị tính" value={line.uomId} onChange={(e) => updateFn(idx, 'uomId', e.target.value)} options={uomOptions} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Số lượng dự kiến (kg) *" type="number" value={line.expectedQty} onChange={(e) => updateFn(idx, 'expectedQty', e.target.value)} />
+            <Input label="Đơn giá" type="number" value={line.unitPrice} onChange={(e) => updateFn(idx, 'unitPrice', e.target.value)} />
+            <Input label="Ghi chú dòng" value={line.notes} onChange={(e) => updateFn(idx, 'notes', e.target.value)} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">Purchase Orders</h2>
+        <div className="flex items-center gap-2">
+          <Button variant="accent" size="sm" onClick={() => { setDraft(emptyDraft); setShowCreate(true) }}>
+            <Plus className="h-4 w-4 mr-1" /> Tạo PO
+          </Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        </div>
+      </div>
+
+      <div className="wrs-card p-5 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Input placeholder="Tìm PO number, ghi chú..." value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={PO_STATUSES} placeholder="Status" />
+          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Owner' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Owner" />
+          <Select value={filters.vendorId} onChange={(e) => setFilters((prev) => ({ ...prev, vendorId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Vendor' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} placeholder="Vendor" />
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow hoverable={false}>
+              <TableHead className="w-8"></TableHead>
+              <TableHead>PO Number</TableHead>
+              <TableHead>B/L</TableHead>
+              <TableHead>Owner / Vendor</TableHead>
+              <TableHead>Delivery Date</TableHead>
+              <TableHead align="right">Expected Qty</TableHead>
+              <TableHead align="right">Received Qty</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead align="center">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? <TableLoading colSpan={9} /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={9} message="Chưa có Purchase Order nào" /> : null}
+            {!isLoading && rows.map((po) => (
+              <React.Fragment key={po.id}>
+                <TableRow>
+                  <TableCell>
+                    <button onClick={() => toggleExpand(po.id)} className="p-1 text-navy-400 hover:text-ice">
+                      {expandedId === po.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-semibold text-navy-900">{po.poNumber}</p>
+                      <p className="text-xs text-navy-400">{po.lines?.length || 0} lines</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-sm text-navy-600">{po.externalPoNumber || '—'}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-navy-800">{po.owner?.ownerCode || po.ownerId}</p>
+                      <p className="text-xs text-navy-400">{po.vendor?.vendorName || po.vendorId}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>{po.expectedDeliveryDate || '—'}</TableCell>
+                  <TableCell align="right" className="font-medium text-navy-900">{(po.totalExpectedQty || 0).toLocaleString()}</TableCell>
+                  <TableCell align="right">
+                    <span className={po.totalReceivedQty > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                      {(po.totalReceivedQty || 0).toLocaleString()}
+                    </span>
+                  </TableCell>
+                  <TableCell><Badge variant={statusTone(po.status)}>{po.status}</Badge></TableCell>
+                  <TableCell align="center">
+                    <div className="flex items-center justify-center gap-1">
+                      {po.status === 'DRAFT' && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => handleOpenEdit(po)} title="Chỉnh sửa">
+                            <FileText className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="accent" size="sm" onClick={() => confirmPo.mutate(po.id)} title="Xác nhận">
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy">
+                            <Ban className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {po.status === 'CONFIRMED' && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => closePo.mutate(po.id)} title="Đóng PO">
+                            <Lock className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy">
+                            <Ban className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {['CLOSED', 'CANCELLED'].includes(po.status) && (
+                        <span className="text-xs text-navy-400">Finalized</span>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+
+                {expandedId === po.id && (
+                  <tr key={`${po.id}-lines`}>
+                    <td colSpan={9} className="p-0">
+                      <div className="bg-moon-50/70 border-t border-b border-moon-200 px-6 py-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Package className="h-4 w-4 text-ice" />
+                          <h4 className="text-sm font-semibold text-navy-900">PO Lines — {po.poNumber}</h4>
+                          {po.externalPoNumber && <span className="text-xs text-navy-400 ml-2">(B/L: {po.externalPoNumber})</span>}
+                        </div>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-navy-400 border-b border-moon-200">
+                              <th className="pb-2 pr-3">#</th>
+                              <th className="pb-2 pr-3">Item</th>
+                              <th className="pb-2 pr-3">UoM</th>
+                              <th className="pb-2 pr-3 text-right">Expected</th>
+                              <th className="pb-2 pr-3 text-right">Received</th>
+                              <th className="pb-2 pr-3 text-right">Unit Price</th>
+                              <th className="pb-2 pr-3 text-right">Amount</th>
+                              <th className="pb-2 pr-3">Notes</th>
+                              <th className="pb-2 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(po.lines || []).map((line) => (
+                              <tr key={line.id} className="border-b border-moon-100 last:border-b-0">
+                                <td className="py-2 pr-3 text-navy-400">{line.lineNum}</td>
+                                <td className="py-2 pr-3">
+                                  <p className="font-medium text-navy-800">{line.item?.itemCode || line.itemId}</p>
+                                  <p className="text-xs text-navy-400">{line.item?.itemName || ''}</p>
+                                </td>
+                                <td className="py-2 pr-3 text-navy-600">{line.uom?.uomCode || line.uomId}</td>
+                                <td className="py-2 pr-3 text-right font-medium text-navy-900">{(line.expectedQty || 0).toLocaleString()}</td>
+                                <td className="py-2 pr-3 text-right">
+                                  <span className={line.receivedQty > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                                    {(line.receivedQty || 0).toLocaleString()}
+                                  </span>
+                                </td>
+                                <td className="py-2 pr-3 text-right text-navy-600">{(line.unitPrice || 0).toLocaleString()}</td>
+                                <td className="py-2 pr-3 text-right font-medium text-navy-800">
+                                  {((line.expectedQty || 0) * (line.unitPrice || 0)).toLocaleString()}
+                                </td>
+                                <td className="py-2 pr-3 text-navy-500 text-xs">{line.notes || '—'}</td>
+                                <td className="py-2 text-center">
+                                  <Badge variant={line.status === 'RECEIVED' ? 'success' : 'default'} className="text-xs">{line.status}</Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t border-moon-300 font-semibold text-navy-900">
+                              <td colSpan={3} className="pt-2 pr-3">Tổng</td>
+                              <td className="pt-2 pr-3 text-right">{(po.totalExpectedQty || 0).toLocaleString()}</td>
+                              <td className="pt-2 pr-3 text-right text-emerald-600">{(po.totalReceivedQty || 0).toLocaleString()}</td>
+                              <td className="pt-2 pr-3"></td>
+                              <td className="pt-2 pr-3 text-right">
+                                {(po.lines || []).reduce((s, l) => s + (l.expectedQty || 0) * (l.unitPrice || 0), 0).toLocaleString()}
+                              </td>
+                              <td colSpan={2}></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </TableBody>
+        </Table>
+
+        <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
+      </div>
+
+      {/* ── Create PO Modal ── */}
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Tạo Purchase Order mới" size="lg">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-navy-700 mb-1.5">PO Number <span className="text-xs text-navy-400 font-normal">(Tự động)</span></label>
+              <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2">
+                <Sparkles className="h-4 w-4 text-ice shrink-0" />
+                <span className="font-mono font-semibold text-navy-900">{nextPoNumber || '...'}</span>
+              </div>
+            </div>
+            <Input label="B/L (Số chứng từ KH)" value={draft.externalPoNumber} onChange={(e) => setDraft((p) => ({ ...p, externalPoNumber: e.target.value }))} placeholder="VD: BL-2026-RICE-001" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Owner *" value={draft.ownerId} onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+            <Select label="Vendor *" value={draft.vendorId} onChange={(e) => setDraft((p) => ({ ...p, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn Vendor --' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Warehouse *" value={draft.warehouseId} onChange={(e) => setDraft((p) => ({ ...p, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Input label="Ngày giao hàng dự kiến" type="date" value={draft.expectedDeliveryDate} onChange={(e) => setDraft((p) => ({ ...p, expectedDeliveryDate: e.target.value }))} />
+          </div>
+          <Textarea label="Ghi chú" rows={2} value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))} />
+
+          <div className="border-t border-moon-200 pt-4">
+            {renderLineEditor(draft.lines, updateDraftLine, addDraftLine, removeDraftLine)}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-moon-200">
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Hủy</Button>
+            <Button variant="accent" onClick={handleCreate} disabled={createPo.isPending || !draft.ownerId || !draft.vendorId || !draft.warehouseId}>
+              {createPo.isPending ? 'Đang tạo...' : 'Tạo PO'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Edit PO Modal ── */}
+      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title={editDraft ? `Chỉnh sửa ${editDraft.poNumber}` : 'Chỉnh sửa PO'} size="lg">
+        {editDraft && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1.5">PO Number</label>
+                <Input value={editDraft.poNumber || ''} disabled className="bg-navy-50 font-mono" />
+              </div>
+              <Input label="B/L (Số chứng từ KH)" value={editDraft.externalPoNumber} onChange={(e) => setEditDraft((p) => ({ ...p, externalPoNumber: e.target.value }))} placeholder="VD: BL-2026-RICE-001" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="Owner *" value={editDraft.ownerId} onChange={(e) => setEditDraft((p) => ({ ...p, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+              <Select label="Vendor *" value={editDraft.vendorId} onChange={(e) => setEditDraft((p) => ({ ...p, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn Vendor --' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="Warehouse *" value={editDraft.warehouseId} onChange={(e) => setEditDraft((p) => ({ ...p, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+              <Input label="Ngày giao hàng dự kiến" type="date" value={editDraft.expectedDeliveryDate} onChange={(e) => setEditDraft((p) => ({ ...p, expectedDeliveryDate: e.target.value }))} />
+            </div>
+            <Textarea label="Ghi chú" rows={2} value={editDraft.notes} onChange={(e) => setEditDraft((p) => ({ ...p, notes: e.target.value }))} />
+
+            <div className="border-t border-moon-200 pt-4">
+              {renderLineEditor(editDraft.lines, updateEditLine, addEditLine, removeEditLine)}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-moon-200">
+              <Button variant="outline" onClick={() => setShowEdit(false)}>Hủy</Button>
+              <Button variant="accent" onClick={handleUpdate} disabled={updatePo.isPending}>
+                {updatePo.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
+  )
+}

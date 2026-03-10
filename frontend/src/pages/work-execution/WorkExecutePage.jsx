@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useWorkDetail, useCompleteLine, useSkipLine, useWorkHistory, useWorkExceptions } from '@domains/work-execution'
 import { Badge, Button, Input, Modal, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@shared/ui'
@@ -29,16 +29,18 @@ export function WorkExecutePage() {
 
   const completeLine = useCompleteLine()
   const skipLine = useSkipLine()
+  const didAutoSelect = useRef(false)
 
   useEffect(() => {
-    if (work?.lines?.length && !selectedLineId) {
+    if (work?.lines?.length && !didAutoSelect.current) {
       const firstOpenLine = work.lines.find((l) => ['OPEN', 'IN_PROGRESS'].includes(l.status))
       if (firstOpenLine) {
         setSelectedLineId(firstOpenLine.id)
         setActualQty(String(firstOpenLine.expectedQty))
+        didAutoSelect.current = true
       }
     }
-  }, [work, selectedLineId])
+  }, [work])
 
   const selectedLine = work?.lines?.find((l) => l.id === selectedLineId)
 

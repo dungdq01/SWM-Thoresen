@@ -1,4 +1,5 @@
 export { InboundOperationsLayout } from './InboundOperationsLayout'
+export { PurchaseOrdersPage } from './PurchaseOrdersPage'
 export { InboundReceiptsPage } from './InboundReceiptsPage'
 export { InboundExecutionPage } from './InboundExecutionPage'
 export { InboundExceptionsPage } from './InboundExceptionsPage'

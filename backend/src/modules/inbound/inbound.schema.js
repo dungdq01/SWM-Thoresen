@@ -88,6 +88,55 @@ const receiptQuerySchema = Joi.object({
   sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
 });
 
+// ── Purchase Order Schemas ──
+
+const poLineSchema = Joi.object({
+  itemId: Joi.string().uuid().required(),
+  uomId: Joi.string().uuid().required(),
+  expectedQty: Joi.number().positive().required(),
+  unitPrice: Joi.number().min(0).optional(),
+  notes: Joi.string().max(500).optional().allow(''),
+});
+
+const createPurchaseOrderSchema = Joi.object({
+  ownerId: Joi.string().uuid().required(),
+  vendorId: Joi.string().uuid().required(),
+  warehouseId: Joi.string().uuid().required(),
+  externalPoNumber: Joi.string().max(100).optional().allow(''),
+  expectedDeliveryDate: Joi.date().iso().optional().allow(null),
+  notes: Joi.string().max(1000).optional().allow(''),
+  currency: Joi.string().max(10).default('VND'),
+  lines: Joi.array().items(poLineSchema).min(1).required(),
+});
+
+const updatePurchaseOrderSchema = Joi.object({
+  externalPoNumber: Joi.string().max(100).optional().allow(''),
+  expectedDeliveryDate: Joi.date().iso().optional().allow(null),
+  notes: Joi.string().max(1000).optional().allow(''),
+  currency: Joi.string().max(10).optional(),
+  rowVersion: Joi.number().integer().min(0).required(),
+});
+
+const cancelPurchaseOrderSchema = Joi.object({
+  reasonCode: Joi.string().max(50).optional(),
+  note: Joi.string().max(500).optional(),
+});
+
+const purchaseOrderQuerySchema = Joi.object({
+  keyword: Joi.string().max(100).optional(),
+  status: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string())
+  ).optional(),
+  ownerId: Joi.string().uuid().optional(),
+  vendorId: Joi.string().uuid().optional(),
+  warehouseId: Joi.string().uuid().optional(),
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  sortBy: Joi.string().valid('createdAt', 'poNumber', 'status', 'expectedDeliveryDate').default('createdAt'),
+  sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
+});
+
 module.exports = {
   createReceiptSchema,
   confirmReceiptSchema,
@@ -96,4 +145,8 @@ module.exports = {
   weighOutSchema,
   manualWeightSchema,
   receiptQuerySchema,
+  createPurchaseOrderSchema,
+  updatePurchaseOrderSchema,
+  cancelPurchaseOrderSchema,
+  purchaseOrderQuerySchema,
 };

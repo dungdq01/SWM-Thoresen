@@ -3,6 +3,15 @@ import { ownerApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
 
+export function useOwnerNextCode(enabled = false) {
+  return useQuery({
+    queryKey: [...MASTER_DATA_QUERY_KEYS.owners, 'next-code'],
+    queryFn: () => ownerApi.getNextCode(),
+    enabled,
+    staleTime: 0,
+  })
+}
+
 export function useOwnerList(filters = {}) {
   return useQuery({
     queryKey: [...MASTER_DATA_QUERY_KEYS.owners, filters],

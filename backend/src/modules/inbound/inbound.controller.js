@@ -3,6 +3,7 @@
  */
 
 const { ReceiptService } = require('./application/receipt.service');
+const { PurchaseOrderService } = require('./application/purchase-order.service');
 const {
   createReceiptSchema,
   confirmReceiptSchema,
@@ -11,6 +12,10 @@ const {
   weighOutSchema,
   manualWeightSchema,
   receiptQuerySchema,
+  createPurchaseOrderSchema,
+  updatePurchaseOrderSchema,
+  cancelPurchaseOrderSchema,
+  purchaseOrderQuerySchema,
 } = require('./inbound.schema');
 const { InboundError } = require('./domain/inbound.errors');
 
@@ -18,6 +23,7 @@ class InboundController {
   constructor(prisma) {
     this.prisma = prisma;
     this.receiptService = new ReceiptService(prisma);
+    this.poService = new PurchaseOrderService(prisma);
   }
 
   /**
@@ -368,6 +374,125 @@ class InboundController {
         status: line.status,
       })),
     };
+  }
+
+  // ── Purchase Order Handlers ──
+
+  /**
+   * GET /api/v1/inbound/purchase-orders/next-number
+   */
+  async getNextPoNumber(req, res) {
+    try {
+      const code = await this.poService.getNextPoNumber();
+      return res.json({ success: true, data: { code, prefix: 'PO' } });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * GET /api/v1/inbound/purchase-orders
+   */
+  async listPurchaseOrders(req, res) {
+    try {
+      const { error, value } = purchaseOrderQuerySchema.validate(req.query);
+      if (error) {
+        return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: error.details[0].message });
+      }
+      const result = await this.poService.listPurchaseOrders(value);
+      return res.json({ success: true, data: result.data, pagination: { page: result.page, totalPages: result.totalPages, total: result.total } });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * GET /api/v1/inbound/purchase-orders/:id
+   */
+  async getPurchaseOrder(req, res) {
+    try {
+      const po = await this.poService.getPurchaseOrder(req.params.id);
+      return res.json({ success: true, data: po });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * POST /api/v1/inbound/purchase-orders
+   */
+  async createPurchaseOrder(req, res) {
+    try {
+      const { error, value } = createPurchaseOrderSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: error.details[0].message });
+      }
+      const context = this.buildContext(req);
+      const po = await this.poService.createPurchaseOrder(value, context);
+      return res.status(201).json({ success: true, data: po });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * PUT /api/v1/inbound/purchase-orders/:id
+   */
+  async updatePurchaseOrder(req, res) {
+    try {
+      const { error, value } = updatePurchaseOrderSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: error.details[0].message });
+      }
+      const context = this.buildContext(req);
+      const po = await this.poService.updatePurchaseOrder(req.params.id, value, context);
+      return res.json({ success: true, data: po });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * POST /api/v1/inbound/purchase-orders/:id/confirm
+   */
+  async confirmPurchaseOrder(req, res) {
+    try {
+      const context = this.buildContext(req);
+      const po = await this.poService.confirmPurchaseOrder(req.params.id, context);
+      return res.json({ success: true, data: po });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * POST /api/v1/inbound/purchase-orders/:id/close
+   */
+  async closePurchaseOrder(req, res) {
+    try {
+      const context = this.buildContext(req);
+      const po = await this.poService.closePurchaseOrder(req.params.id, context);
+      return res.json({ success: true, data: po });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * POST /api/v1/inbound/purchase-orders/:id/cancel
+   */
+  async cancelPurchaseOrder(req, res) {
+    try {
+      const { error, value } = cancelPurchaseOrderSchema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: error.details[0].message });
+      }
+      const context = this.buildContext(req);
+      const po = await this.poService.cancelPurchaseOrder(req.params.id, value, context);
+      return res.json({ success: true, data: po });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
   }
 
   handleError(err, res) {

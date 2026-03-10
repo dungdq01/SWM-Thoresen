@@ -1,7 +1,7 @@
 # SWM-Thoresen — Tài liệu Điều hướng cho Senior Manager
 
-**Phiên bản:** 1.2
-**Cập nhật:** 2026-03-09
+**Phiên bản:** 1.3
+**Cập nhật:** 2026-03-10
 **Mục đích:** Hướng dẫn Senior Manager xác định đúng tài liệu cần đọc, theo đúng thứ tự, để review từng module backend/frontend một cách hiệu quả.
 
 ---
@@ -16,6 +16,7 @@
 6. [Quick Reference — Tra cứu nhanh](#6-quick-reference--tra-cứu-nhanh)
 7. [Critical Issues — Phải fix trước Go-Live](#7-critical-issues--phải-fix-trước-go-live)
 8. [Warehouse Visualization Roadmap](#8-warehouse-visualization-roadmap)
+9. [FE ↔ BE Alignment Audit](#9-fe--be-alignment-audit)
 
 ---
 
@@ -87,27 +88,30 @@ SWM-Thoresen/
 
 ## 2. Trạng thái module hiện tại
 
-| Module | Tên | Spec | Code Review | Score | Verdict | Vấn đề còn mở |
-|--------|-----|------|-------------|-------|---------|----------------|
-| M1 | Foundation & Governance | v1.2 ✅ | ✅ Fix v1 | **9.0** | ✅ PASS | — |
-| M2 | Master Data Management | v1.2 ✅ | ✅ Fix v4 | **9.0** | ✅ PASS | — |
-| M3 | Inventory Core Engine | v1.2 ✅ | ✅ Fix v2 | **8.8** | ⚠️ COND PASS | Concurrent OnHand rebuild |
-| M4 | Inbound Operations | v1.2 ✅ | ✅ Fix v3 | **8.8** | ✅ PASS | — |
-| M5 | Outbound Operations | v1.2 ✅ | ✅ Fix v3 | **9.0** | ✅ PASS | — |
-| M6 | Inventory Control | v1.2 ✅ | ✅ Fix v1 | **8.5** | ⚠️ COND PASS | Cycle count approval flow |
-| M7 | Work Execution & Mobile | v1.2 ✅ | ✅ Fix v1 | **9.2** | ✅ PASS | — |
-| M8 | Weighbridge & Integration | v1.2 ✅ | ✅ Fix v2 | **8.8** | ✅ PASS | OCR extraction là MOCK |
-| M9 | VAS / Bagging | v1.2 ✅ | ✅ Fix v1 | **9.2** | ✅ PASS | — |
-| M10 | Billing & Commercial | v1.2 ✅ | ✅ Fix v1 | **8.8** | ✅ PASS | StorageSnapshot = placeholder |
-| M11 | Reporting & Go-Live | v1.2 ✅ | ✅ Fix v1 | **8.5** | ⚠️ COND PASS | Go-Live gate logic |
-| Auth | Auth Module | — | ✅ Fix v1 | **8.5** | ⚠️ COND PASS | RequestUser field mismatch |
+| Module | Tên | Spec | Code Review | Score | Verdict | FE-BE Align | Vấn đề còn mở |
+|--------|-----|------|-------------|-------|---------|-------------|----------------|
+| M1 | Foundation & Governance | v1.2 ✅ | ✅ Fix v1 | **9.0** | ✅ PASS | ✅ BASE_URL fix | — |
+| M2 | Master Data Management | v1.2 ✅ | ✅ Fix v4 | **9.0** | ✅ PASS | ✅ BASE_URL fix | — |
+| M3 | Inventory Core Engine | v1.2 ✅ | ✅ Fix v2 | **8.8** | ⚠️ COND PASS | ✅ BASE_URL fix | Concurrent OnHand rebuild |
+| M4 | Inbound Operations | v1.2 ✅ | ✅ Fix v3 | **8.8** | ✅ PASS | ✅ BASE_URL fix | — |
+| M5 | Outbound Operations | v1.2 ✅ | ✅ Fix v3 | **9.0** | ✅ PASS | ⚠️ Double-prefix (xem FA-02) | — |
+| M6 | Inventory Control | v1.2 ✅ | ✅ Fix v1 | **8.5** | ⚠️ COND PASS | ✅ BASE_URL fix | Cycle count approval flow |
+| M7 | Work Execution & Mobile | v1.2 ✅ | ✅ Fix v1 | **9.2** | ✅ PASS | 🔴 BASE_URL sai hoàn toàn (FA-03) | — |
+| M8 | Weighbridge & Integration | v1.2 ✅ | ✅ Fix v2 | **8.8** | ✅ PASS | ⚠️ BASE_URL fix + thiếu OCR/ERP UI | OCR extraction là MOCK |
+| M9 | VAS / Bagging | v1.2 ✅ | ✅ Fix v1 | **9.2** | ✅ PASS | 🔴 State machine + session mismatch (FA-04) | — |
+| M10 | Billing & Commercial | v1.2 ✅ | ✅ Fix v1 | **8.8** | ✅ PASS | ⚠️ API file đã fix; còn UI gaps (FA-05) | StorageSnapshot = placeholder |
+| M11 | Reporting & Go-Live | v1.2 ✅ | ✅ Fix v1 | **8.5** | ⚠️ COND PASS | ⚠️ API file đã fix; còn updateGoLiveGate (FA-06) | Go-Live gate logic |
+| Auth | Auth Module | — | ✅ Fix v1 | **8.5** | ⚠️ COND PASS | ✅ N/A | RequestUser field mismatch |
 
 **Chú thích:**
 - **Spec v1.2** = đã apply tất cả feedback từ feedback_docs vào spec file
 - **COND PASS** = Conditional Pass — cần fix vấn đề ghi chú trước go-live
 - **Code Review** = `check-report/Module_X_Code_Review_Report.md`
 - **Fix vN** = số vòng fix verification: `Module_X_Fix_Verification_Report_vN.md`
+- **FE-BE Align** = kết quả từ `check-report/fe-be-alignment/` — xem Section 9 để chi tiết
 - Chi tiết full re-check: `check-report/TVL_SWM_Improve.md`
+
+> **⚠️ SYSTEM BLOCKER (FA-01):** `app.module.ts` hiện chỉ import Foundation + MasterData + Auth. Tất cả M4–M11 **chưa được register** → **100% API calls từ M4–M11 trả về 404** cho đến khi fix. Xem Section 9.2.
 
 ---
 
@@ -499,11 +503,23 @@ DRAFT → CONFIRMED → IN_PROGRESS → COMPLETED
 | **IMP-07** | **Delete dead stub files** | Auth | Các stub guard cũ vẫn còn trên disk | 30 phút |
 | **IMP-08** | **Connect Work module** | M7/M12 | WorkHeader/WorkLine generation chưa kết nối vào inbound/outbound/VAS flows | 2 tuần |
 
+**FE ↔ BE Alignment Issues (FA series) — Xem chi tiết tại Section 9**
+
+| # | Issue | Module | Mô tả | Effort |
+|---|-------|--------|-------|--------|
+| **FA-01** | **app.module.ts — SYSTEM BLOCKER** | M4–M11 | `app.module.ts` chỉ import 3 modules (Foundation, MasterData, Auth). Tất cả M4–M11 chưa register → **100% API calls trả về 404**. Ảnh hưởng toàn bộ hệ thống | 4 giờ |
+| **FA-02** | **Double-prefix NestJS controllers** | M5/M9/M10/M11 | `@Controller('api/v1/...')` + global prefix `/api/v1` → routes thành `/api/v1/api/v1/...`. M5 Outbound, M9 VAS, M10 Billing, M11 Reporting | 2 giờ |
+| **FA-03** | **Work Execution BASE_URL sai hoàn toàn** | M7/FE | FE gọi `/api/v1/work-execution`; BE Express.js không có base path `/work-execution`. BE routes ở root `/works`, `/mobile/works`. 16/16 FE calls fail | 2 giờ |
+| **FA-04** | **VAS state machine + session mismatch** | M9/FE | FE: `DRAFT→RELEASED` / action `release`; BE: `DRAFT→CONFIRMED` / action `confirm`. FE standalone sessions (`startSession/endSession/recordBag`) không tồn tại trong BE | 4 giờ |
+| **FA-05** | **Billing UI semantic gap** | M10/FE | FE `/invoices`→BE `/debit-notes`; `/rate-cards`→`/contracts`; `/billable-events`→`/events`. FE thiếu `review` + `lock` lifecycle. `approve` dùng POST thay BE's PUT. API file đã được fix | 1 ngày |
+| **FA-06** | **Reporting path gaps + go-live gate** | M11/FE | FE thiếu sub-segments (`/dashboard` vs `/dashboard/summary`, `/inventory` vs `/inventory/on-hand`). `updateGoLiveGate` dùng `PATCH /go-live/:id` vs BE's `POST /go-live/gates/:id/sign-off`. API file đã fix | 4 giờ |
+
 ### Sprint Plan khuyến nghị
 
 | Sprint | Tuần | Nội dung |
 |--------|------|----------|
-| **Sprint 1** | W1-2 | IMP-01, 04, 05, 06, 07 (Auth fixes) + IMP-14 (Testing infra) |
+| **Sprint 0** | Trước W1 | **FA-01** (app.module.ts) + **FA-02** (double-prefix) + **FA-03** (Work BASE_URL) + **FA-04** (VAS state machine) — phải xong trước khi test bất kỳ module nào |
+| **Sprint 1** | W1-2 | IMP-01, 04, 05, 06, 07 (Auth fixes) + **FA-05/FA-06** (Billing/Reporting UI gaps) + IMP-14 (Testing infra) |
 | **Sprint 2** | W3-4 | IMP-02 (Real OCR) + IMP-03 (Storage snapshot) + IMP-10 (2D floor plan V1) + IMP-11 (Dashboard charts) |
 | **Sprint 3** | W5-6 | IMP-10 V2/V3 (Occupancy + click-to-inspect) + IMP-12 (WebSocket) + IMP-15, 16, 19 (UX) |
 | **Sprint 4** | W7-8 | IMP-08 (Work module) + IMP-13 (Offline PWA) + IMP-17, 18 (Notifications, Bulk ops) |
@@ -567,5 +583,194 @@ pages/reporting/dashboard/
 
 ---
 
+## 9. FE ↔ BE Alignment Audit
+
+> Nguồn: `check-report/fe-be-alignment/` (11 báo cáo — M1 đến M11)
+> **Mục đích:** Kiểm tra FE API calls có gọi đúng endpoint BE không. Phát hiện ngày 2026-03-10.
+
+### 9.1 Danh mục báo cáo Alignment
+
+> ⚠️ **Lưu ý đánh số:** File alignment dùng số khác với flow.md. Xem cột "File" để tra đúng.
+
+| Module (flow.md) | Tên | File Alignment | Kết quả |
+|-----------------|-----|----------------|---------|
+| M1 | Foundation & Governance | `check-report/fe-be-alignment/M1_Foundation_FE_BE_Alignment.md` | ✅ PASS (sau BASE_URL fix) |
+| M2 | Master Data | `check-report/fe-be-alignment/M2_MasterData_FE_BE_Alignment.md` | ✅ PASS (sau BASE_URL fix) |
+| M3 | Inventory Core | `check-report/fe-be-alignment/M4_InventoryCore_FE_BE_Alignment.md` | ✅ PASS (sau BASE_URL fix) |
+| M4 | Inbound Operations | `check-report/fe-be-alignment/M3_InboundOperations_FE_BE_Alignment.md` | ✅ PASS (sau BASE_URL fix) |
+| M5 | Outbound Operations | `check-report/fe-be-alignment/M6_OutboundOperations_FE_BE_Alignment.md` | ⚠️ Double-prefix controller (FA-02) |
+| M6 | Inventory Control | `check-report/fe-be-alignment/M5_InventoryControl_FE_BE_Alignment.md` | ✅ PASS (sau BASE_URL fix) |
+| M7 | Work Execution | `check-report/fe-be-alignment/M7_WorkExecution_FE_BE_Alignment.md` | 🔴 BASE_URL sai hoàn toàn (FA-03) |
+| M8 | Weighbridge & Integration | `check-report/fe-be-alignment/M8_IntegrationPlatform_FE_BE_Alignment.md` | ⚠️ BASE_URL fix + thiếu OCR/ERP UI |
+| M9 | VAS / Bagging | `check-report/fe-be-alignment/M9_VAS_FE_BE_Alignment.md` | 🔴 State machine + session mismatch (FA-04) |
+| M10 | Billing | `check-report/fe-be-alignment/M10_Billing_FE_BE_Alignment.md` | ⚠️ API file đã fix; còn UI gaps (FA-05) |
+| M11 | Reporting & Go-Live | `check-report/fe-be-alignment/M11_Reporting_FE_BE_Alignment.md` | ⚠️ API file đã fix; còn updateGoLiveGate (FA-06) |
+
+### 9.2 FA-01 — SYSTEM BLOCKER: app.module.ts
+
+**Mức độ:** 🔴 CRITICAL — Ảnh hưởng 100% API calls M4–M11
+
+```typescript
+// backend/src/app.module.ts — TRẠNG THÁI HIỆN TẠI (SAI)
+@Module({
+  imports: [
+    FoundationModule,    // ✅ M1
+    MasterDataModule,    // ✅ M2
+    AuthModule,          // ✅ Auth
+    // ❌ InboundModule MISSING
+    // ❌ OutboundModule MISSING
+    // ❌ InventoryCoreModule MISSING
+    // ❌ InventoryControlModule MISSING
+    // ❌ WorkExecutionModule MISSING  (Express.js — cần mount khác)
+    // ❌ IntegrationModule MISSING
+    // ❌ VasModule MISSING
+    // ❌ BillingModule MISSING
+    // ❌ ReportingModule MISSING
+  ],
+})
+export class AppModule {}
+```
+
+**Fix:**
+```typescript
+// Thêm tất cả modules vào imports array
+// Lưu ý: WorkExecution là Express.js → cần mount riêng qua app.use() hoặc chuyển sang NestJS
+```
+
+**Tác động khi chưa fix:** Mọi request từ FE đến M4–M11 → NestJS không nhận route → 404. Không thể test bất kỳ tính năng nào ngoại trừ Auth + MasterData.
+
+### 9.3 FA-02 — Double-prefix NestJS controllers
+
+**Mức độ:** 🔴 CRITICAL — Ảnh hưởng M5, M9, M10, M11
+
+**Pattern lỗi:**
+```typescript
+// Global prefix đã được set trong main.ts:
+app.setGlobalPrefix('api/v1')
+
+// Controller SAI — thêm prefix lần nữa:
+@Controller('api/v1/shipments')    // M5 Outbound
+@Controller('api/v1/vas-wo')       // M9 VAS
+@Controller('api/v1/debit-notes')  // M10 Billing
+@Controller('api/v1/reports')      // M11 Reporting
+
+// Kết quả: route thực tế = /api/v1/api/v1/shipments → 404 mãi mãi
+```
+
+**Fix — đổi thành:**
+```typescript
+@Controller('shipments')    // M5
+@Controller('vas-wo')       // M9
+@Controller('debit-notes')  // M10
+@Controller('reports')      // M11
+```
+
+### 9.4 FA-03 — Work Execution BASE_URL sai hoàn toàn
+
+**Mức độ:** 🔴 CRITICAL — 16/16 FE calls fail
+
+**Vấn đề đôi:**
+1. **Double-prefix:** `BASE_URL = '/api/v1/work-execution'` → combineURLs → `/api/v1/api/v1/work-execution`
+2. **Sai base path:** BE Express.js mount routes tại root, không có `/work-execution` prefix
+
+**Mapping FE → BE cần sửa:**
+
+| FE gọi | BE thực tế |
+|--------|-----------|
+| `GET /api/v1/work-execution/` | `GET /api/v1/works` |
+| `GET /api/v1/work-execution/mobile/queue` | `GET /api/v1/mobile/works` |
+| `POST /api/v1/work-execution/mobile/complete` | `POST /api/v1/mobile/works/:id/complete` |
+| `GET /api/v1/work-execution/internal/:id` | `GET /api/v1/internal/works/:id` |
+
+**Fix FE:** Đổi `BASE_URL = '/work-execution'` → `''` và cập nhật từng endpoint path.
+
+### 9.5 FA-04 — VAS State Machine + Session Mismatch
+
+**Mức độ:** 🔴 CRITICAL — FE và BE không hoạt động cùng nhau được
+
+**State Machine Mismatch:**
+
+| Điểm | FE | BE |
+|------|----|----|
+| State sau DRAFT | `RELEASED` | `CONFIRMED` |
+| Action transition | `release()` | `confirm()` |
+| API endpoint | `POST /vas-wo/:id/release` | `POST /vas-wo/:id/confirm` |
+
+**Session Model Mismatch:**
+
+| Aspect | FE | BE |
+|--------|----|----|
+| Session create | `POST /vas/sessions` (standalone) | `POST /vas-wo/:id/session` (per-WO) |
+| Session end | `POST /vas/sessions/:id/end` | Session không có end riêng |
+| Record bag | `POST /vas/sessions/:id/bags` | `POST /vas-wo/:id/bags` |
+| Session list | `GET /vas/sessions` | Không có endpoint này |
+
+**Fix:** FE cần refactor VAS domain để dùng đúng state (`CONFIRMED`) và route bags trực tiếp qua WO ID, không qua standalone session ID.
+
+### 9.6 FA-05 — Billing Semantic Mismatch (đã fix API file)
+
+**Mức độ:** ⚠️ HIGH — API file đã fix; còn gap ở UI layer
+
+**Mapping đã được cập nhật trong API file:**
+
+| FE gọi cũ | BE thực tế | Trạng thái |
+|-----------|-----------|-----------|
+| `GET /invoices` | `GET /debit-notes` | ✅ API file fixed |
+| `GET /rate-cards` | `GET /contracts` | ✅ API file fixed |
+| `GET /billable-events` | `GET /events` | ✅ API file fixed |
+| `POST /invoices/:id/approve` | `PUT /debit-notes/:id/approve` | ✅ API file fixed |
+
+**Gaps còn lại trong UI:**
+- FE không có bước `review` (DRAFT → REVIEWED) trước khi `approve`
+- FE không có bước `lock` (APPROVED → LOCKED) sau approve
+- Debit Note state machine: `DRAFT → REVIEWED → APPROVED → LOCKED` — FE chỉ show DRAFT → APPROVED
+
+### 9.7 FA-06 — Reporting Path Gaps (đã fix API file)
+
+**Mức độ:** ⚠️ HIGH — API file đã fix; còn `updateGoLiveGate` sai
+
+**Path gaps đã fix:**
+
+| FE gọi cũ | BE thực tế | Trạng thái |
+|-----------|-----------|-----------|
+| `GET /dashboard` | `GET /dashboard/summary` | ✅ Fixed |
+| `GET /inventory` | `GET /inventory/on-hand` | ✅ Fixed |
+| `GET /billing` | `GET /billing/summary` | ✅ Fixed |
+| `GET /audit` | `GET /audit/logs` | ✅ Fixed |
+
+**Còn sai — `updateGoLiveGate`:**
+```typescript
+// FE hiện tại (SAI):
+PATCH /api/v1/go-live/:id   body: { status, notes }
+
+// BE thực tế:
+POST /api/v1/go-live/gates/:id/sign-off   body: { signedBy, notes }
+```
+
+**Fix:** Đổi method từ `PATCH` sang `POST`, đổi path từ `/go-live/:id` sang `/go-live/gates/:id/sign-off`, cập nhật body shape.
+
+### 9.8 Framework Split — BE không đồng nhất
+
+**Quan trọng khi sửa BE:** Backend KHÔNG phải toàn NestJS TypeScript.
+
+| Module | Framework | Ngôn ngữ |
+|--------|-----------|---------|
+| M1 Foundation | NestJS | TypeScript |
+| M2 Master Data | NestJS | TypeScript |
+| M3 Inventory Core | Express.js | JavaScript |
+| M4 Inbound | Express.js | JavaScript |
+| M5 Outbound | NestJS | TypeScript (có double-prefix bug) |
+| M6 Inventory Control | Express.js | JavaScript |
+| M7 Work Execution | Express.js | JavaScript |
+| M8 Integration | Mix | Mix |
+| M9 VAS | NestJS | TypeScript (có double-prefix bug) |
+| M10 Billing | NestJS | TypeScript (có double-prefix bug) |
+| M11 Reporting | NestJS | TypeScript (có double-prefix bug) |
+| Auth | NestJS | TypeScript |
+
+**Hệ quả:** Express.js modules không được mount qua NestJS module system → phải dùng `app.use()` riêng hoặc migrate sang NestJS. Fix FA-01 cần xử lý 2 loại khác nhau.
+
+---
+
 *Cập nhật flow.md khi có thay đổi lớn về structure tài liệu hoặc khi module mới được build/review.*
-*Version history: v1.0 (2026-03-08) → v1.1 (2026-03-09, cập nhật scores M5/M7, bổ sung M8-M11 review status, Auth module, Section 7 Critical Issues, Section 8 Visualization Roadmap) → v1.2 (2026-03-09, sửa Fix Verified cho M6-M11 + Auth, cập nhật bảng Section 2 phản ánh đúng số vòng fix)*
+*Version history: v1.0 (2026-03-08) → v1.1 (2026-03-09, cập nhật scores M5/M7, bổ sung M8-M11 review status, Auth module, Section 7 Critical Issues, Section 8 Visualization Roadmap) → v1.2 (2026-03-09, sửa Fix Verified cho M6-M11 + Auth, cập nhật bảng Section 2 phản ánh đúng số vòng fix) → v1.3 (2026-03-10, thêm cột FE-BE Align Section 2, FA-01..06 vào Section 7, Section 9 FE↔BE Alignment Audit đầy đủ, Sprint 0 plan)*

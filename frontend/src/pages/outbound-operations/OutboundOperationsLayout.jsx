@@ -1,8 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CheckSquare, ClipboardList, Package, Scale, Truck } from 'lucide-react'
+import { CheckSquare, ClipboardList, FileText, Package, Scale, Truck } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
+  { to: '/app/outbound-operations/sales-orders', label: 'Sales Orders', icon: FileText },
   { to: '/app/outbound-operations/shipments', label: 'Shipments', icon: ClipboardList },
   { to: '/app/outbound-operations/allocation', label: 'Allocation', icon: Package },
   { to: '/app/outbound-operations/weighing', label: 'Weighing', icon: Scale },

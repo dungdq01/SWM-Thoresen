@@ -24,7 +24,10 @@ export function clearMockApiSetting() {
   window.localStorage.removeItem(MOCK_API_STORAGE_KEY)
 }
 
-export function delay(value, ms = 120) {
+export function delay(value, error = null, ms = 120) {
+  if (error) {
+    return new Promise((_, reject) => setTimeout(() => reject({ error }), ms))
+  }
   return new Promise((resolve) => setTimeout(() => resolve(structuredClone(value)), ms))
 }
 

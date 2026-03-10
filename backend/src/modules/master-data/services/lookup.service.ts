@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { OwnerRepository } from '../repositories/owner.repository';
 import { VendorRepository } from '../repositories/vendor.repository';
+import { CustomerRepository } from '../repositories/customer.repository';
+import { DropdownConfigRepository } from '../repositories/dropdown-config.repository';
 import { ItemRepository } from '../repositories/item.repository';
 import { WarehouseRepository } from '../repositories/warehouse.repository';
 import { ZoneRepository } from '../repositories/zone.repository';
@@ -28,6 +30,8 @@ export class LookupService {
     private readonly uomRepository: UomRepository,
     private readonly vehicleTypeRepository: VehicleTypeRepository,
     private readonly inventoryStatusRepository: InventoryStatusRepository,
+    private readonly customerRepository: CustomerRepository,
+    private readonly dropdownConfigRepository: DropdownConfigRepository,
   ) {}
 
   async getOwners(): Promise<LookupItem[]> {
@@ -82,5 +86,22 @@ export class LookupService {
   async getInventoryStatuses(): Promise<LookupItem[]> {
     const statuses = await this.inventoryStatusRepository.findAllActive();
     return statuses.map((s) => ({ id: s.id, code: s.statusCode, name: s.description, extra: { isAllocatable: s.isAllocatable } }));
+  }
+
+  async getCustomers(): Promise<LookupItem[]> {
+    const customers = await this.customerRepository.findAllActive();
+    return customers.map((c) => ({
+      id: c.id,
+      code: c.customerCode,
+      name: c.customerName,
+      extra: { customerGroup: c.customerGroup, customerType: c.customerType },
+    }));
+  }
+
+  async getDropdownOptions(entity: string, fieldName: string) {
+    const options = await this.dropdownConfigRepository.findActiveOptions(entity, fieldName);
+    return {
+      data: options.map((o) => ({ value: o.value, label: o.label, isDefault: o.isDefault })),
+    };
   }
 }

@@ -101,4 +101,17 @@ export class ItemRepository {
       include: { baseUom: true, billingUom: true },
     });
   }
+
+  async getNextCode(): Promise<string> {
+    const prefix = 'ITM';
+    const existing = await this.prisma.mdItem.findMany({
+      where: { itemCode: { startsWith: `${prefix}-` } },
+      select: { itemCode: true },
+    });
+    const numbers = existing
+      .map((r) => parseInt(r.itemCode.replace(`${prefix}-`, ''), 10))
+      .filter((n) => !isNaN(n));
+    const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  }
 }

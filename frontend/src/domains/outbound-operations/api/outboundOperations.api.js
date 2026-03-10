@@ -81,4 +81,34 @@ export const outboundOperationsApi = {
     (id) => outboundOperationsMockApi.getShipmentExceptions(id),
     (id) => httpClient.get(`${BASE_URL}/shipments/${id}/exceptions`)
   ),
+
+  // ── Sales Orders ──
+  getSalesOrders: withDataSource(
+    (params) => outboundOperationsMockApi.getSalesOrders(params),
+    (params) => httpClient.get(`${BASE_URL}/sales-orders`, { params })
+  ),
+  getSalesOrderById: withDataSource(
+    (id) => outboundOperationsMockApi.getSalesOrderById(id),
+    (id) => httpClient.get(`${BASE_URL}/sales-orders/${id}`)
+  ),
+  createSalesOrder: withDataSource(
+    (data) => outboundOperationsMockApi.createSalesOrder(data),
+    (data) => httpClient.post(`${BASE_URL}/sales-orders`, data)
+  ),
+  updateSalesOrder: withDataSource(
+    (id, data) => outboundOperationsMockApi.updateSalesOrder(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/sales-orders/${id}`, data)
+  ),
+  confirmSalesOrder: withDataSource(
+    (id) => outboundOperationsMockApi.confirmSalesOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/sales-orders/${id}/confirm`)
+  ),
+  closeSalesOrder: withDataSource(
+    (id) => outboundOperationsMockApi.closeSalesOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/sales-orders/${id}/close`)
+  ),
+  cancelSalesOrder: withDataSource(
+    (id) => outboundOperationsMockApi.cancelSalesOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/sales-orders/${id}/cancel`)
+  ),
 }

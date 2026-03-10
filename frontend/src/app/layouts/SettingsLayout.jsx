@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { 
   Users, Shield, Tag, Hash, BookOpen, FileText, 
-  ChevronLeft, Settings 
+  ChevronLeft, Settings, ListTree 
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
+  { to: '/settings/dropdown-config', icon: ListTree, label: 'Cấu hình Dropdown' },
   { to: '/settings/roles', icon: Users, label: 'Vai trò' },
   { to: '/settings/permissions', icon: Shield, label: 'Quyền' },
   { to: '/settings/reason-codes', icon: Tag, label: 'Mã lý do' },

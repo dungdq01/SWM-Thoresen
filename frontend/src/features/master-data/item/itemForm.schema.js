@@ -3,9 +3,9 @@ import { z } from 'zod'
 export const itemSchema = z.object({
   itemCode: z
     .string()
-    .min(1, 'Mã mặt hàng là bắt buộc')
     .max(30, 'Mã mặt hàng tối đa 30 ký tự')
-    .regex(/^[A-Z0-9_-]+$/, 'Mã chỉ chứa chữ in hoa, số, dấu gạch ngang và gạch dưới'),
+    .optional()
+    .or(z.literal('')),
   itemName: z
     .string()
     .min(1, 'Tên mặt hàng là bắt buộc')

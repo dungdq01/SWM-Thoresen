@@ -1,108 +1,110 @@
 # Frontend Module 11 — Reporting, Audit & Go-Live
 
-**Ngày:** 2026-03-09 | **Trạng thái:** ❌ CHƯA BUILD
+**Ngày:** 2026-03-10 | **Trạng thái:** ✅ DONE
 
 ---
 
 ## 1. Scope
 
-Dashboard tổng hợp, báo cáo inventory/billing/audit, reconciliation viewer, go-live checklist.
+Dashboard tổng hợp KPI, báo cáo inventory/billing/audit, reconciliation viewer, go-live checklist. Module read-only — không sinh business transaction.
 
-## 2. Trạng thái build
+## 2. Pages & Routes
 
-| Layer | Trạng thái | Ghi chú |
-|-------|-----------|---------|
-| Pages | ❌ 0 pages | Không có route, không có file |
-| Domain layer | ❌ Không có | Không có `domains/reporting/` |
-| Mock data | ❌ Không có | Không có `reporting.mock.js` |
-| Route config | ❌ Không có | `routes.jsx` không có `/app/reporting` |
+| Route | Page Component | Mô tả | Role |
+|-------|---------------|-------|------|
+| `/app/reporting/dashboard` | `ReportingDashboardPage` | KPI dashboard tổng hợp + charts | WH_MANAGER, OPS_SUPER |
+| `/app/reporting/inventory` | `InventoryReportPage` | Báo cáo On-Hand theo owner/location/status | All |
+| `/app/reporting/billing` | `BillingReportPage` | Báo cáo doanh thu, outstanding DNs, by service type | BILLING_OFC, CUST_VIEWER |
+| `/app/reporting/audit` | `AuditTrailPage` | Searchable audit trail với date filter + pagination | OPS_SUPER, ADMIN |
+| `/app/reporting/reconciliation` | `ReconciliationPage` | RECON-001 results viewer (hourly runs) | OPS_SUPER |
+| `/app/reporting/go-live` | `GoLiveChecklistPage` | 12 gates GL-001..012 status: PASS/FAIL/WAIVED | ADMIN, OPS_SUPER |
 
-## 3. Pages cần build
+**Default redirect:** `/app/reporting` → `/app/reporting/dashboard`
 
-| Route | Page | Mô tả | Role |
-|-------|------|-------|------|
-| `/app/reporting/dashboard` | `ReportingDashboardPage` | KPI dashboard tổng hợp | WH_MANAGER, OPS_SUPER |
-| `/app/reporting/inventory` | `InventoryReportPage` | Báo cáo tồn kho (On-Hand Summary, Movement Summary) | All |
-| `/app/reporting/billing` | `BillingReportPage` | Báo cáo doanh thu, outstanding DNs | BILLING_OFC, CUST_VIEWER |
-| `/app/reporting/audit` | `AuditReportPage` | Searchable audit trail viewer | OPS_SUPER, ADMIN |
-| `/app/reporting/reconciliation` | `ReconciliationPage` | RECON-001 results viewer | OPS_SUPER |
-| `/app/reporting/go-live` | `GoLiveChecklistPage` | 12 gates GL-001..012 status | ADMIN, OPS_SUPER |
+**Tổng:** 6 pages + 1 layout (`ReportingLayout.jsx`)
 
-## 4. Domain cần tạo
+## 3. Domain Layer
 
-```
-src/domains/reporting/
-├── api/reporting.api.js
-│     reportingApi: {
-│       getDashboard, getInventoryReport, getBillingReport,
-│       getAuditReport, getReconciliationResults, getGoLiveStatus
-│     }
-└── hooks/useReporting.js
-      useReportingDashboard, useInventoryReport, useBillingReport,
-      useAuditReport, useReconciliation, useGoLiveChecklist
-```
+**Thư mục:** `src/domains/reporting/`
 
-## 5. Mock data cần tạo
+| File | Nội dung |
+|------|---------|
+| `api/reporting.api.js` | `reportingApi`: getDashboard, getInventoryReport, getBillingReport, getAuditLogs, getReconResults, getGoLiveGates, updateGoLiveGate |
+| `hooks/useReporting.js` | useReportingDashboard, useInventoryReport, useBillingReport, useAuditLogs, useReconResults, useGoLiveGates, useUpdateGoLiveGate |
 
-```
-src/mocks/reporting.mock.js
-  swm_mock_reporting_dashboard  → KPI numbers
-  swm_mock_inventory_report     → aggregated on-hand by owner
-  swm_mock_billing_report       → revenue by period/owner
-  swm_mock_audit_report         → paginated audit log
-  swm_mock_recon_results        → RECON-001 pass/fail history
-  swm_mock_go_live_gates        → 12 gates status
-```
+**TanStack Query staleTime:**
+- Dashboard: 30s (auto-refetch mỗi 60s)
+- Inventory Report: 15s
+- Recon Results: 30s (auto-refetch mỗi 120s)
+- Go-Live Gates: 10s
 
-## 6. Routes cần thêm vào `routes.jsx`
+## 4. Mock Data
 
-```js
-const ReportingLayout = lazy(() => import('@pages/reporting').then(m => ({ default: m.ReportingLayout })))
-const ReportingDashboardPage = lazy(...)
-const InventoryReportPage = lazy(...)
-// ... (6 pages)
+**File:** `src/mocks/reporting.mock.js`
 
-{
-  path: 'reporting',
-  element: withSuspense(ReportingLayout),
-  children: [
-    { index: true, element: <Navigate to="/app/reporting/dashboard" replace /> },
-    { path: 'dashboard', element: withSuspense(ReportingDashboardPage) },
-    { path: 'inventory', element: withSuspense(InventoryReportPage) },
-    { path: 'billing', element: withSuspense(BillingReportPage) },
-    { path: 'audit', element: withSuspense(AuditReportPage) },
-    { path: 'reconciliation', element: withSuspense(ReconciliationPage) },
-    { path: 'go-live', element: withSuspense(GoLiveChecklistPage) },
-  ],
-}
-```
+| Collection (in-memory) | Sample data |
+|------------------------|-------------|
+| `dashboard` | KPIs: onHandQtyKg=142500, activeShipments=8, inboundToday=5, outboundToday=3, pendingBillingEvents=12, openAlerts=2, reconPassRate=97.8%, warehouseUtilPct=68%; kpiByOwner (3 owners); movementTrend (7 ngày) |
+| `inventoryReport` | 7 rows: DPM/TCT/VNF items tại TVL-WH1; các cột onHandKg, reservedKg, availableKg, bagCount, statusCode |
+| `billingReport` | Summary + byOwner (3 owners) + byServiceType (STORAGE/HANDLING_IN/HANDLING_OUT/VAS_BAGGING) |
+| `auditLogs` | 12 entries: các entityType PO, INVENT_TRANS, SHIPMENT, DEBIT_NOTE, MOVE_ORDER, RATE_CARD, VAS_WORK_ORDER, CYCLE_COUNT, OWNER |
+| `reconResults` | 8 runs RECON-001: 7 PASS + 1 FAIL (với discrepancy detail) |
+| `goLiveGates` | 12 gates GL-001..012: 8 PASS, 2 FAIL (GL-009, GL-011, GL-012), 1 WAIVED (GL-010 Weighbridge) |
 
-## 7. Business Rules cần implement
-
-| Rule | UI behavior |
-|------|-------------|
-| M11 chỉ đọc (không tạo business transaction) | Không có form create/edit trừ go-live gate controls |
-| SQL On-Hand: `SUM(t.qty)` signed qty | InventoryReportPage tính và hiển thị đúng signed qty |
-| Go-Live: 12 gates, tất cả PASS hoặc WAIVED | GoLiveChecklistPage: badge PASS/FAIL/WAIVED + reason input cho WAIVED |
-| RECON-001: hourly, <=5 phút | ReconciliationPage: hiển thị duration, timestamp, PASS/FAIL |
-| CUST_VIEWER: chỉ xem LOCKED DN + own owner | BillingReportPage: forced filter |
-
-## 8. Ưu tiên build
+## 5. Backend API Endpoints Wired
 
 ```
-Sprint 3 (theo Improve.md):
-  1. ReportingDashboardPage (với Recharts thật — IMP-11)
-  2. AuditReportPage (IMP-16)
-  3. GoLiveChecklistPage (blocker cho go-live)
-  4. ReconciliationPage
-
-Sprint 4:
-  5. InventoryReportPage
-  6. BillingReportPage
+GET  /api/v1/reporting/dashboard/summary
+GET  /api/v1/reporting/inventory/on-hand        ?ownerId, warehouseId, statusCode, keyword, page, limit
+GET  /api/v1/reporting/billing/summary          ?ownerId, periodFrom, periodTo
+GET  /api/v1/reporting/audit                    ?entityType, userId, action, dateFrom, dateTo, keyword, page, limit
+GET  /api/v1/reporting/reconciliation/results   ?status, page, limit
+GET  /api/v1/reporting/go-live/status
+PUT  /api/v1/reporting/go-live/:id              { status, waivedReason, checkedBy }
 ```
+
+## 6. Business Rules hiển thị
+
+| Rule | Cách hiển thị |
+|------|--------------|
+| Module read-only | Không có form create/edit trừ Go-Live gate controls |
+| Go-Live: 12 gates, tất cả PASS hoặc WAIVED | GoLiveChecklistPage: badge PASS/FAIL/WAIVED, nút cập nhật status + waivedReason input cho WAIVED |
+| RECON-001: hourly, <=5 phút | ReconciliationPage: cột durationSec, timestamp, PASS/FAIL badge; FAIL row hiển thị discrepancy note |
+| Audit trail immutable | AuditTrailPage chỉ read; có filter entityType/userId/action/date range |
+| Inventory: available = onHand - reserved | InventoryReportPage 3 cột số: onHandKg / reservedKg / availableKg — màu đỏ nếu available <= 0 |
+| CUST_VIEWER: chỉ xem owner của mình | BillingReportPage: forced filter theo ownerId của user |
+
+## 7. Charts & Components
+
+**ReportingDashboardPage** sử dụng các charting components thật (không phải SVG placeholder):
+- `StatHighlight` — KPI cards (onHand, activeShipments, pendingBilling, openAlerts)
+- `SummaryDonut` — phân bổ doanh thu theo service type
+- `ProgressRing` — warehouse utilization %
+- `TrendMiniChart` — movement trend 7 ngày (inbound vs outbound line chart)
+
+Components nằm trong `src/shared/ui/` — dùng chung với các module khác.
+
+## 8. Go-Live Gates (GL-001..012)
+
+| Gate | Tên | Category | Trạng thái mock |
+|------|-----|----------|----------------|
+| GL-001 | Master Data Completeness | DATA | ✅ PASS |
+| GL-002 | RBAC Roles & Permissions | SECURITY | ✅ PASS |
+| GL-003 | Inbound Flow E2E | FUNCTIONAL | ✅ PASS |
+| GL-004 | Outbound Flow E2E | FUNCTIONAL | ✅ PASS |
+| GL-005 | Inventory Posting Correctness | INTEGRITY | ✅ PASS |
+| GL-006 | Cycle Count & Adjustment | FUNCTIONAL | ✅ PASS |
+| GL-007 | VAS / Bagging Flow | FUNCTIONAL | ✅ PASS |
+| GL-008 | Billing Rate Cards & DN | BILLING | ✅ PASS |
+| GL-009 | First Production Debit Note | BILLING | ❌ FAIL |
+| GL-010 | Weighbridge Integration | INTEGRATION | ⚠️ WAIVED |
+| GL-011 | OCR Integration | INTEGRATION | ❌ FAIL |
+| GL-012 | UAT Sign-off | GOVERNANCE | ❌ FAIL |
 
 ## 9. Ghi chú
 
-- Dashboard charts cần thư viện thật: **Recharts** hoặc **Chart.js** (IMP-11). Không dùng SVG placeholder
-- `AuditReportPage` phải có pagination + date filter + entity type filter (spec M11 AC-AUD-1..3)
-- `GoLiveChecklistPage` là gate cuối cùng trước khi hệ thống go-live — thiếu page này = không go-live được
+- `AuditTrailPage` (KHÔNG phải `AuditReportPage` như spec cũ) — tên file thực tế: `AuditTrailPage.jsx`
+- Dashboard auto-refetch mỗi 60 giây — không cần manual refresh cho KPI
+- `updateGoLiveGate` là mutation duy nhất trong M11 — chỉ ADMIN/OPS_SUPER được phép
+- FA-06 đã FIX trong code: `reporting.api.js` dùng đúng sub-path `/reporting/dashboard/summary`, `/reporting/inventory/on-hand`, `/reporting/billing/summary`, `/reporting/audit` (không phải `/reporting/summary`, `/reporting/on-hand` như spec gốc)
+- Backend M11 cần implement: `ReportingModule`, `ReportingController`, aggregation queries; Go-Live gates cần `GoLiveGate` entity trong DB

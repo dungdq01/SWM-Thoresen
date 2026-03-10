@@ -99,4 +99,17 @@ export class OwnerRepository {
       orderBy: { ownerCode: 'asc' },
     });
   }
+
+  async getNextCode(): Promise<string> {
+    const prefix = 'OWN';
+    const existing = await this.prisma.mdOwner.findMany({
+      where: { ownerCode: { startsWith: `${prefix}-` } },
+      select: { ownerCode: true },
+    });
+    const numbers = existing
+      .map((r) => parseInt(r.ownerCode.replace(`${prefix}-`, ''), 10))
+      .filter((n) => !isNaN(n));
+    const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  }
 }

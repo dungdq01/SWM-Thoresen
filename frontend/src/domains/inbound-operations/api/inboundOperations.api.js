@@ -73,4 +73,38 @@ export const inboundOperationsApi = {
     (id) => inboundOperationsMockApi.getWeighLogs(id),
     (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`)
   ),
+
+  // ── Purchase Orders ──
+  getPurchaseOrders: withDataSource(
+    (params) => inboundOperationsMockApi.getPurchaseOrders(params),
+    (params) => httpClient.get(`${BASE_URL}/purchase-orders`, { params })
+  ),
+  getPurchaseOrderById: withDataSource(
+    (id) => inboundOperationsMockApi.getPurchaseOrderById(id),
+    (id) => httpClient.get(`${BASE_URL}/purchase-orders/${id}`)
+  ),
+  getNextPoNumber: withDataSource(
+    () => inboundOperationsMockApi.getNextPoNumber(),
+    () => httpClient.get(`${BASE_URL}/purchase-orders/next-number`)
+  ),
+  createPurchaseOrder: withDataSource(
+    (data) => inboundOperationsMockApi.createPurchaseOrder(data),
+    (data) => httpClient.post(`${BASE_URL}/purchase-orders`, data)
+  ),
+  updatePurchaseOrder: withDataSource(
+    (id, data) => inboundOperationsMockApi.updatePurchaseOrder(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/purchase-orders/${id}`, data)
+  ),
+  confirmPurchaseOrder: withDataSource(
+    (id) => inboundOperationsMockApi.confirmPurchaseOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/confirm`)
+  ),
+  closePurchaseOrder: withDataSource(
+    (id) => inboundOperationsMockApi.closePurchaseOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/close`)
+  ),
+  cancelPurchaseOrder: withDataSource(
+    (id) => inboundOperationsMockApi.cancelPurchaseOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/cancel`)
+  ),
 }

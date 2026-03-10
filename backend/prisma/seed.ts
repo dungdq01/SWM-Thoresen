@@ -102,6 +102,29 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['master_data.import.preview', 'MASTER_DATA', 'IMPORT', 'PREVIEW', true],
   ['master_data.import.commit', 'MASTER_DATA', 'IMPORT', 'COMMIT', true],
   ['master_data.import.view', 'MASTER_DATA', 'IMPORT', 'VIEW', false],
+  // Customer
+  ['master_data.customer.view', 'MASTER_DATA', 'CUSTOMER', 'VIEW', false],
+  ['master_data.customer.create', 'MASTER_DATA', 'CUSTOMER', 'CREATE', true],
+  ['master_data.customer.update', 'MASTER_DATA', 'CUSTOMER', 'UPDATE', true],
+  ['master_data.customer.deactivate', 'MASTER_DATA', 'CUSTOMER', 'DEACTIVATE', true],
+  ['master_data.customer.reactivate', 'MASTER_DATA', 'CUSTOMER', 'REACTIVATE', true],
+  // Dropdown Config
+  ['master_data.dropdown.view', 'MASTER_DATA', 'DROPDOWN', 'VIEW', false],
+  ['master_data.dropdown.create', 'MASTER_DATA', 'DROPDOWN', 'CREATE', true],
+  ['master_data.dropdown.update', 'MASTER_DATA', 'DROPDOWN', 'UPDATE', true],
+  ['master_data.dropdown.delete', 'MASTER_DATA', 'DROPDOWN', 'DELETE', true],
+  // UOM Conversion
+  ['master_data.uom_conversion.view', 'MASTER_DATA', 'UOM_CONVERSION', 'VIEW', false],
+  ['master_data.uom_conversion.create', 'MASTER_DATA', 'UOM_CONVERSION', 'CREATE', true],
+  ['master_data.uom_conversion.update', 'MASTER_DATA', 'UOM_CONVERSION', 'UPDATE', true],
+  ['master_data.uom_conversion.delete', 'MASTER_DATA', 'UOM_CONVERSION', 'DELETE', true],
+  // Inbound: Purchase Orders
+  ['inbound.po.view', 'INBOUND', 'PO', 'VIEW', false],
+  ['inbound.po.create', 'INBOUND', 'PO', 'CREATE', true],
+  ['inbound.po.update', 'INBOUND', 'PO', 'UPDATE', true],
+  ['inbound.po.confirm', 'INBOUND', 'PO', 'CONFIRM', true],
+  ['inbound.po.close', 'INBOUND', 'PO', 'CLOSE', true],
+  ['inbound.po.cancel', 'INBOUND', 'PO', 'CANCEL', true],
 ];
 
 async function main() {
@@ -667,6 +690,50 @@ async function main() {
       where: { dayTypeCode: dt.dayTypeCode },
       update: { description: dt.description, updatedBy: admin.id },
       create: { ...dt, createdBy: admin.id, updatedBy: admin.id },
+    });
+  }
+
+  // Seed Dropdown Configs (22 values from BE-TODO-dropdown-config.md)
+  const dropdownSeeds = [
+    // Owner
+    { entity: 'owner', fieldName: 'ownerGroup', value: 'LOCAL', label: 'Nội địa', sortOrder: 1, isDefault: true },
+    { entity: 'owner', fieldName: 'ownerGroup', value: 'FOREIGN', label: 'Nước ngoài', sortOrder: 2, isDefault: false },
+    { entity: 'owner', fieldName: 'ownerType', value: 'DOMESTIC', label: 'Trong nước', sortOrder: 1, isDefault: true },
+    { entity: 'owner', fieldName: 'ownerType', value: 'EXPORT', label: 'Xuất khẩu', sortOrder: 2, isDefault: false },
+    { entity: 'owner', fieldName: 'ownerType', value: 'IMPORT', label: 'Nhập khẩu', sortOrder: 3, isDefault: false },
+    // Vendor
+    { entity: 'vendor', fieldName: 'supplierGroup', value: 'VESSEL', label: 'Tàu', sortOrder: 1, isDefault: true },
+    { entity: 'vendor', fieldName: 'supplierGroup', value: 'TRUCK', label: 'Xe tải', sortOrder: 2, isDefault: false },
+    { entity: 'vendor', fieldName: 'supplierGroup', value: 'BARGE', label: 'Sà lan', sortOrder: 3, isDefault: false },
+    { entity: 'vendor', fieldName: 'supplierGroup', value: 'OTHER', label: 'Khác', sortOrder: 4, isDefault: false },
+    // Item
+    { entity: 'item', fieldName: 'cargoForm', value: 'BULK', label: 'Hàng rời', sortOrder: 1, isDefault: true },
+    { entity: 'item', fieldName: 'cargoForm', value: 'BAGGED', label: 'Đóng bao', sortOrder: 2, isDefault: false },
+    { entity: 'item', fieldName: 'cargoForm', value: 'CONTAINERIZED', label: 'Container', sortOrder: 3, isDefault: false },
+    { entity: 'item', fieldName: 'cargoForm', value: 'LIQUID', label: 'Lỏng', sortOrder: 4, isDefault: false },
+    { entity: 'item', fieldName: 'productGroup', value: 'AGRICULTURAL', label: 'Nông sản', sortOrder: 1, isDefault: true },
+    { entity: 'item', fieldName: 'productGroup', value: 'FERTILIZER', label: 'Phân bón', sortOrder: 2, isDefault: false },
+    { entity: 'item', fieldName: 'productGroup', value: 'CHEMICAL', label: 'Hóa chất', sortOrder: 3, isDefault: false },
+    { entity: 'item', fieldName: 'productGroup', value: 'STEEL', label: 'Thép', sortOrder: 4, isDefault: false },
+    { entity: 'item', fieldName: 'productGroup', value: 'GENERAL', label: 'Hàng tổng hợp', sortOrder: 5, isDefault: false },
+    // Warehouse
+    { entity: 'warehouse', fieldName: 'warehouseType', value: 'COVERED', label: 'Kho có mái che', sortOrder: 1, isDefault: true },
+    { entity: 'warehouse', fieldName: 'warehouseType', value: 'OPEN', label: 'Bãi hở', sortOrder: 2, isDefault: false },
+    { entity: 'warehouse', fieldName: 'warehouseType', value: 'COLD', label: 'Kho lạnh', sortOrder: 3, isDefault: false },
+    { entity: 'warehouse', fieldName: 'warehouseType', value: 'HAZMAT', label: 'Kho hàng nguy hiểm', sortOrder: 4, isDefault: false },
+    // Customer
+    { entity: 'customer', fieldName: 'customerGroup', value: 'CORPORATE', label: 'Doanh nghiệp', sortOrder: 1, isDefault: true },
+    { entity: 'customer', fieldName: 'customerGroup', value: 'INDIVIDUAL', label: 'Cá nhân', sortOrder: 2, isDefault: false },
+    { entity: 'customer', fieldName: 'customerType', value: 'BUYER', label: 'Người mua', sortOrder: 1, isDefault: true },
+    { entity: 'customer', fieldName: 'customerType', value: 'CONSIGNEE', label: 'Người nhận hàng', sortOrder: 2, isDefault: false },
+    { entity: 'customer', fieldName: 'customerType', value: 'SHIPPER', label: 'Người gửi hàng', sortOrder: 3, isDefault: false },
+  ];
+
+  for (const dc of dropdownSeeds) {
+    await prisma.dropdownConfig.upsert({
+      where: { entity_fieldName_value: { entity: dc.entity, fieldName: dc.fieldName, value: dc.value } },
+      update: { label: dc.label, sortOrder: dc.sortOrder, isDefault: dc.isDefault, isActive: true },
+      create: { entity: dc.entity, fieldName: dc.fieldName, value: dc.value, label: dc.label, sortOrder: dc.sortOrder, isDefault: dc.isDefault },
     });
   }
 

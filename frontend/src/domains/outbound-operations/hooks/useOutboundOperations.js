@@ -11,6 +11,8 @@ const QUERY_KEYS = {
   allocations: (id) => ['outbound-operations', 'allocations', id],
   weighingHistory: (id) => ['outbound-operations', 'weighing-history', id],
   pendingApprovals: ['outbound-operations', 'pending-approvals'],
+  salesOrders: ['outbound-operations', 'sales-orders'],
+  salesOrderDetail: (id) => ['outbound-operations', 'sales-orders', id],
 }
 
 export function useOutboundDashboardSummary(warehouseId) {
@@ -191,6 +193,70 @@ export function useApproveOutboundShipment() {
 export function useRejectOutboundShipment() {
   const { onSuccess, onError } = useInvalidateOutboundQueries('Đã reject shipment', 'Không thể reject shipment')
   return useMutation({ mutationFn: ({ id, data }) => outboundOperationsApi.rejectShipment(id, data), onSuccess, onError })
+}
+
+// ── Sales Order hooks ──
+export function useSalesOrders(filters = {}) {
+  return useQuery({
+    queryKey: [...QUERY_KEYS.salesOrders, filters],
+    queryFn: () => outboundOperationsApi.getSalesOrders(filters),
+    staleTime: 15000,
+  })
+}
+
+export function useSalesOrderDetail(id) {
+  return useQuery({
+    queryKey: QUERY_KEYS.salesOrderDetail(id),
+    queryFn: () => outboundOperationsApi.getSalesOrderById(id),
+    enabled: Boolean(id),
+  })
+}
+
+function useInvalidateSOQueries(successMessage, errorMessage) {
+  const queryClient = useQueryClient()
+  return {
+    queryClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.salesOrders })
+      toast.success(successMessage)
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || errorMessage)
+    },
+  }
+}
+
+export function useCreateSalesOrder() {
+  const { onSuccess, onError } = useInvalidateSOQueries('Đã tạo Sales Order', 'Không thể tạo Sales Order')
+  return useMutation({ mutationFn: (data) => outboundOperationsApi.createSalesOrder(data), onSuccess, onError })
+}
+
+export function useUpdateSalesOrder() {
+  const { queryClient, onError } = useInvalidateSOQueries('Đã cập nhật Sales Order', 'Không thể cập nhật Sales Order')
+  return useMutation({
+    mutationFn: ({ id, data }) => outboundOperationsApi.updateSalesOrder(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.salesOrders })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.salesOrderDetail(id) })
+      toast.success('Đã cập nhật Sales Order')
+    },
+    onError,
+  })
+}
+
+export function useConfirmSalesOrder() {
+  const { onSuccess, onError } = useInvalidateSOQueries('Đã xác nhận Sales Order', 'Không thể xác nhận Sales Order')
+  return useMutation({ mutationFn: (id) => outboundOperationsApi.confirmSalesOrder(id), onSuccess, onError })
+}
+
+export function useCloseSalesOrder() {
+  const { onSuccess, onError } = useInvalidateSOQueries('Đã đóng Sales Order', 'Không thể đóng Sales Order')
+  return useMutation({ mutationFn: (id) => outboundOperationsApi.closeSalesOrder(id), onSuccess, onError })
+}
+
+export function useCancelSalesOrder() {
+  const { onSuccess, onError } = useInvalidateSOQueries('Đã hủy Sales Order', 'Không thể hủy Sales Order')
+  return useMutation({ mutationFn: (id) => outboundOperationsApi.cancelSalesOrder(id), onSuccess, onError })
 }
 
 export { QUERY_KEYS as OUTBOUND_OPERATIONS_QUERY_KEYS }

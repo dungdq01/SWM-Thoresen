@@ -79,4 +79,8 @@ export class VendorService {
   async findAllActive(): Promise<MdVendor[]> {
     return this.vendorRepository.findAllActive();
   }
+
+  async getNextCode(): Promise<string> {
+    return this.vendorRepository.getNextCode();
+  }
 }

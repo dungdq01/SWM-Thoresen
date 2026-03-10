@@ -1,5 +1,6 @@
 import { delay, includesText, paginate } from './utils'
 import { masterDataMockApi } from './masterData.mock'
+import { inventoryCoreMockApi } from './inventoryCore.mock'
 
 const db = masterDataMockApi.__db
 
@@ -184,6 +185,108 @@ const receiptDb = {
   ],
 }
 
+// ==================== PURCHASE ORDERS ====================
+const poDb = {
+  purchaseOrders: [
+    {
+      id: 'po-001',
+      poNumber: 'PO-20260308-001',
+      externalPoNumber: 'BL-2026-RICE-001',
+      status: 'CONFIRMED',
+      ownerId: 'owner-001',
+      vendorId: 'vendor-002',
+      warehouseId: 'wh-001',
+      expectedDeliveryDate: '2026-03-10',
+      notes: 'Gạo 5% tấm nhập từ miền Tây',
+      totalExpectedQty: 50000,
+      totalReceivedQty: 30300,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-07T08:00:00Z',
+      updatedAt: '2026-03-08T08:45:00Z',
+      lines: [
+        { id: 'pol-001', lineNum: 1, itemId: 'item-001', expectedQty: 30000, receivedQty: 30300, uomId: 'uom-001', unitPrice: 15000, notes: 'Lô 1 - giao xe tải 15T', status: 'RECEIVED' },
+        { id: 'pol-002', lineNum: 2, itemId: 'item-001', expectedQty: 20000, receivedQty: 0, uomId: 'uom-001', unitPrice: 15000, notes: 'Lô 2 - giao xe tải 15T', status: 'OPEN' },
+      ],
+    },
+    {
+      id: 'po-002',
+      poNumber: 'PO-20260308-002',
+      externalPoNumber: 'BL-2026-UREA-TQ',
+      status: 'CONFIRMED',
+      ownerId: 'owner-002',
+      vendorId: 'vendor-001',
+      warehouseId: 'wh-001',
+      expectedDeliveryDate: '2026-03-12',
+      notes: 'Phân Urea nhập tàu từ Trung Quốc',
+      totalExpectedQty: 25000,
+      totalReceivedQty: 0,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-07T09:30:00Z',
+      updatedAt: '2026-03-08T10:05:00Z',
+      lines: [
+        { id: 'pol-003', lineNum: 1, itemId: 'item-002', expectedQty: 25000, receivedQty: 0, uomId: 'uom-001', unitPrice: 12000, notes: 'Full vessel discharge', status: 'OPEN' },
+      ],
+    },
+    {
+      id: 'po-003',
+      poNumber: 'PO-20260308-003',
+      externalPoNumber: '',
+      status: 'DRAFT',
+      ownerId: 'owner-001',
+      vendorId: 'vendor-002',
+      warehouseId: 'wh-001',
+      expectedDeliveryDate: '2026-03-15',
+      notes: 'Phân Urea mua nội địa',
+      totalExpectedQty: 18000,
+      totalReceivedQty: 0,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-08T11:00:00Z',
+      updatedAt: '2026-03-08T11:10:00Z',
+      lines: [
+        { id: 'pol-004', lineNum: 1, itemId: 'item-002', expectedQty: 10000, receivedQty: 0, uomId: 'uom-001', unitPrice: 11500, notes: '', status: 'OPEN' },
+        { id: 'pol-005', lineNum: 2, itemId: 'item-001', expectedQty: 8000, receivedQty: 0, uomId: 'uom-001', unitPrice: 15500, notes: 'Gạo trộn', status: 'OPEN' },
+      ],
+    },
+    {
+      id: 'po-004',
+      poNumber: 'PO-20260308-004',
+      externalPoNumber: 'BL-2026-RICE-BAG',
+      status: 'CLOSED',
+      ownerId: 'owner-002',
+      vendorId: 'vendor-002',
+      warehouseId: 'wh-001',
+      expectedDeliveryDate: '2026-03-08',
+      notes: 'Gạo bagged 50kg - đã nhận đủ',
+      totalExpectedQty: 20000,
+      totalReceivedQty: 20100,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-06T14:00:00Z',
+      updatedAt: '2026-03-08T13:05:00Z',
+      lines: [
+        { id: 'pol-006', lineNum: 1, itemId: 'item-001', expectedQty: 20000, receivedQty: 20100, uomId: 'uom-001', unitPrice: 15000, notes: '', status: 'RECEIVED' },
+      ],
+    },
+  ],
+}
+
+function enrichPo(po) {
+  return {
+    ...po,
+    owner: findEntity.owner(po.ownerId),
+    vendor: findEntity.vendor(po.vendorId),
+    warehouse: findEntity.warehouse(po.warehouseId),
+    lines: po.lines.map((line) => ({
+      ...line,
+      item: findEntity.item(line.itemId),
+      uom: db.uoms.find((u) => u.id === line.uomId),
+    })),
+  }
+}
+
 const findEntity = {
   owner: (id) => db.owners.find((item) => item.id === id),
   vendor: (id) => db.vendors.find((item) => item.id === id),
@@ -269,6 +372,33 @@ function applyWeighOutDecision(receipt) {
   const fromStatus = 'WEIGHED_OUT'
 
   if (variancePct !== null && variancePct <= tolerancePctApplied) {
+    // Post to inventory (M3) — update on-hand
+    const receivedQty = receipt.netWeightKg || receipt.expectedQty
+    const owner = db.owners.find((o) => o.id === receipt.ownerId)
+    const warehouse = db.warehouses.find((w) => w.id === receipt.warehouseId)
+    const location = db.locations.find((l) => l.id === receipt.receivingLocationId)
+    inventoryCoreMockApi.createPosting({
+      eventCode: 'RECEIPT_IN',
+      refType: 'RECEIPT',
+      refId: receipt.receiptNumber,
+      correlationId: receipt.correlationId || `corr-rcpt-${Date.now()}`,
+      itemId: receipt.itemId,
+      qty: receivedQty,
+      uomCode: 'KG',
+      ownerId: receipt.ownerId,
+      warehouseId: receipt.warehouseId,
+      locationId: receipt.receivingLocationId,
+      inventoryStatusId: 'st-001',
+      lotNumber: `LOT-${receipt.receiptNumber}`,
+      dimTo: {
+        ownerCode: owner?.ownerCode,
+        warehouseCode: warehouse?.warehouseCode,
+        locationCode: location?.locationCode,
+        statusCode: 'AVAILABLE',
+      },
+      sourceApp: 'INBOUND',
+    })
+
     const next = updateReceipt(receipt.id, {
       variancePct,
       tolerancePctApplied,
@@ -537,5 +667,123 @@ export const inboundOperationsMockApi = {
   getWeighLogs: async (id) => {
     const rows = receiptDb.weighLogs.filter((item) => item.receiptId === id)
     return delay({ data: rows })
+  },
+
+  // ==================== PURCHASE ORDER APIs ====================
+  getPurchaseOrders: async (params = {}) => {
+    const rows = poDb.purchaseOrders
+      .filter((row) => {
+        return (!params.status || row.status === params.status)
+          && (!params.ownerId || row.ownerId === params.ownerId)
+          && (!params.vendorId || row.vendorId === params.vendorId)
+          && (!params.warehouseId || row.warehouseId === params.warehouseId)
+          && (!params.keyword || includesText(row.poNumber, params.keyword) || includesText(row.notes, params.keyword))
+      })
+      .map(enrichPo)
+    return delay({ ...paginate(rows, params.page, params.pageSize) })
+  },
+
+  getPurchaseOrderById: async (id) => {
+    const po = poDb.purchaseOrders.find((item) => item.id === id)
+    return delay({ data: po ? enrichPo(po) : null })
+  },
+
+  getNextPoNumber: async () => {
+    const prefix = 'PO'
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const nextNum = poDb.purchaseOrders.length + 1
+    const code = `${prefix}-${datePart}-${String(nextNum).padStart(3, '0')}`
+    return delay({ data: { code, prefix } })
+  },
+
+  createPurchaseOrder: async (data) => {
+    const po = {
+      id: `po-${Date.now()}`,
+      poNumber: `PO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(poDb.purchaseOrders.length + 1).padStart(3, '0')}`,
+      externalPoNumber: data.externalPoNumber || '',
+      status: 'DRAFT',
+      ownerId: data.ownerId,
+      vendorId: data.vendorId,
+      warehouseId: data.warehouseId,
+      expectedDeliveryDate: data.expectedDeliveryDate || '',
+      notes: data.notes || '',
+      totalExpectedQty: 0,
+      totalReceivedQty: 0,
+      currency: data.currency || 'VND',
+      createdBy: data.createdBy || 'planner.user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lines: [],
+    }
+    if (data.lines && data.lines.length > 0) {
+      po.lines = data.lines.map((line, idx) => ({
+        id: `pol-${Date.now()}-${idx}`,
+        lineNum: idx + 1,
+        itemId: line.itemId,
+        expectedQty: Number(line.expectedQty || 0),
+        receivedQty: 0,
+        uomId: line.uomId || 'uom-001',
+        unitPrice: Number(line.unitPrice || 0),
+        notes: line.notes || '',
+        status: 'OPEN',
+      }))
+      po.totalExpectedQty = po.lines.reduce((sum, l) => sum + l.expectedQty, 0)
+    }
+    poDb.purchaseOrders.unshift(po)
+    return delay({ data: enrichPo(po) })
+  },
+
+  updatePurchaseOrder: async (id, data) => {
+    const index = poDb.purchaseOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'PO not found' })
+    const current = poDb.purchaseOrders[index]
+    const updated = {
+      ...current,
+      ownerId: data.ownerId ?? current.ownerId,
+      vendorId: data.vendorId ?? current.vendorId,
+      warehouseId: data.warehouseId ?? current.warehouseId,
+      expectedDeliveryDate: data.expectedDeliveryDate ?? current.expectedDeliveryDate,
+      notes: data.notes ?? current.notes,
+      currency: data.currency ?? current.currency,
+      updatedAt: new Date().toISOString(),
+    }
+    if (data.lines) {
+      updated.lines = data.lines.map((line, idx) => ({
+        id: line.id || `pol-${Date.now()}-${idx}`,
+        lineNum: idx + 1,
+        itemId: line.itemId,
+        expectedQty: Number(line.expectedQty || 0),
+        receivedQty: Number(line.receivedQty || 0),
+        uomId: line.uomId || 'uom-001',
+        unitPrice: Number(line.unitPrice || 0),
+        notes: line.notes || '',
+        status: line.status || 'OPEN',
+      }))
+      updated.totalExpectedQty = updated.lines.reduce((sum, l) => sum + l.expectedQty, 0)
+      updated.totalReceivedQty = updated.lines.reduce((sum, l) => sum + l.receivedQty, 0)
+    }
+    poDb.purchaseOrders[index] = updated
+    return delay({ data: enrichPo(updated) })
+  },
+
+  confirmPurchaseOrder: async (id) => {
+    const index = poDb.purchaseOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'PO not found' })
+    poDb.purchaseOrders[index] = { ...poDb.purchaseOrders[index], status: 'CONFIRMED', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichPo(poDb.purchaseOrders[index]) })
+  },
+
+  closePurchaseOrder: async (id) => {
+    const index = poDb.purchaseOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'PO not found' })
+    poDb.purchaseOrders[index] = { ...poDb.purchaseOrders[index], status: 'CLOSED', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichPo(poDb.purchaseOrders[index]) })
+  },
+
+  cancelPurchaseOrder: async (id) => {
+    const index = poDb.purchaseOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'PO not found' })
+    poDb.purchaseOrders[index] = { ...poDb.purchaseOrders[index], status: 'CANCELLED', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichPo(poDb.purchaseOrders[index]) })
   },
 }

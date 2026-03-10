@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { LookupService } from '../services/lookup.service';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
@@ -61,5 +61,20 @@ export class LookupController {
   @Permission('MASTER_DATA.LOOKUP.READ')
   async getInventoryStatuses() {
     return this.lookupService.getInventoryStatuses();
+  }
+
+  @Get('customers')
+  @Permission('MASTER_DATA.LOOKUP.READ')
+  async getCustomers() {
+    return this.lookupService.getCustomers();
+  }
+
+  @Get('dropdown-options')
+  @Permission('MASTER_DATA.LOOKUP.READ')
+  async getDropdownOptions(@Query('entity') entity: string, @Query('fieldName') fieldName: string) {
+    if (!entity || !fieldName) {
+      throw new BadRequestException('entity and fieldName query params are required');
+    }
+    return this.lookupService.getDropdownOptions(entity, fieldName);
   }
 }

@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, Ship } from 'lucide-react'
+import { X, Ship, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { Button, Input, Select } from '@shared/ui'
 import { vendorSchema, vendorDefaultValues } from './vendorForm.schema'
-import { SUPPLIER_GROUPS } from '@domains/master-data'
+import { SUPPLIER_GROUPS, useVendorNextCode } from '@domains/master-data'
 
 export function VendorFormDrawer({
   isOpen,
@@ -16,6 +16,8 @@ export function VendorFormDrawer({
   isLoading = false,
 }) {
   const isEdit = !!initialData
+  const { data: nextCodeResponse } = useVendorNextCode(isOpen && !isEdit)
+  const nextCode = nextCodeResponse?.data?.code || ''
 
   const {
     register,
@@ -116,15 +118,20 @@ export function VendorFormDrawer({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Mã nhà cung cấp <span className="text-red-500">*</span>
+                      Mã nhà cung cấp {isEdit ? '' : <span className="text-xs text-navy-400 font-normal">(Tự động)</span>}
                     </label>
-                    <Input
-                      {...register('vendorCode')}
-                      placeholder="VD: VND001"
-                      disabled={isEdit}
-                      error={errors.vendorCode?.message}
-                      className="uppercase"
-                    />
+                    {isEdit ? (
+                      <Input
+                        value={initialData?.vendorCode || ''}
+                        disabled
+                        className="uppercase bg-navy-50"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2">
+                        <Sparkles className="h-4 w-4 text-ice shrink-0" />
+                        <span className="font-mono font-semibold text-navy-900">{nextCode || '...'}</span>
+                      </div>
+                    )}
                   </div>
                   <Select
                     label="Nhóm"

@@ -20,6 +20,13 @@ export class OwnerController {
     return this.ownerService.create(dto, { userId: user.id });
   }
 
+  @Get('next-code')
+  @Permission('MASTER_DATA.OWNER.READ')
+  async getNextCode() {
+    const code = await this.ownerService.getNextCode();
+    return { data: { code } };
+  }
+
   @Get()
   @Permission('MASTER_DATA.OWNER.READ')
   async findMany(@Query() dto: ListOwnerDto) {

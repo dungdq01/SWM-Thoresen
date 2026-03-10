@@ -3,9 +3,9 @@ import { z } from 'zod'
 export const vendorSchema = z.object({
   vendorCode: z
     .string()
-    .min(1, 'Mã nhà cung cấp là bắt buộc')
     .max(20, 'Mã nhà cung cấp tối đa 20 ký tự')
-    .regex(/^[A-Z0-9_-]+$/, 'Mã chỉ chứa chữ in hoa, số, dấu gạch ngang và gạch dưới'),
+    .optional()
+    .or(z.literal('')),
   vendorName: z
     .string()
     .min(1, 'Tên nhà cung cấp là bắt buộc')

@@ -263,11 +263,132 @@ const shipmentDb = {
   ],
 }
 
+// ==================== SALES ORDERS ====================
+const soDb = {
+  salesOrders: [
+    {
+      id: 'so-001',
+      soNumber: 'SO-20260308-001',
+      status: 'CONFIRMED',
+      ownerId: 'owner-001',
+      customerId: 'cust-001',
+      customerName: 'Công ty TNHH Thực phẩm Sài Gòn',
+      warehouseId: 'wh-001',
+      requestedDeliveryDate: '2026-03-10',
+      notes: 'Gạo 5% tấm xuất cho đại lý miền Tây',
+      totalExpectedQty: 30000,
+      totalShippedQty: 30300,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-07T08:00:00Z',
+      updatedAt: '2026-03-08T09:45:00Z',
+      lines: [
+        { id: 'sol-001', lineNum: 1, itemId: 'item-001', expectedQty: 15000, shippedQty: 15150, uomId: 'uom-001', unitPrice: 16000, cargoForm: 'BAGGED_50KG', notes: 'Lô 1 - xe 15T', status: 'SHIPPED' },
+        { id: 'sol-002', lineNum: 2, itemId: 'item-002', expectedQty: 15000, shippedQty: 15150, uomId: 'uom-001', unitPrice: 13000, cargoForm: 'BULK', notes: 'Lô 2 - bulk', status: 'SHIPPED' },
+      ],
+    },
+    {
+      id: 'so-002',
+      soNumber: 'SO-20260308-002',
+      status: 'CONFIRMED',
+      ownerId: 'owner-002',
+      customerId: 'cust-002',
+      customerName: 'Đại lý Phân bón Đồng Nai',
+      warehouseId: 'wh-001',
+      requestedDeliveryDate: '2026-03-12',
+      notes: 'Xuất Urea cho đại lý',
+      totalExpectedQty: 25000,
+      totalShippedQty: 0,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-07T10:00:00Z',
+      updatedAt: '2026-03-08T11:30:00Z',
+      lines: [
+        { id: 'sol-003', lineNum: 1, itemId: 'item-001', expectedQty: 25000, shippedQty: 0, uomId: 'uom-001', unitPrice: 16000, cargoForm: 'BAGGED_50KG', notes: '', status: 'OPEN' },
+      ],
+    },
+    {
+      id: 'so-003',
+      soNumber: 'SO-20260308-003',
+      status: 'DRAFT',
+      ownerId: 'owner-002',
+      customerId: 'cust-001',
+      customerName: 'Công ty TNHH Thực phẩm Sài Gòn',
+      warehouseId: 'wh-001',
+      requestedDeliveryDate: '2026-03-15',
+      notes: 'Gạo bagged 25kg cho siêu thị',
+      totalExpectedQty: 10000,
+      totalShippedQty: 0,
+      currency: 'VND',
+      createdBy: 'manager.user',
+      createdAt: '2026-03-08T14:00:00Z',
+      updatedAt: '2026-03-08T14:00:00Z',
+      lines: [
+        { id: 'sol-004', lineNum: 1, itemId: 'item-001', expectedQty: 10000, shippedQty: 0, uomId: 'uom-001', unitPrice: 16500, cargoForm: 'BAGGED_25KG', notes: '', status: 'OPEN' },
+      ],
+    },
+    {
+      id: 'so-004',
+      soNumber: 'SO-20260308-004',
+      status: 'CONFIRMED',
+      ownerId: 'owner-001',
+      customerId: 'cust-002',
+      customerName: 'Đại lý Phân bón Đồng Nai',
+      warehouseId: 'wh-001',
+      requestedDeliveryDate: '2026-03-14',
+      notes: 'Urea bulk xuất tàu',
+      totalExpectedQty: 18000,
+      totalShippedQty: 0,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-08T15:00:00Z',
+      updatedAt: '2026-03-08T15:30:00Z',
+      lines: [
+        { id: 'sol-005', lineNum: 1, itemId: 'item-002', expectedQty: 18000, shippedQty: 0, uomId: 'uom-001', unitPrice: 12500, cargoForm: 'BULK', notes: 'Full vessel load', status: 'OPEN' },
+      ],
+    },
+    {
+      id: 'so-005',
+      soNumber: 'SO-20260308-005',
+      status: 'CLOSED',
+      ownerId: 'owner-001',
+      customerId: 'cust-003',
+      customerName: 'Kho Cảng Cát Lái',
+      warehouseId: 'wh-001',
+      requestedDeliveryDate: '2026-03-08',
+      notes: 'Đã xuất xong',
+      totalExpectedQty: 20000,
+      totalShippedQty: 20100,
+      currency: 'VND',
+      createdBy: 'planner.user',
+      createdAt: '2026-03-06T09:00:00Z',
+      updatedAt: '2026-03-08T13:05:00Z',
+      lines: [
+        { id: 'sol-006', lineNum: 1, itemId: 'item-001', expectedQty: 12000, shippedQty: 12050, uomId: 'uom-001', unitPrice: 15800, cargoForm: 'BAGGED_50KG', notes: '', status: 'SHIPPED' },
+        { id: 'sol-007', lineNum: 2, itemId: 'item-002', expectedQty: 8000, shippedQty: 8050, uomId: 'uom-001', unitPrice: 12200, cargoForm: 'BULK', notes: '', status: 'SHIPPED' },
+      ],
+    },
+  ],
+}
+
 const findEntity = {
   owner: (id) => db.owners.find((item) => item.id === id),
   item: (id) => db.items.find((item) => item.id === id),
   warehouse: (id) => db.warehouses.find((item) => item.id === id),
   location: (id) => db.locations.find((item) => item.id === id),
+}
+
+function enrichSo(so) {
+  return {
+    ...so,
+    owner: findEntity.owner(so.ownerId),
+    warehouse: findEntity.warehouse(so.warehouseId),
+    lines: so.lines.map((line) => ({
+      ...line,
+      item: findEntity.item(line.itemId),
+      uom: db.uoms?.find((u) => u.id === line.uomId),
+    })),
+  }
 }
 
 function enrichShipment(shipment) {
@@ -620,5 +741,118 @@ export const outboundOperationsMockApi = {
   getShipmentExceptions: async (id) => {
     const exceptions = shipmentDb.exceptions.filter((e) => e.shipmentId === id)
     return delay({ data: exceptions })
+  },
+
+  // ==================== SALES ORDER APIs ====================
+  getSalesOrders: async (params = {}) => {
+    const rows = soDb.salesOrders
+      .filter((row) => {
+        return (!params.status || row.status === params.status)
+          && (!params.ownerId || row.ownerId === params.ownerId)
+          && (!params.customerId || row.customerId === params.customerId)
+          && (!params.warehouseId || row.warehouseId === params.warehouseId)
+          && (!params.keyword || includesText(row.soNumber, params.keyword) || includesText(row.customerName, params.keyword) || includesText(row.notes, params.keyword))
+      })
+      .map(enrichSo)
+    return delay({ ...paginate(rows, params.page, params.pageSize) })
+  },
+
+  getSalesOrderById: async (id) => {
+    const so = soDb.salesOrders.find((item) => item.id === id)
+    return delay({ data: so ? enrichSo(so) : null })
+  },
+
+  createSalesOrder: async (data) => {
+    const so = {
+      id: `so-${Date.now()}`,
+      soNumber: `SO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(soDb.salesOrders.length + 1).padStart(3, '0')}`,
+      status: 'DRAFT',
+      ownerId: data.ownerId,
+      customerId: data.customerId || '',
+      customerName: data.customerName || '',
+      warehouseId: data.warehouseId,
+      requestedDeliveryDate: data.requestedDeliveryDate || '',
+      notes: data.notes || '',
+      totalExpectedQty: 0,
+      totalShippedQty: 0,
+      currency: data.currency || 'VND',
+      createdBy: data.createdBy || 'planner.user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lines: [],
+    }
+    if (data.lines && data.lines.length > 0) {
+      so.lines = data.lines.map((line, idx) => ({
+        id: `sol-${Date.now()}-${idx}`,
+        lineNum: idx + 1,
+        itemId: line.itemId,
+        expectedQty: Number(line.expectedQty || 0),
+        shippedQty: 0,
+        uomId: line.uomId || 'uom-001',
+        unitPrice: Number(line.unitPrice || 0),
+        cargoForm: line.cargoForm || 'BULK',
+        notes: line.notes || '',
+        status: 'OPEN',
+      }))
+      so.totalExpectedQty = so.lines.reduce((sum, l) => sum + l.expectedQty, 0)
+    }
+    soDb.salesOrders.unshift(so)
+    return delay({ data: enrichSo(so) })
+  },
+
+  updateSalesOrder: async (id, data) => {
+    const index = soDb.salesOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'SO not found' })
+    const current = soDb.salesOrders[index]
+    const updated = {
+      ...current,
+      ownerId: data.ownerId ?? current.ownerId,
+      customerId: data.customerId ?? current.customerId,
+      customerName: data.customerName ?? current.customerName,
+      warehouseId: data.warehouseId ?? current.warehouseId,
+      requestedDeliveryDate: data.requestedDeliveryDate ?? current.requestedDeliveryDate,
+      notes: data.notes ?? current.notes,
+      currency: data.currency ?? current.currency,
+      updatedAt: new Date().toISOString(),
+    }
+    if (data.lines) {
+      updated.lines = data.lines.map((line, idx) => ({
+        id: line.id || `sol-${Date.now()}-${idx}`,
+        lineNum: idx + 1,
+        itemId: line.itemId,
+        expectedQty: Number(line.expectedQty || 0),
+        shippedQty: Number(line.shippedQty || 0),
+        uomId: line.uomId || 'uom-001',
+        unitPrice: Number(line.unitPrice || 0),
+        cargoForm: line.cargoForm || 'BULK',
+        notes: line.notes || '',
+        status: line.status || 'OPEN',
+      }))
+      updated.totalExpectedQty = updated.lines.reduce((sum, l) => sum + l.expectedQty, 0)
+      updated.totalShippedQty = updated.lines.reduce((sum, l) => sum + l.shippedQty, 0)
+    }
+    soDb.salesOrders[index] = updated
+    return delay({ data: enrichSo(updated) })
+  },
+
+  confirmSalesOrder: async (id) => {
+    const index = soDb.salesOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'SO not found' })
+    soDb.salesOrders[index] = { ...soDb.salesOrders[index], status: 'CONFIRMED', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichSo(soDb.salesOrders[index]) })
+  },
+
+  closeSalesOrder: async (id) => {
+    const index = soDb.salesOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'SO not found' })
+    soDb.salesOrders[index] = { ...soDb.salesOrders[index], status: 'CLOSED', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichSo(soDb.salesOrders[index]) })
+  },
+
+  cancelSalesOrder: async (id) => {
+    const index = soDb.salesOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'SO not found' })
+    soDb.salesOrders[index] = { ...soDb.salesOrders[index], status: 'CANCELLED', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichSo(soDb.salesOrders[index]) })
   },
 }

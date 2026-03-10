@@ -3,6 +3,15 @@ import { itemApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
 
+export function useItemNextCode(enabled = false) {
+  return useQuery({
+    queryKey: [...MASTER_DATA_QUERY_KEYS.items, 'next-code'],
+    queryFn: () => itemApi.getNextCode(),
+    enabled,
+    staleTime: 0,
+  })
+}
+
 export function useItemList(filters = {}) {
   return useQuery({
     queryKey: [...MASTER_DATA_QUERY_KEYS.items, filters],
@@ -30,7 +39,11 @@ export function useCreateItem() {
       toast.success('Tạo mặt hàng thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo mặt hàng')
+      if (error?.error?.statusCode === 409) {
+        toast.error(error?.error?.message || 'Mã mặt hàng đã tồn tại. Vui lòng chọn mã khác.')
+      } else {
+        toast.error(error?.error?.message || 'Không thể tạo mặt hàng')
+      }
     },
   })
 }

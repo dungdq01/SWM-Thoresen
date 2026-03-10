@@ -3,9 +3,9 @@ import { z } from 'zod'
 export const ownerSchema = z.object({
   ownerCode: z
     .string()
-    .min(1, 'Mã chủ hàng là bắt buộc')
     .max(20, 'Mã chủ hàng tối đa 20 ký tự')
-    .regex(/^[A-Z0-9_-]+$/, 'Mã chỉ chứa chữ in hoa, số, dấu gạch ngang và gạch dưới'),
+    .optional()
+    .or(z.literal('')),
   ownerName: z
     .string()
     .min(1, 'Tên chủ hàng là bắt buộc')

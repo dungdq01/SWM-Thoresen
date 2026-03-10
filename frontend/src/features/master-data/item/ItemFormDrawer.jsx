@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, Package } from 'lucide-react'
+import { X, Package, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { Button, Input, Select } from '@shared/ui'
 import { itemSchema, itemDefaultValues } from './itemForm.schema'
-import { CARGO_FORMS, PRODUCT_GROUPS, useLookupUoms } from '@domains/master-data'
+import { CARGO_FORMS, PRODUCT_GROUPS, useLookupUoms, useLookupItems, useItemNextCode } from '@domains/master-data'
 
 export function ItemFormDrawer({
   isOpen,
@@ -16,7 +16,10 @@ export function ItemFormDrawer({
   isLoading = false,
 }) {
   const isEdit = !!initialData
+  const { data: nextCodeResponse } = useItemNextCode(isOpen && !isEdit)
+  const nextCode = nextCodeResponse?.data?.code || ''
   const { data: uoms = [] } = useLookupUoms()
+  const { data: existingItems = [] } = useLookupItems()
 
   const {
     register,
@@ -115,15 +118,20 @@ export function ItemFormDrawer({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Mã mặt hàng <span className="text-red-500">*</span>
+                      Mã mặt hàng {isEdit ? '' : <span className="text-xs text-navy-400 font-normal">(Tự động)</span>}
                     </label>
-                    <Input
-                      {...register('itemCode')}
-                      placeholder="VD: RICE001"
-                      disabled={isEdit}
-                      error={errors.itemCode?.message}
-                      className="uppercase"
-                    />
+                    {isEdit ? (
+                      <Input
+                        value={initialData?.itemCode || ''}
+                        disabled
+                        className="uppercase bg-navy-50"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2">
+                        <Sparkles className="h-4 w-4 text-ice shrink-0" />
+                        <span className="font-mono font-semibold text-navy-900">{nextCode || '...'}</span>
+                      </div>
+                    )}
                   </div>
                   <Select
                     label="Nhóm sản phẩm"

@@ -19,6 +19,13 @@ export class ItemController {
     return this.itemService.create(dto, { userId: user.id });
   }
 
+  @Get('next-code')
+  @Permission('MASTER_DATA.ITEM.READ')
+  async getNextCode() {
+    const code = await this.itemService.getNextCode();
+    return { data: { code } };
+  }
+
   @Get()
   @Permission('MASTER_DATA.ITEM.READ')
   async findMany(@Query() dto: ListItemDto) {

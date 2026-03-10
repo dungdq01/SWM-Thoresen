@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
-import { ArrowLeft, Bell, ChevronDown, Search } from 'lucide-react'
+import { ArrowLeft, Bell, ChevronDown } from 'lucide-react'
 import { AppSidebar } from './components/AppSidebar'
-import { Button, Input, Switch } from '@shared/ui'
+import { Button, Switch } from '@shared/ui'
+import { CommandSearch } from '@shared/command-search'
 import { cn } from '@shared/lib/cn'
 import { isMockApiEnabled, setMockApiEnabled } from '@mocks/utils'
 import { GuidedTourProvider, TourOverlay, TourLauncher } from '@shared/guided-tour'
@@ -44,13 +45,7 @@ export function MainLayout() {
                   Landing page
                 </Button>
               </Link>
-              <div className="relative w-full max-w-md">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ice" />
-                <Input
-                  className="pl-10"
-                  placeholder="Tìm module, chứng từ hoặc vai trò..."
-                />
-              </div>
+              <CommandSearch />
             </div>
 
             <div className="flex items-center gap-3">

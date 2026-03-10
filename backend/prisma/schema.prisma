@@ -85,6 +85,17 @@ enum SupplierGroup {
   TRADER
 }
 
+enum CustomerGroup {
+  CORPORATE
+  INDIVIDUAL
+}
+
+enum CustomerType {
+  BUYER
+  CONSIGNEE
+  SHIPPER
+}
+
 enum CargoForm {
   BULK
   BAGGED_25KG
@@ -520,6 +531,7 @@ model MdUom {
   onHandRecords       OnHand[]
   receiptLines        ReceiptLine[]
   shipmentLines       ShipmentLine[]
+  purchaseOrderLines  PurchaseOrderLine[]
 
   @@map("md_uom")
 }
@@ -581,6 +593,7 @@ model MdWarehouse {
   dailySnapshots     DailyStorageSnapshot[]
   receiptHeaders     ReceiptHeader[]
   shipmentHeaders    ShipmentHeader[]
+  purchaseOrders     PurchaseOrder[]
   vasWorkOrders      VasWorkOrder[]
   bilContractFeeLines BilContractFeeLine[]
   bilEvents          BilEvent[]
@@ -687,6 +700,7 @@ model MdOwner {
   receiptHeaders     ReceiptHeader[]
   shipmentHeaders    ShipmentHeader[]
   allocationRecords  ShipmentAllocationRecord[]
+  purchaseOrders     PurchaseOrder[]
   vasWorkOrders      VasWorkOrder[]               @relation("VasWoOwner")
   vasPackagingOrders VasWorkOrder[]               @relation("VasPackagingOwner")
   bilContracts       BilContract[]
@@ -721,9 +735,39 @@ model MdVendor {
   deactivatedBy String?       @map("deactivated_by") @db.Uuid
 
   receiptHeaders ReceiptHeader[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([supplierGroup, isActive])
   @@map("md_vendor")
+}
+
+model MdCustomer {
+  id            String        @id @default(uuid()) @db.Uuid
+  customerCode  String        @unique @map("customer_code") @db.VarChar(20)
+  customerName  String        @map("customer_name") @db.VarChar(200)
+  shortName     String?       @map("short_name") @db.VarChar(50)
+  customerGroup CustomerGroup @map("customer_group")
+  customerType  CustomerType  @map("customer_type")
+  taxCode       String?       @map("tax_code") @db.VarChar(20)
+  contactName   String?       @map("contact_name") @db.VarChar(100)
+  phone         String?       @db.VarChar(20)
+  email         String?       @db.VarChar(100)
+  address       String?       @db.VarChar(500)
+  notes         String?       @db.Text
+  isActive      Boolean       @default(true) @map("is_active")
+  rowVersion    BigInt        @default(0) @map("row_version")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  createdBy     String?       @map("created_by") @db.Uuid
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  updatedBy     String?       @map("updated_by") @db.Uuid
+  deactivatedAt DateTime?     @map("deactivated_at")
+  deactivatedBy String?       @map("deactivated_by") @db.Uuid
+
+  shipmentHeaders ShipmentHeader[]
+
+  @@index([customerGroup, isActive])
+  @@index([customerType, isActive])
+  @@map("md_customer")
 }
 
 model MdItem {
@@ -783,6 +827,7 @@ model MdItem {
   receiptLines          ReceiptLine[]
   shipmentLines         ShipmentLine[]
   allocationRecords     ShipmentAllocationRecord[]
+  purchaseOrderLines    PurchaseOrderLine[]
   vasBulkSourceOrders   VasWorkOrder[]                  @relation("VasBulkSource")
   vasBaggedOutputOrders VasWorkOrder[]                  @relation("VasBaggedOutput")
   vasPackagingOrders    VasWorkOrder[]                  @relation("VasPackaging")
@@ -1177,6 +1222,7 @@ model OnHand {
   reservedQty    Decimal   @default(0) @map("reserved_qty") @db.Decimal(18, 3)
   availableQty   Decimal   @default(0) @map("available_qty") @db.Decimal(18, 3)
   orderedQty     Decimal   @default(0) @map("ordered_qty") @db.Decimal(18, 3)
+  lotNumber      String?   @map("lot_number") @db.VarChar(50)
   uomId          String    @map("uom_id") @db.Uuid
   lastMovementAt DateTime? @map("last_movement_at")
   lastCountAt    DateTime? @map("last_count_at")
@@ -1362,6 +1408,71 @@ model InventoryEventMapping {
 }
 
 // ========== Module 4: Inbound Operations Enums ==========
+
+enum PurchaseOrderStatus {
+  DRAFT
+  CONFIRMED
+  CLOSED
+  CANCELLED
+}
+
+enum PurchaseOrderLineStatus {
+  OPEN
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id                   String                @id @default(uuid()) @db.Uuid
+  poNumber             String                @unique @map("po_number") @db.VarChar(40)
+  externalPoNumber     String?               @map("external_po_number") @db.VarChar(100)
+  status               PurchaseOrderStatus   @default(DRAFT)
+  ownerId              String                @map("owner_id") @db.Uuid
+  vendorId             String                @map("vendor_id") @db.Uuid
+  warehouseId          String                @map("warehouse_id") @db.Uuid
+  expectedDeliveryDate DateTime?             @map("expected_delivery_date") @db.Date
+  notes                String?               @db.Text
+  currency             String                @default("VND") @db.VarChar(10)
+  totalExpectedQty     Decimal               @default(0) @map("total_expected_qty") @db.Decimal(18, 3)
+  totalReceivedQty     Decimal               @default(0) @map("total_received_qty") @db.Decimal(18, 3)
+  cancelReasonCode     String?               @map("cancel_reason_code") @db.VarChar(50)
+  rowVersion           BigInt                @default(0) @map("row_version")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  createdBy            String?               @map("created_by") @db.Uuid
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  updatedBy            String?               @map("updated_by") @db.Uuid
+
+  owner     MdOwner     @relation(fields: [ownerId], references: [id])
+  vendor    MdVendor    @relation(fields: [vendorId], references: [id])
+  warehouse MdWarehouse @relation(fields: [warehouseId], references: [id])
+  lines     PurchaseOrderLine[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([ownerId, vendorId, status])
+  @@index([poNumber])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id           String                  @id @default(uuid()) @db.Uuid
+  poId         String                  @map("po_id") @db.Uuid
+  lineNumber   Int                     @map("line_number")
+  itemId       String                  @map("item_id") @db.Uuid
+  uomId        String                  @map("uom_id") @db.Uuid
+  expectedQty  Decimal                 @map("expected_qty") @db.Decimal(18, 3)
+  receivedQty  Decimal                 @default(0) @map("received_qty") @db.Decimal(18, 3)
+  unitPrice    Decimal?                @map("unit_price") @db.Decimal(18, 4)
+  notes        String?                 @db.Text
+  status       PurchaseOrderLineStatus @default(OPEN)
+
+  po   PurchaseOrder @relation(fields: [poId], references: [id])
+  item MdItem        @relation(fields: [itemId], references: [id])
+  uom  MdUom         @relation(fields: [uomId], references: [id])
+
+  @@unique([poId, lineNumber])
+  @@map("purchase_order_lines")
+}
 
 enum ReceiptType {
   STANDARD
@@ -1727,6 +1838,7 @@ model ShipmentHeader {
   owner       MdOwner        @relation(fields: [ownerId], references: [id])
   warehouse   MdWarehouse    @relation(fields: [warehouseId], references: [id])
   vehicleType MdVehicleType? @relation(fields: [vehicleTypeId], references: [id])
+  customer    MdCustomer?    @relation(fields: [customerId], references: [id])
 
   lines             ShipmentLine[]
   allocationRecords ShipmentAllocationRecord[]
@@ -4450,5 +4562,22 @@ model AuthAccountLock {
   @@index([userId, lockedAt(sort: Desc)])
   @@index([lockedUntil])
   @@map("auth_account_lock")
+}
+
+model DropdownConfig {
+  id        String   @id @default(uuid()) @db.Uuid
+  entity    String   @db.VarChar(50)
+  fieldName String   @map("field_name") @db.VarChar(50)
+  value     String   @db.VarChar(50)
+  label     String   @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order")
+  isDefault Boolean  @default(false) @map("is_default")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([entity, fieldName, value])
+  @@index([entity, fieldName, isActive])
+  @@map("dropdown_configs")
 }
 

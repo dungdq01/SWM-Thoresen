@@ -14,6 +14,12 @@ const PERMISSION_CODES = {
   RECEIPT_CLOSE: 'INBOUND.RECEIPT.CLOSE',
   WEIGH_RECEIVE: 'INBOUND.WEIGH.RECEIVE',
   DASHBOARD_READ: 'INBOUND.DASHBOARD.READ',
+  PO_CREATE: 'INBOUND.PO.CREATE',
+  PO_READ: 'INBOUND.PO.READ',
+  PO_UPDATE: 'INBOUND.PO.UPDATE',
+  PO_CONFIRM: 'INBOUND.PO.CONFIRM',
+  PO_CLOSE: 'INBOUND.PO.CLOSE',
+  PO_CANCEL: 'INBOUND.PO.CANCEL',
 };
 
 function createInboundRoutes(prisma, authMiddleware, permissionMiddleware) {
@@ -85,6 +91,47 @@ function createInboundRoutes(prisma, authMiddleware, permissionMiddleware) {
   router.get('/dashboard/summary',
     permissionMiddleware(PERMISSION_CODES.DASHBOARD_READ),
     (req, res) => controller.getDashboardSummary(req, res)
+  );
+
+  // Purchase Orders — static route FIRST to avoid :id collision
+  router.get('/purchase-orders/next-number',
+    permissionMiddleware(PERMISSION_CODES.PO_READ),
+    (req, res) => controller.getNextPoNumber(req, res)
+  );
+
+  router.get('/purchase-orders',
+    permissionMiddleware(PERMISSION_CODES.PO_READ),
+    (req, res) => controller.listPurchaseOrders(req, res)
+  );
+
+  router.post('/purchase-orders',
+    permissionMiddleware(PERMISSION_CODES.PO_CREATE),
+    (req, res) => controller.createPurchaseOrder(req, res)
+  );
+
+  router.get('/purchase-orders/:id',
+    permissionMiddleware(PERMISSION_CODES.PO_READ),
+    (req, res) => controller.getPurchaseOrder(req, res)
+  );
+
+  router.put('/purchase-orders/:id',
+    permissionMiddleware(PERMISSION_CODES.PO_UPDATE),
+    (req, res) => controller.updatePurchaseOrder(req, res)
+  );
+
+  router.post('/purchase-orders/:id/confirm',
+    permissionMiddleware(PERMISSION_CODES.PO_CONFIRM),
+    (req, res) => controller.confirmPurchaseOrder(req, res)
+  );
+
+  router.post('/purchase-orders/:id/close',
+    permissionMiddleware(PERMISSION_CODES.PO_CLOSE),
+    (req, res) => controller.closePurchaseOrder(req, res)
+  );
+
+  router.post('/purchase-orders/:id/cancel',
+    permissionMiddleware(PERMISSION_CODES.PO_CANCEL),
+    (req, res) => controller.cancelPurchaseOrder(req, res)
   );
 
   return router;

@@ -19,6 +19,13 @@ export class VendorController {
     return this.vendorService.create(dto, { userId: user.id });
   }
 
+  @Get('next-code')
+  @Permission('MASTER_DATA.VENDOR.READ')
+  async getNextCode() {
+    const code = await this.vendorService.getNextCode();
+    return { data: { code } };
+  }
+
   @Get()
   @Permission('MASTER_DATA.VENDOR.READ')
   async findMany(@Query() dto: ListVendorDto) {

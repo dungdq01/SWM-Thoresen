@@ -11,16 +11,19 @@ const ReasonCodesPage = lazy(() => import('@pages/settings').then(m => ({ defaul
 const NumberSequencesPage = lazy(() => import('@pages/settings').then(m => ({ default: m.NumberSequencesPage })))
 const GovernancePage = lazy(() => import('@pages/settings').then(m => ({ default: m.GovernancePage })))
 const LogsPage = lazy(() => import('@pages/settings').then(m => ({ default: m.LogsPage })))
+const DropdownConfigPage = lazy(() => import('@pages/settings').then(m => ({ default: m.DropdownConfigPage })))
 
 // Master Data Pages
 const MasterDataLayout = lazy(() => import('@pages/master-data').then(m => ({ default: m.MasterDataLayout })))
 const OwnersPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnersPage })))
 const VendorsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VendorsPage })))
+const CustomersPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.CustomersPage })))
 const ItemsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemsPage })))
 const WarehousesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.WarehousesPage })))
 const ZonesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ZonesPage })))
 const LocationsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationsPage })))
 const UomsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.UomsPage })))
+const UomConversionsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.UomConversionsPage })))
 const VehicleTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VehicleTypesPage })))
 const InventoryStatusesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.InventoryStatusesPage })))
 
@@ -37,6 +40,7 @@ const InboundReceiptsPage = lazy(() => import('@pages/inbound-operations').then(
 const InboundExecutionPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExecutionPage })))
 const InboundExceptionsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExceptionsPage })))
 const InboundPutawayPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundPutawayPage })))
+const PurchaseOrdersPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.PurchaseOrdersPage })))
 
 // Outbound Operations Pages
 const OutboundOperationsLayout = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundOperationsLayout })))
@@ -44,6 +48,7 @@ const OutboundShipmentsPage = lazy(() => import('@pages/outbound-operations').th
 const OutboundAllocationPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundAllocationPage })))
 const OutboundWeighingPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundWeighingPage })))
 const OutboundApprovalsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundApprovalsPage })))
+const SalesOrdersPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.SalesOrdersPage })))
 
 // Inventory Control Pages
 const InventoryControlLayout = lazy(() => import('@pages/inventory-control').then(m => ({ default: m.InventoryControlLayout })))
@@ -143,6 +148,10 @@ export const router = createBrowserRouter([
             path: 'logs',
             element: withSuspense(LogsPage),
           },
+          {
+            path: 'dropdown-config',
+            element: withSuspense(DropdownConfigPage),
+          },
         ],
       },
       // Master Data routes
@@ -163,6 +172,10 @@ export const router = createBrowserRouter([
             element: withSuspense(VendorsPage),
           },
           {
+            path: 'customers',
+            element: withSuspense(CustomersPage),
+          },
+          {
             path: 'items',
             element: withSuspense(ItemsPage),
           },
@@ -181,6 +194,10 @@ export const router = createBrowserRouter([
           {
             path: 'uoms',
             element: withSuspense(UomsPage),
+          },
+          {
+            path: 'uom-conversions',
+            element: withSuspense(UomConversionsPage),
           },
           {
             path: 'vehicle-types',
@@ -224,7 +241,11 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/app/inbound-operations/receipts" replace />,
+            element: <Navigate to="/app/inbound-operations/purchase-orders" replace />,
+          },
+          {
+            path: 'purchase-orders',
+            element: withSuspense(PurchaseOrdersPage),
           },
           {
             path: 'receipts',
@@ -250,7 +271,11 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/app/outbound-operations/shipments" replace />,
+            element: <Navigate to="/app/outbound-operations/sales-orders" replace />,
+          },
+          {
+            path: 'sales-orders',
+            element: withSuspense(SalesOrdersPage),
           },
           {
             path: 'shipments',

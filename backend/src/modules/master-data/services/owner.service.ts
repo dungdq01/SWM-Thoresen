@@ -96,4 +96,8 @@ export class OwnerService {
   async findAllActive(): Promise<MdOwner[]> {
     return this.ownerRepository.findAllActive();
   }
+
+  async getNextCode(): Promise<string> {
+    return this.ownerRepository.getNextCode();
+  }
 }

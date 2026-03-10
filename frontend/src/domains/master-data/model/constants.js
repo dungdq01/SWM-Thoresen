@@ -18,6 +18,18 @@ export const SUPPLIER_GROUPS = [
   { value: 'OTHER', label: 'Khác' },
 ]
 
+// Customer constants
+export const CUSTOMER_GROUPS = [
+  { value: 'CORPORATE', label: 'Doanh nghiệp' },
+  { value: 'INDIVIDUAL', label: 'Cá nhân' },
+]
+
+export const CUSTOMER_TYPES = [
+  { value: 'BUYER', label: 'Người mua' },
+  { value: 'CONSIGNEE', label: 'Người nhận hàng' },
+  { value: 'SHIPPER', label: 'Người gửi hàng' },
+]
+
 // Item constants
 export const CARGO_FORMS = [
   { value: 'BULK', label: 'Hàng rời' },
@@ -102,6 +114,8 @@ export const MASTER_DATA_QUERY_KEYS = {
   ownerDetail: (id) => ['master-data', 'owners', id],
   vendors: ['master-data', 'vendors'],
   vendorDetail: (id) => ['master-data', 'vendors', id],
+  customers: ['master-data', 'customers'],
+  customerDetail: (id) => ['master-data', 'customers', id],
   items: ['master-data', 'items'],
   itemDetail: (id) => ['master-data', 'items', id],
   warehouses: ['master-data', 'warehouses'],
@@ -112,12 +126,15 @@ export const MASTER_DATA_QUERY_KEYS = {
   locationDetail: (id) => ['master-data', 'locations', id],
   uoms: ['master-data', 'uoms'],
   uomDetail: (id) => ['master-data', 'uoms', id],
+  uomConversions: ['master-data', 'uom-conversions'],
+  uomConversionDetail: (id) => ['master-data', 'uom-conversions', id],
   vehicleTypes: ['master-data', 'vehicle-types'],
   vehicleTypeDetail: (id) => ['master-data', 'vehicle-types', id],
   inventoryStatuses: ['master-data', 'inventory-statuses'],
   // Lookups
   lookupOwners: ['master-data', 'lookups', 'owners'],
   lookupVendors: ['master-data', 'lookups', 'vendors'],
+  lookupCustomers: ['master-data', 'lookups', 'customers'],
   lookupItems: ['master-data', 'lookups', 'items'],
   lookupWarehouses: ['master-data', 'lookups', 'warehouses'],
   lookupZones: (warehouseId) => ['master-data', 'lookups', 'zones', warehouseId],

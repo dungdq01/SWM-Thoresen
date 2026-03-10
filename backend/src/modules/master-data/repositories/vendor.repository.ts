@@ -84,4 +84,17 @@ export class VendorRepository {
   async findAllActive(): Promise<MdVendor[]> {
     return this.prisma.mdVendor.findMany({ where: { isActive: true }, orderBy: { vendorCode: 'asc' } });
   }
+
+  async getNextCode(): Promise<string> {
+    const prefix = 'VND';
+    const existing = await this.prisma.mdVendor.findMany({
+      where: { vendorCode: { startsWith: `${prefix}-` } },
+      select: { vendorCode: true },
+    });
+    const numbers = existing
+      .map((r) => parseInt(r.vendorCode.replace(`${prefix}-`, ''), 10))
+      .filter((n) => !isNaN(n));
+    const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  }
 }
