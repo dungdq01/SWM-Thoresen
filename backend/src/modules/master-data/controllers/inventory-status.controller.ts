@@ -12,19 +12,19 @@ export class InventoryStatusController {
   constructor(private readonly inventoryStatusService: InventoryStatusService) {}
 
   @Get()
-  @Permission('MASTER_DATA.INVENTORY_STATUS.READ')
+  @Permission('master_data.inventory_status.view')
   async findMany(@Query() dto: ListInventoryStatusDto) {
     return this.inventoryStatusService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.INVENTORY_STATUS.READ')
+  @Permission('master_data.inventory_status.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.inventoryStatusService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.INVENTORY_STATUS.UPDATE')
+  @Permission('master_data.inventory_status.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateInventoryStatusDto, @CurrentUser() user: RequestUser) {
     return this.inventoryStatusService.update(id, dto, { userId: user.id });
   }

@@ -28,7 +28,7 @@ export const ownerApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.ownerApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/owners/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/owners/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.ownerApi.reactivate(id),
@@ -60,7 +60,7 @@ export const vendorApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.vendorApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/vendors/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/vendors/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.vendorApi.reactivate(id),
@@ -92,7 +92,7 @@ export const customerApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.customerApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/customers/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/customers/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.customerApi.reactivate(id),
@@ -124,7 +124,7 @@ export const itemApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.itemApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/items/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/items/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.itemApi.reactivate(id),
@@ -156,7 +156,7 @@ export const warehouseApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.warehouseApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/warehouses/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/warehouses/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.warehouseApi.reactivate(id),
@@ -184,7 +184,7 @@ export const zoneApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.zoneApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/zones/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/zones/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.zoneApi.reactivate(id),
@@ -212,7 +212,7 @@ export const locationApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.locationApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/locations/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/locations/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.locationApi.reactivate(id),
@@ -240,7 +240,7 @@ export const uomApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.uomApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/uoms/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/uoms/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.uomApi.reactivate(id),
@@ -292,7 +292,7 @@ export const vehicleTypeApi = {
   ),
   deactivate: withDataSource(
     (id, reason) => masterDataMockApi.vehicleTypeApi.deactivate(id, reason),
-    (id, reason) => httpClient.post(`${BASE_URL}/vehicle-types/${id}/deactivate`, { reason })
+    (id, reason) => httpClient.post(`${BASE_URL}/vehicle-types/${id}/deactivate`, { note: reason })
   ),
   reactivate: withDataSource(
     (id) => masterDataMockApi.vehicleTypeApi.reactivate(id),

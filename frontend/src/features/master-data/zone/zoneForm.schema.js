@@ -12,7 +12,7 @@ export const zoneSchema = z.object({
   warehouseId: z
     .string()
     .min(1, 'Vui lòng chọn kho'),
-  zoneType: z.enum(['BULK_STORAGE', 'BAGGED_STORAGE', 'CONTAINER_YARD', 'RECEIVING', 'SHIPPING', 'STAGING'], {
+  zoneType: z.enum(['RECEIVING', 'STORAGE', 'STAGING', 'SHIPPING', 'QC', 'DAMAGED', 'RETURNS'], {
     errorMap: () => ({ message: 'Vui lòng chọn loại zone' }),
   }),
   maxCapacityMt: z
@@ -27,7 +27,7 @@ export const zoneDefaultValues = {
   zoneCode: '',
   zoneName: '',
   warehouseId: '',
-  zoneType: 'BULK_STORAGE',
+  zoneType: 'STORAGE',
   maxCapacityMt: null,
   isBillingZone: false,
 }

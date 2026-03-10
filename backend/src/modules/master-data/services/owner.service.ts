@@ -17,27 +17,48 @@ export class OwnerService {
   ) {}
 
   async create(dto: CreateOwnerDto, ctx: RequestContext): Promise<MdOwner> {
-    const existing = await this.ownerRepository.findByCode(dto.ownerCode);
-    if (existing) {
-      throw new ConflictException(`Owner code ${dto.ownerCode} already exists`);
-    }
+    // Wrap trong transaction để tránh race condition
+    return this.prisma.$transaction(async (tx) => {
+      // Generate code trong transaction
+      const ownerCode = dto.ownerCode || await this.generateNextCode(tx);
+      
+      const existing = await tx.mdOwner.findUnique({ where: { ownerCode } });
+      if (existing) {
+        throw new ConflictException(`Owner code ${ownerCode} already exists`);
+      }
 
-    return this.ownerRepository.create({
-      ownerCode: dto.ownerCode,
-      ownerName: dto.ownerName,
-      shortName: dto.shortName,
-      ownerGroup: dto.ownerGroup,
-      ownerType: dto.ownerType,
-      taxCode: dto.taxCode,
-      address: dto.address,
-      billingEmail: dto.billingEmail,
-      billingContact: dto.billingContact,
-      paymentTerms: dto.paymentTerms,
-      defaultTolerancePct: dto.defaultTolerancePct,
-      defaultWarehouse: dto.defaultWarehouseId ? { connect: { id: dto.defaultWarehouseId } } : undefined,
-      createdBy: ctx.userId,
-      updatedBy: ctx.userId,
+      return tx.mdOwner.create({
+        data: {
+          ownerCode,
+          ownerName: dto.ownerName,
+          shortName: dto.shortName,
+          ownerGroup: dto.ownerGroup,
+          ownerType: dto.ownerType,
+          taxCode: dto.taxCode,
+          address: dto.address,
+          billingEmail: dto.billingEmail,
+          billingContact: dto.billingContact,
+          paymentTerms: dto.paymentTerms,
+          defaultTolerancePct: dto.defaultTolerancePct,
+          defaultWarehouse: dto.defaultWarehouseId ? { connect: { id: dto.defaultWarehouseId } } : undefined,
+          createdBy: ctx.userId,
+          updatedBy: ctx.userId,
+        },
+      });
     });
+  }
+
+  private async generateNextCode(tx: any): Promise<string> {
+    const prefix = 'OWN';
+    const existing = await tx.mdOwner.findMany({
+      where: { ownerCode: { startsWith: `${prefix}-` } },
+      select: { ownerCode: true },
+    });
+    const numbers = existing
+      .map((r: { ownerCode: string }) => parseInt(r.ownerCode.replace(`${prefix}-`, ''), 10))
+      .filter((n: number) => !isNaN(n));
+    const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
   }
 
   async findById(id: string): Promise<MdOwner> {

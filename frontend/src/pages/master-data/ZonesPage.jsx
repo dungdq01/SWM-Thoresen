@@ -216,7 +216,15 @@ export function ZonesPage() {
         onClose={() => setDrawerState({ isOpen: false, data: null })}
         onSubmit={async (data) => {
           if (drawerState.data) {
-            await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+            // Remove immutable fields (zoneCode, warehouseId) and add rowVersion for optimistic locking
+            const { zoneCode, warehouseId, ...updateFields } = data
+            await updateMutation.mutateAsync({
+              id: drawerState.data.id,
+              data: {
+                ...updateFields,
+                rowVersion: Number(drawerState.data.rowVersion)
+              }
+            })
           } else {
             await createMutation.mutateAsync(data)
           }

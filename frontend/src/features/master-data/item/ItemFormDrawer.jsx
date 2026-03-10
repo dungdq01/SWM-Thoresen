@@ -43,10 +43,10 @@ export function ItemFormDrawer({
           productGroup: initialData.productGroup || 'AGRICULTURAL',
           baseUomId: initialData.baseUomId || '',
           billingUomId: initialData.billingUomId || '',
-          stdGrossWeight: initialData.stdGrossWeight || null,
-          stdNetWeight: initialData.stdNetWeight || null,
-          tolerancePctInbound: initialData.tolerancePctInbound || null,
-          tolerancePctOutbound: initialData.tolerancePctOutbound || null,
+          stdGrossWeight: initialData.stdGrossWeight != null ? Number(initialData.stdGrossWeight) : null,
+          stdNetWeight: initialData.stdNetWeight != null ? Number(initialData.stdNetWeight) : null,
+          tolerancePctInbound: initialData.tolerancePctInbound != null ? Number(initialData.tolerancePctInbound) : null,
+          tolerancePctOutbound: initialData.tolerancePctOutbound != null ? Number(initialData.tolerancePctOutbound) : null,
         })
       } else {
         reset(itemDefaultValues)
@@ -179,6 +179,14 @@ export function ItemFormDrawer({
                     options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
                     error={errors.baseUomId?.message}
                     {...register('baseUomId')}
+                  />
+                  <Select
+                    label="Đơn vị tính xuất HĐ"
+                    required
+                    placeholder="Chọn đơn vị"
+                    options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
+                    error={errors.billingUomId?.message}
+                    {...register('billingUomId')}
                   />
                 </div>
 

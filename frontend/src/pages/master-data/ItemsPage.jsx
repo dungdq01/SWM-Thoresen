@@ -90,7 +90,15 @@ export function ItemsPage() {
   const handleSubmit = async (data) => {
     try {
       if (drawerState.data) {
-        await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+        // Remove immutable fields (itemCode, cargoForm, baseUomId, billingUomId) and add rowVersion for optimistic locking
+        const { itemCode, cargoForm, baseUomId, billingUomId, ...updateFields } = data
+        await updateMutation.mutateAsync({
+          id: drawerState.data.id,
+          data: {
+            ...updateFields,
+            rowVersion: Number(drawerState.data.rowVersion)
+          }
+        })
       } else {
         await createMutation.mutateAsync(data)
       }

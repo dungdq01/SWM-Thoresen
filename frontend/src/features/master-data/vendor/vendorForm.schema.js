@@ -10,7 +10,7 @@ export const vendorSchema = z.object({
     .string()
     .min(1, 'Tên nhà cung cấp là bắt buộc')
     .max(200, 'Tên nhà cung cấp tối đa 200 ký tự'),
-  supplierGroup: z.enum(['VESSEL', 'TRUCK', 'BARGE', 'OTHER'], {
+  supplierGroup: z.enum(['DOMESTIC', 'OVERSEAS', 'VESSEL_AGENT', 'TRADER'], {
     errorMap: () => ({ message: 'Vui lòng chọn nhóm nhà cung cấp' }),
   }),
   countryRegion: z
@@ -44,7 +44,7 @@ export const vendorSchema = z.object({
 export const vendorDefaultValues = {
   vendorCode: '',
   vendorName: '',
-  supplierGroup: 'VESSEL',
+  supplierGroup: 'DOMESTIC',
   countryRegion: 'VN',
   vesselName: '',
   contactName: '',

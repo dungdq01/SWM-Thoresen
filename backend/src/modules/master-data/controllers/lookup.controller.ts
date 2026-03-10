@@ -10,67 +10,67 @@ export class LookupController {
   constructor(private readonly lookupService: LookupService) {}
 
   @Get('owners')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getOwners() {
     return this.lookupService.getOwners();
   }
 
   @Get('vendors')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getVendors() {
     return this.lookupService.getVendors();
   }
 
   @Get('items')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getItems() {
     return this.lookupService.getItems();
   }
 
   @Get('warehouses')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getWarehouses() {
     return this.lookupService.getWarehouses();
   }
 
   @Get('zones')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getZones(@Query('warehouseId') warehouseId?: string) {
     return this.lookupService.getZones(warehouseId);
   }
 
   @Get('locations')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getLocations(@Query('warehouseId') warehouseId?: string, @Query('zoneId') zoneId?: string) {
     return this.lookupService.getLocations(warehouseId, zoneId);
   }
 
   @Get('uoms')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getUoms() {
     return this.lookupService.getUoms();
   }
 
   @Get('vehicle-types')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getVehicleTypes() {
     return this.lookupService.getVehicleTypes();
   }
 
   @Get('inventory-statuses')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getInventoryStatuses() {
     return this.lookupService.getInventoryStatuses();
   }
 
   @Get('customers')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getCustomers() {
     return this.lookupService.getCustomers();
   }
 
   @Get('dropdown-options')
-  @Permission('MASTER_DATA.LOOKUP.READ')
+  @Permission('master_data.lookup.view')
   async getDropdownOptions(@Query('entity') entity: string, @Query('fieldName') fieldName: string) {
     if (!entity || !fieldName) {
       throw new BadRequestException('entity and fieldName query params are required');

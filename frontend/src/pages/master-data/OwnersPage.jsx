@@ -90,7 +90,15 @@ export function OwnersPage() {
   const handleSubmit = async (data) => {
     try {
       if (drawerState.data) {
-        await updateMutation.mutateAsync({ id: drawerState.data.id, data })
+        // Remove ownerCode (immutable) and add rowVersion for optimistic locking
+        const { ownerCode, ...updateFields } = data
+        await updateMutation.mutateAsync({
+          id: drawerState.data.id,
+          data: {
+            ...updateFields,
+            rowVersion: Number(drawerState.data.rowVersion)
+          }
+        })
       } else {
         await createMutation.mutateAsync(data)
       }

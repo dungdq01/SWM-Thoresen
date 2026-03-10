@@ -22,9 +22,9 @@ export function VehicleTypeFormDrawer({ isOpen, onClose, onSubmit, initialData =
         vehicleTypeCode: initialData.vehicleTypeCode || '',
         vehicleTypeName: initialData.vehicleTypeName || '',
         category: initialData.category || 'TRUCK',
-        defaultTareWeightKg: initialData.defaultTareWeightKg ?? null,
-        maxPayloadKg: initialData.maxPayloadKg ?? null,
-        teuEquivalent: initialData.teuEquivalent ?? null,
+        defaultTareWeightKg: initialData.defaultTareWeightKg != null ? Number(initialData.defaultTareWeightKg) : null,
+        maxPayloadKg: initialData.maxPayloadKg != null ? Number(initialData.maxPayloadKg) : null,
+        teuEquivalent: initialData.teuEquivalent != null ? Number(initialData.teuEquivalent) : null,
       })
     } else {
       reset(vehicleTypeDefaultValues)

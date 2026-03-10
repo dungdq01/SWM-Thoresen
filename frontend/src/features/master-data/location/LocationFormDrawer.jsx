@@ -39,10 +39,10 @@ export function LocationFormDrawer({ isOpen, onClose, onSubmit, initialData = nu
         locationCode: initialData.locationCode || '',
         warehouseId: initialData.warehouseId || initialData.warehouse?.id || '',
         zoneId: initialData.zoneId || initialData.zone?.id || '',
-        locationType: initialData.locationType || 'FLOOR',
+        locationType: initialData.locationType || 'STORAGE',
         locationProfile: initialData.locationProfile || 'STANDARD',
-        areaM2: initialData.areaM2 ?? null,
-        stackLimitKg: initialData.stackLimitKg ?? null,
+        areaM2: initialData.areaM2 != null ? Number(initialData.areaM2) : null,
+        stackLimitKg: initialData.stackLimitKg != null ? Number(initialData.stackLimitKg) : null,
       })
     } else {
       reset(locationDefaultValues)

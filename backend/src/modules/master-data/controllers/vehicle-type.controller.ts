@@ -14,39 +14,39 @@ export class VehicleTypeController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.VEHICLE_TYPE.CREATE')
+  @Permission('master_data.vehicle_type.create')
   async create(@Body() dto: CreateVehicleTypeDto, @CurrentUser() user: RequestUser) {
     return this.vehicleTypeService.create(dto, { userId: user.id });
   }
 
   @Get()
-  @Permission('MASTER_DATA.VEHICLE_TYPE.READ')
+  @Permission('master_data.vehicle_type.view')
   async findMany(@Query() dto: ListVehicleTypeDto) {
     return this.vehicleTypeService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.VEHICLE_TYPE.READ')
+  @Permission('master_data.vehicle_type.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.vehicleTypeService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.VEHICLE_TYPE.UPDATE')
+  @Permission('master_data.vehicle_type.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateVehicleTypeDto, @CurrentUser() user: RequestUser) {
     return this.vehicleTypeService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.VEHICLE_TYPE.DEACTIVATE')
+  @Permission('master_data.vehicle_type.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.vehicleTypeService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.VEHICLE_TYPE.REACTIVATE')
+  @Permission('master_data.vehicle_type.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.vehicleTypeService.reactivate(id, dto, { userId: user.id });
   }

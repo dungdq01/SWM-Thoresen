@@ -15,14 +15,14 @@ export const itemSchema = z.object({
     .max(200, 'Tên tiếng Anh tối đa 200 ký tự')
     .optional()
     .nullable(),
-  cargoForm: z.enum(['BULK', 'BAGGED', 'CONTAINERIZED', 'LIQUID'], {
+  cargoForm: z.enum(['BULK', 'BAGGED_25KG', 'BAGGED_40KG', 'BAGGED_50KG', 'JUMBO', 'PACKAGING', 'CONTAINER', 'DRUM', 'PALLET', 'OTHER'], {
     errorMap: () => ({ message: 'Vui lòng chọn dạng hàng' }),
   }),
   productGroup: z.enum(['AGRICULTURAL', 'FERTILIZER', 'CHEMICAL', 'STEEL', 'GENERAL'], {
     errorMap: () => ({ message: 'Vui lòng chọn nhóm sản phẩm' }),
   }),
   baseUomId: z.string().min(1, 'Đơn vị tính cơ bản là bắt buộc'),
-  billingUomId: z.string().optional().nullable(),
+  billingUomId: z.string().min(1, 'Đơn vị tính xuất HĐ là bắt buộc'),
   stdGrossWeight: z
     .number({ invalid_type_error: 'Phải là số' })
     .positive('Phải lớn hơn 0')

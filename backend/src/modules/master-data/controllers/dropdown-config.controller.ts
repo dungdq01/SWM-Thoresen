@@ -12,52 +12,52 @@ export class DropdownConfigController {
 
   // Static routes MUST come before :id to avoid ParseUUIDPipe conflict
   @Get('entities')
-  @Permission('MASTER_DATA.DROPDOWN.READ')
+  @Permission('master_data.dropdown.view')
   getEntities() {
     return this.dropdownConfigService.getEntities();
   }
 
   @Get('fields')
-  @Permission('MASTER_DATA.DROPDOWN.READ')
+  @Permission('master_data.dropdown.view')
   getFields(@Query('entity') entity: string) {
     return this.dropdownConfigService.getFields(entity);
   }
 
   @Get()
-  @Permission('MASTER_DATA.DROPDOWN.READ')
+  @Permission('master_data.dropdown.view')
   async findMany(@Query() dto: ListDropdownConfigDto) {
     return this.dropdownConfigService.findMany(dto);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.DROPDOWN.CREATE')
+  @Permission('master_data.dropdown.create')
   async create(@Body() dto: CreateDropdownConfigDto) {
     return this.dropdownConfigService.create(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.DROPDOWN.READ')
+  @Permission('master_data.dropdown.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.dropdownConfigService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.DROPDOWN.UPDATE')
+  @Permission('master_data.dropdown.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDropdownConfigDto) {
     return this.dropdownConfigService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Permission('MASTER_DATA.DROPDOWN.DELETE')
+  @Permission('master_data.dropdown.delete')
   async delete(@Param('id', ParseUUIDPipe) id: string) {
     return this.dropdownConfigService.delete(id);
   }
 
   @Post(':id/set-default')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.DROPDOWN.UPDATE')
+  @Permission('master_data.dropdown.update')
   async setDefault(@Param('id', ParseUUIDPipe) id: string) {
     return this.dropdownConfigService.setDefault(id);
   }

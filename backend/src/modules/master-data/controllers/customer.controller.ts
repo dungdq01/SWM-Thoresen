@@ -14,7 +14,7 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Get('next-code')
-  @Permission('MASTER_DATA.CUSTOMER.READ')
+  @Permission('master_data.customer.view')
   async getNextCode() {
     const code = await this.customerService.getNextCode();
     return { data: { code } };
@@ -22,39 +22,39 @@ export class CustomerController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.CUSTOMER.CREATE')
+  @Permission('master_data.customer.create')
   async create(@Body() dto: CreateCustomerDto, @CurrentUser() user: RequestUser) {
     return this.customerService.create(dto, { userId: user.id });
   }
 
   @Get()
-  @Permission('MASTER_DATA.CUSTOMER.READ')
+  @Permission('master_data.customer.view')
   async findMany(@Query() dto: ListCustomerDto) {
     return this.customerService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.CUSTOMER.READ')
+  @Permission('master_data.customer.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.customerService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.CUSTOMER.UPDATE')
+  @Permission('master_data.customer.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCustomerDto, @CurrentUser() user: RequestUser) {
     return this.customerService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.CUSTOMER.DEACTIVATE')
+  @Permission('master_data.customer.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.customerService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.CUSTOMER.REACTIVATE')
+  @Permission('master_data.customer.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.customerService.reactivate(id, dto, { userId: user.id });
   }

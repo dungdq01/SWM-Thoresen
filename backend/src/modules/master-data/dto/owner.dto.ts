@@ -3,9 +3,9 @@ import { OwnerType } from '@prisma/client';
 import { PaginationDto } from './common.dto';
 
 export class CreateOwnerDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  ownerCode!: string;
+  ownerCode?: string;
 
   @IsString()
   @IsNotEmpty()

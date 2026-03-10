@@ -15,46 +15,46 @@ export class OwnerController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.OWNER.CREATE')
+  @Permission('master_data.owner.create')
   async create(@Body() dto: CreateOwnerDto, @CurrentUser() user: RequestUser) {
     return this.ownerService.create(dto, { userId: user.id });
   }
 
   @Get('next-code')
-  @Permission('MASTER_DATA.OWNER.READ')
+  @Permission('master_data.owner.view')
   async getNextCode() {
     const code = await this.ownerService.getNextCode();
-    return { data: { code } };
+    return { code };
   }
 
   @Get()
-  @Permission('MASTER_DATA.OWNER.READ')
+  @Permission('master_data.owner.view')
   async findMany(@Query() dto: ListOwnerDto) {
     return this.ownerService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.OWNER.READ')
+  @Permission('master_data.owner.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.ownerService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.OWNER.UPDATE')
+  @Permission('master_data.owner.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateOwnerDto, @CurrentUser() user: RequestUser) {
     return this.ownerService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.OWNER.DEACTIVATE')
+  @Permission('master_data.owner.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.ownerService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.OWNER.REACTIVATE')
+  @Permission('master_data.owner.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.ownerService.reactivate(id, dto, { userId: user.id });
   }

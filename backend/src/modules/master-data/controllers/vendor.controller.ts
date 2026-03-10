@@ -14,46 +14,46 @@ export class VendorController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.VENDOR.CREATE')
+  @Permission('master_data.vendor.create')
   async create(@Body() dto: CreateVendorDto, @CurrentUser() user: RequestUser) {
     return this.vendorService.create(dto, { userId: user.id });
   }
 
   @Get('next-code')
-  @Permission('MASTER_DATA.VENDOR.READ')
+  @Permission('master_data.vendor.view')
   async getNextCode() {
     const code = await this.vendorService.getNextCode();
     return { data: { code } };
   }
 
   @Get()
-  @Permission('MASTER_DATA.VENDOR.READ')
+  @Permission('master_data.vendor.view')
   async findMany(@Query() dto: ListVendorDto) {
     return this.vendorService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.VENDOR.READ')
+  @Permission('master_data.vendor.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.vendorService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.VENDOR.UPDATE')
+  @Permission('master_data.vendor.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateVendorDto, @CurrentUser() user: RequestUser) {
     return this.vendorService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.VENDOR.DEACTIVATE')
+  @Permission('master_data.vendor.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.vendorService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.VENDOR.REACTIVATE')
+  @Permission('master_data.vendor.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.vendorService.reactivate(id, dto, { userId: user.id });
   }

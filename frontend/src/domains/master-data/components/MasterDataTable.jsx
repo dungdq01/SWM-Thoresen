@@ -1,5 +1,6 @@
 import { MoreHorizontal, Edit, Power, PowerOff, Eye } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@shared/lib/cn'
 import {
   Table,
@@ -15,11 +16,18 @@ import {
 
 export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActive }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
+  const buttonRef = useRef(null)
   const menuRef = useRef(null)
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      if (
+        menuRef.current && 
+        !menuRef.current.contains(event.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
         setIsOpen(false)
       }
     }
@@ -27,17 +35,33 @@ export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActiv
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const handleToggle = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.right - 176, // 176 = w-44 (11rem)
+      })
+    }
+    setIsOpen(!isOpen)
+  }
+
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={handleToggle}
         className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
       >
         <MoreHorizontal className="w-4 h-4" />
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-xl border border-moon-200 bg-white py-1 text-navy-800 shadow-card-lg">
+      {isOpen && createPortal(
+        <div 
+          ref={menuRef}
+          className="fixed z-50 w-44 rounded-xl border border-moon-200 bg-white py-1 text-navy-800 shadow-card-lg"
+          style={{ top: menuPosition.top, left: menuPosition.left }}
+        >
           {onView && (
             <button
               onClick={() => { onView(); setIsOpen(false) }}
@@ -74,7 +98,8 @@ export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActiv
               Kích hoạt lại
             </button>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

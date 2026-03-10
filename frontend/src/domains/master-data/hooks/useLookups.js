@@ -7,7 +7,7 @@ export function useLookupOwners() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupOwners,
     queryFn: () => lookupApi.getOwners(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -16,7 +16,7 @@ export function useLookupVendors() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupVendors,
     queryFn: () => lookupApi.getVendors(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -25,7 +25,7 @@ export function useLookupItems() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupItems,
     queryFn: () => lookupApi.getItems(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -34,7 +34,7 @@ export function useLookupWarehouses() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupWarehouses,
     queryFn: () => lookupApi.getWarehouses(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -44,7 +44,7 @@ export function useLookupZones(warehouseId) {
     queryFn: () => lookupApi.getZones(warehouseId),
     staleTime: 60000,
     enabled: !!warehouseId,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -54,7 +54,7 @@ export function useLookupLocations(warehouseId, zoneId) {
     queryFn: () => lookupApi.getLocations({ warehouseId, zoneId }),
     staleTime: 60000,
     enabled: !!warehouseId,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -63,7 +63,7 @@ export function useLookupUoms() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupUoms,
     queryFn: () => lookupApi.getUoms(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -72,7 +72,7 @@ export function useLookupVehicleTypes() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupVehicleTypes,
     queryFn: () => lookupApi.getVehicleTypes(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }
 
@@ -81,6 +81,6 @@ export function useLookupInventoryStatuses() {
     queryKey: MASTER_DATA_QUERY_KEYS.lookupInventoryStatuses,
     queryFn: () => lookupApi.getInventoryStatuses(),
     staleTime: 60000,
-    select: (response) => response.data || [],
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
   })
 }

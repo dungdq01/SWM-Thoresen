@@ -9,7 +9,7 @@ export const warehouseSchema = z.object({
     .string()
     .min(1, 'Tên kho là bắt buộc')
     .max(200, 'Tên kho tối đa 200 ký tự'),
-  warehouseType: z.enum(['COVERED', 'OPEN', 'COLD', 'HAZMAT'], {
+  warehouseType: z.enum(['COVERED', 'OPEN_YARD'], {
     errorMap: () => ({ message: 'Vui lòng chọn loại kho' }),
   }),
   totalAreaM2: z

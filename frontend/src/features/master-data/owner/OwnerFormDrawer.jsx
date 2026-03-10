@@ -23,6 +23,7 @@ export function OwnerFormDrawer({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(ownerSchema),
@@ -50,6 +51,13 @@ export function OwnerFormDrawer({
     }
   }, [isOpen, initialData, reset])
 
+  // Set ownerCode when nextCode is loaded
+  useEffect(() => {
+    if (!isEdit && nextCode) {
+      setValue('ownerCode', nextCode)
+    }
+  }, [isEdit, nextCode, setValue])
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -65,6 +73,10 @@ export function OwnerFormDrawer({
     const payload = {
       ...data,
       billingEmail: data.billingEmail || null,
+    }
+    // Không gửi ownerCode khi tạo mới - server sẽ tự generate
+    if (!isEdit) {
+      delete payload.ownerCode
     }
     if (isEdit && initialData) {
       payload.rowVersion = initialData.rowVersion
@@ -134,7 +146,7 @@ export function OwnerFormDrawer({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                      Tên viết tắt
+                      Tên viết tắt <span className="text-red-500">*</span>
                     </label>
                     <Input
                       {...register('shortName')}
@@ -178,7 +190,7 @@ export function OwnerFormDrawer({
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                       <div>
                         <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                          Mã số thuế
+                          Mã số thuế <span className="text-red-500">*</span>
                         </label>
                         <Input
                           {...register('taxCode')}
@@ -226,7 +238,7 @@ export function OwnerFormDrawer({
 
                 <div>
                   <label className="block text-sm font-medium text-navy-700 mb-1.5">
-                    Địa chỉ
+                    Địa chỉ <span className="text-red-500">*</span>
                   </label>
                   <Textarea
                     {...register('address')}
@@ -242,7 +254,11 @@ export function OwnerFormDrawer({
               <Button variant="outline" onClick={onClose} disabled={isLoading}>
                 Hủy bỏ
               </Button>
-              <Button onClick={handleSubmit(handleFormSubmit)} isLoading={isLoading}>
+              <Button
+                onClick={handleSubmit(handleFormSubmit)}
+                isLoading={isLoading}
+                disabled={isLoading}
+              >
                 {isEdit ? 'Cập nhật' : 'Tạo mới'}
               </Button>
             </div>

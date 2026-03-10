@@ -14,39 +14,39 @@ export class LocationController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.LOCATION.CREATE')
+  @Permission('master_data.location.create')
   async create(@Body() dto: CreateLocationDto, @CurrentUser() user: RequestUser) {
     return this.locationService.create(dto, { userId: user.id });
   }
 
   @Get()
-  @Permission('MASTER_DATA.LOCATION.READ')
+  @Permission('master_data.location.view')
   async findMany(@Query() dto: ListLocationDto) {
     return this.locationService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.LOCATION.READ')
+  @Permission('master_data.location.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.locationService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.LOCATION.UPDATE')
+  @Permission('master_data.location.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLocationDto, @CurrentUser() user: RequestUser) {
     return this.locationService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.LOCATION.DEACTIVATE')
+  @Permission('master_data.location.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.locationService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.LOCATION.REACTIVATE')
+  @Permission('master_data.location.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.locationService.reactivate(id, dto, { userId: user.id });
   }

@@ -14,7 +14,7 @@ export class UomConversionController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.UOM.CREATE')
+  @Permission('master_data.uom.create')
   async create(@Body() dto: CreateUomConversionDto, @CurrentUser() user: RequestUser) {
     return this.uomConversionRepository.create({
       fromUom: { connect: { id: dto.fromUomId } },
@@ -27,7 +27,7 @@ export class UomConversionController {
   }
 
   @Get()
-  @Permission('MASTER_DATA.UOM.READ')
+  @Permission('master_data.uom.view')
   async findMany(@Query() dto: ListUomConversionDto) {
     return this.uomConversionRepository.findMany({
       page: dto.page,
@@ -39,7 +39,7 @@ export class UomConversionController {
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.UOM.READ')
+  @Permission('master_data.uom.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     const record = await this.uomConversionRepository.findById(id);
     if (!record) throw new NotFoundException(`UomConversion ${id} not found`);
@@ -47,7 +47,7 @@ export class UomConversionController {
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.UOM.UPDATE')
+  @Permission('master_data.uom.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUomConversionDto, @CurrentUser() user: RequestUser) {
     const record = await this.uomConversionRepository.findById(id);
     if (!record) throw new NotFoundException(`UomConversion ${id} not found`);
@@ -63,7 +63,7 @@ export class UomConversionController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Permission('MASTER_DATA.UOM.UPDATE')
+  @Permission('master_data.uom.update')
   async delete(@Param('id', ParseUUIDPipe) id: string) {
     const record = await this.uomConversionRepository.findById(id);
     if (!record) throw new NotFoundException(`UomConversion ${id} not found`);

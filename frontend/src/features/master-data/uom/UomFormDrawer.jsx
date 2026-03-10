@@ -45,9 +45,16 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
   }, [isOpen])
 
   const handleFormSubmit = (data) => {
-    const payload = { ...data }
+    let payload
     if (isEdit && initialData) {
-      payload.rowVersion = initialData.rowVersion
+      // UpdateUomDto chỉ cho phép: description, decimalPrecision, rowVersion
+      payload = {
+        description: data.description,
+        decimalPrecision: data.decimalPrecision,
+        rowVersion: initialData.rowVersion,
+      }
+    } else {
+      payload = { ...data }
     }
     onSubmit(payload)
   }

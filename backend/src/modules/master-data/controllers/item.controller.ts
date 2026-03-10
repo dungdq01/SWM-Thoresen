@@ -14,46 +14,46 @@ export class ItemController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.ITEM.CREATE')
+  @Permission('master_data.item.create')
   async create(@Body() dto: CreateItemDto, @CurrentUser() user: RequestUser) {
     return this.itemService.create(dto, { userId: user.id });
   }
 
   @Get('next-code')
-  @Permission('MASTER_DATA.ITEM.READ')
+  @Permission('master_data.item.view')
   async getNextCode() {
     const code = await this.itemService.getNextCode();
     return { data: { code } };
   }
 
   @Get()
-  @Permission('MASTER_DATA.ITEM.READ')
+  @Permission('master_data.item.view')
   async findMany(@Query() dto: ListItemDto) {
     return this.itemService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.ITEM.READ')
+  @Permission('master_data.item.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.itemService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.ITEM.UPDATE')
+  @Permission('master_data.item.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateItemDto, @CurrentUser() user: RequestUser) {
     return this.itemService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.ITEM.DEACTIVATE')
+  @Permission('master_data.item.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.itemService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.ITEM.REACTIVATE')
+  @Permission('master_data.item.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.itemService.reactivate(id, dto, { userId: user.id });
   }

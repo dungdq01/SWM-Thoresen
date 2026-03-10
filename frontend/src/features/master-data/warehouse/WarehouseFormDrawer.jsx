@@ -38,14 +38,14 @@ export function WarehouseFormDrawer({
           warehouseCode: initialData.warehouseCode || '',
           warehouseName: initialData.warehouseName || '',
           warehouseType: initialData.warehouseType || 'COVERED',
-          totalAreaM2: initialData.totalAreaM2 || null,
-          usableAreaM2: initialData.usableAreaM2 || null,
-          maxHeightM: initialData.maxHeightM || null,
-          maxCapacityMt: initialData.maxCapacityMt || null,
+          totalAreaM2: initialData.totalAreaM2 != null ? Number(initialData.totalAreaM2) : null,
+          usableAreaM2: initialData.usableAreaM2 != null ? Number(initialData.usableAreaM2) : null,
+          maxHeightM: initialData.maxHeightM != null ? Number(initialData.maxHeightM) : null,
+          maxCapacityMt: initialData.maxCapacityMt != null ? Number(initialData.maxCapacityMt) : null,
           address: initialData.address || '',
           hasWeighbridge: initialData.hasWeighbridge || false,
-          weighbridgeCount: initialData.weighbridgeCount || null,
-          capacityWarningPct: initialData.capacityWarningPct || 85,
+          weighbridgeCount: initialData.weighbridgeCount != null ? Number(initialData.weighbridgeCount) : null,
+          capacityWarningPct: initialData.capacityWarningPct != null ? Number(initialData.capacityWarningPct) : 85,
         })
       } else {
         reset(warehouseDefaultValues)

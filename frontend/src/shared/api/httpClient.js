@@ -31,7 +31,11 @@ httpClient.interceptors.request.use(
 )
 
 httpClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const body = response.data
+    // Unwrap ResponseInterceptor envelope: { success, data, meta }
+    return body && body.success !== undefined ? body.data : body
+  },
   (error) => {
     const errorResponse = error.response?.data || {
       success: false,

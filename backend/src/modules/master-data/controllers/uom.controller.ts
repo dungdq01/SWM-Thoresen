@@ -14,39 +14,39 @@ export class UomController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.UOM.CREATE')
+  @Permission('master_data.uom.create')
   async create(@Body() dto: CreateUomDto, @CurrentUser() user: RequestUser) {
     return this.uomService.create(dto, { userId: user.id });
   }
 
   @Get()
-  @Permission('MASTER_DATA.UOM.READ')
+  @Permission('master_data.uom.view')
   async findMany(@Query() dto: ListUomDto) {
     return this.uomService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.UOM.READ')
+  @Permission('master_data.uom.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.uomService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.UOM.UPDATE')
+  @Permission('master_data.uom.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUomDto, @CurrentUser() user: RequestUser) {
     return this.uomService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.UOM.DEACTIVATE')
+  @Permission('master_data.uom.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.uomService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.UOM.REACTIVATE')
+  @Permission('master_data.uom.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.uomService.reactivate(id, dto, { userId: user.id });
   }

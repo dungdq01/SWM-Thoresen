@@ -4,33 +4,29 @@ export const ownerSchema = z.object({
   ownerCode: z
     .string()
     .max(20, 'Mã chủ hàng tối đa 20 ký tự')
-    .optional()
-    .or(z.literal('')),
+    .optional(),
   ownerName: z
     .string()
     .min(1, 'Tên chủ hàng là bắt buộc')
     .max(200, 'Tên chủ hàng tối đa 200 ký tự'),
   shortName: z
     .string()
-    .max(50, 'Tên viết tắt tối đa 50 ký tự')
-    .optional()
-    .nullable(),
+    .min(1, 'Tên viết tắt là bắt buộc')
+    .max(50, 'Tên viết tắt tối đa 50 ký tự'),
   ownerGroup: z.enum(['LOCAL', 'FOREIGN'], {
     errorMap: () => ({ message: 'Vui lòng chọn nhóm chủ hàng' }),
   }),
-  ownerType: z.enum(['DOMESTIC', 'EXPORT', 'IMPORT'], {
+  ownerType: z.enum(['DIRECT', 'CONSIGNED', 'OTHER'], {
     errorMap: () => ({ message: 'Vui lòng chọn loại chủ hàng' }),
   }),
   taxCode: z
     .string()
-    .max(20, 'Mã số thuế tối đa 20 ký tự')
-    .optional()
-    .nullable(),
+    .min(1, 'Mã số thuế là bắt buộc')
+    .max(20, 'Mã số thuế tối đa 20 ký tự'),
   address: z
     .string()
-    .max(500, 'Địa chỉ tối đa 500 ký tự')
-    .optional()
-    .nullable(),
+    .min(1, 'Địa chỉ là bắt buộc')
+    .max(500, 'Địa chỉ tối đa 500 ký tự'),
   billingEmail: z
     .string()
     .email('Email không hợp lệ')
@@ -54,7 +50,7 @@ export const ownerDefaultValues = {
   ownerName: '',
   shortName: '',
   ownerGroup: 'LOCAL',
-  ownerType: 'DOMESTIC',
+  ownerType: 'DIRECT',
   taxCode: '',
   address: '',
   billingEmail: '',

@@ -5,7 +5,10 @@ export const vehicleTypeSchema = z.object({
     .string()
     .min(1, 'Mã loại phương tiện là bắt buộc')
     .max(30, 'Mã tối đa 30 ký tự')
-    .regex(/^[A-Z0-9_-]+$/, 'Mã chỉ chứa chữ in hoa, số, dấu gạch ngang và gạch dưới'),
+    .transform((val) => val.toUpperCase())
+    .refine((val) => /^[A-Z0-9_-]+$/.test(val), {
+      message: 'Mã chỉ chứa chữ cái, số, dấu gạch ngang và gạch dưới',
+    }),
   vehicleTypeName: z
     .string()
     .min(1, 'Tên loại phương tiện là bắt buộc')

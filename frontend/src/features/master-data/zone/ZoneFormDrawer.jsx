@@ -32,8 +32,8 @@ export function ZoneFormDrawer({ isOpen, onClose, onSubmit, initialData = null, 
         zoneCode: initialData.zoneCode || '',
         zoneName: initialData.zoneName || '',
         warehouseId: initialData.warehouseId || initialData.warehouse?.id || '',
-        zoneType: initialData.zoneType || 'BULK_STORAGE',
-        maxCapacityMt: initialData.maxCapacityMt ?? null,
+        zoneType: initialData.zoneType || 'STORAGE',
+        maxCapacityMt: initialData.maxCapacityMt != null ? Number(initialData.maxCapacityMt) : null,
         isBillingZone: initialData.isBillingZone || false,
       })
     } else {

@@ -11,7 +11,7 @@ export const locationSchema = z.object({
   zoneId: z
     .string()
     .min(1, 'Vui lòng chọn zone'),
-  locationType: z.enum(['FLOOR', 'RACK', 'BIN', 'PILE'], {
+  locationType: z.enum(['RECEIVING', 'STORAGE', 'STAGING', 'SHIPPING', 'QC', 'DAMAGED', 'RETURNS', 'VIRTUAL'], {
     errorMap: () => ({ message: 'Vui lòng chọn loại vị trí' }),
   }),
   locationProfile: z.enum(['STANDARD', 'BULK', 'HEAVY']).optional().default('STANDARD'),
@@ -31,7 +31,7 @@ export const locationDefaultValues = {
   locationCode: '',
   warehouseId: '',
   zoneId: '',
-  locationType: 'FLOOR',
+  locationType: 'STORAGE',
   locationProfile: 'STANDARD',
   areaM2: null,
   stackLimitKg: null,

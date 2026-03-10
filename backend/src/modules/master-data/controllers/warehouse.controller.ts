@@ -15,39 +15,39 @@ export class WarehouseController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('MASTER_DATA.WAREHOUSE.CREATE')
+  @Permission('master_data.warehouse.create')
   async create(@Body() dto: CreateWarehouseDto, @CurrentUser() user: RequestUser) {
     return this.warehouseService.create(dto, { userId: user.id });
   }
 
   @Get()
-  @Permission('MASTER_DATA.WAREHOUSE.READ')
+  @Permission('master_data.warehouse.view')
   async findMany(@Query() dto: ListWarehouseDto) {
     return this.warehouseService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('MASTER_DATA.WAREHOUSE.READ')
+  @Permission('master_data.warehouse.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.warehouseService.findById(id);
   }
 
   @Put(':id')
-  @Permission('MASTER_DATA.WAREHOUSE.UPDATE')
+  @Permission('master_data.warehouse.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWarehouseDto, @CurrentUser() user: RequestUser) {
     return this.warehouseService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.WAREHOUSE.DEACTIVATE')
+  @Permission('master_data.warehouse.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DeactivateDto, @CurrentUser() user: RequestUser) {
     return this.warehouseService.deactivate(id, dto, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('MASTER_DATA.WAREHOUSE.REACTIVATE')
+  @Permission('master_data.warehouse.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReactivateDto, @CurrentUser() user: RequestUser) {
     return this.warehouseService.reactivate(id, dto, { userId: user.id });
   }

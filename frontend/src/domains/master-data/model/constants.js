@@ -5,17 +5,17 @@ export const OWNER_GROUPS = [
 ]
 
 export const OWNER_TYPES = [
-  { value: 'DOMESTIC', label: 'Trong nước' },
-  { value: 'EXPORT', label: 'Xuất khẩu' },
-  { value: 'IMPORT', label: 'Nhập khẩu' },
+  { value: 'DIRECT', label: 'Trực tiếp' },
+  { value: 'CONSIGNED', label: 'Ký gửi' },
+  { value: 'OTHER', label: 'Khác' },
 ]
 
 // Vendor constants
 export const SUPPLIER_GROUPS = [
-  { value: 'VESSEL', label: 'Tàu' },
-  { value: 'TRUCK', label: 'Xe tải' },
-  { value: 'BARGE', label: 'Sà lan' },
-  { value: 'OTHER', label: 'Khác' },
+  { value: 'DOMESTIC', label: 'Nội địa' },
+  { value: 'OVERSEAS', label: 'Nước ngoài' },
+  { value: 'VESSEL_AGENT', label: 'Đại lý tàu' },
+  { value: 'TRADER', label: 'Thương nhân' },
 ]
 
 // Customer constants
@@ -33,9 +33,15 @@ export const CUSTOMER_TYPES = [
 // Item constants
 export const CARGO_FORMS = [
   { value: 'BULK', label: 'Hàng rời' },
-  { value: 'BAGGED', label: 'Đóng bao' },
-  { value: 'CONTAINERIZED', label: 'Container' },
-  { value: 'LIQUID', label: 'Lỏng' },
+  { value: 'BAGGED_25KG', label: 'Đóng bao 25kg' },
+  { value: 'BAGGED_40KG', label: 'Đóng bao 40kg' },
+  { value: 'BAGGED_50KG', label: 'Đóng bao 50kg' },
+  { value: 'JUMBO', label: 'Jumbo' },
+  { value: 'PACKAGING', label: 'Bao bì' },
+  { value: 'CONTAINER', label: 'Container' },
+  { value: 'DRUM', label: 'Thùng' },
+  { value: 'PALLET', label: 'Pallet' },
+  { value: 'OTHER', label: 'Khác' },
 ]
 
 export const PRODUCT_GROUPS = [
@@ -49,27 +55,30 @@ export const PRODUCT_GROUPS = [
 // Warehouse constants
 export const WAREHOUSE_TYPES = [
   { value: 'COVERED', label: 'Kho có mái che' },
-  { value: 'OPEN', label: 'Bãi hở' },
-  { value: 'COLD', label: 'Kho lạnh' },
-  { value: 'HAZMAT', label: 'Kho hàng nguy hiểm' },
+  { value: 'OPEN_YARD', label: 'Bãi hở' },
 ]
 
 // Zone constants
 export const ZONE_TYPES = [
-  { value: 'BULK_STORAGE', label: 'Lưu trữ hàng rời' },
-  { value: 'BAGGED_STORAGE', label: 'Lưu trữ hàng bao' },
-  { value: 'CONTAINER_YARD', label: 'Bãi container' },
   { value: 'RECEIVING', label: 'Khu vực nhận hàng' },
-  { value: 'SHIPPING', label: 'Khu vực xuất hàng' },
+  { value: 'STORAGE', label: 'Khu vực lưu trữ' },
   { value: 'STAGING', label: 'Khu vực tập kết' },
+  { value: 'SHIPPING', label: 'Khu vực xuất hàng' },
+  { value: 'QC', label: 'Khu vực kiểm định' },
+  { value: 'DAMAGED', label: 'Khu vực hàng hỏng' },
+  { value: 'RETURNS', label: 'Khu vực hàng trả' },
 ]
 
 // Location constants
 export const LOCATION_TYPES = [
-  { value: 'FLOOR', label: 'Sàn' },
-  { value: 'RACK', label: 'Kệ' },
-  { value: 'BIN', label: 'Ngăn' },
-  { value: 'PILE', label: 'Đống' },
+  { value: 'RECEIVING', label: 'Khu vực nhận hàng' },
+  { value: 'STORAGE', label: 'Khu vực lưu trữ' },
+  { value: 'STAGING', label: 'Khu vực tập kết' },
+  { value: 'SHIPPING', label: 'Khu vực xuất hàng' },
+  { value: 'QC', label: 'Khu vực kiểm định' },
+  { value: 'DAMAGED', label: 'Khu vực hàng hỏng' },
+  { value: 'RETURNS', label: 'Khu vực hàng trả' },
+  { value: 'VIRTUAL', label: 'Vị trí ảo' },
 ]
 
 export const LOCATION_PROFILES = [
@@ -91,6 +100,7 @@ export const UOM_CLASSES = [
   { value: 'VOLUME', label: 'Thể tích' },
   { value: 'QUANTITY', label: 'Số lượng' },
   { value: 'LENGTH', label: 'Chiều dài' },
+  { value: 'AREA', label: 'Diện tích' },
 ]
 
 // Vehicle Type constants
