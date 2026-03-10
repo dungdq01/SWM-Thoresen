@@ -20,6 +20,7 @@ const VendorsPage = lazy(() => import('@pages/master-data').then(m => ({ default
 const CustomersPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.CustomersPage })))
 const ItemsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemsPage })))
 const WarehousesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.WarehousesPage })))
+const WarehouseDetailPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.WarehouseDetailPage })))
 const ZonesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ZonesPage })))
 const LocationsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationsPage })))
 const UomsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.UomsPage })))
@@ -182,6 +183,10 @@ export const router = createBrowserRouter([
           {
             path: 'warehouses',
             element: withSuspense(WarehousesPage),
+          },
+          {
+            path: 'warehouses/:id',
+            element: withSuspense(WarehouseDetailPage),
           },
           {
             path: 'zones',

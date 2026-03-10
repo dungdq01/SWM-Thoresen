@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { Warehouse } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Warehouse, Eye } from 'lucide-react'
 import {
   useWarehouseList,
   useCreateWarehouse,
@@ -24,8 +25,8 @@ import {
 import { WarehouseFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 const formatNumber = (num) => {
@@ -34,6 +35,8 @@ const formatNumber = (num) => {
 }
 
 export function WarehousesPage() {
+  const navigate = useNavigate()
+
   const [filters, setFilters] = useState({
     page: 1,
     pageSize: 20,
@@ -123,17 +126,17 @@ export function WarehousesPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'warehouseType', placeholder: 'Warehouse Type', options: WAREHOUSE_TYPES },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'warehouseType', placeholder: 'Loại kho', options: WAREHOUSE_TYPES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Warehouse Management"
-        description="List of all warehouses in the system"
+        title="Quản lý kho"
+        description="Danh sách tất cả kho trong hệ thống"
         onAdd={handleAdd}
-        addLabel="Add Warehouse"
+        addLabel="Thêm kho"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -149,14 +152,14 @@ export function WarehousesPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by code or name..."
+          placeholder="Tìm theo mã hoặc tên..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={warehouses.length === 0}
-        emptyMessage="No warehouses available"
+        emptyMessage="Chưa có kho nào"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -164,11 +167,11 @@ export function WarehousesPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Warehouse Code</TableHead>
-            <TableHead>Warehouse Name</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Capacity</TableHead>
-            <TableHead align="center">Status</TableHead>
+            <TableHead>Mã kho</TableHead>
+            <TableHead>Tên kho</TableHead>
+            <TableHead>Loại</TableHead>
+            <TableHead>Sức chứa</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -177,12 +180,15 @@ export function WarehousesPage() {
             {warehouses.map((wh) => (
               <TableRow key={wh.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/app/master-data/warehouses/${wh.id}`)}
+                    className="flex items-center gap-2 group"
+                  >
                     <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
                       <Warehouse className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <span className="font-medium text-navy-900">{wh.warehouseCode}</span>
-                  </div>
+                    <span className="font-medium text-navy-900 group-hover:text-blue-600 transition-colors">{wh.warehouseCode}</span>
+                  </button>
                 </TableCell>
                 <TableCell>
                   <div>

@@ -37,11 +37,11 @@ export function RolesPage() {
 
   return (
     <SettingsLayout
-      title="Role Management"
+      title="Quản lý vai trò"
       description="Tạo và quản lý các vai trò trong hệ thống. Mỗi vai trò có thể được gán các quyền khác nhau."
       actions={
         <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-          Create Role
+          Tạo vai trò
         </Button>
       }
     >
@@ -50,19 +50,19 @@ export function RolesPage() {
           value={search}
           onChange={setSearch}
           onClear={() => setSearch('')}
-          placeholder="Search by role code or name..."
+          placeholder="Tìm theo mã hoặc tên vai trò..."
           className="max-w-md"
         />
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Role Code</TableHead>
-              <TableHead>Role Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead align="right">Actions</TableHead>
+              <TableHead>Mã vai trò</TableHead>
+              <TableHead>Tên vai trò</TableHead>
+              <TableHead>Mô tả</TableHead>
+              <TableHead>Quyền</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead align="right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -71,7 +71,7 @@ export function RolesPage() {
             ) : filteredRoles.length === 0 ? (
               <TableEmpty
                 colSpan={6}
-                message={search ? 'No matching roles found' : 'No roles available'}
+                message={search ? 'Không tìm thấy vai trò phù hợp' : 'Chưa có vai trò nào'}
               />
             ) : (
               filteredRoles.map((role) => (
@@ -101,14 +101,14 @@ export function RolesPage() {
                       <button
                         onClick={() => openPermModal(role)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-ice-dark"
-                        title="Assign Permissions"
+                        title="Gán quyền"
                       >
                         <Shield className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEditModal(role)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
-                        title="Edit"
+                        title="Chỉnh sửa"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>

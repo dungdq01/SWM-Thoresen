@@ -25,8 +25,8 @@ import {
 import { ItemFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 export function ItemsPage() {
@@ -122,18 +122,18 @@ export function ItemsPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'cargoForm', placeholder: 'Cargo Form', options: CARGO_FORMS },
-    { key: 'productGroup', placeholder: 'Product Group', options: PRODUCT_GROUPS },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'cargoForm', placeholder: 'Dạng hàng', options: CARGO_FORMS },
+    { key: 'productGroup', placeholder: 'Nhóm sản phẩm', options: PRODUCT_GROUPS },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Item Management"
-        description="List of all items in the system"
+        title="Quản lý mặt hàng"
+        description="Danh sách tất cả mặt hàng trong hệ thống"
         onAdd={handleAdd}
-        addLabel="Add Item"
+        addLabel="Thêm mặt hàng"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -150,14 +150,14 @@ export function ItemsPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by code or name..."
+          placeholder="Tìm theo mã hoặc tên..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={items.length === 0}
-        emptyMessage="No items available"
+        emptyMessage="Chưa có mặt hàng nào"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -165,11 +165,11 @@ export function ItemsPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Item Code</TableHead>
-            <TableHead>Item Name</TableHead>
-            <TableHead>Cargo Form</TableHead>
-            <TableHead>Standard Weight</TableHead>
-            <TableHead align="center">Status</TableHead>
+            <TableHead>Mã hàng</TableHead>
+            <TableHead>Tên hàng</TableHead>
+            <TableHead>Dạng hàng</TableHead>
+            <TableHead>Trọng lượng chuẩn</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -199,10 +199,10 @@ export function ItemsPage() {
                 <TableCell>
                   <div className="text-sm">
                     {item.stdNetWeight && (
-                      <p className="text-navy-700">{item.stdNetWeight} kg (net)</p>
+                      <p className="text-navy-700">{item.stdNetWeight} kg (tịnh)</p>
                     )}
                     {item.stdGrossWeight && (
-                      <p className="text-navy-500">{item.stdGrossWeight} kg (gross)</p>
+                      <p className="text-navy-500">{item.stdGrossWeight} kg (tổng)</p>
                     )}
                     {!item.stdNetWeight && !item.stdGrossWeight && (
                       <span className="text-navy-400">—</span>

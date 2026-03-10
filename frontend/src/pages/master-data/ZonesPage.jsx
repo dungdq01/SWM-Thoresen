@@ -26,8 +26,8 @@ import { ZoneFormDrawer } from '@features/master-data'
 import { Badge } from '@shared/ui'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 const formatNumber = (num) => {
@@ -111,18 +111,18 @@ export function ZonesPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'warehouseId', placeholder: 'Warehouse', options: warehouseOptions },
-    { key: 'zoneType', placeholder: 'Zone Type', options: ZONE_TYPES },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'warehouseId', placeholder: 'Kho', options: warehouseOptions },
+    { key: 'zoneType', placeholder: 'Loại zone', options: ZONE_TYPES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Zone Management"
-        description="List of all zones in the warehouses"
+        title="Quản lý zone"
+        description="Danh sách tất cả zone trong các kho"
         onAdd={() => setDrawerState({ isOpen: true, data: null })}
-        addLabel="Add Zone"
+        addLabel="Thêm zone"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -139,14 +139,14 @@ export function ZonesPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by code or name..."
+          placeholder="Tìm theo mã hoặc tên..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={zones.length === 0}
-        emptyMessage="No zones available"
+        emptyMessage="Chưa có zone nào"
         colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -154,12 +154,12 @@ export function ZonesPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Zone Code</TableHead>
-            <TableHead>Zone Name</TableHead>
-            <TableHead>Warehouse</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Capacity</TableHead>
-            <TableHead align="center">Status</TableHead>
+            <TableHead>Mã zone</TableHead>
+            <TableHead>Tên zone</TableHead>
+            <TableHead>Kho</TableHead>
+            <TableHead>Loại</TableHead>
+            <TableHead>Sức chứa</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
@@ -179,7 +179,7 @@ export function ZonesPage() {
                   <div>
                     <p className="font-medium text-navy-900">{zone.zoneName}</p>
                     {zone.isBillingZone && (
-                      <Badge variant="success" className="mt-1">Billing Zone</Badge>
+                      <Badge variant="success" className="mt-1">Zone tính phí</Badge>
                     )}
                   </div>
                 </TableCell>

@@ -59,12 +59,12 @@ export function GovernancePage() {
 
   return (
     <SettingsLayout
-      title="Governance"
-      description="Quản lý business rules, decision logs và change controls trong hệ thống."
+      title="Quản trị"
+      description="Quản lý quy tắc nghiệp vụ, nhật ký quyết định và kiểm soát thay đổi trong hệ thống."
       actions={
         activeTab === 'rules' && (
           <Button icon={<Plus className="w-5 h-5" />} onClick={openCreateModal}>
-            Create Rule
+            Tạo quy tắc
           </Button>
         )
       }
@@ -73,11 +73,11 @@ export function GovernancePage() {
         <TabsList>
           <TabsTrigger value="rules">
             <BookOpen className="w-4 h-4 mr-2" />
-            Business Rules
+            Quy tắc nghiệp vụ
           </TabsTrigger>
           <TabsTrigger value="decisions">
             <FileCheck className="w-4 h-4 mr-2" />
-            Decision Logs
+            Nhật ký quyết định
           </TabsTrigger>
         </TabsList>
 
@@ -88,13 +88,13 @@ export function GovernancePage() {
                 value={search}
                 onChange={setSearch}
                 onClear={() => setSearch('')}
-                placeholder="Search by rule code or name..."
+                placeholder="Tìm theo mã hoặc tên quy tắc..."
                 className="flex-1 max-w-md"
               />
               <Select
                 value={domainFilter}
                 onChange={(e) => setDomainFilter(e.target.value)}
-                options={[{ value: '', label: 'All domains' }, ...RULE_DOMAINS]}
+                options={[{ value: '', label: 'Tất cả lĩnh vực' }, ...RULE_DOMAINS]}
                 className="w-48"
               />
             </div>
@@ -102,19 +102,19 @@ export function GovernancePage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Rule Code</TableHead>
-                  <TableHead>Rule Name</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead align="right">Actions</TableHead>
+                  <TableHead>Mã quy tắc</TableHead>
+                  <TableHead>Tên quy tắc</TableHead>
+                  <TableHead>Lĩnh vực</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Mô tả</TableHead>
+                  <TableHead align="right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rulesLoading ? (
                   <TableLoading colSpan={6} />
                 ) : filteredRules.length === 0 ? (
-                  <TableEmpty colSpan={6} message="No business rules available" />
+                  <TableEmpty colSpan={6} message="Chưa có quy tắc nghiệp vụ nào" />
                 ) : (
                   filteredRules.map((rule) => (
                     <TableRow key={rule.id}>
@@ -157,25 +157,25 @@ export function GovernancePage() {
               value={search}
               onChange={setSearch}
               onClear={() => setSearch('')}
-              placeholder="Search by decision code or title..."
+              placeholder="Tìm kiếm quyết định..."
               className="max-w-md"
             />
 
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Decision Code</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Decided By</TableHead>
-                  <TableHead>Decision Date</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead>Mã quyết định</TableHead>
+                  <TableHead>Tiêu đề</TableHead>
+                  <TableHead>Người quyết định</TableHead>
+                  <TableHead>Ngày quyết định</TableHead>
+                  <TableHead>Mô tả</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {logsLoading ? (
                   <TableLoading colSpan={5} />
                 ) : filteredLogs.length === 0 ? (
-                  <TableEmpty colSpan={5} message="No decision logs available" />
+                  <TableEmpty colSpan={5} message="Chưa có nhật ký quyết định nào" />
                 ) : (
                   filteredLogs.map((log) => (
                     <TableRow key={log.id}>

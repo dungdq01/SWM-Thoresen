@@ -27,8 +27,8 @@ import { LocationFormDrawer } from '@features/master-data'
 import { Badge } from '@shared/ui'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 const formatNumber = (num) => {
@@ -103,19 +103,19 @@ export function LocationsPage() {
   }, [])
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'warehouseId', placeholder: 'Warehouse', options: warehouseOptions },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'warehouseId', placeholder: 'Kho', options: warehouseOptions },
     { key: 'zoneId', placeholder: 'Zone', options: zoneOptions },
-    { key: 'locationType', placeholder: 'Location Type', options: LOCATION_TYPES },
+    { key: 'locationType', placeholder: 'Loại vị trí', options: LOCATION_TYPES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Location Management"
-        description="List of all storage locations in the warehouses"
+        title="Quản lý vị trí"
+        description="Danh sách tất cả vị trí lưu kho trong các kho"
         onAdd={() => setDrawerState({ isOpen: true, data: null })}
-        addLabel="Add Location"
+        addLabel="Thêm vị trí"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -133,14 +133,14 @@ export function LocationsPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by location code..."
+          placeholder="Tìm theo mã vị trí..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={locations.length === 0}
-        emptyMessage="No locations available"
+        emptyMessage="Chưa có vị trí nào"
         colSpan={8}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -148,13 +148,13 @@ export function LocationsPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Location Code</TableHead>
-            <TableHead>Warehouse / Zone</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Area</TableHead>
-            <TableHead>Capacity</TableHead>
-            <TableHead align="center">Location Status</TableHead>
-            <TableHead align="center">Active</TableHead>
+            <TableHead>Mã vị trí</TableHead>
+            <TableHead>Kho / Zone</TableHead>
+            <TableHead>Loại</TableHead>
+            <TableHead>Diện tích</TableHead>
+            <TableHead>Sức chứa</TableHead>
+            <TableHead align="center">Trạng thái vị trí</TableHead>
+            <TableHead align="center">Hoạt động</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>

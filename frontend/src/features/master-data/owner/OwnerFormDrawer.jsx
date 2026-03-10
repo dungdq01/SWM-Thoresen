@@ -90,7 +90,7 @@ export function OwnerFormDrawer({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 flex flex-col"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-navy-100">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-navy-100 sm:px-6 sm:py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-primary-600" />
@@ -113,8 +113,8 @@ export function OwnerFormDrawer({
             </div>
 
             <form onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 overflow-y-auto">
-              <div className="p-6 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 space-y-4 sm:p-6 sm:space-y-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-navy-700 mb-1.5">
                       Mã chủ hàng {isEdit ? '' : <span className="text-xs text-navy-400 font-normal">(Tự động)</span>}
@@ -155,7 +155,7 @@ export function OwnerFormDrawer({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   <Select
                     label="Nhóm chủ hàng"
                     required
@@ -175,7 +175,7 @@ export function OwnerFormDrawer({
                 <div className="border-t border-navy-100 pt-5">
                   <h3 className="text-sm font-semibold text-navy-900 mb-4">Thông tin thuế & thanh toán</h3>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                       <div>
                         <label className="block text-sm font-medium text-navy-700 mb-1.5">
                           Mã số thuế
@@ -198,7 +198,7 @@ export function OwnerFormDrawer({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                       <div>
                         <label className="block text-sm font-medium text-navy-700 mb-1.5">
                           Email thanh toán
@@ -238,7 +238,7 @@ export function OwnerFormDrawer({
               </div>
             </form>
 
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-navy-100 bg-navy-50/50">
+            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-navy-100 bg-navy-50/50 sm:gap-3 sm:px-6 sm:py-4">
               <Button variant="outline" onClick={onClose} disabled={isLoading}>
                 Hủy bỏ
               </Button>

@@ -25,8 +25,8 @@ import {
 import { OwnerFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 export function OwnersPage() {
@@ -122,18 +122,18 @@ export function OwnersPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'ownerGroup', placeholder: 'Group', options: OWNER_GROUPS },
-    { key: 'ownerType', placeholder: 'Type', options: OWNER_TYPES },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'ownerGroup', placeholder: 'Nhóm', options: OWNER_GROUPS },
+    { key: 'ownerType', placeholder: 'Loại', options: OWNER_TYPES },
   ]
 
   return (
     <>
       <PageHeader
-        title="Owner Management"
-        description="List of all owners in the system"
+        title="Quản lý chủ hàng"
+        description="Danh sách tất cả chủ hàng trong hệ thống"
         onAdd={handleAdd}
-        addLabel="Add Owner"
+        addLabel="Thêm chủ hàng"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -150,14 +150,14 @@ export function OwnersPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by code or name..."
+          placeholder="Tìm theo mã hoặc tên..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={owners.length === 0}
-        emptyMessage="No owners available"
+        emptyMessage="Chưa có chủ hàng nào"
         colSpan={6}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -165,11 +165,11 @@ export function OwnersPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Owner Code</TableHead>
-            <TableHead>Owner Name</TableHead>
-            <TableHead>Group</TableHead>
-            <TableHead>Tax Code</TableHead>
-            <TableHead align="center">Status</TableHead>
+            <TableHead>Mã chủ hàng</TableHead>
+            <TableHead>Tên chủ hàng</TableHead>
+            <TableHead>Nhóm</TableHead>
+            <TableHead>Mã số thuế</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>

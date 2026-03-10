@@ -23,8 +23,8 @@ import { Badge } from '@shared/ui'
 import { VehicleTypeFormDrawer } from '@features/master-data'
 
 const STATUS_OPTIONS = [
-  { value: 'true', label: 'Active' },
-  { value: 'false', label: 'Inactive' },
+  { value: 'true', label: 'Hoạt động' },
+  { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
 const getCategoryLabel = (category) => {
@@ -108,17 +108,17 @@ export function VehicleTypesPage() {
   }
 
   const filterConfig = [
-    { key: 'isActive', placeholder: 'Status', options: STATUS_OPTIONS },
-    { key: 'category', placeholder: 'Category', options: VEHICLE_CATEGORIES },
+    { key: 'isActive', placeholder: 'Trạng thái', options: STATUS_OPTIONS },
+    { key: 'category', placeholder: 'Danh mục', options: VEHICLE_CATEGORIES },
   ]
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Vehicle Type Management"
-        description="List of all vehicle types for transportation"
+        title="Quản lý loại phương tiện"
+        description="Danh sách tất cả loại phương tiện vận chuyển"
         onAdd={handleAdd}
-        addLabel="Add Vehicle Type"
+        addLabel="Thêm loại xe"
         onRefresh={refetch}
         isRefreshing={isLoading}
       />
@@ -134,14 +134,14 @@ export function VehicleTypesPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          placeholder="Search by code or name..."
+          placeholder="Tìm theo mã hoặc tên..."
         />
       </div>
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={vehicleTypes.length === 0}
-        emptyMessage="No vehicle types available"
+        emptyMessage="Chưa có loại phương tiện nào"
         colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
@@ -149,12 +149,12 @@ export function VehicleTypesPage() {
       >
         <TableHeader>
           <TableRow hoverable={false}>
-            <TableHead>Type Code</TableHead>
-            <TableHead>Type Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Max Payload</TableHead>
-            <TableHead>Tare Weight</TableHead>
-            <TableHead align="center">Status</TableHead>
+            <TableHead>Mã loại</TableHead>
+            <TableHead>Tên loại</TableHead>
+            <TableHead>Danh mục</TableHead>
+            <TableHead>Tải trọng tối đa</TableHead>
+            <TableHead>Trọng lượng bì</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
         </TableHeader>
