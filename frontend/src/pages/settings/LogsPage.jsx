@@ -24,8 +24,8 @@ import dayjs from 'dayjs'
 
 export function LogsPage() {
   const [activeTab, setActiveTab] = useState('audit')
-  const [auditFilters, setAuditFilters] = useState({ page: 1, limit: 20, entity: '' })
-  const [exceptionFilters, setExceptionFilters] = useState({ page: 1, limit: 20, resolved: '' })
+  const [auditFilters, setAuditFilters] = useState({ page: 1, limit: 20, entityType: '' })
+  const [exceptionFilters, setExceptionFilters] = useState({ page: 1, limit: 20, isResolved: '' })
 
   const { data: auditData, isLoading: auditLoading } = useAuditLogs(auditFilters)
   const { data: exceptionData, isLoading: exceptionLoading } = useExceptionLogs(exceptionFilters)
@@ -61,9 +61,9 @@ export function LogsPage() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <SearchInput
-                value={auditFilters.entity || ''}
-                onChange={(val) => setAuditFilters((f) => ({ ...f, entity: val, page: 1 }))}
-                onClear={() => setAuditFilters((f) => ({ ...f, entity: '', page: 1 }))}
+                value={auditFilters.entityType || ''}
+                onChange={(val) => setAuditFilters((f) => ({ ...f, entityType: val, page: 1 }))}
+                onClear={() => setAuditFilters((f) => ({ ...f, entityType: '', page: 1 }))}
                 placeholder="Lọc theo loại thực thể..."
                 className="max-w-md"
               />
@@ -136,8 +136,8 @@ export function LogsPage() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <Select
-                value={exceptionFilters.resolved}
-                onChange={(e) => setExceptionFilters((f) => ({ ...f, resolved: e.target.value, page: 1 }))}
+                value={exceptionFilters.isResolved}
+                onChange={(e) => setExceptionFilters((f) => ({ ...f, isResolved: e.target.value, page: 1 }))}
                 options={[
                   { value: '', label: 'Tất cả trạng thái' },
                   { value: 'false', label: 'Chưa xử lý' },

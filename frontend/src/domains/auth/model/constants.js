@@ -37,10 +37,15 @@ export const SEQUENCE_RESET_POLICIES = [
   { value: 'YEARLY', label: 'Hàng năm' },
 ]
 
-export const RULE_STATUS = [
-  { value: 'DRAFT', label: 'Nháp' },
-  { value: 'ACTIVE', label: 'Đang áp dụng' },
-  { value: 'DEPRECATED', label: 'Ngưng sử dụng' },
+export const RULE_CURRENT_STATUS = [
+  { value: 'CONFIRMED', label: 'Đã xác nhận' },
+  { value: 'TO_CONFIRM', label: 'Cần xác nhận' },
+  { value: 'PHASE_2', label: 'Phase 2' },
+]
+
+export const RULE_EFFECTIVE_PHASE = [
+  { value: 'GO_LIVE', label: 'Go Live' },
+  { value: 'PHASE_2', label: 'Phase 2' },
 ]
 
 export const RULE_DOMAINS = [
@@ -48,7 +53,7 @@ export const RULE_DOMAINS = [
   { value: 'INBOUND', label: 'Nhập kho' },
   { value: 'OUTBOUND', label: 'Xuất kho' },
   { value: 'INVENTORY', label: 'Tồn kho' },
-  { value: 'BILLING', label: 'Thanh toán' },
+  { value: 'QUALITY', label: 'Chất lượng' },
 ]
 
 export const EXCEPTION_SEVERITY = [

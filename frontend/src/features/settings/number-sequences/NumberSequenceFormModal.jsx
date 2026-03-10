@@ -6,12 +6,12 @@ import { Modal, Input, Textarea, Select, Switch, Button } from '@shared/ui'
 import { useCreateNumberSequence, useUpdateNumberSequence, SEQUENCE_SCOPE_TYPES, SEQUENCE_RESET_POLICIES } from '@domains/auth'
 
 const sequenceSchema = z.object({
-  sequenceCode: z.string().min(1, 'Mã sequence là bắt buộc').max(20, 'Tối đa 20 ký tự'),
-  description: z.string().min(1, 'Mô tả là bắt buộc').max(200, 'Tối đa 200 ký tự'),
+  sequenceCode: z.string().min(1, 'Mã sequence là bắt buộc').max(30, 'Tối đa 30 ký tự'),
+  description: z.string().max(255, 'Tối đa 255 ký tự').optional(),
   scopeType: z.string().min(1, 'Loại scope là bắt buộc'),
   resetPolicy: z.string().min(1, 'Chính sách reset là bắt buộc'),
-  prefixTemplate: z.string().max(20, 'Tối đa 20 ký tự').optional(),
-  formatTemplate: z.string().min(1, 'Template format là bắt buộc').max(100, 'Tối đa 100 ký tự'),
+  prefixTemplate: z.string().min(1, 'Prefix là bắt buộc').max(100, 'Tối đa 100 ký tự'),
+  formatTemplate: z.string().min(1, 'Template format là bắt buộc').max(150, 'Tối đa 150 ký tự'),
   runningNoLength: z.number().int().min(1).max(10).default(6),
   allowGap: z.boolean().default(false),
 })
@@ -36,7 +36,7 @@ export function NumberSequenceFormModal({ isOpen, onClose, editData }) {
       description: '',
       scopeType: 'PER_WAREHOUSE',
       resetPolicy: 'DAILY',
-      prefixTemplate: '',
+      prefixTemplate: 'SEQ',
       formatTemplate: '{prefix}-{yyyymmdd}-{running_no}',
       runningNoLength: 6,
       allowGap: false,
@@ -50,7 +50,7 @@ export function NumberSequenceFormModal({ isOpen, onClose, editData }) {
         description: editData.description,
         scopeType: editData.scopeType,
         resetPolicy: editData.resetPolicy,
-        prefixTemplate: editData.prefixTemplate || '',
+        prefixTemplate: editData.prefixTemplate || 'SEQ',
         formatTemplate: editData.formatTemplate,
         runningNoLength: editData.runningNoLength || 6,
         allowGap: editData.allowGap || false,
@@ -61,7 +61,7 @@ export function NumberSequenceFormModal({ isOpen, onClose, editData }) {
         description: '',
         scopeType: 'PER_WAREHOUSE',
         resetPolicy: 'DAILY',
-        prefixTemplate: '',
+        prefixTemplate: 'SEQ',
         formatTemplate: '{prefix}-{yyyymmdd}-{running_no}',
         runningNoLength: 6,
         allowGap: false,
@@ -118,6 +118,7 @@ export function NumberSequenceFormModal({ isOpen, onClose, editData }) {
             label="Prefix"
             placeholder="VD: RCV"
             error={errors.prefixTemplate?.message}
+            required
             {...register('prefixTemplate')}
           />
         </div>
@@ -127,7 +128,6 @@ export function NumberSequenceFormModal({ isOpen, onClose, editData }) {
           placeholder="Mô tả mục đích sử dụng sequence..."
           rows={2}
           error={errors.description?.message}
-          required
           {...register('description')}
         />
 

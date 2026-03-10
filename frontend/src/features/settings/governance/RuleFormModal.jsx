@@ -3,15 +3,19 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal, Input, Textarea, Select, Button } from '@shared/ui'
-import { useCreateRule, useUpdateRule, RULE_STATUS, RULE_DOMAINS } from '@domains/auth'
+import { useCreateRule, useUpdateRule, RULE_DOMAINS, RULE_CURRENT_STATUS, RULE_EFFECTIVE_PHASE } from '@domains/auth'
 
 const ruleSchema = z.object({
   ruleCode: z.string().min(1, 'Mã rule là bắt buộc').max(50, 'Tối đa 50 ký tự'),
-  ruleName: z.string().min(1, 'Tên rule là bắt buộc').max(200, 'Tối đa 200 ký tự'),
-  description: z.string().max(1000, 'Tối đa 1000 ký tự').optional(),
-  domain: z.string().min(1, 'Domain là bắt buộc'),
-  status: z.string().min(1, 'Trạng thái là bắt buộc'),
-  rationale: z.string().max(1000, 'Tối đa 1000 ký tự').optional(),
+  title: z.string().min(1, 'Tên rule là bắt buộc').max(255, 'Tối đa 255 ký tự'),
+  description: z.string().min(1, 'Mô tả là bắt buộc'),
+  domain: z.string().min(1, 'Phạm vi là bắt buộc').max(50, 'Tối đa 50 ký tự'),
+  currentStatus: z.string().min(1, 'Trạng thái là bắt buộc'),
+  sourceOfTruth: z.string().min(1, 'Nguồn gốc/Căn cứ là bắt buộc').max(255, 'Tối đa 255 ký tự'),
+  effectivePhase: z.string().min(1, 'Giai đoạn áp dụng là bắt buộc'),
+  brdReference: z.string().max(255, 'Tối đa 255 ký tự').optional(),
+  supersedes: z.string().max(255, 'Tối đa 255 ký tự').optional(),
+  ownerRole: z.string().max(50, 'Tối đa 50 ký tự').optional(),
 })
 
 export function RuleFormModal({ isOpen, onClose, editData }) {
@@ -29,11 +33,15 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
     resolver: zodResolver(ruleSchema),
     defaultValues: {
       ruleCode: '',
-      ruleName: '',
+      title: '',
       description: '',
       domain: '',
-      status: 'DRAFT',
-      rationale: '',
+      currentStatus: 'TO_CONFIRM',
+      sourceOfTruth: '',
+      effectivePhase: 'GO_LIVE',
+      brdReference: '',
+      supersedes: '',
+      ownerRole: '',
     },
   })
 
@@ -41,20 +49,28 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
     if (editData) {
       reset({
         ruleCode: editData.ruleCode,
-        ruleName: editData.ruleName,
+        title: editData.title,
         description: editData.description || '',
         domain: editData.domain,
-        status: editData.status,
-        rationale: editData.rationale || '',
+        currentStatus: editData.currentStatus,
+        sourceOfTruth: editData.sourceOfTruth || '',
+        effectivePhase: editData.effectivePhase || 'GO_LIVE',
+        brdReference: editData.brdReference || '',
+        supersedes: editData.supersedes || '',
+        ownerRole: editData.ownerRole || '',
       })
     } else {
       reset({
         ruleCode: '',
-        ruleName: '',
+        title: '',
         description: '',
         domain: '',
-        status: 'DRAFT',
-        rationale: '',
+        currentStatus: 'TO_CONFIRM',
+        sourceOfTruth: '',
+        effectivePhase: 'GO_LIVE',
+        brdReference: '',
+        supersedes: '',
+        ownerRole: '',
       })
     }
   }, [editData, reset])
@@ -105,9 +121,9 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
           />
 
           <Select
-            label="Domain"
+            label="Phạm vi"
             options={RULE_DOMAINS}
-            placeholder="Chọn domain"
+            placeholder="Chọn phạm vi"
             error={errors.domain?.message}
             required
             {...register('domain')}
@@ -117,9 +133,9 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
         <Input
           label="Tên Rule"
           placeholder="VD: Quy tắc kiểm tra dung sai cân"
-          error={errors.ruleName?.message}
+          error={errors.title?.message}
           required
-          {...register('ruleName')}
+          {...register('title')}
         />
 
         <Textarea
@@ -127,23 +143,57 @@ export function RuleFormModal({ isOpen, onClose, editData }) {
           placeholder="Mô tả chi tiết nội dung và điều kiện áp dụng của rule..."
           rows={3}
           error={errors.description?.message}
+          required
           {...register('description')}
         />
 
-        <Select
-          label="Trạng thái"
-          options={RULE_STATUS}
-          error={errors.status?.message}
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="Trạng thái hiện tại"
+            options={RULE_CURRENT_STATUS}
+            error={errors.currentStatus?.message}
+            required
+            {...register('currentStatus')}
+          />
+
+          <Select
+            label="Giai đoạn áp dụng"
+            options={RULE_EFFECTIVE_PHASE}
+            error={errors.effectivePhase?.message}
+            required
+            {...register('effectivePhase')}
+          />
+        </div>
+
+        <Input
+          label="Nguồn gốc / Căn cứ"
+          placeholder="VD: PRD Section 3.2.1, Email từ khách hàng..."
+          error={errors.sourceOfTruth?.message}
           required
-          {...register('status')}
+          {...register('sourceOfTruth')}
         />
 
-        <Textarea
-          label="Lý do / Rationale"
-          placeholder="Lý do tại sao cần áp dụng rule này..."
-          rows={2}
-          error={errors.rationale?.message}
-          {...register('rationale')}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Tài liệu tham chiếu"
+            placeholder="VD: BRD-v2.0-Section-4.3"
+            error={errors.brdReference?.message}
+            {...register('brdReference')}
+          />
+
+          <Input
+            label="Thay thế cho rule"
+            placeholder="Rule bị thay thế (nếu có)"
+            error={errors.supersedes?.message}
+            {...register('supersedes')}
+          />
+        </div>
+
+        <Input
+          label="Vai trò chịu trách nhiệm"
+          placeholder="VD: WH_MANAGER"
+          error={errors.ownerRole?.message}
+          {...register('ownerRole')}
         />
       </form>
     </Modal>

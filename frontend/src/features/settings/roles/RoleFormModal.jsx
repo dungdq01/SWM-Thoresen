@@ -7,9 +7,9 @@ import { useCreateRole, useUpdateRole } from '@domains/auth'
 
 const roleSchema = z.object({
   roleCode: z.string().min(1, 'Mã vai trò là bắt buộc').max(50, 'Tối đa 50 ký tự'),
-  roleName: z.string().min(1, 'Tên vai trò là bắt buộc').max(100, 'Tối đa 100 ký tự'),
-  description: z.string().max(500, 'Tối đa 500 ký tự').optional(),
-  isActive: z.boolean().default(true),
+  roleName: z.string().min(1, 'Tên vai trò là bắt buộc').max(150, 'Tối đa 150 ký tự'),
+  description: z.string().optional(),
+  isActive: z.boolean().optional(),
 })
 
 export function RoleFormModal({ isOpen, onClose, editData }) {
@@ -58,7 +58,9 @@ export function RoleFormModal({ isOpen, onClose, editData }) {
       if (isEdit) {
         await updateRole.mutateAsync({ id: editData.id, data })
       } else {
-        await createRole.mutateAsync(data)
+        // Remove isActive for create - backend doesn't accept it
+        const { isActive, ...createData } = data
+        await createRole.mutateAsync(createData)
       }
       onClose()
       reset()
@@ -115,12 +117,14 @@ export function RoleFormModal({ isOpen, onClose, editData }) {
           {...register('description')}
         />
 
-        <Switch
-          label="Trạng thái hoạt động"
-          description="Vai trò đang hoạt động có thể được gán cho người dùng"
-          checked={watch('isActive')}
-          onChange={(value) => setValue('isActive', value)}
-        />
+        {isEdit && (
+          <Switch
+            label="Trạng thái hoạt động"
+            description="Vai trò đang hoạt động có thể được gán cho người dùng"
+            checked={watch('isActive')}
+            onChange={(value) => setValue('isActive', value)}
+          />
+        )}
       </form>
     </Modal>
   )

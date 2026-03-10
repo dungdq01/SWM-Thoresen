@@ -35,11 +35,11 @@ const actionTone = (action) => {
 
 export function AuditTrailPage() {
   const [filters, setFilters] = useState({
-    keyword: '',
     entityType: '',
-    action: '',
-    dateFrom: '',
-    dateTo: '',
+    entityId: '',
+    userId: '',
+    fromDate: '',
+    toDate: '',
     page: 1,
     limit: 15,
   })
@@ -77,9 +77,15 @@ export function AuditTrailPage() {
       <div className="wrs-card p-4 mb-4">
         <div className="flex flex-wrap gap-3">
           <Input
-            placeholder="Tìm entity ID, user..."
-            value={filters.keyword}
-            onChange={(e) => setFilter('keyword', e.target.value)}
+            placeholder="Tìm entity ID..."
+            value={filters.entityId}
+            onChange={(e) => setFilter('entityId', e.target.value)}
+            className="w-52"
+          />
+          <Input
+            placeholder="User ID..."
+            value={filters.userId}
+            onChange={(e) => setFilter('userId', e.target.value)}
             className="w-52"
           />
           <select
@@ -91,32 +97,23 @@ export function AuditTrailPage() {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <select
-            className="wrs-input h-9 text-sm"
-            value={filters.action}
-            onChange={(e) => setFilter('action', e.target.value)}
-          >
-            {ACTION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
           <Input
             type="date"
-            value={filters.dateFrom}
-            onChange={(e) => setFilter('dateFrom', e.target.value)}
+            value={filters.fromDate}
+            onChange={(e) => setFilter('fromDate', e.target.value)}
             className="w-36"
           />
           <span className="self-center text-navy-400 text-sm">→</span>
           <Input
             type="date"
-            value={filters.dateTo}
-            onChange={(e) => setFilter('dateTo', e.target.value)}
+            value={filters.toDate}
+            onChange={(e) => setFilter('toDate', e.target.value)}
             className="w-36"
           />
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setFilters({ keyword: '', entityType: '', action: '', dateFrom: '', dateTo: '', page: 1, limit: 15 })}
+            onClick={() => setFilters({ entityType: '', entityId: '', userId: '', fromDate: '', toDate: '', page: 1, limit: 15 })}
           >
             Reset
           </Button>
