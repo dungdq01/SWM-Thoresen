@@ -3,11 +3,11 @@ import { AlertTriangle, ClipboardCheck, FileText, Scale, Truck, Waypoints } from
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/inbound-operations/purchase-orders', label: 'Purchase Orders', icon: FileText },
-  { to: '/app/inbound-operations/receipts', label: 'Receipts', icon: ClipboardCheck },
-  { to: '/app/inbound-operations/execution', label: 'Execution', icon: Scale },
-  { to: '/app/inbound-operations/exceptions', label: 'Exceptions', icon: AlertTriangle },
-  { to: '/app/inbound-operations/putaway', label: 'Putaway handoff', icon: Waypoints },
+  { to: '/app/inbound-operations/purchase-orders', label: 'Đơn mua hàng', icon: FileText },
+  { to: '/app/inbound-operations/receipts', label: 'Phiếu nhập', icon: ClipboardCheck },
+  { to: '/app/inbound-operations/execution', label: 'Thực hiện', icon: Scale },
+  { to: '/app/inbound-operations/exceptions', label: 'Ngoại lệ', icon: AlertTriangle },
+  { to: '/app/inbound-operations/putaway', label: 'Bàn giao lưu kho', icon: Waypoints },
 ]
 
 export function InboundOperationsLayout() {
@@ -15,7 +15,7 @@ export function InboundOperationsLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Inbound Operations</h1>
+          <h1 className="page-title">Quản lý nhập hàng</h1>
         </div>
       </div>
 
@@ -25,8 +25,8 @@ export function InboundOperationsLayout() {
             <Truck className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Operational Gatekeeper Navigation</h2>
-            <p className="module-nav-description">Track planning receipts, weigh-in/weigh-out, tolerance failures, re-weigh, and closing rules in a unified flow.</p>
+            <h2 className="module-nav-title">Điều hướng quy trình nhập hàng</h2>
+            <p className="module-nav-description">Theo dõi lập kế hoạch phiếu nhập, cân vào/cân ra, sai số dung sai, cân lại và quy tắc đóng trong một luồng thống nhất.</p>
           </div>
         </div>
 

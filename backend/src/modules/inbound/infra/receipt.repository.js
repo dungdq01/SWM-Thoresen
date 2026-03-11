@@ -139,6 +139,9 @@ class ReceiptRepository {
     if (filter.status) {
       if (Array.isArray(filter.status)) {
         where.status = { in: filter.status };
+      } else if (typeof filter.status === 'string' && filter.status.includes(',')) {
+        // Handle comma-separated string from frontend
+        where.status = { in: filter.status.split(',').map(s => s.trim()) };
       } else {
         where.status = filter.status;
       }

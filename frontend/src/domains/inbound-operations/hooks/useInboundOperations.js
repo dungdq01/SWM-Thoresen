@@ -138,8 +138,13 @@ export function useCancelInboundReceipt() {
 }
 
 export function useCompleteInboundPutaway() {
-  const { onSuccess, onError } = useInvalidateInboundQueries('Đã cập nhật handoff/close receipt', 'Không thể cập nhật putaway receipt')
-  return useMutation({ mutationFn: (id) => inboundOperationsApi.completePutaway(id), onSuccess, onError })
+  const { onSuccess, onError } = useInvalidateInboundQueries('Đã hoàn thành cất hàng', 'Không thể hoàn thành cất hàng')
+  return useMutation({ mutationFn: ({ id, data }) => inboundOperationsApi.completePutaway(id, data), onSuccess, onError })
+}
+
+export function useCloseInboundReceipt() {
+  const { onSuccess, onError } = useInvalidateInboundQueries('Đã đóng phiếu', 'Không thể đóng phiếu')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.closeReceipt(id), onSuccess, onError })
 }
 
 // ── Purchase Order hooks ──

@@ -6,6 +6,10 @@
       {
         "include": "modules/inventory-core/**/*.js",
         "outDir": "dist/src"
+      },
+      {
+        "include": "modules/inbound/**/*.js",
+        "outDir": "dist/src"
       }
     ],
     "watchAssets": true

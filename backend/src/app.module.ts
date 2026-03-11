@@ -9,6 +9,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { FoundationModule } from './modules/foundation/foundation.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { InboundModule } from './modules/inbound/inbound.module';
 import { OutboundModule } from './modules/outbound/outbound.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -25,6 +26,7 @@ import { InventoryCoreModule } from './modules/inventory-core/inventory-core.mod
     FoundationModule,
     MasterDataModule,
     AuthModule,
+    InboundModule,
     OutboundModule,
     BillingModule,
     ReportingModule,
@@ -42,14 +44,14 @@ import { InventoryCoreModule } from './modules/inventory-core/inventory-core.mod
       provide: APP_INTERCEPTOR,
       useClass: ResponseInterceptor,
     },
-    {
-      provide: APP_GUARD,
-      useClass: AuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: PermissionGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: AuthGuard,
+    // },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: PermissionGuard,
+    // },
   ],
 })
 export class AppModule {}

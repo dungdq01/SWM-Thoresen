@@ -59,10 +59,14 @@ export const inboundOperationsApi = {
   ),
   getPutawayQueue: withDataSource(
     (params) => inboundOperationsMockApi.getPutawayQueue(params),
-    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'RECEIVED' } })
+    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'RECEIVED,PUTAWAY' } })
   ),
   completePutaway: withDataSource(
-    (id) => inboundOperationsMockApi.completePutaway(id),
+    (id, data) => inboundOperationsMockApi.completePutaway(id, data),
+    (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/putaway-complete`, data)
+  ),
+  closeReceipt: withDataSource(
+    (id) => inboundOperationsMockApi.closeReceipt(id),
     (id) => httpClient.post(`${BASE_URL}/receipts/${id}/close`)
   ),
   getReceiptHistory: withDataSource(

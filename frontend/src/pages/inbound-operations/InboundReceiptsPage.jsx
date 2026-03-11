@@ -72,49 +72,49 @@ export function InboundReceiptsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Receipt planning & creation</h2>
+        <h2 className="section-title">Lập kế hoạch & tạo phiếu nhập</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Create Receipt</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Tạo phiếu nhập</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Input placeholder="Receipt/PO/ASN/B/L/Vehicle No." value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'REJECTED', label: 'REJECTED' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Status" />
-          <Select value={filters.receiptType} onChange={(e) => setFilters((prev) => ({ ...prev, receiptType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} placeholder="Receipt Type" />
-          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Owner" />
-          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Warehouse" />
-          <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Item" />
+          <Input placeholder="Số phiếu/PO/ASN/B/L/Biển số xe" value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'REJECTED', label: 'REJECTED' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Trạng thái" />
+          <Select value={filters.receiptType} onChange={(e) => setFilters((prev) => ({ ...prev, receiptType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} placeholder="Loại phiếu" />
+          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Chủ hàng" />
+          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Kho" />
+          <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Hàng hóa" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Receipt</TableHead>
-              <TableHead>PO / Vehicle</TableHead>
-              <TableHead>Owner / Item</TableHead>
-              <TableHead align="right">Expected</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Phiếu nhập</TableHead>
+              <TableHead>PO / Xe</TableHead>
+              <TableHead>Chủ hàng / Hàng hóa</TableHead>
+              <TableHead align="right">SL dự kiến</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No matching inbound receipts" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không có phiếu nhập phù hợp" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <div>
                     <p className="font-semibold text-navy-900">{row.receiptNumber}</p>
-                    <p className="text-xs text-navy-400">{row.receiptType} · attempt {row.attemptNumber}</p>
+                    <p className="text-xs text-navy-400">{row.receiptType} · lần {row.attemptNumber}</p>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium text-navy-800">{row.poNumber || 'N/A'}</p>
-                    <p className="text-xs text-navy-400">{row.vehicleNumber || row.blNumber || 'No vehicle'}</p>
+                    <p className="text-xs text-navy-400">{row.vehicleNumber || row.blNumber || 'Chưa có xe'}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -127,9 +127,9 @@ export function InboundReceiptsPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   {row.status === 'DRAFT' ? (
-                    <Button variant="outline" size="sm" onClick={() => confirmReceipt.mutate(row.id)}>Confirm</Button>
+                    <Button variant="outline" size="sm" onClick={() => confirmReceipt.mutate(row.id)}>Xác nhận</Button>
                   ) : (
-                    <span className="text-xs text-navy-400">Tracked in execution</span>
+                    <span className="text-xs text-navy-400">Đang xử lý</span>
                   )}
                 </TableCell>
               </TableRow>
@@ -143,40 +143,40 @@ export function InboundReceiptsPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Create Receipt"
-        description="Create receipt at runtime: 1 receipt = 1 trip = 1 vehicle."
+        title="Tạo phiếu nhập"
+        description="Tạo phiếu nhập khi xe đến: 1 phiếu = 1 chuyến = 1 xe."
         size="lg"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleCreate} disabled={createReceipt.isPending}>
-              {createReceipt.isPending ? 'Đang xử lý...' : 'Create Receipt'}
+              {createReceipt.isPending ? 'Đang xử lý...' : 'Tạo phiếu'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Select label="Receipt type" value={draft.receiptType} onChange={(e) => setDraft((prev) => ({ ...prev, receiptType: e.target.value }))} options={[{ value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} />
+          <Select label="Loại phiếu" value={draft.receiptType} onChange={(e) => setDraft((prev) => ({ ...prev, receiptType: e.target.value }))} options={[{ value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="PO number" value={draft.poNumber} onChange={(e) => setDraft((prev) => ({ ...prev, poNumber: e.target.value }))} />
-            <Input label="ASN number" value={draft.asnNumber} onChange={(e) => setDraft((prev) => ({ ...prev, asnNumber: e.target.value }))} />
+            <Input label="Số PO" value={draft.poNumber} onChange={(e) => setDraft((prev) => ({ ...prev, poNumber: e.target.value }))} />
+            <Input label="Số ASN" value={draft.asnNumber} onChange={(e) => setDraft((prev) => ({ ...prev, asnNumber: e.target.value }))} />
           </div>
-          <Select label="Owner" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <Select label="Vendor" value={draft.vendorId} onChange={(e) => setDraft((prev) => ({ ...prev, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn Vendor --' }, ...vendors.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <Select label="Item" value={draft.itemId} onChange={(e) => setDraft((prev) => ({ ...prev, itemId: e.target.value }))} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+          <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+          <Select label="Nhà cung cấp" value={draft.vendorId} onChange={(e) => setDraft((prev) => ({ ...prev, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn nhà cung cấp --' }, ...vendors.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+          <Select label="Hàng hóa" value={draft.itemId} onChange={(e) => setDraft((prev) => ({ ...prev, itemId: e.target.value }))} options={[{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
           <div className="grid grid-cols-2 gap-4">
-            <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-            <Select label="Receiving location" value={draft.receivingLocationId} onChange={(e) => setDraft((prev) => ({ ...prev, receivingLocationId: e.target.value }))} options={[{ value: '', label: '-- Chọn Location --' }, ...locations.map((item) => ({ value: item.id, label: `${item.code}` }))]} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Vehicle number" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
-            <Input label="B/L number" value={draft.blNumber} onChange={(e) => setDraft((prev) => ({ ...prev, blNumber: e.target.value }))} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
+            <Select label="Vị trí nhận hàng" value={draft.receivingLocationId} onChange={(e) => setDraft((prev) => ({ ...prev, receivingLocationId: e.target.value }))} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((item) => ({ value: item.id, label: `${item.code}` }))]} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Expected qty (kg)" type="number" value={draft.expectedQty} onChange={(e) => setDraft((prev) => ({ ...prev, expectedQty: e.target.value }))} />
-            <Input label="Bag count" type="number" value={draft.bagCount} onChange={(e) => setDraft((prev) => ({ ...prev, bagCount: e.target.value }))} />
+            <Input label="Biển số xe" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
+            <Input label="Số B/L" value={draft.blNumber} onChange={(e) => setDraft((prev) => ({ ...prev, blNumber: e.target.value }))} />
           </div>
-          <Select label="Cargo form" value={draft.cargoForm} onChange={(e) => setDraft((prev) => ({ ...prev, cargoForm: e.target.value }))} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="SL dự kiến (kg)" type="number" value={draft.expectedQty} onChange={(e) => setDraft((prev) => ({ ...prev, expectedQty: e.target.value }))} />
+            <Input label="Số bao" type="number" value={draft.bagCount} onChange={(e) => setDraft((prev) => ({ ...prev, bagCount: e.target.value }))} />
+          </div>
+          <Select label="Hình thức hàng" value={draft.cargoForm} onChange={(e) => setDraft((prev) => ({ ...prev, cargoForm: e.target.value }))} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
         </div>
       </Modal>
     </>
