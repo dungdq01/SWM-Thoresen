@@ -20,7 +20,7 @@ import {
 } from '../dto';
 import { AuthGuard, PermissionGuard, Permission, CurrentUser } from '../../foundation/auth';
 
-@Controller('api/v1/billing/debit-notes')
+@Controller('billing/debit-notes')
 @UseGuards(AuthGuard, PermissionGuard)
 export class DebitNoteController {
   constructor(private readonly dnService: DebitNoteService) {}

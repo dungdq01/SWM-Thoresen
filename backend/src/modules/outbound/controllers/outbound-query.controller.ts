@@ -13,7 +13,7 @@ import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { Permission } from '../../../common/decorators/permission.decorator';
 
 @ApiTags('Outbound - Query')
-@Controller('api/v1/outbound')
+@Controller('outbound')
 @UseGuards(AuthGuard, PermissionGuard)
 export class OutboundQueryController {
   constructor(private readonly queryService: ShipmentQueryService) {}

@@ -626,3 +626,4 @@ PENDING → ALLOCATED → PICKING → PICKED → LOADING → WEIGHED_PASS/WEIGHE
 |---------|------|---------|
 | 1.0.0 | 2024-03 | Initial implementation |
 | 1.1.0 | 2026-03-08 | Feedback fixes: HI-2 tolerance cascade, HI-3 $transaction, HI-4 decidedBy, HI-6 lockForUpdate |
+| 2.2.0 | 2026-03-11 | FE-BE Alignment fixes: (1) Fix double-prefix `@Controller('api/v1/outbound/...')` → `@Controller('outbound/...')` trong 5 controllers. (2) Register `OutboundModule` vào `app.module.ts`. Routes đúng chuẩn: `/api/v1/outbound/...` |

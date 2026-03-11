@@ -7,7 +7,7 @@ export function usePermissions(filters = {}) {
   return useQuery({
     queryKey: queryKeys.permissions.list(filters),
     queryFn: () => authApi.getPermissions(filters),
-    select: (response) => response.data || [],
+    select: (response) => response?.data ?? response ?? [],
   })
 }
 
@@ -60,7 +60,7 @@ export function useMyPermissions() {
   return useQuery({
     queryKey: queryKeys.auth.permissions,
     queryFn: () => authApi.getMyPermissions(),
-    select: (response) => response.data || {},
+    select: (response) => response?.data ?? response ?? {},
     staleTime: 10 * 60 * 1000,
   })
 }

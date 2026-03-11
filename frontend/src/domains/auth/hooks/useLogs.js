@@ -8,8 +8,8 @@ export function useAuditLogs(filters = {}) {
     queryKey: queryKeys.logs.audit.list(filters),
     queryFn: () => authApi.getAuditLogs(filters),
     select: (response) => ({
-      data: response.data || [],
-      meta: response.meta || {},
+      data: response?.data ?? (Array.isArray(response) ? response : []),
+      meta: response?.meta ?? {},
     }),
   })
 }
@@ -19,8 +19,8 @@ export function useExceptionLogs(filters = {}) {
     queryKey: queryKeys.logs.exception.list(filters),
     queryFn: () => authApi.getExceptionLogs(filters),
     select: (response) => ({
-      data: response.data || [],
-      meta: response.meta || {},
+      data: response?.data ?? (Array.isArray(response) ? response : []),
+      meta: response?.meta ?? {},
     }),
   })
 }

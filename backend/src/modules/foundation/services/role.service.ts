@@ -80,6 +80,34 @@ export class RoleService {
     return updated;
   }
 
+  async delete(
+    roleId: string,
+    actor: {
+      actorUserId: string;
+      actorRole?: string;
+      requestId?: string;
+    },
+  ) {
+    const existing = await this.roleRepository.findById(roleId);
+    if (!existing) {
+      throw new NotFoundException(`Không tìm thấy role với id ${roleId}.`);
+    }
+
+    await this.roleRepository.delete(roleId, actor.actorUserId);
+    await this.logService.createAuditLog({
+      entityType: 'ROLE',
+      entityId: roleId,
+      action: 'DELETE_ROLE',
+      oldValue: existing,
+      userId: actor.actorUserId,
+      userRole: actor.actorRole,
+      requestId: actor.requestId,
+      sourceModule: 'FOUNDATION',
+    });
+
+    return { deleted: true, id: roleId };
+  }
+
   async assignPermissions(
     roleId: string,
     changes: Array<{ permissionCode: string; effect?: 'ALLOW' | 'DENY' }>,

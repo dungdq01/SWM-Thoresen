@@ -8,7 +8,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { REPORTING_CONSTANTS } from '../domain/reporting.constants';
 
 @ApiTags('Reporting - Export')
-@Controller('api/v1/reporting/exports')
+@Controller('reporting/exports')
 @UseGuards(AuthGuard, PermissionGuard)
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}

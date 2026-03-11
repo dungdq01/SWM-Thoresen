@@ -26,8 +26,11 @@ backend/src/modules/master-data/
 │   ├── zone.controller.ts
 │   ├── location.controller.ts
 │   ├── uom.controller.ts
+│   ├── uom-conversion.controller.ts
 │   ├── vehicle-type.controller.ts
 │   ├── inventory-status.controller.ts
+│   ├── customer.controller.ts
+│   ├── dropdown-config.controller.ts
 │   └── lookup.controller.ts
 ├── dto/
 │   ├── common.dto.ts
@@ -109,6 +112,8 @@ export class OwnerController {
 | UOM | MASTER_DATA.UOM.CREATE | MASTER_DATA.UOM.READ | MASTER_DATA.UOM.UPDATE | MASTER_DATA.UOM.DEACTIVATE | MASTER_DATA.UOM.REACTIVATE |
 | VehicleType | MASTER_DATA.VEHICLE_TYPE.CREATE | MASTER_DATA.VEHICLE_TYPE.READ | MASTER_DATA.VEHICLE_TYPE.UPDATE | MASTER_DATA.VEHICLE_TYPE.DEACTIVATE | MASTER_DATA.VEHICLE_TYPE.REACTIVATE |
 | Vendor | MASTER_DATA.VENDOR.CREATE | MASTER_DATA.VENDOR.READ | MASTER_DATA.VENDOR.UPDATE | MASTER_DATA.VENDOR.DEACTIVATE | MASTER_DATA.VENDOR.REACTIVATE |
+| Customer | master_data.customer.create | master_data.customer.view | master_data.customer.update | master_data.customer.deactivate | master_data.customer.reactivate |
+| UomConversion | master_data.uom.create | master_data.uom.view | master_data.uom.update | - | - |
 | InventoryStatus | - | MASTER_DATA.INVENTORY_STATUS.READ | MASTER_DATA.INVENTORY_STATUS.UPDATE | - | - |
 | Lookup | - | MASTER_DATA.LOOKUP.READ | - | - | - |
 
@@ -486,6 +491,9 @@ Lỗi được wrap bởi `HttpExceptionFilter` theo dạng:
 ### `GET /api/v1/master-data/uoms/:id`
 ### `PUT /api/v1/master-data/uoms/:id`
 ### `POST /api/v1/master-data/uoms/:id/deactivate`
+### `POST /api/v1/master-data/uoms/:id/reactivate`
+- **Để làm gì**
+  - Kích hoạt lại UOM đã bị deactivate.
 
 ---
 
@@ -508,6 +516,9 @@ Lỗi được wrap bởi `HttpExceptionFilter` theo dạng:
 ### `GET /api/v1/master-data/vehicle-types/:id`
 ### `PUT /api/v1/master-data/vehicle-types/:id`
 ### `POST /api/v1/master-data/vehicle-types/:id/deactivate`
+### `POST /api/v1/master-data/vehicle-types/:id/reactivate`
+- **Để làm gì**
+  - Kích hoạt lại Vehicle Type đã bị deactivate.
 
 ---
 
@@ -556,6 +567,81 @@ Các endpoint này trả về dữ liệu đơn giản cho dropdown/autocomplete
   ]
 }
 ```
+
+---
+
+## 6.11 Customer APIs
+
+### `GET /api/v1/master-data/customers/next-code`
+- **Để làm gì**
+  - Lấy mã khách hàng tiếp theo (auto-generate).
+- **Response data chính**
+```json
+{
+  "data": { "code": "CUST-001" }
+}
+```
+
+### `POST /api/v1/master-data/customers`
+- **Để làm gì**
+  - Tạo khách hàng mới.
+
+### `GET /api/v1/master-data/customers`
+- **Để làm gì**
+  - Lấy danh sách khách hàng có phân trang.
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`
+
+### `GET /api/v1/master-data/customers/:id`
+### `PUT /api/v1/master-data/customers/:id`
+### `POST /api/v1/master-data/customers/:id/deactivate`
+### `POST /api/v1/master-data/customers/:id/reactivate`
+
+- **File code tham gia**
+  - `controllers/customer.controller.ts`
+  - `services/customer.service.ts`
+  - `repositories/customer.repository.ts`
+
+---
+
+## 6.12 UOM Conversion APIs
+
+### `POST /api/v1/master-data/uom-conversions`
+- **Để làm gì**
+  - Tạo quy đổi UOM mới.
+- **Body**
+```json
+{
+  "fromUomId": "uuid",
+  "toUomId": "uuid",
+  "conversionFactor": 1000,
+  "itemId": "uuid (optional - null = global conversion)"
+}
+```
+
+### `GET /api/v1/master-data/uom-conversions`
+- **Để làm gì**
+  - Lấy danh sách quy đổi UOM có phân trang.
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `fromUomId`, `toUomId`
+
+### `GET /api/v1/master-data/uom-conversions/:id`
+### `PUT /api/v1/master-data/uom-conversions/:id`
+- **Body**
+```json
+{
+  "conversionFactor": 1000,
+  "rowVersion": 0
+}
+```
+
+### `DELETE /api/v1/master-data/uom-conversions/:id`
+- **Để làm gì**
+  - Xóa quy đổi UOM (hard delete).
+
+- **File code tham gia**
+  - `controllers/uom-conversion.controller.ts`
+  - `repositories/uom-conversion.repository.ts`
 
 ---
 
@@ -696,3 +782,16 @@ curl http://localhost:3000/api/v1/master-data/lookups/warehouses
 # Lấy zones của warehouse cụ thể
 curl "http://localhost:3000/api/v1/master-data/lookups/zones?warehouseId=<uuid>"
 ```
+
+---
+
+## 11. Changelog — FE-BE Alignment Fixes (2026-03-11)
+
+| Fix | Mô tả |
+|-----|-------|
+| Docs 6.7 UOM | Thêm endpoint `POST /api/v1/master-data/uoms/:id/reactivate` vào docs (code đã có, docs stale) |
+| Docs 6.8 VehicleType | Thêm endpoint `POST /api/v1/master-data/vehicle-types/:id/reactivate` vào docs (code đã có, docs stale) |
+| Docs 6.11 Customer | Thêm toàn bộ Customer APIs vào docs: next-code, CRUD, deactivate, reactivate |
+| Docs 6.12 UomConversion | Thêm toàn bộ UOM Conversion APIs vào docs: CRUD + DELETE |
+| Folder structure | Cập nhật folder structure thêm `customer.controller.ts`, `uom-conversion.controller.ts`, `dropdown-config.controller.ts` |
+| Permission Codes | Thêm Customer và UomConversion vào bảng Permission Codes |

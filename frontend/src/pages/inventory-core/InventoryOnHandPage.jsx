@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react'
-import { Boxes } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useOnHandList } from '@domains/inventory-core'
 import { useLookupInventoryStatuses, useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
+import { InventoryPostingModal } from '@features/inventory-core'
 
 const TOTAL_COLS = 11
 
@@ -23,6 +24,7 @@ export function InventoryOnHandPage() {
     inventoryStatusId: '',
     hasStock: true,
   })
+  const [showPostingModal, setShowPostingModal] = useState(false)
 
   const { data: response, isLoading, refetch } = useOnHandList({
     ...filters,
@@ -47,46 +49,52 @@ export function InventoryOnHandPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Current Inventory On-Hand</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Tồn kho hiện tại</h2>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button size="sm" onClick={() => setShowPostingModal(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            Nhập tồn kho
+          </Button>
+        </div>
       </div>
 
       <Card hover={false}>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">On-Hand Filters</CardTitle>
+          <CardTitle className="text-base">Bộ lọc tồn kho</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Select
               value={filters.ownerId}
               onChange={(e) => handleChange('ownerId', e.target.value)}
-              placeholder="All owners"
+              placeholder="Tất cả chủ hàng"
               options={ownerOptions.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))}
             />
             <Select
               value={filters.itemId}
               onChange={(e) => handleChange('itemId', e.target.value)}
-              placeholder="All items"
+              placeholder="Tất cả mặt hàng"
               options={itemOptions.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))}
             />
             <Select
               value={filters.inventoryStatusId}
               onChange={(e) => handleChange('inventoryStatusId', e.target.value)}
-              placeholder="All statuses"
+              placeholder="Tất cả trạng thái"
               options={statusOptions.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))}
             />
             <Select
               value={filters.warehouseId}
               onChange={(e) => handleChange('warehouseId', e.target.value)}
-              placeholder="All warehouses"
+              placeholder="Tất cả kho"
               options={warehouseOptions.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))}
             />
             <Select
               value={String(filters.hasStock)}
               onChange={(e) => handleChange('hasStock', e.target.value === 'true')}
               options={[
-                { value: 'true', label: 'Only records with stock' },
-                { value: 'false', label: 'Include zero stock' },
+                { value: 'true', label: 'Chỉ có tồn kho' },
+                { value: 'false', label: 'Bao gồm tồn = 0' },
               ]}
             />
           </div>
@@ -95,22 +103,22 @@ export function InventoryOnHandPage() {
             <Table>
               <TableHeader>
                 <TableRow hoverable={false}>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Owner Name</TableHead>
-                  <TableHead>Item Code</TableHead>
-                  <TableHead>Item Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Lot</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead align="right">Physical</TableHead>
-                  <TableHead align="right">Reserved</TableHead>
-                  <TableHead align="right">Available</TableHead>
-                  <TableHead>UOM</TableHead>
+                  <TableHead>Mã chủ hàng</TableHead>
+                  <TableHead>Tên chủ hàng</TableHead>
+                  <TableHead>Mã hàng</TableHead>
+                  <TableHead>Tên hàng</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Lô</TableHead>
+                  <TableHead>Vị trí</TableHead>
+                  <TableHead align="right">Thực tế</TableHead>
+                  <TableHead align="right">Đã giữ</TableHead>
+                  <TableHead align="right">Khả dụng</TableHead>
+                  <TableHead>ĐVT</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? <TableLoading colSpan={TOTAL_COLS} /> : null}
-                {!isLoading && rows.length === 0 ? <TableEmpty colSpan={TOTAL_COLS} message="No matching on-hand records" /> : null}
+                {!isLoading && rows.length === 0 ? <TableEmpty colSpan={TOTAL_COLS} message="Không có dữ liệu tồn kho phù hợp" /> : null}
                 {!isLoading ? rows.map((row) => {
                   const uomCode = row.uom?.uomCode || ''
                   return (
@@ -120,7 +128,7 @@ export function InventoryOnHandPage() {
                       </TableCell>
                       <TableCell className="text-navy-700">{row.inventDim?.owner?.ownerName || '—'}</TableCell>
                       <TableCell>
-                        <span className="font-mono font-semibold text-navy-900">{row.item?.itemCode || '—'}</span>
+                        <span className="font-mono font-semibold text-navy-900">{row.item?.itemCode || row.item?.itemName || '—'}</span>
                       </TableCell>
                       <TableCell className="text-navy-700">{row.item?.itemName || '—'}</TableCell>
                       <TableCell>
@@ -129,10 +137,12 @@ export function InventoryOnHandPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-sm text-navy-600">{row.lotNumber || '—'}</span>
+                        <span className="font-mono text-sm text-navy-600">{row.inventDim?.location?.locationCode || '—'}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-navy-600">{row.inventDim?.location?.locationCode || '—'}</span>
+                        <span className="text-sm text-navy-600">
+                          {row.inventDim?.warehouse?.warehouseName || row.inventDim?.zone?.zoneName || '—'}
+                        </span>
                       </TableCell>
                       <TableCell align="right">
                         <span className="font-semibold text-navy-900">{formatQty(row.physicalQty, uomCode)}</span>
@@ -156,6 +166,11 @@ export function InventoryOnHandPage() {
           <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
         </CardContent>
       </Card>
+
+      <InventoryPostingModal
+        isOpen={showPostingModal}
+        onClose={() => setShowPostingModal(false)}
+      />
     </>
   )
 }

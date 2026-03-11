@@ -10,7 +10,7 @@ import { WeighbridgeDeviceService } from '../services/weighbridge-device.service
 import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto } from '../dto/weighbridge/create-weigh-event.dto';
 import { WeighLogQueryDto } from '../dto/weighbridge/weigh-log-query.dto';
 
-@Controller('api/v1/integration/weighbridge')
+@Controller('integration/weighbridge')
 @UseGuards(AuthGuard, PermissionGuard)
 export class WeighbridgeController {
   constructor(

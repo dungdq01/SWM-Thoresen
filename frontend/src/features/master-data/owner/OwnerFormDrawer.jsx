@@ -74,12 +74,11 @@ export function OwnerFormDrawer({
       ...data,
       billingEmail: data.billingEmail || null,
     }
-    // Không gửi ownerCode khi tạo mới - server sẽ tự generate
-    if (!isEdit) {
-      delete payload.ownerCode
-    }
     if (isEdit && initialData) {
       payload.rowVersion = initialData.rowVersion
+    } else {
+      // Khi tạo mới, sử dụng nextCode từ API
+      payload.ownerCode = nextCode
     }
     onSubmit(payload)
   }

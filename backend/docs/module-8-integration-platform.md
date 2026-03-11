@@ -575,3 +575,12 @@ await this.prisma.$transaction(async (tx) => {
 | M1 AuditLog | **NOT INTEGRATED** | Chưa gọi AuditLog service |
 
 Các items này sẽ được implement trong Sprint 5.
+
+---
+
+## Changelog — FE-BE Alignment Fixes (2026-03-11)
+
+| Fix | Mô tả |
+|-----|-------|
+| Controller prefix | Fix double-prefix `@Controller('api/v1/integration/...')` → `@Controller('integration/...')` trong 5 controllers (`weighbridge`, `ocr`, `monitoring`, `mobile-sync`, `erp-push`). Routes đúng chuẩn: `/api/v1/integration/...` |
+| Module registration | Register `IntegrationPlatformModule` vào `app.module.ts` |

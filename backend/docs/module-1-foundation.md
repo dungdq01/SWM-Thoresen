@@ -222,6 +222,25 @@ Lỗi được wrap bởi `HttpExceptionFilter` theo dạng:
 - **Response data chính**
   - role kèm danh sách permission sau khi gán.
 
+### `DELETE /api/v1/foundation/roles/:id`
+- **Để làm gì**
+  - Xóa role và toàn bộ role-permission links liên quan.
+- **Permission cần có**
+  - `foundation.roles.delete`
+- **File code tham gia**
+  - `controllers/role.controller.ts`
+  - `services/role.service.ts`
+  - `services/log.service.ts`
+  - `repositories/role.repository.ts`
+  - `repositories/log.repository.ts`
+- **Response data chính**
+```json
+{
+  "deleted": true,
+  "id": "uuid"
+}
+```
+
 ### `GET /api/v1/foundation/permissions`
 - **Để làm gì**
   - Lấy catalog permission active.
@@ -653,3 +672,11 @@ Các fix theo feedback từ `docs/feedback/fb_M01.md`:
 | ID | Issue | File | Fix |
 |---|---|---|---|
 | MD-8 | Date range filter | `log.dto.ts`, `log.repository.ts` | Thêm `fromDate`, `toDate` với filter trong repository |
+
+---
+
+## 12. Changelog — FE-BE Alignment Fixes (2026-03-11)
+
+| Fix | Mô tả |
+|-----|-------|
+| DELETE /roles/:id | Thêm endpoint `DELETE /api/v1/foundation/roles/:id` — xóa role và toàn bộ role-permission links. Files: `role.controller.ts`, `role.service.ts`, `role.repository.ts`. Permission: `foundation.roles.delete` |

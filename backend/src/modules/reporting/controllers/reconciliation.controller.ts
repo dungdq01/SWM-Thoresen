@@ -11,7 +11,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { REPORTING_CONSTANTS } from '../domain/reporting.constants';
 
 @ApiTags('Reporting - Reconciliation')
-@Controller('api/v1/reporting/reconciliation')
+@Controller('reporting/reconciliation')
 @UseGuards(AuthGuard, PermissionGuard)
 export class ReconciliationController {
   constructor(private readonly reconciliationService: ReconciliationService) {}

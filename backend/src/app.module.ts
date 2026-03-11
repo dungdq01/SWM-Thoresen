@@ -9,6 +9,12 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { FoundationModule } from './modules/foundation/foundation.module';
 import { MasterDataModule } from './modules/master-data/master-data.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { OutboundModule } from './modules/outbound/outbound.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { ReportingModule } from './modules/reporting/reporting.module';
+import { IntegrationPlatformModule } from './modules/integration-platform/integration-platform.module';
+import { VasModule } from './modules/vas/vas.module';
+import { InventoryCoreModule } from './modules/inventory-core/inventory-core.module';
 
 @Module({
   imports: [
@@ -19,6 +25,12 @@ import { AuthModule } from './modules/auth/auth.module';
     FoundationModule,
     MasterDataModule,
     AuthModule,
+    OutboundModule,
+    BillingModule,
+    ReportingModule,
+    IntegrationPlatformModule,
+    VasModule,
+    InventoryCoreModule,
   ],
   controllers: [HealthController],
   providers: [

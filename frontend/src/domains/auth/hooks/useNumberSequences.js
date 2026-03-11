@@ -7,7 +7,7 @@ export function useNumberSequences(filters = {}) {
   return useQuery({
     queryKey: queryKeys.numberSequences.list(filters),
     queryFn: () => authApi.getNumberSequences(filters),
-    select: (response) => response.data || [],
+    select: (response) => response?.data ?? response ?? [],
   })
 }
 

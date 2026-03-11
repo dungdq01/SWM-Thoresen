@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { FoundationModule } from '../foundation/foundation.module';
 import { ShipmentController } from './controllers/shipment.controller';
 import { AllocationController } from './controllers/allocation.controller';
 import { WeighingController } from './controllers/weighing.controller';
@@ -31,6 +32,7 @@ import { ReceiveOutboundWeightUseCase } from './application/receiveOutboundWeigh
 import { M3AdapterService } from './infra/m3-adapter.service';
 
 @Module({
+  imports: [FoundationModule],
   controllers: [
     ShipmentController,
     AllocationController,

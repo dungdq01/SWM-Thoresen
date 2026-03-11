@@ -20,6 +20,11 @@ export class ItemService {
 
   async create(dto: CreateItemDto, ctx: RequestContext): Promise<MdItem> {
     const doCreate = async () => {
+      // Validate itemCode is not empty
+      if (!dto.itemCode || dto.itemCode.trim() === '') {
+        throw new BadRequestException('Item code is required');
+      }
+      
       const existing = await this.itemRepository.findByCode(dto.itemCode);
       if (existing) throw new ConflictException(`Item code ${dto.itemCode} already exists`);
 

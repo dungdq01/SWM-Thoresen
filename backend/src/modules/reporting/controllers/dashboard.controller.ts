@@ -7,7 +7,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { REPORTING_CONSTANTS } from '../domain/reporting.constants';
 
 @ApiTags('Reporting - Dashboard')
-@Controller('api/v1/reporting/dashboard')
+@Controller('reporting/dashboard')
 @UseGuards(AuthGuard, PermissionGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

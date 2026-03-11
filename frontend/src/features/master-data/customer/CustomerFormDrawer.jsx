@@ -66,6 +66,9 @@ export function CustomerFormDrawer({
     const payload = { ...data }
     if (isEdit && initialData) {
       payload.rowVersion = initialData.rowVersion
+    } else {
+      // Khi tạo mới, sử dụng nextCode từ API
+      payload.customerCode = nextCode
     }
     onSubmit(payload)
   }

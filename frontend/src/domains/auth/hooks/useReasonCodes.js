@@ -7,7 +7,7 @@ export function useReasonCodes(filters = {}) {
   return useQuery({
     queryKey: queryKeys.reasonCodes.list(filters),
     queryFn: () => authApi.getReasonCodes(filters),
-    select: (response) => response.data || [],
+    select: (response) => response?.data ?? response ?? [],
   })
 }
 

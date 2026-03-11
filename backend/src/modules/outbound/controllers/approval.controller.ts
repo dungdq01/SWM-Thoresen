@@ -26,7 +26,7 @@ class ApprovalDto {
 }
 
 @ApiTags('Outbound - Approval')
-@Controller('api/v1/outbound')
+@Controller('outbound')
 @UseGuards(AuthGuard, PermissionGuard)
 export class ApprovalController {
   constructor(private readonly approvalService: ApprovalService) {}

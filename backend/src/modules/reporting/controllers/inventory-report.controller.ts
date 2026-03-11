@@ -14,7 +14,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { REPORTING_CONSTANTS } from '../domain/reporting.constants';
 
 @ApiTags('Reporting - Inventory Reports')
-@Controller('api/v1/reporting/inventory')
+@Controller('reporting/inventory')
 @UseGuards(AuthGuard, PermissionGuard)
 export class InventoryReportController {
   constructor(private readonly inventoryReportService: InventoryReportService) {}

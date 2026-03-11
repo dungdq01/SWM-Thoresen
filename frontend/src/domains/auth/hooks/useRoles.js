@@ -7,7 +7,7 @@ export function useRoles(filters = {}) {
   return useQuery({
     queryKey: queryKeys.roles.list(filters),
     queryFn: () => authApi.getRoles(filters),
-    select: (response) => response.data || [],
+    select: (response) => response?.data ?? response ?? [],
   })
 }
 

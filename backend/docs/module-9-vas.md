@@ -434,3 +434,12 @@ src/modules/vas/
 | VAS.WO.READ | Xem work order |
 | VAS.SESSION.CREATE | Thêm session |
 | VAS.SESSION.READ | Xem sessions |
+
+---
+
+## 9. Changelog — FE-BE Alignment Fixes (2026-03-11)
+
+| Fix | Mô tả |
+|-----|-------|
+| Controller prefix | Fix double-prefix `@Controller('api/v1/vas-wo')` → `@Controller('vas-wo')` trong 3 controllers (`vas-wo-command.controller.ts`, `vas-wo-query.controller.ts`, `vas-session.controller.ts`). Routes đúng chuẩn: `/api/v1/vas-wo/...` |
+| Module registration | Register `VasModule` vào `app.module.ts` |

@@ -12,7 +12,7 @@ import { BillingDayTypeService } from '../services/billing-day-type.service';
 import { UpsertDayTypeDto, QueryDayTypeDto } from '../dto';
 import { AuthGuard, PermissionGuard, Permission } from '../../foundation/auth';
 
-@Controller('api/v1/billing/day-types')
+@Controller('billing/day-types')
 @UseGuards(AuthGuard, PermissionGuard)
 export class BillingDayTypeController {
   constructor(private readonly dayTypeService: BillingDayTypeService) {}

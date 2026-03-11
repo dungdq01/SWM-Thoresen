@@ -421,3 +421,13 @@ Billable Qty = Opening Qty + Inbound Today
 - State transitions (review/approve/lock) sử dụng `lockForUpdate` để tránh race condition
 - Tất cả reads và updates trong cùng một `$transaction`
 - Blocker exception check nằm trong transaction trước khi lock DN
+
+---
+
+## Changelog — FE-BE Alignment Fixes (2026-03-11)
+
+| Fix | Mô tả |
+|-----|-------|
+| Controller prefix | Fix double-prefix `@Controller('api/v1/billing/...')` → `@Controller('billing/...')` trong 5 controllers (`billing-contract`, `debit-note`, `billing-event`, `billing-exception`, `billing-day-type`). Routes đúng chuẩn: `/api/v1/billing/...` |
+| Internal controller | `@Controller('internal/billing/events')` giữ nguyên — đã đúng (không có global prefix) |
+| Module registration | Register `BillingModule` vào `app.module.ts` |

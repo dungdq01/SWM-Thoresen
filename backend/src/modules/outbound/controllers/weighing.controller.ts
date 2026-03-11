@@ -65,7 +65,7 @@ class RecordGrossDto {
 }
 
 @ApiTags('Outbound - Weighing')
-@Controller('api/v1/outbound/shipments')
+@Controller('outbound/shipments')
 @UseGuards(AuthGuard, PermissionGuard)
 export class WeighingController {
   constructor(

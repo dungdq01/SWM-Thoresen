@@ -474,3 +474,12 @@ export class DashboardController {
 | REPORTING.GOLIVE.SIGNOFF | Sign-off gates |
 | REPORTING.EXPORT.CREATE | Tạo export jobs |
 | REPORTING.EXPORT.READ | Xem/download exports |
+
+---
+
+## Changelog — FE-BE Alignment Fixes (2026-03-11)
+
+| Fix | Mô tả |
+|-----|-------|
+| Controller prefix | Fix double-prefix `@Controller('api/v1/reporting/...')` → `@Controller('reporting/...')` trong 5 controllers (`dashboard`, `inventory-report`, `reconciliation`, `go-live`, `export`). Routes đúng chuẩn: `/api/v1/reporting/...` |
+| Module registration | Register `ReportingModule` vào `app.module.ts` |

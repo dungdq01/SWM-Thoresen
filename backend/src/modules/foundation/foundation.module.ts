@@ -49,6 +49,6 @@ import { RoleService } from './services/role.service';
     LogService,
     IdempotencyService,
   ],
-  exports: [AuthorizationService, IdempotencyService, LogService],
+  exports: [AuthorizationService, IdempotencyService, LogService, NumberSequenceService, ReasonCodeService, GovernanceService],
 })
 export class FoundationModule {}

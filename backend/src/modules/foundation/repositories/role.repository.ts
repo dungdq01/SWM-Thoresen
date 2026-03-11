@@ -89,6 +89,13 @@ export class RoleRepository {
     });
   }
 
+  async delete(roleId: string, actorUserId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { roleId } });
+      return tx.role.delete({ where: { id: roleId } });
+    });
+  }
+
   async assignPermissions(
     roleId: string,
     permissionLinks: Array<{

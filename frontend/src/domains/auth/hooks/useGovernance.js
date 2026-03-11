@@ -7,7 +7,7 @@ export function useRules(filters = {}) {
   return useQuery({
     queryKey: queryKeys.governance.rules.list(filters),
     queryFn: () => authApi.getRules(filters),
-    select: (response) => response.data || [],
+    select: (response) => response?.data ?? response ?? [],
   })
 }
 
@@ -45,7 +45,7 @@ export function useDecisionLogs(filters = {}) {
   return useQuery({
     queryKey: queryKeys.governance.decisionLogs.list(filters),
     queryFn: () => authApi.getDecisionLogs(filters),
-    select: (response) => response.data || [],
+    select: (response) => response?.data ?? response ?? [],
   })
 }
 

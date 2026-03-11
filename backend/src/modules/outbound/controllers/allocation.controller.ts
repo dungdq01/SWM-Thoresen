@@ -18,7 +18,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
 @ApiTags('Outbound - Allocation')
-@Controller('api/v1/outbound/shipments')
+@Controller('outbound/shipments')
 @UseGuards(AuthGuard, PermissionGuard)
 export class AllocationController {
   constructor(

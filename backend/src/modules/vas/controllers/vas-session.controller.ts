@@ -21,7 +21,7 @@ import {
 
 @ApiTags('VAS Sessions')
 @ApiBearerAuth()
-@Controller('api/v1/vas-wo')
+@Controller('vas-wo')
 @UseGuards(VasAuthGuard, VasPermissionGuard)
 export class VasSessionController {
   constructor(private readonly addSessionService: AddVasSessionService) {}

@@ -11,7 +11,7 @@ import { BillingExceptionService } from '../services/billing-exception.service';
 import { ResolveExceptionDto, QueryExceptionDto } from '../dto';
 import { AuthGuard, PermissionGuard, Permission, CurrentUser } from '../../foundation/auth';
 
-@Controller('api/v1/billing/exceptions')
+@Controller('billing/exceptions')
 @UseGuards(AuthGuard, PermissionGuard)
 export class BillingExceptionController {
   constructor(private readonly exceptionService: BillingExceptionService) {}

@@ -15,6 +15,16 @@ export function useOnHandList(filters = {}) {
     queryKey: [...QUERY_KEYS.onHand, filters],
     queryFn: () => inventoryCoreApi.getOnHand(filters),
     staleTime: 30000,
+    select: (response) => {
+      // Handle both unwrapped array and wrapped { data, pagination } format
+      if (Array.isArray(response)) {
+        return { data: response, pagination: { page: 1, totalPages: 1, total: response.length } }
+      }
+      return {
+        data: response?.data ?? response ?? [],
+        pagination: response?.pagination ?? { page: 1, totalPages: 1, total: 0 },
+      }
+    },
   })
 }
 
@@ -32,6 +42,15 @@ export function useTransactionList(filters = {}) {
     queryKey: [...QUERY_KEYS.transactions, filters],
     queryFn: () => inventoryCoreApi.getTransactions(filters),
     staleTime: 30000,
+    select: (response) => {
+      if (Array.isArray(response)) {
+        return { data: response, pagination: { page: 1, totalPages: 1, total: response.length } }
+      }
+      return {
+        data: response?.data ?? [],
+        pagination: response?.pagination ?? { page: 1, totalPages: 1, total: 0 },
+      }
+    },
   })
 }
 

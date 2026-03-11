@@ -14,7 +14,7 @@ import { BillingContractService } from '../services/billing-contract.service';
 import { CreateContractDto, UpdateContractDto, QueryContractDto, ActivateContractDto } from '../dto';
 import { AuthGuard, PermissionGuard, Permission, CurrentUser } from '../../foundation/auth';
 
-@Controller('api/v1/billing/contracts')
+@Controller('billing/contracts')
 @UseGuards(AuthGuard, PermissionGuard)
 export class BillingContractController {
   constructor(private readonly contractService: BillingContractService) {}

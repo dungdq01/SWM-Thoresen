@@ -20,7 +20,7 @@ class ResolveAlertDto {
   resolutionNote!: string;
 }
 
-@Controller('api/v1/integration')
+@Controller('integration')
 @UseGuards(AuthGuard, PermissionGuard)
 export class MonitoringController {
   constructor(

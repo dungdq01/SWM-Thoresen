@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ArrowRightLeft, ReceiptText, RotateCcw, ScrollText } from 'lucide-react'
+import { ArrowRightLeft, Plus, ReceiptText, RotateCcw, ScrollText } from 'lucide-react'
 import { useTransactionList } from '@domains/inventory-core'
 import { useLookupItems, useLookupOwners } from '@domains/master-data'
 import { Badge, Button, Input, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
+import { InventoryTransactionModal } from '@features/inventory-core'
 
 const transTypeTone = (type) => {
   if (['RECEIPT_IN', 'COUNT_GAIN', 'VAS_PRODUCE', 'TRANSFER_IN'].includes(type)) return 'success'
@@ -22,6 +23,7 @@ export function InventoryTransactionsPage() {
     transType: '',
     correlationId: '',
   })
+  const [showModal, setShowModal] = useState(false)
 
   const { data: response, isLoading, refetch } = useTransactionList({
     ...filters,
@@ -46,8 +48,14 @@ export function InventoryTransactionsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Transaction history</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Lịch sử giao dịch</h2>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button size="sm" onClick={() => setShowModal(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            Tạo giao dịch
+          </Button>
+        </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -120,6 +128,11 @@ export function InventoryTransactionsPage() {
 
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
       </div>
+
+      <InventoryTransactionModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </>
   )
 }

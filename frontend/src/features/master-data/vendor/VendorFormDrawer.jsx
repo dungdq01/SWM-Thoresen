@@ -69,6 +69,9 @@ export function VendorFormDrawer({
     }
     if (isEdit && initialData) {
       payload.rowVersion = initialData.rowVersion
+    } else {
+      // Khi tạo mới, sử dụng nextCode từ API
+      payload.vendorCode = nextCode
     }
     onSubmit(payload)
   }

@@ -7,7 +7,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { REPORTING_CONSTANTS } from '../domain/reporting.constants';
 
 @ApiTags('Reporting - Go-Live Control')
-@Controller('api/v1/reporting/go-live')
+@Controller('reporting/go-live')
 @UseGuards(AuthGuard, PermissionGuard)
 export class GoLiveController {
   constructor(private readonly goLiveService: GoLiveService) {}

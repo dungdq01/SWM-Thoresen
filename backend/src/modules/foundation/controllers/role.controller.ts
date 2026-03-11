@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -117,6 +118,20 @@ export class RoleController {
         resourceType: 'ROLE',
         resourceId: id,
       }),
+    });
+  }
+
+  @Delete('roles/:id')
+  @Permission('foundation.roles.delete')
+  deleteRole(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Req() request: { headers: Record<string, string | string[] | undefined>; requestId?: string },
+  ) {
+    return this.roleService.delete(id, {
+      actorUserId: user.id,
+      actorRole: user.roleCodes[0],
+      requestId: request.requestId,
     });
   }
 

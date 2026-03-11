@@ -73,7 +73,7 @@ class RejectOcrDto {
   reason!: string;
 }
 
-@Controller('api/v1/integration/ocr')
+@Controller('integration/ocr')
 @UseGuards(AuthGuard, PermissionGuard)
 export class OcrController {
   constructor(

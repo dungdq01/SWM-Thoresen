@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
+import { FoundationModule } from '../foundation/foundation.module';
 
 import { 
   DashboardController, 
@@ -26,7 +27,7 @@ import {
 } from './repositories';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, FoundationModule],
   controllers: [
     DashboardController,
     InventoryReportController,

@@ -35,7 +35,7 @@ class CancelJobDto {
   reason!: string;
 }
 
-@Controller('api/v1/integration/erp-push')
+@Controller('integration/erp-push')
 @UseGuards(AuthGuard, PermissionGuard)
 export class ErpPushController {
   constructor(private readonly pushService: ErpPushService) {}

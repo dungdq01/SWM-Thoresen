@@ -65,7 +65,7 @@ class ReplayEventDto {
   reason?: string;
 }
 
-@Controller('api/v1/integration/mobile-sync')
+@Controller('integration/mobile-sync')
 @UseGuards(AuthGuard, PermissionGuard)
 export class MobileSyncController {
   constructor(

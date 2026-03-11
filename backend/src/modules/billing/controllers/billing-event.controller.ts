@@ -13,7 +13,7 @@ import { BillingEventService } from '../services/billing-event.service';
 import { CaptureEventDto, QueryEventDto } from '../dto';
 import { AuthGuard, PermissionGuard, Permission, InternalApiGuard } from '../../foundation/auth';
 
-@Controller('api/v1/billing/events')
+@Controller('billing/events')
 @UseGuards(AuthGuard, PermissionGuard)
 export class BillingEventController {
   constructor(private readonly eventService: BillingEventService) {}

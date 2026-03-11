@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
+import { FoundationModule } from '../foundation/foundation.module';
 
 // Controllers
 import { WeighbridgeController } from './controllers/weighbridge.controller';
@@ -37,7 +38,7 @@ import { ChannelHealthRepository } from './repositories/channel-health.repositor
 import { DeviceHeartbeatRepository } from './repositories/device-heartbeat.repository';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, FoundationModule],
   controllers: [
     WeighbridgeController,
     OcrController,

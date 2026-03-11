@@ -15,7 +15,7 @@ import { VasAuthGuard, VasPermissionGuard, Permission } from '../guards/vas-auth
 
 @ApiTags('VAS Work Orders')
 @ApiBearerAuth()
-@Controller('api/v1/vas-wo')
+@Controller('vas-wo')
 @UseGuards(VasAuthGuard, VasPermissionGuard)
 export class VasWorkOrderQueryController {
   constructor(private readonly queryService: VasQueryService) {}

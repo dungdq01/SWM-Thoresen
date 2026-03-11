@@ -15,6 +15,11 @@ import {
   LocationType,
   LocationStatus,
   ServiceGroup,
+  InventoryTransType,
+  CargoForm,
+  OwnerType,
+  SourceApp,
+  InventoryStage,
 } from '@prisma/client';
 import * as argon2 from 'argon2';
 
@@ -737,7 +742,178 @@ async function main() {
     });
   }
 
+  // Seed Owners
+  const ownerSeeds = [
+    { ownerCode: 'TVL', ownerName: 'Thoresen Vinalines', shortName: 'TVL', ownerGroup: 'LOCAL', ownerType: OwnerType.DIRECT, taxCode: '0100107518', address: 'Phú Mỹ, Bà Rịa - Vũng Tàu' },
+    { ownerCode: 'CARGILL', ownerName: 'Cargill Vietnam', shortName: 'CARGILL', ownerGroup: 'FOREIGN', ownerType: OwnerType.CONSIGNED, taxCode: '0301234567', address: 'Quận 7, TP.HCM' },
+    { ownerCode: 'OLAM', ownerName: 'Olam International', shortName: 'OLAM', ownerGroup: 'FOREIGN', ownerType: OwnerType.CONSIGNED, taxCode: '0301234568', address: 'Quận 1, TP.HCM' },
+  ];
+
+  const ownerMap: Record<string, string> = {};
+  for (const owner of ownerSeeds) {
+    const created = await prisma.mdOwner.upsert({
+      where: { ownerCode: owner.ownerCode },
+      update: { ownerName: owner.ownerName, updatedBy: admin.id },
+      create: { ...owner, createdBy: admin.id, updatedBy: admin.id },
+    });
+    ownerMap[owner.ownerCode] = created.id;
+  }
+
+  // Seed Items
+  const itemSeeds = [
+    { itemCode: 'RICE-JASMINE', itemName: 'Gạo Jasmine', productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BULK },
+    { itemCode: 'CORN-YELLOW', itemName: 'Bắp vàng', productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BULK },
+    { itemCode: 'WHEAT-SOFT', itemName: 'Lúa mì mềm', productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BULK },
+    { itemCode: 'FERT-UREA', itemName: 'Phân Urê', productGroup: 'FERTILIZER', cargoForm: CargoForm.BAGGED_50KG },
+    { itemCode: 'FERT-NPK', itemName: 'Phân NPK', productGroup: 'FERTILIZER', cargoForm: CargoForm.BAGGED_50KG },
+    { itemCode: 'SUGAR-RAW', itemName: 'Đường thô', productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BULK },
+  ];
+
+  const itemMap: Record<string, string> = {};
+  for (const item of itemSeeds) {
+    const created = await prisma.mdItem.upsert({
+      where: { itemCode: item.itemCode },
+      update: { itemName: item.itemName, updatedBy: admin.id },
+      create: {
+        ...item,
+        baseUomId: uomMap['KG'],
+        billingUomId: uomMap['MT'],
+        createdBy: admin.id,
+        updatedBy: admin.id,
+      },
+    });
+    itemMap[item.itemCode] = created.id;
+  }
+
+  // Get inventory status AVAILABLE
+  const availableStatus = await prisma.mdInventoryStatus.findUnique({ where: { statusCode: 'AVAILABLE' } });
+  const damagedStatus = await prisma.mdInventoryStatus.findUnique({ where: { statusCode: 'DAMAGED' } });
+
+  // Get location for InventDim
+  const storageLocation = await prisma.mdLocation.findFirst({ where: { warehouseId: warehouse.id, locationCode: 'STR-A-001' } });
+
+  // Create InventDim for transactions
+  const inventDimSeeds = [
+    { ownerCode: 'TVL', statusCode: 'AVAILABLE' },
+    { ownerCode: 'CARGILL', statusCode: 'AVAILABLE' },
+    { ownerCode: 'OLAM', statusCode: 'AVAILABLE' },
+    { ownerCode: 'TVL', statusCode: 'DAMAGED' },
+  ];
+
+  const inventDimMap: Record<string, string> = {};
+  for (const dim of inventDimSeeds) {
+    const dimKey = `${dim.ownerCode}-${dim.statusCode}`;
+    const dimHash = `hash-${dimKey}-${Date.now()}`;
+    const statusId = dim.statusCode === 'AVAILABLE' ? availableStatus!.id : damagedStatus!.id;
+    
+    const existing = await prisma.inventDim.findFirst({
+      where: {
+        warehouseId: warehouse.id,
+        locationId: storageLocation!.id,
+        ownerId: ownerMap[dim.ownerCode],
+        inventoryStatusId: statusId,
+      },
+    });
+
+    if (existing) {
+      inventDimMap[dimKey] = existing.id;
+    } else {
+      const created = await prisma.inventDim.create({
+        data: {
+          dimId: `DIM-${dimKey}-${Date.now()}`,
+          dimHash: dimHash,
+          siteId: 'TVL-SITE',
+          warehouseId: warehouse.id,
+          locationId: storageLocation!.id,
+          ownerId: ownerMap[dim.ownerCode],
+          inventoryStatusId: statusId,
+          createdBy: admin.id,
+        },
+      });
+      inventDimMap[dimKey] = created.id;
+    }
+  }
+
+  // Seed Inventory Transactions
+  const transactionSeeds = [
+    { transId: 'TRX-20260310-000001', refType: 'RECEIPT', refId: 'RCV-20260310-001', transType: InventoryTransType.RECEIPT_IN, itemCode: 'RICE-JASMINE', qty: 25000, ownerCode: 'TVL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260310-000002', refType: 'RECEIPT', refId: 'RCV-20260310-001', transType: InventoryTransType.RECEIPT_IN, itemCode: 'CORN-YELLOW', qty: 15000, ownerCode: 'TVL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260310-000003', refType: 'RECEIPT', refId: 'RCV-20260310-002', transType: InventoryTransType.RECEIPT_IN, itemCode: 'WHEAT-SOFT', qty: 30000, ownerCode: 'CARGILL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260310-000004', refType: 'SHIPMENT', refId: 'SHP-20260310-001', transType: InventoryTransType.SHIPMENT_OUT, itemCode: 'RICE-JASMINE', qty: -5000, ownerCode: 'TVL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260310-000005', refType: 'ADJUSTMENT', refId: 'ADJ-20260310-001', transType: InventoryTransType.ADJUSTMENT, itemCode: 'CORN-YELLOW', qty: -200, ownerCode: 'TVL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260311-000001', refType: 'RECEIPT', refId: 'RCV-20260311-001', transType: InventoryTransType.RECEIPT_IN, itemCode: 'FERT-UREA', qty: 50000, ownerCode: 'OLAM', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260311-000002', refType: 'RECEIPT', refId: 'RCV-20260311-001', transType: InventoryTransType.RECEIPT_IN, itemCode: 'FERT-NPK', qty: 35000, ownerCode: 'OLAM', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260311-000003', refType: 'TRANSFER', refId: 'TRF-20260311-001', transType: InventoryTransType.TRANSFER_OUT, itemCode: 'WHEAT-SOFT', qty: -10000, ownerCode: 'CARGILL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260311-000004', refType: 'COUNT', refId: 'CNT-20260311-001', transType: InventoryTransType.COUNT_GAIN, itemCode: 'SUGAR-RAW', qty: 500, ownerCode: 'TVL', statusCode: 'AVAILABLE' },
+    { transId: 'TRX-20260311-000005', refType: 'STATUS_CHANGE', refId: 'STC-20260311-001', transType: InventoryTransType.STATUS_CHANGE, itemCode: 'RICE-JASMINE', qty: 1000, ownerCode: 'TVL', statusCode: 'DAMAGED' },
+  ];
+
+  for (const trans of transactionSeeds) {
+    const dimKey = `${trans.ownerCode}-${trans.statusCode}`;
+    const existing = await prisma.inventTrans.findUnique({ where: { transId: trans.transId } });
+    
+    if (!existing) {
+      await prisma.inventTrans.create({
+        data: {
+          transId: trans.transId,
+          refType: trans.refType,
+          refId: trans.refId,
+          transType: trans.transType,
+          itemId: itemMap[trans.itemCode],
+          qty: trans.qty,
+          uomId: uomMap['KG'],
+          dimToId: inventDimMap[dimKey],
+          stage: InventoryStage.PHYSICAL,
+          externalId: `EXT-${trans.transId}`,
+          correlationId: `COR-${trans.refId}`,
+          sourceApp: SourceApp.WEB,
+          postedBy: admin.id,
+          postedAt: new Date(),
+          ownerId: ownerMap[trans.ownerCode],
+        },
+      });
+    }
+  }
+
   console.log('✅ Module 2 Master Data seeded successfully');
+  console.log('✅ Module 3 Inventory Transactions seeded successfully');
+
+  // ========== Module 3: Inventory Event Mapping ==========
+  const eventMappingSeeds: Array<{
+    eventCode: string;
+    sourceModule: string;
+    sourceObject: string;
+    triggerState: string;
+    transType: InventoryTransType;
+    affectPhysical: boolean;
+    affectHold: boolean;
+    reversible: boolean;
+  }> = [
+    { eventCode: 'RECEIPT_RECEIVED', sourceModule: 'INBOUND', sourceObject: 'Receipt', triggerState: 'RECEIVED', transType: InventoryTransType.RECEIPT_IN, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'PUTAWAY_COMPLETED', sourceModule: 'WORK_EXEC', sourceObject: 'WorkLine', triggerState: 'COMPLETED', transType: InventoryTransType.MOVE, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'SHIPMENT_SHIPPED', sourceModule: 'OUTBOUND', sourceObject: 'Shipment', triggerState: 'SHIPPED', transType: InventoryTransType.SHIPMENT_OUT, affectPhysical: true, affectHold: true, reversible: true },
+    { eventCode: 'MOVE_COMPLETED', sourceModule: 'INV_CTRL', sourceObject: 'MoveOrder', triggerState: 'COMPLETED', transType: InventoryTransType.MOVE, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'STATUS_CHANGE_CONFIRMED', sourceModule: 'INV_CTRL', sourceObject: 'StatusChange', triggerState: 'CONFIRMED', transType: InventoryTransType.STATUS_CHANGE, affectPhysical: false, affectHold: false, reversible: true },
+    { eventCode: 'ADJUSTMENT_APPROVED', sourceModule: 'INV_CTRL', sourceObject: 'Adjustment', triggerState: 'APPROVED', transType: InventoryTransType.ADJUSTMENT, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'COUNT_GAIN_RECONCILED', sourceModule: 'INV_CTRL', sourceObject: 'CycleCount', triggerState: 'RECONCILED', transType: InventoryTransType.COUNT_GAIN, affectPhysical: true, affectHold: false, reversible: false },
+    { eventCode: 'COUNT_LOSS_RECONCILED', sourceModule: 'INV_CTRL', sourceObject: 'CycleCount', triggerState: 'RECONCILED', transType: InventoryTransType.COUNT_LOSS, affectPhysical: true, affectHold: false, reversible: false },
+    { eventCode: 'VAS_CONSUME', sourceModule: 'VAS', sourceObject: 'VasWorkOrder', triggerState: 'COMPLETED', transType: InventoryTransType.VAS_CONSUME, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'VAS_PRODUCE', sourceModule: 'VAS', sourceObject: 'VasWorkOrder', triggerState: 'COMPLETED', transType: InventoryTransType.VAS_PRODUCE, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'TRANSFER_OUT', sourceModule: 'INV_CTRL', sourceObject: 'TransferOrder', triggerState: 'SHIPPED', transType: InventoryTransType.TRANSFER_OUT, affectPhysical: true, affectHold: false, reversible: true },
+    { eventCode: 'TRANSFER_IN', sourceModule: 'INV_CTRL', sourceObject: 'TransferOrder', triggerState: 'RECEIVED', transType: InventoryTransType.TRANSFER_IN, affectPhysical: true, affectHold: false, reversible: true },
+    // Direct adjustment for testing/seeding
+    { eventCode: 'DIRECT_ADJUSTMENT', sourceModule: 'FOUNDATION', sourceObject: 'Manual', triggerState: 'APPROVED', transType: InventoryTransType.ADJUSTMENT, affectPhysical: true, affectHold: false, reversible: true },
+  ];
+
+  for (const em of eventMappingSeeds) {
+    await prisma.inventoryEventMapping.upsert({
+      where: { eventCode: em.eventCode },
+      update: { ...em, activeFlag: true },
+      create: { ...em, activeFlag: true },
+    });
+  }
+
+  console.log('✅ Module 3 Inventory Event Mapping seeded successfully');
 }
 
 main()

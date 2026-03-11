@@ -30,7 +30,7 @@ import {
 
 @ApiTags('VAS Work Orders')
 @ApiBearerAuth()
-@Controller('api/v1/vas-wo')
+@Controller('vas-wo')
 @UseGuards(VasAuthGuard, VasPermissionGuard)
 export class VasWorkOrderCommandController {
   constructor(
