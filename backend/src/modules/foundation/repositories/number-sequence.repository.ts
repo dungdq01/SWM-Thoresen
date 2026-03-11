@@ -114,7 +114,7 @@ export class NumberSequenceRepository {
        SET "last_number" = "last_number" + 1,
            "version_no" = "version_no" + 1,
            "updated_at" = NOW()
-       WHERE "sequence_id" = $1 AND "scope_key" = $2 AND "counter_date" = $3::date
+       WHERE "sequence_id" = $1::uuid AND "scope_key" = $2 AND "counter_date" = $3::date
        RETURNING "last_number"`,
       sequence.id,
       scopeKey,

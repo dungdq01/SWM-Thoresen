@@ -179,8 +179,48 @@ Danh sách billing events.
 #### GET `/api/v1/billing/events/:id`
 Chi tiết billing event.
 
+#### POST `/api/v1/billing/events/capture`
+Capture billing event thủ công từ UI.
+
+**Permission:** `BILLING.EVENT.READ`
+
+**Request Body:**
+```json
+{
+  "eventType": "RECEIPT_RECEIVED",
+  "refType": "MANUAL",
+  "refId": "MANUAL-1234567890",
+  "ownerId": "uuid",
+  "warehouseId": "uuid",
+  "billingQtyMt": 100.5,
+  "eventDate": "2025-01-15",
+  "operationTimestamp": "2025-01-15T10:30:00Z",
+  "sourceModule": "BILLING_UI",
+  "externalId": "EVT-1234567890-abc123",
+  "correlationId": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "eventType": "RECEIPT_RECEIVED",
+    "ownerId": "uuid",
+    "warehouseId": "uuid",
+    "billingQtyMt": 100.5,
+    "eventDate": "2025-01-15",
+    "billingStatus": "PENDING",
+    "rateStatus": "PENDING"
+  },
+  "meta": { "isReplay": false }
+}
+```
+
 #### POST `/internal/billing/events/capture` (Internal API)
-Capture billing event từ các module khác.
+Capture billing event từ các module khác (M4, M5, M9).
 
 **Request Body:**
 ```json
@@ -431,3 +471,14 @@ Billable Qty = Opening Qty + Inbound Today
 | Controller prefix | Fix double-prefix `@Controller('api/v1/billing/...')` → `@Controller('billing/...')` trong 5 controllers (`billing-contract`, `debit-note`, `billing-event`, `billing-exception`, `billing-day-type`). Routes đúng chuẩn: `/api/v1/billing/...` |
 | Internal controller | `@Controller('internal/billing/events')` giữ nguyên — đã đúng (không có global prefix) |
 | Module registration | Register `BillingModule` vào `app.module.ts` |
+
+## Changelog — UI Integration (2026-03-12)
+
+| Fix | Mô tả |
+|-----|-------|
+| Public capture endpoint | Thêm `POST /api/v1/billing/events/capture` vào `BillingEventController` để UI có thể tạo billing events thủ công. Trước đây chỉ có internal endpoint `/internal/billing/events/capture` |
+| Exception filter | Cập nhật `HttpExceptionFilter` để xử lý `BillingError` - extract HTTP status từ error code suffix (e.g., `BIL-DN-NO-CHARGES-422` → 422) |
+| Frontend hooks | Thêm `useCaptureEvent()` hook và `captureEvent` API method |
+| Vietnamese localization | Việt hóa 4 trang billing: Dashboard, Invoices, Rate Cards, Billable Events |
+| Contract DTO alignment | Fix frontend form để match backend `CreateContractDto` với `feeLines` array |
+| Query params cleanup | Thêm `cleanFilters()` để loại bỏ empty strings trước khi gọi API (tránh validation errors) |

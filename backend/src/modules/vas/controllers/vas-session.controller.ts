@@ -41,7 +41,7 @@ export class VasSessionController {
     @Body() dto: AddVasSessionDto,
     @CurrentUser() user: UserContext,
   ) {
-    const actor = { userId: user.userId, role: user.role };
+    const actor = { userId: user.id, role: user.roleCodes[0] || 'USER' };
     return this.addSessionService.execute(id, dto, actor);
   }
 }

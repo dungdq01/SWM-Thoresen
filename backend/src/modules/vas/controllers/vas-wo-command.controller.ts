@@ -51,7 +51,7 @@ export class VasWorkOrderCommandController {
   @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
   @ApiResponse({ status: 409, description: 'Duplicate externalId' })
   async create(@Body() dto: CreateVasWoDto, @CurrentUser() user: UserContext) {
-    const actor = { userId: user.userId, role: user.role };
+    const actor = { userId: user.id, role: user.roleCodes[0] || 'USER' };
     return this.createService.execute(dto, actor);
   }
 
@@ -69,7 +69,7 @@ export class VasWorkOrderCommandController {
     @Body() dto: UpdateVasWoDto,
     @CurrentUser() user: UserContext,
   ) {
-    const actor = { userId: user.userId, role: user.role };
+    const actor = { userId: user.id, role: user.roleCodes[0] || 'USER' };
     return this.updateService.execute(id, dto, actor);
   }
 
@@ -88,7 +88,7 @@ export class VasWorkOrderCommandController {
     @Body() dto: ConfirmVasWoDto,
     @CurrentUser() user: UserContext,
   ) {
-    const actor = { userId: user.userId, role: user.role };
+    const actor = { userId: user.id, role: user.roleCodes[0] || 'USER' };
     return this.confirmService.execute(id, dto, actor);
   }
 
@@ -107,7 +107,7 @@ export class VasWorkOrderCommandController {
     @Body() dto: CompleteVasWoDto,
     @CurrentUser() user: UserContext,
   ) {
-    const actor = { userId: user.userId, role: user.role };
+    const actor = { userId: user.id, role: user.roleCodes[0] || 'USER' };
     return this.completeService.execute(id, dto, actor);
   }
 
@@ -125,7 +125,7 @@ export class VasWorkOrderCommandController {
     @Body() dto: CancelVasWoDto,
     @CurrentUser() user: UserContext,
   ) {
-    const actor = { userId: user.userId, role: user.role };
+    const actor = { userId: user.id, role: user.roleCodes[0] || 'USER' };
     return this.cancelService.execute(id, dto, actor);
   }
 }

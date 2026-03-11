@@ -212,6 +212,29 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['INTEGRATION.WEIGHBRIDGE.READ', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'READ', false],
   ['INTEGRATION.WEIGHBRIDGE.DEVICE.READ', 'INTEGRATION', 'WEIGHBRIDGE_DEVICE', 'READ', false],
   ['INTEGRATION.WEIGHBRIDGE.MANAGE', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'MANAGE', true],
+  // Module 9: Billing
+  ['BILLING.CONTRACT.READ', 'BILLING', 'CONTRACT', 'READ', false],
+  ['BILLING.CONTRACT.CREATE', 'BILLING', 'CONTRACT', 'CREATE', true],
+  ['BILLING.CONTRACT.UPDATE', 'BILLING', 'CONTRACT', 'UPDATE', true],
+  ['BILLING.DAY_TYPE.MANAGE', 'BILLING', 'DAY_TYPE', 'MANAGE', true],
+  ['BILLING.EVENT.READ', 'BILLING', 'EVENT', 'READ', false],
+  ['BILLING.EXCEPTION.READ', 'BILLING', 'EXCEPTION', 'READ', false],
+  ['BILLING.EXCEPTION.RESOLVE', 'BILLING', 'EXCEPTION', 'RESOLVE', true],
+  ['BILLING.DN.READ', 'BILLING', 'DN', 'READ', false],
+  ['BILLING.DN.GENERATE', 'BILLING', 'DN', 'GENERATE', true],
+  ['BILLING.DN.REVIEW', 'BILLING', 'DN', 'REVIEW', true],
+  ['BILLING.DN.APPROVE', 'BILLING', 'DN', 'APPROVE', true],
+  ['BILLING.DN.LOCK', 'BILLING', 'DN', 'LOCK', true],
+  // Module 9: VAS (Value-Added Services)
+  ['VAS.WO.READ', 'VAS', 'WORK_ORDER', 'READ', false],
+  ['VAS.WO.CREATE', 'VAS', 'WORK_ORDER', 'CREATE', true],
+  ['VAS.WO.UPDATE', 'VAS', 'WORK_ORDER', 'UPDATE', true],
+  ['VAS.WO.CONFIRM', 'VAS', 'WORK_ORDER', 'CONFIRM', true],
+  ['VAS.WO.COMPLETE', 'VAS', 'WORK_ORDER', 'COMPLETE', true],
+  ['VAS.WO.CANCEL', 'VAS', 'WORK_ORDER', 'CANCEL', true],
+  ['VAS.SESSION.READ', 'VAS', 'SESSION', 'READ', false],
+  ['VAS.SESSION.CREATE', 'VAS', 'SESSION', 'CREATE', true],
+  ['VAS.DASHBOARD.READ', 'VAS', 'DASHBOARD', 'READ', false],
 ];
 
 async function main() {
@@ -270,6 +293,36 @@ async function main() {
     create: {
       userId: governance.id,
       passwordHash: govPasswordHash,
+      passwordAlgo: 'ARGON2ID',
+      mustChangePassword: false,
+    },
+  });
+
+  const billingOfficer = await prisma.appUser.upsert({
+    where: { userCode: 'billing_officer' },
+    update: { fullName: 'Billing Officer', isActive: true },
+    create: {
+      userCode: 'billing_officer',
+      username: 'billing_officer',
+      fullName: 'Billing Officer',
+      email: 'billing@swms.local',
+    },
+  });
+
+  // Seed auth credentials for billing officer user
+  const billingPasswordHash = await argon2.hash('Billing@123456', {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
+
+  await prisma.authLocalCredential.upsert({
+    where: { userId: billingOfficer.id },
+    update: { passwordHash: billingPasswordHash, mustChangePassword: false },
+    create: {
+      userId: billingOfficer.id,
+      passwordHash: billingPasswordHash,
       passwordAlgo: 'ARGON2ID',
       mustChangePassword: false,
     },
@@ -388,6 +441,31 @@ async function main() {
     });
   }
 
+  // Assign billing permissions to BILLING_OFC role
+  const billingOfcRole = await prisma.role.findUnique({
+    where: { roleCode: 'BILLING_OFC' },
+  });
+
+  if (billingOfcRole) {
+    for (const permission of permissions.filter((item) => item.permissionCode.startsWith('BILLING.'))) {
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: billingOfcRole.id,
+            permissionId: permission.id,
+          },
+        },
+        update: { effect: RolePermissionEffect.ALLOW, createdBy: admin.id },
+        create: {
+          roleId: billingOfcRole.id,
+          permissionId: permission.id,
+          effect: RolePermissionEffect.ALLOW,
+          createdBy: admin.id,
+        },
+      });
+    }
+  }
+
   await prisma.userRole.upsert({
     where: { id: '0b8a0f26-61d8-42b0-9255-74a37bf8f100' },
     update: {
@@ -419,6 +497,26 @@ async function main() {
       id: 'c3d441fe-2bb1-45ce-9ed3-bd4f3ce6aa01',
       userId: governance.id,
       roleId: governanceRole.id,
+      isPrimary: true,
+      isActive: true,
+      warehouseCode: 'WH5.1',
+      assignedBy: admin.id,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: { id: 'd4e552ff-3cc2-56df-0fee-ce5f4ce7bb02' },
+    update: {
+      userId: billingOfficer.id,
+      roleId: billingOfcRole?.id || adminRole.id,
+      isPrimary: true,
+      isActive: true,
+      warehouseCode: 'WH5.1',
+    },
+    create: {
+      id: 'd4e552ff-3cc2-56df-0fee-ce5f4ce7bb02',
+      userId: billingOfficer.id,
+      roleId: billingOfcRole?.id || adminRole.id,
       isPrimary: true,
       isActive: true,
       warehouseCode: 'WH5.1',
@@ -516,7 +614,8 @@ async function main() {
   }
 
   // HI-4 Fix: Add TRF and ADJ sequences for Module 6 (Inventory Control)
-  for (const sequenceCode of ['RCV', 'SHP', 'WRK', 'TRX', 'DN', 'TRF', 'ADJ']) {
+  // Added CONTRACT for Module 10 Billing
+  for (const sequenceCode of ['RCV', 'SHP', 'WRK', 'TRX', 'DN', 'TRF', 'ADJ', 'CONTRACT']) {
     await prisma.numberSequence.upsert({
       where: { sequenceCode },
       update: {

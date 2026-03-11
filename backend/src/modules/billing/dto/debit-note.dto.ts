@@ -1,4 +1,5 @@
 import { IsString, IsUUID, IsDateString, IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
 import { BilDebitNoteStatus } from '../domain/billing.enums';
 
 export class GenerateDebitNoteDto {
@@ -81,10 +82,12 @@ export class QueryDebitNoteDto {
   dnNumber?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }

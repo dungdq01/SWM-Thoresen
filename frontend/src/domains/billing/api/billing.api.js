@@ -23,15 +23,15 @@ export const billingApi = {
   ),
   reviewDebitNote: withDataSource(
     (id) => billingMockApi.approveInvoice?.(id) || Promise.resolve({ data: {} }),
-    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/review`)
+    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/review`, { externalId: `REV-${id}-${Date.now()}` })
   ),
   approveDebitNote: withDataSource(
     (id) => billingMockApi.approveInvoice(id),
-    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/approve`)
+    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/approve`, { externalId: `APR-${id}-${Date.now()}` })
   ),
   lockDebitNote: withDataSource(
     (id) => Promise.resolve({ data: {} }),
-    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/lock`)
+    (id) => httpClient.put(`${BASE_URL}/debit-notes/${id}/lock`, { externalId: `LCK-${id}-${Date.now()}` })
   ),
   getContracts: withDataSource(
     (params) => billingMockApi.getRateCards(params),
@@ -48,6 +48,10 @@ export const billingApi = {
   getEvents: withDataSource(
     (params) => billingMockApi.getBillableEvents(params),
     (params) => httpClient.get(`${BASE_URL}/events`, { params })
+  ),
+  captureEvent: withDataSource(
+    (data) => Promise.resolve({ data: { id: Date.now(), ...data } }),
+    (data) => httpClient.post(`${BASE_URL}/events/capture`, data)
   ),
   getDashboard: withDataSource(
     (params) => billingMockApi.getDashboard(params),
