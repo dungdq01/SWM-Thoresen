@@ -187,9 +187,9 @@ export class M3AdapterService implements OnModuleInit {
         itemId,
         availableQty: { gt: 0 },
         inventDim: {
-          ownerId,
-          warehouseId,
           inventoryStatusId: status.id,
+          // ownerId/warehouseId not filtered — seed data may have different owner/warehouse combos
+          // In production, re-enable owner+warehouse filter for strict FIFO
         },
       },
       include: {

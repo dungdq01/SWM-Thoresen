@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApprovalService } from '../services/approval.service';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
@@ -19,9 +20,16 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { RequestUser } from '../../../common/interfaces/request-user.interface';
 
 class ApprovalDto {
+  @IsOptional()
+  @IsString()
   lineId?: string;
-  decision!: 'APPROVE' | 'REJECT' | 'REWEIGH';
-  reasonCode!: string;
+
+  @IsOptional()
+  @IsString()
+  reasonCode?: string;
+
+  @IsOptional()
+  @IsString()
   note?: string;
 }
 
@@ -58,7 +66,7 @@ export class ApprovalController {
       shipmentId: id,
       lineId: dto.lineId,
       decision: 'APPROVE',
-      reasonCode: dto.reasonCode,
+      reasonCode: dto.reasonCode || '',
       note: dto.note,
       decidedBy,
     });
@@ -82,7 +90,7 @@ export class ApprovalController {
       shipmentId: id,
       lineId: dto.lineId,
       decision: 'REJECT',
-      reasonCode: dto.reasonCode,
+      reasonCode: dto.reasonCode || '',
       note: dto.note,
       decidedBy,
     });
