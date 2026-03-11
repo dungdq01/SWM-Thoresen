@@ -34,6 +34,8 @@ const InventoryOnHandPage = lazy(() => import('@pages/inventory-core').then(m =>
 const InventoryTransactionsPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryTransactionsPage })))
 const InventoryHoldsPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryHoldsPage })))
 const InventoryPostingWorkbenchPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryPostingWorkbenchPage })))
+const InventoryReconciliationPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.ReconciliationPage })))
+const InventorySnapshotBillingPage = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.SnapshotBillingPage })))
 
 // Inbound Operations Pages
 const InboundOperationsLayout = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundOperationsLayout })))
@@ -237,6 +239,14 @@ export const router = createBrowserRouter([
           {
             path: 'workbench',
             element: withSuspense(InventoryPostingWorkbenchPage),
+          },
+          {
+            path: 'reconciliation',
+            element: withSuspense(InventoryReconciliationPage),
+          },
+          {
+            path: 'snapshots',
+            element: withSuspense(InventorySnapshotBillingPage),
           },
         ],
       },

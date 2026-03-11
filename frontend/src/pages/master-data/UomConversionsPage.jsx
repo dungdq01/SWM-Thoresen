@@ -70,7 +70,7 @@ export function UomConversionsPage() {
 
     try {
       if (formModal.data?.id) {
-        await updateMutation.mutateAsync({ id: formModal.data.id, data })
+        await updateMutation.mutateAsync({ id: formModal.data.id, data: { ...data, rowVersion: Number(formModal.data.rowVersion) } })
       } else {
         await createMutation.mutateAsync(data)
       }

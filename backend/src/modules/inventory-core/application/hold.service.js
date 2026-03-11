@@ -15,11 +15,12 @@ const {
 } = require('../domain/inventory.errors');
 
 class HoldService {
-  constructor(prisma) {
+  constructor(prisma, auditLogAdapter = null) {
     this.prisma = prisma;
     this.inventDimService = new InventDimService(prisma);
     this.onHandRepo = new OnHandRepository(prisma);
     this.holdRepo = new HoldRepository(prisma);
+    this.auditLogAdapter = auditLogAdapter;
   }
 
   /**
@@ -231,6 +232,70 @@ class HoldService {
    */
   async getHoldsByShipment(shipmentId, shipmentLineId = null) {
     return this.holdRepo.findByShipment(shipmentId, shipmentLineId);
+  }
+
+  /**
+   * Log hold creation to audit trail (fire-and-forget)
+   */
+  async logHoldCreateAudit(command, result) {
+    if (!this.auditLogAdapter || result.idempotentReplay) return;
+    try {
+      await this.auditLogAdapter.logHoldCreate({
+        holdId: result.holdId,
+        holdNo: result.holdNo,
+        holdQty: result.holdQty,
+        itemId: command.itemId,
+        onHandId: null,
+        createdBy: command.createdBy,
+        reasonCode: command.reasonCode,
+        correlationId: command.correlationId,
+        requestId: command.requestId,
+      });
+    } catch (err) {
+      console.error('Audit log hold create failed (non-blocking):', err.message);
+    }
+  }
+
+  /**
+   * Log hold release to audit trail (fire-and-forget)
+   */
+  async logHoldReleaseAudit(command, result) {
+    if (!this.auditLogAdapter) return;
+    try {
+      await this.auditLogAdapter.logHoldRelease({
+        holdId: result.holdId,
+        oldStatus: 'ACTIVE',
+        newStatus: result.newStatus,
+        oldReleasedQty: '0',
+        newReleasedQty: result.releasedQty,
+        releaseQty: result.releasedQty,
+        releasedBy: command.releasedBy,
+        correlationId: command.correlationId,
+        requestId: command.requestId,
+      });
+    } catch (err) {
+      console.error('Audit log hold release failed (non-blocking):', err.message);
+    }
+  }
+
+  /**
+   * Log hold cancellation to audit trail (fire-and-forget)
+   */
+  async logHoldCancelAudit(command, result) {
+    if (!this.auditLogAdapter || result.idempotentReplay) return;
+    try {
+      await this.auditLogAdapter.logHoldCancel({
+        holdId: result.holdId,
+        oldStatus: 'ACTIVE',
+        holdQty: result.releasedQty,
+        cancelledBy: command.releasedBy,
+        reasonCode: command.reasonCode,
+        correlationId: command.correlationId,
+        requestId: command.requestId,
+      });
+    } catch (err) {
+      console.error('Audit log hold cancel failed (non-blocking):', err.message);
+    }
   }
 }
 

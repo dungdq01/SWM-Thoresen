@@ -4,6 +4,22 @@ import { masterDataMockApi } from './masterData.mock'
 const db = masterDataMockApi.__db
 
 const inventoryDb = {
+  reconciliationRuns: [
+    { id: 'recon-001', runNo: 'RECON-20260310-A1B2C3', runType: 'ON_DEMAND', scopeType: 'FULL', warehouseId: null, ownerId: null, itemId: null, startedAt: '2026-03-10T08:00:00Z', completedAt: '2026-03-10T08:02:30Z', status: 'COMPLETED', mismatchCount: 2, requestedBy: 'admin', correlationId: 'corr-recon-001', results: [
+      { id: 'res-001', runId: 'recon-001', itemId: 'item-001', inventDimId: 'dim-001', ledgerQty: '30500.000', onhandPhysicalQty: '30000.000', reservedQty: '10000.000', availableQty: '20000.000', diffQty: '500.000', severity: 'MEDIUM', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'MISMATCH' },
+      { id: 'res-002', runId: 'recon-001', itemId: 'item-002', inventDimId: 'dim-002', ledgerQty: '12000.000', onhandPhysicalQty: '12000.000', reservedQty: '0.000', availableQty: '12000.000', diffQty: '0.000', severity: 'INFO', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'OK' },
+    ] },
+    { id: 'recon-002', runNo: 'RECON-20260308-X9Y8Z7', runType: 'SCHEDULED', scopeType: 'WAREHOUSE', warehouseId: 'wh-001', ownerId: null, itemId: null, startedAt: '2026-03-08T00:00:00Z', completedAt: '2026-03-08T00:01:15Z', status: 'COMPLETED', mismatchCount: 0, requestedBy: 'system', correlationId: 'corr-recon-002', results: [] },
+  ],
+  snapshotRuns: [
+    { id: 'snap-001', runNo: 'SNAP-20260310-D4E5F6', snapshotDate: '2026-03-10', warehouseId: null, cutOffTime: '2026-03-10T23:59:59Z', runMode: 'MANUAL', versionNo: 1, status: 'COMPLETED', startedAt: '2026-03-10T23:00:00Z', completedAt: '2026-03-10T23:01:00Z', requestedBy: 'admin', correlationId: 'corr-snap-001' },
+    { id: 'snap-002', runNo: 'SNAP-20260309-G7H8I9', snapshotDate: '2026-03-09', warehouseId: 'wh-001', cutOffTime: '2026-03-09T23:59:59Z', runMode: 'SCHEDULED', versionNo: 1, status: 'COMPLETED', startedAt: '2026-03-09T23:00:00Z', completedAt: '2026-03-09T23:00:45Z', requestedBy: 'system', correlationId: 'corr-snap-002' },
+  ],
+  snapshotBilling: [
+    { id: 'sb-001', snapshotRunId: 'snap-001', snapshotDate: '2026-03-10', warehouseId: 'wh-001', locationId: 'loc-001', ownerId: 'owner-001', itemId: 'item-001', inventDimId: 'dim-001', openingQty: '28000.000', inboundTodayQty: '5000.000', outboundTodayQty: '3000.000', closingQty: '30000.000', cutOffTime: '2026-03-10T23:59:59Z', snapshotSource: 'ONHAND_CAPTURE' },
+    { id: 'sb-002', snapshotRunId: 'snap-001', snapshotDate: '2026-03-10', warehouseId: 'wh-001', locationId: 'loc-002', ownerId: 'owner-002', itemId: 'item-002', inventDimId: 'dim-002', openingQty: '12000.000', inboundTodayQty: '0.000', outboundTodayQty: '0.000', closingQty: '12000.000', cutOffTime: '2026-03-10T23:59:59Z', snapshotSource: 'ONHAND_CAPTURE' },
+    { id: 'sb-003', snapshotRunId: 'snap-002', snapshotDate: '2026-03-09', warehouseId: 'wh-001', locationId: 'loc-001', ownerId: 'owner-001', itemId: 'item-001', inventDimId: 'dim-001', openingQty: '25000.000', inboundTodayQty: '5000.000', outboundTodayQty: '2000.000', closingQty: '28000.000', cutOffTime: '2026-03-09T23:59:59Z', snapshotSource: 'ONHAND_CAPTURE' },
+  ],
   transactions: [
     { id: 'trans-001', transId: 'TRX-20260308-000123', transType: 'RECEIPT_IN', qty: '25000.000', refType: 'RECEIPT', refId: 'RCV-20260308-001', correlationId: 'corr-20260308-001', postedAt: '2026-03-08T08:30:00Z', sourceApp: 'API', isReversal: false, itemId: 'item-001', ownerId: 'owner-001' },
     { id: 'trans-002', transId: 'TRX-20260308-000124', transType: 'SHIPMENT_OUT', qty: '-5000.000', refType: 'SHIPMENT', refId: 'SHP-20260308-017', correlationId: 'corr-20260308-002', postedAt: '2026-03-08T09:10:00Z', sourceApp: 'API', isReversal: false, itemId: 'item-001', ownerId: 'owner-001' },
@@ -140,5 +156,65 @@ export const inventoryCoreMockApi = {
     const hold = inventoryDb.holds.find((item) => item.id === holdId)
     hold.status = 'CANCELLED'
     return delay({ data: hold })
+  },
+
+  // Reconciliation
+  createReconciliationRun: (data) => {
+    const run = { id: `recon-${Date.now()}`, runNo: `RECON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, runType: data.runType || 'ON_DEMAND', scopeType: data.scopeType || 'FULL', warehouseId: data.warehouseId || null, ownerId: data.ownerId || null, itemId: data.itemId || null, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), status: 'COMPLETED', mismatchCount: 1, requestedBy: 'admin', correlationId: data.correlationId, results: [{ id: `res-${Date.now()}`, runId: `recon-${Date.now()}`, itemId: 'item-001', inventDimId: 'dim-001', ledgerQty: '30500.000', onhandPhysicalQty: '30000.000', reservedQty: '10000.000', availableQty: '20000.000', diffQty: '500.000', severity: 'MEDIUM', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'MISMATCH' }] }
+    inventoryDb.reconciliationRuns.unshift(run)
+    return delay({ data: run })
+  },
+  getReconciliationRuns: (params = {}) => {
+    const rows = inventoryDb.reconciliationRuns.filter((r) => (!params.status || r.status === params.status) && (!params.warehouseId || r.warehouseId === params.warehouseId)).map((r) => ({ ...r, warehouse: r.warehouseId ? enrich.warehouse(r.warehouseId) : null }))
+    return delay({ ...paginate(rows, params.page, params.pageSize) })
+  },
+  getReconciliationRun: (runId) => {
+    const run = inventoryDb.reconciliationRuns.find((r) => r.id === runId)
+    if (!run) return delay({ data: null })
+    return delay({ data: { ...run, results: (run.results || []).map((r) => ({ ...r, item: enrich.item(r.itemId) })) } })
+  },
+  reviewReconciliationResult: (resultId) => {
+    for (const run of inventoryDb.reconciliationRuns) {
+      const result = (run.results || []).find((r) => r.id === resultId)
+      if (result) { result.resultStatus = 'REVIEWED'; return delay({ data: result }) }
+    }
+    return delay({ data: null })
+  },
+  resolveReconciliationResult: (resultId) => {
+    for (const run of inventoryDb.reconciliationRuns) {
+      const result = (run.results || []).find((r) => r.id === resultId)
+      if (result) { result.resultStatus = 'RESOLVED'; return delay({ data: result }) }
+    }
+    return delay({ data: null })
+  },
+
+  // Snapshot
+  createSnapshotRun: (data) => {
+    const run = { id: `snap-${Date.now()}`, runNo: `SNAP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, snapshotDate: data.snapshotDate || new Date().toISOString().slice(0, 10), warehouseId: data.warehouseId || null, cutOffTime: new Date().toISOString(), runMode: data.mode || 'MANUAL', versionNo: 1, status: 'COMPLETED', startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), requestedBy: 'admin', correlationId: data.correlationId }
+    inventoryDb.snapshotRuns.unshift(run)
+    return delay({ data: { runId: run.id, runNo: run.runNo, status: 'COMPLETED', snapshotDate: run.snapshotDate, recordCount: 2 } })
+  },
+  getSnapshotRuns: (params = {}) => {
+    const rows = inventoryDb.snapshotRuns.filter((r) => (!params.status || r.status === params.status) && (!params.warehouseId || r.warehouseId === params.warehouseId)).map((r) => ({ ...r, warehouse: r.warehouseId ? enrich.warehouse(r.warehouseId) : null }))
+    return delay({ ...paginate(rows, params.page, params.pageSize) })
+  },
+  getSnapshotRun: (runId) => {
+    const run = inventoryDb.snapshotRuns.find((r) => r.id === runId)
+    return delay({ data: run ? { ...run, warehouse: run.warehouseId ? enrich.warehouse(run.warehouseId) : null } : null })
+  },
+  getSnapshotsBilling: (params = {}) => {
+    const rows = inventoryDb.snapshotBilling.filter((r) => (!params.warehouseId || r.warehouseId === params.warehouseId) && (!params.ownerId || r.ownerId === params.ownerId)).map((r) => ({ ...r, item: enrich.item(r.itemId), owner: enrich.owner(r.ownerId), warehouse: enrich.warehouse(r.warehouseId), location: enrich.location(r.locationId) }))
+    return delay({ ...paginate(rows, params.page, params.pageSize) })
+  },
+  getSnapshotsBillingAggregate: (params = {}) => {
+    const grouped = {}
+    inventoryDb.snapshotBilling.filter((r) => (!params.warehouseId || r.warehouseId === params.warehouseId) && (!params.ownerId || r.ownerId === params.ownerId)).forEach((r) => {
+      const key = `${r.ownerId}|${r.itemId}`
+      if (!grouped[key]) grouped[key] = { ownerId: r.ownerId, itemId: r.itemId, daysStored: 0, totalClosingQty: 0 }
+      grouped[key].daysStored += 1
+      grouped[key].totalClosingQty += Number(r.closingQty || 0)
+    })
+    const results = Object.values(grouped).map((g) => ({ ...g, avgClosingQty: (g.totalClosingQty / (g.daysStored || 1)).toFixed(3), totalQtyDays: g.totalClosingQty.toFixed(3), owner: enrich.owner(g.ownerId), item: enrich.item(g.itemId) }))
+    return delay({ data: results })
   },
 }

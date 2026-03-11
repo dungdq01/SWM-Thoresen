@@ -674,19 +674,45 @@ Seed đang tạo sẵn:
 ### Warehouse
 - `WH5.1` - Kho 5.1 - Phú Mỹ
 
-### Zones (3 records)
-- `ZONE-A` - Zone A - Bulk Storage
-- `ZONE-B` - Zone B - Bagged Storage
-- `ZONE-C` - Zone C - Container Yard
+### Zones (5 records)
+- `RCV-01` - Khu tiếp nhận 01 (RECEIVING)
+- `STG-01` - Khu staging 01 (STAGING)
+- `STR-A` - Khu lưu trữ A (STORAGE, billing zone)
+- `STR-B` - Khu lưu trữ B (STORAGE, billing zone)
+- `SHP-01` - Khu xuất hàng 01 (SHIPPING)
 
 ### Locations (6 records)
-- 2 locations per zone
+- `RCV-01-001` (RECEIVING) - zone RCV-01
+- `STG-01-001` (STAGING) - zone STG-01
+- `STR-A-001` (STORAGE) - zone STR-A
+- `STR-A-002` (STORAGE) - zone STR-A
+- `STR-B-001` (STORAGE) - zone STR-B
+- `SHP-01-001` (SHIPPING) - zone SHP-01
 
 ### Service Codes (5 records)
-- Handling, Storage, Weighing, Documentation, Fumigation
+- `STORAGE` - Phí lưu kho (STORAGE)
+- `HANDLING_IN` - Phí xếp dỡ nhập (HANDLING)
+- `HANDLING_OUT` - Phí xếp dỡ xuất (HANDLING)
+- `BAGGING` - Phí đóng bao (VAS)
+- `WEIGHING` - Phí cân (HANDLING)
 
 ### Day Types (3 records)
-- WORKDAY, WEEKEND, HOLIDAY
+- `NORMAL` - Ngày thường
+- `WEEKEND` - Cuối tuần
+- `HOLIDAY` - Ngày lễ
+
+### Owners (3 records)
+- `TVL` - Thoresen Vinalines (DIRECT)
+- `CARGILL` - Cargill Vietnam (CONSIGNED)
+- `OLAM` - Olam International (CONSIGNED)
+
+### Items (6 records)
+- `RICE-JASMINE` - Gạo Jasmine (BULK)
+- `CORN-YELLOW` - Bắp vàng (BULK)
+- `WHEAT-SOFT` - Lúa mì mềm (BULK)
+- `FERT-UREA` - Phân Urê (BAGGED_50KG)
+- `FERT-NPK` - Phân NPK (BAGGED_50KG)
+- `SUGAR-RAW` - Đường thô (BULK)
 
 ---
 

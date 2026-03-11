@@ -31,8 +31,8 @@ const db = {
     { id: 'item-002', itemCode: 'FERT001', itemName: 'Phân Urea', cargoForm: 'BULK', productGroup: 'FERTILIZER', baseUomId: 'uom-001', isActive: true, rowVersion: 1 },
   ],
   warehouses: [
-    { id: 'wh-001', warehouseCode: 'WH5.1', warehouseName: 'Kho 5.1', warehouseType: 'COVERED', maxCapacityMt: 50000, isActive: true, rowVersion: 1 },
-    { id: 'wh-002', warehouseCode: 'WH-OPEN', warehouseName: 'Bãi hở A', warehouseType: 'OPEN', maxCapacityMt: 20000, isActive: true, rowVersion: 1 },
+    { id: 'wh-001', warehouseCode: 'WH5.1', warehouseName: 'Kho 5.1', warehouseType: 'COVERED', maxCapacityMt: 50000, totalAreaM2: 7200, usableAreaM2: 6000, maxHeightM: 12, lengthM: 120, widthM: 60, dockCount: 6, columnSpacingM: 12, isActive: true, rowVersion: 1 },
+    { id: 'wh-002', warehouseCode: 'WH-OPEN', warehouseName: 'Bãi hở A', warehouseType: 'OPEN', maxCapacityMt: 20000, totalAreaM2: 5000, usableAreaM2: 4200, maxHeightM: 0, lengthM: 100, widthM: 50, dockCount: 4, columnSpacingM: 0, isActive: true, rowVersion: 1 },
   ],
   zones: [
     { id: 'zone-001', zoneCode: 'RCV-A', zoneName: 'Receiving A', warehouseId: 'wh-001', zoneType: 'RECEIVING', capacityMt: 5000, isActive: true, rowVersion: 1 },

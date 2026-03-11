@@ -123,7 +123,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }
@@ -193,7 +194,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }
@@ -263,7 +265,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }
@@ -315,7 +318,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }
@@ -404,6 +408,7 @@ class ReceiptService {
         });
 
         // CR-1 FIX: Post inventory to M3 when RECEIVED
+        // BUG-FIX: Pass tx to avoid nested transaction, ensuring atomicity
         const postingResult = await this.postingEngine.postInventory({
           externalId: `RCPT-${receipt.id}-${line.id}`,
           correlationId: receipt.correlationId,
@@ -422,7 +427,7 @@ class ReceiptService {
           },
           sourceApp: context.sourceApp || 'WEB',
           postedBy: context.userId,
-        });
+        }, tx);
 
         // Save posting reference to receipt header
         updateData.postedTransId = postingResult.transId;
@@ -487,7 +492,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }
@@ -541,7 +547,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }
@@ -596,7 +603,8 @@ class ReceiptService {
     return this.prisma.$transaction(async (tx) => {
       // HI-4: Lock receipt for update
       await this.receiptRepo.lockForUpdate(receiptId, tx);
-      const receipt = await this.receiptRepo.findById(receiptId);
+      // BUG-FIX: Pass tx to read within transaction context
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
       if (!receipt) {
         throw createReceiptNotFoundError(receiptId);
       }

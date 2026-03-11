@@ -20,7 +20,7 @@ export class VehicleTypeService {
     const existing = await this.vehicleTypeRepository.findByCode(dto.vehicleTypeCode);
     if (existing) throw new ConflictException(`Vehicle type code ${dto.vehicleTypeCode} already exists`);
 
-    return this.vehicleTypeRepository.create({
+    const result = await this.vehicleTypeRepository.create({
       vehicleTypeCode: dto.vehicleTypeCode,
       vehicleTypeName: dto.vehicleTypeName,
       category: dto.category,
@@ -31,6 +31,16 @@ export class VehicleTypeService {
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
+
+    await this.logService.createAuditLog({
+      entityType: 'VEHICLE_TYPE',
+      entityId: result.id,
+      action: 'CREATE',
+      userId: ctx.userId,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findById(id: string): Promise<MdVehicleType> {
@@ -47,7 +57,8 @@ export class VehicleTypeService {
     const vehicleType = await this.findById(id);
     if (!vehicleType.isActive) throw new BadRequestException('Cannot update inactive vehicle type');
 
-    return this.vehicleTypeRepository.update(id, {
+    const oldValue = { ...vehicleType };
+    const result = await this.vehicleTypeRepository.update(id, {
       vehicleTypeName: dto.vehicleTypeName,
       category: dto.category,
       defaultTareWeightKg: dto.defaultTareWeightKg,
@@ -56,18 +67,51 @@ export class VehicleTypeService {
       handlingFeeGroup: dto.handlingFeeGroup,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
+
+    await this.logService.createAuditLog({
+      entityType: 'VEHICLE_TYPE',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdVehicleType> {
     const vehicleType = await this.findById(id);
     if (!vehicleType.isActive) throw new BadRequestException('Vehicle type is already inactive');
-    return this.vehicleTypeRepository.deactivate(id, ctx.userId!, vehicleType.rowVersion);
+    const result = await this.vehicleTypeRepository.deactivate(id, ctx.userId!, vehicleType.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'VEHICLE_TYPE',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: vehicleType,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdVehicleType> {
     const vehicleType = await this.findById(id);
     if (vehicleType.isActive) throw new BadRequestException('Vehicle type is already active');
-    return this.vehicleTypeRepository.reactivate(id, ctx.userId!, vehicleType.rowVersion);
+    const result = await this.vehicleTypeRepository.reactivate(id, ctx.userId!, vehicleType.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'VEHICLE_TYPE',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: vehicleType,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdVehicleType[]> {

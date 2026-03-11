@@ -60,7 +60,7 @@ export function WarehouseDetailPage() {
   const [deactivateOpen, setDeactivateOpen] = useState(false)
   const [reactivateOpen, setReactivateOpen] = useState(false)
 
-  const warehouse = response?.data || null
+  const warehouse = response?.id ? response : (response?.data || null)
 
   const handleUpdate = async (data) => {
     try {

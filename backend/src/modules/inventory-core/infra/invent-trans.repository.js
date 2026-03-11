@@ -2,6 +2,8 @@
  * Module 3: Inventory Core Engine - InventTrans Repository
  */
 
+const { Decimal } = require('decimal.js');
+
 class InventTransRepository {
   constructor(prisma) {
     this.prisma = prisma;
@@ -224,18 +226,18 @@ class InventTransRepository {
     const ledgerMap = new Map();
 
     for (const trans of transactions) {
-      const qty = parseFloat(trans.qty);
+      const qty = new Decimal(trans.qty);
 
       if (trans.dimToId) {
         const key = `${trans.itemId}|${trans.dimToId}`;
-        const current = ledgerMap.get(key) || 0;
-        ledgerMap.set(key, current + Math.abs(qty));
+        const current = ledgerMap.get(key) || new Decimal(0);
+        ledgerMap.set(key, current.plus(qty.abs()));
       }
 
       if (trans.dimFromId) {
         const key = `${trans.itemId}|${trans.dimFromId}`;
-        const current = ledgerMap.get(key) || 0;
-        ledgerMap.set(key, current - Math.abs(qty));
+        const current = ledgerMap.get(key) || new Decimal(0);
+        ledgerMap.set(key, current.minus(qty.abs()));
       }
     }
 

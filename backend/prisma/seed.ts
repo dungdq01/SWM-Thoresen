@@ -22,6 +22,7 @@ import {
   InventoryStage,
 } from '@prisma/client';
 import * as argon2 from 'argon2';
+import crypto from 'crypto';
 import { seedMasterDataSample } from './seed/master-data-sample.seed';
 
 const prisma = new PrismaClient();
@@ -74,22 +75,27 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['master_data.warehouse.create', 'MASTER_DATA', 'WAREHOUSE', 'CREATE', true],
   ['master_data.warehouse.update', 'MASTER_DATA', 'WAREHOUSE', 'UPDATE', true],
   ['master_data.warehouse.deactivate', 'MASTER_DATA', 'WAREHOUSE', 'DEACTIVATE', true],
+  ['master_data.warehouse.reactivate', 'MASTER_DATA', 'WAREHOUSE', 'REACTIVATE', true],
   ['master_data.zone.view', 'MASTER_DATA', 'ZONE', 'VIEW', false],
   ['master_data.zone.create', 'MASTER_DATA', 'ZONE', 'CREATE', true],
   ['master_data.zone.update', 'MASTER_DATA', 'ZONE', 'UPDATE', true],
   ['master_data.zone.deactivate', 'MASTER_DATA', 'ZONE', 'DEACTIVATE', true],
+  ['master_data.zone.reactivate', 'MASTER_DATA', 'ZONE', 'REACTIVATE', true],
   ['master_data.location.view', 'MASTER_DATA', 'LOCATION', 'VIEW', false],
   ['master_data.location.create', 'MASTER_DATA', 'LOCATION', 'CREATE', true],
   ['master_data.location.update', 'MASTER_DATA', 'LOCATION', 'UPDATE', true],
   ['master_data.location.deactivate', 'MASTER_DATA', 'LOCATION', 'DEACTIVATE', true],
+  ['master_data.location.reactivate', 'MASTER_DATA', 'LOCATION', 'REACTIVATE', true],
   ['master_data.uom.view', 'MASTER_DATA', 'UOM', 'VIEW', false],
   ['master_data.uom.create', 'MASTER_DATA', 'UOM', 'CREATE', true],
   ['master_data.uom.update', 'MASTER_DATA', 'UOM', 'UPDATE', true],
   ['master_data.uom.deactivate', 'MASTER_DATA', 'UOM', 'DEACTIVATE', true],
+  ['master_data.uom.reactivate', 'MASTER_DATA', 'UOM', 'REACTIVATE', true],
   ['master_data.vehicle_type.view', 'MASTER_DATA', 'VEHICLE_TYPE', 'VIEW', false],
   ['master_data.vehicle_type.create', 'MASTER_DATA', 'VEHICLE_TYPE', 'CREATE', true],
   ['master_data.vehicle_type.update', 'MASTER_DATA', 'VEHICLE_TYPE', 'UPDATE', true],
   ['master_data.vehicle_type.deactivate', 'MASTER_DATA', 'VEHICLE_TYPE', 'DEACTIVATE', true],
+  ['master_data.vehicle_type.reactivate', 'MASTER_DATA', 'VEHICLE_TYPE', 'REACTIVATE', true],
   ['master_data.inventory_status.view', 'MASTER_DATA', 'INVENTORY_STATUS', 'VIEW', false],
   ['master_data.inventory_status.update', 'MASTER_DATA', 'INVENTORY_STATUS', 'UPDATE', true],
   ['master_data.service_code.view', 'MASTER_DATA', 'SERVICE_CODE', 'VIEW', false],
@@ -814,25 +820,39 @@ async function main() {
   const inventDimMap: Record<string, string> = {};
   for (const dim of inventDimSeeds) {
     const dimKey = `${dim.ownerCode}-${dim.statusCode}`;
-    const dimHash = `hash-${dimKey}-${Date.now()}`;
     const statusId = dim.statusCode === 'AVAILABLE' ? availableStatus!.id : damagedStatus!.id;
-    
-    const existing = await prisma.inventDim.findFirst({
-      where: {
-        warehouseId: warehouse.id,
-        locationId: storageLocation!.id,
-        ownerId: ownerMap[dim.ownerCode],
-        inventoryStatusId: statusId,
-      },
-    });
 
-    if (existing) {
-      inventDimMap[dimKey] = existing.id;
+    // Generate SHA-256 dimHash matching InventDimRepository.generateDimHash
+    const normalized = ['TVL-SITE', 'WH5.1', 'STR-A-001', dim.ownerCode, dim.statusCode]
+      .map(s => s.trim().toUpperCase()).join('|');
+    const dimHash = crypto.createHash('sha256').update(normalized).digest('hex');
+
+    // Check by hash first (idempotent re-runs)
+    let found = await prisma.inventDim.findUnique({ where: { dimHash } });
+
+    if (!found) {
+      // Also check by composite keys
+      found = await prisma.inventDim.findFirst({
+        where: {
+          warehouseId: warehouse.id,
+          locationId: storageLocation!.id,
+          ownerId: ownerMap[dim.ownerCode],
+          inventoryStatusId: statusId,
+        },
+      });
+    }
+
+    if (found) {
+      // Update dimHash if it was created with old format
+      if (found.dimHash !== dimHash) {
+        await prisma.inventDim.update({ where: { id: found.id }, data: { dimHash } });
+      }
+      inventDimMap[dimKey] = found.id;
     } else {
       const created = await prisma.inventDim.create({
         data: {
           dimId: `DIM-${dimKey}-${Date.now()}`,
-          dimHash: dimHash,
+          dimHash,
           siteId: 'TVL-SITE',
           warehouseId: warehouse.id,
           locationId: storageLocation!.id,
@@ -886,8 +906,68 @@ async function main() {
     }
   }
 
+  // ========== Seed On-Hand for legacy items (based on net qty from transactions above) ==========
+  const uomKgId = uomMap['KG'];
+  const onHandLegacySeeds = [
+    // RICE-JASMINE: 25000 (receipt) - 5000 (shipment) = 20000 net, owner TVL
+    { itemCode: 'RICE-JASMINE', ownerCode: 'TVL', statusCode: 'AVAILABLE', qty: 20000 },
+    // CORN-YELLOW: 15000 (receipt) - 200 (adjustment) = 14800 net, owner TVL
+    { itemCode: 'CORN-YELLOW', ownerCode: 'TVL', statusCode: 'AVAILABLE', qty: 14800 },
+    // WHEAT-SOFT: 30000 (receipt) - 10000 (transfer out) = 20000 net, owner CARGILL
+    { itemCode: 'WHEAT-SOFT', ownerCode: 'CARGILL', statusCode: 'AVAILABLE', qty: 20000 },
+    // FERT-UREA: 50000 (receipt), owner OLAM
+    { itemCode: 'FERT-UREA', ownerCode: 'OLAM', statusCode: 'AVAILABLE', qty: 50000 },
+    // FERT-NPK: 35000 (receipt), owner OLAM
+    { itemCode: 'FERT-NPK', ownerCode: 'OLAM', statusCode: 'AVAILABLE', qty: 35000 },
+    // SUGAR-RAW: 500 (count gain), owner TVL
+    { itemCode: 'SUGAR-RAW', ownerCode: 'TVL', statusCode: 'AVAILABLE', qty: 500 },
+    // RICE-JASMINE: 1000 (status change to DAMAGED), owner TVL
+    { itemCode: 'RICE-JASMINE', ownerCode: 'TVL', statusCode: 'DAMAGED', qty: 1000 },
+  ];
+
+  const availableStatusId = (await prisma.mdInventoryStatus.findUnique({ where: { statusCode: 'AVAILABLE' } }))!.id;
+  const damagedStatusId = (await prisma.mdInventoryStatus.findUnique({ where: { statusCode: 'DAMAGED' } }))!.id;
+
+  for (const oh of onHandLegacySeeds) {
+    const ohItemId = itemMap[oh.itemCode];
+    const ohOwnerId = ownerMap[oh.ownerCode];
+    const ohStatusId = oh.statusCode === 'AVAILABLE' ? availableStatusId : damagedStatusId;
+    const dimKey = `${oh.ownerCode}-${oh.statusCode}`;
+    const ohDimId = inventDimMap[dimKey];
+
+    if (!ohItemId || !ohOwnerId || !ohDimId) {
+      console.warn(`  ⚠️ Skipping legacy on-hand: ${oh.itemCode}/${oh.ownerCode}/${oh.statusCode} — missing ref`);
+      continue;
+    }
+
+    const existingOh = await prisma.onHand.findFirst({
+      where: { itemId: ohItemId, inventDimId: ohDimId },
+    });
+
+    if (!existingOh) {
+      await prisma.onHand.create({
+        data: {
+          itemId: ohItemId,
+          inventDimId: ohDimId,
+          physicalQty: oh.qty,
+          reservedQty: 0,
+          availableQty: oh.qty,
+          orderedQty: 0,
+          uomId: uomKgId,
+          lastMovementAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.onHand.update({
+        where: { id: existingOh.id },
+        data: { physicalQty: oh.qty, availableQty: oh.qty, lastMovementAt: new Date() },
+      });
+    }
+  }
+
   console.log('✅ Module 2 Master Data seeded successfully');
   console.log('✅ Module 3 Inventory Transactions seeded successfully');
+  console.log('✅ Module 3 On-Hand (legacy items) seeded successfully');
 
   // ========== Master Data Sample (expanded) ==========
   await seedMasterDataSample(prisma);

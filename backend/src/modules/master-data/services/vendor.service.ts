@@ -22,7 +22,7 @@ export class VendorService {
     const existing = await this.vendorRepository.findByCode(dto.vendorCode);
     if (existing) throw new ConflictException(`Vendor code ${dto.vendorCode} already exists`);
 
-    return this.vendorRepository.create({
+    const result = await this.vendorRepository.create({
       vendorCode: dto.vendorCode,
       vendorName: dto.vendorName,
       supplierGroup: dto.supplierGroup,
@@ -35,6 +35,16 @@ export class VendorService {
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
+
+    await this.logService.createAuditLog({
+      entityType: 'VENDOR',
+      entityId: result.id,
+      action: 'CREATE',
+      userId: ctx.userId,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findById(id: string): Promise<MdVendor> {
@@ -51,7 +61,8 @@ export class VendorService {
     const vendor = await this.findById(id);
     if (!vendor.isActive) throw new BadRequestException('Cannot update inactive vendor');
 
-    return this.vendorRepository.update(id, {
+    const oldValue = { ...vendor };
+    const result = await this.vendorRepository.update(id, {
       vendorName: dto.vendorName,
       supplierGroup: dto.supplierGroup,
       countryRegion: dto.countryRegion,
@@ -62,18 +73,51 @@ export class VendorService {
       taxCode: dto.taxCode,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
+
+    await this.logService.createAuditLog({
+      entityType: 'VENDOR',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdVendor> {
     const vendor = await this.findById(id);
     if (!vendor.isActive) throw new BadRequestException('Vendor is already inactive');
-    return this.vendorRepository.deactivate(id, ctx.userId!, vendor.rowVersion);
+    const result = await this.vendorRepository.deactivate(id, ctx.userId!, vendor.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'VENDOR',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: vendor,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdVendor> {
     const vendor = await this.findById(id);
     if (vendor.isActive) throw new BadRequestException('Vendor is already active');
-    return this.vendorRepository.reactivate(id, ctx.userId!, vendor.rowVersion);
+    const result = await this.vendorRepository.reactivate(id, ctx.userId!, vendor.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'VENDOR',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: vendor,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdVendor[]> {

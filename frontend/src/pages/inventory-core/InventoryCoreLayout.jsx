@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Boxes, Layers3, ScrollText, ShieldCheck, Workflow } from 'lucide-react'
+import { Boxes, Camera, Layers3, ScrollText, ShieldCheck, ScanSearch, Workflow } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
@@ -7,6 +7,8 @@ const navItems = [
   { to: '/app/inventory-core/transactions', label: 'Transactions', icon: ScrollText },
   { to: '/app/inventory-core/holds', label: 'Holds', icon: ShieldCheck },
   { to: '/app/inventory-core/workbench', label: 'Posting workbench', icon: Workflow },
+  { to: '/app/inventory-core/reconciliation', label: 'Đối soát', icon: ScanSearch },
+  { to: '/app/inventory-core/snapshots', label: 'Snapshot & Billing', icon: Camera },
 ]
 
 export function InventoryCoreLayout() {

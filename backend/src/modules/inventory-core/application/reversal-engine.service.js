@@ -16,11 +16,12 @@ const {
 } = require('../domain/inventory.errors');
 
 class ReversalEngineService {
-  constructor(prisma) {
+  constructor(prisma, auditLogAdapter = null) {
     this.prisma = prisma;
     this.inventTransRepo = new InventTransRepository(prisma);
     this.onHandRepo = new OnHandRepository(prisma);
     this.reversalLinkRepo = new ReversalLinkRepository(prisma);
+    this.auditLogAdapter = auditLogAdapter;
   }
 
   /**
@@ -154,6 +155,28 @@ class ReversalEngineService {
         reversedQty: reversedQty.toString(),
       };
     });
+  }
+
+  /**
+   * Log reversal to audit trail (fire-and-forget)
+   */
+  async logReversalAudit(command, result) {
+    if (!this.auditLogAdapter || result.idempotentReplay) return;
+    try {
+      await this.auditLogAdapter.logReversal({
+        originalTransId: result.originalTransId,
+        reversalTransId: result.reversalTransId,
+        reversedQty: result.reversedQty,
+        reversedBy: command.reversedBy,
+        reasonCode: command.reasonCode,
+        correlationId: command.correlationId,
+        requestId: command.requestId,
+        correctionRefType: command.correctionRefType,
+        correctionRefId: command.correctionRefId,
+      });
+    } catch (err) {
+      console.error('Audit log reversal failed (non-blocking):', err.message);
+    }
   }
 
   /**

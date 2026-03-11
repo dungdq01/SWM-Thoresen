@@ -9,7 +9,18 @@ const { authMiddleware, permissionMiddleware, PERMISSION_CODES } = require('./mi
 
 function createInventoryCoreRoutes(prisma, authorizationService, configService, options = {}) {
   const router = express.Router();
-  const controller = new InventoryCoreController(prisma);
+  const { createAuditLogAdapter } = require('./infra/audit-log.adapter');
+
+  // Try to resolve LogService from M1 Foundation for audit trail
+  let auditLogAdapter = null;
+  try {
+    const logService = options.logService || null;
+    auditLogAdapter = createAuditLogAdapter(logService);
+  } catch (_) {
+    // Graceful degradation if LogService unavailable
+  }
+
+  const controller = new InventoryCoreController(prisma, auditLogAdapter);
 
   // When embedded in NestJS, skip Express auth middleware (NestJS guards handle auth)
   const skipAuth = options.skipAuth === true;
@@ -77,6 +88,60 @@ function createInventoryCoreRoutes(prisma, authorizationService, configService, 
     ...auth,
     ...perm(PERMISSION_CODES.HOLD_CANCEL),
     (req, res) => controller.cancelHold(req, res)
+  );
+
+  // Reconciliation APIs
+  router.post('/reconciliation/runs',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_CREATE),
+    (req, res) => controller.createReconciliationRun(req, res)
+  );
+  router.get('/reconciliation/runs',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_READ),
+    (req, res) => controller.listReconciliationRuns(req, res)
+  );
+  router.get('/reconciliation/runs/:runId',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_READ),
+    (req, res) => controller.getReconciliationRun(req, res)
+  );
+  router.post('/reconciliation/results/:resultId/review',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_CREATE),
+    (req, res) => controller.reviewReconciliationResult(req, res)
+  );
+  router.post('/reconciliation/results/:resultId/resolve',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_CREATE),
+    (req, res) => controller.resolveReconciliationResult(req, res)
+  );
+
+  // Snapshot APIs
+  router.post('/snapshots/runs',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_CREATE),
+    (req, res) => controller.createSnapshotRun(req, res)
+  );
+  router.get('/snapshots/runs',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_READ),
+    (req, res) => controller.listSnapshotRuns(req, res)
+  );
+  router.get('/snapshots/runs/:runId',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_READ),
+    (req, res) => controller.getSnapshotRun(req, res)
+  );
+  router.get('/snapshots/billing',
+    ...auth,
+    ...perm(PERMISSION_CODES.ONHAND_READ),
+    (req, res) => controller.getSnapshotsForBilling(req, res)
+  );
+  router.get('/snapshots/billing/aggregate',
+    ...auth,
+    ...perm(PERMISSION_CODES.ONHAND_READ),
+    (req, res) => controller.aggregateSnapshotsForBilling(req, res)
   );
 
   return router;

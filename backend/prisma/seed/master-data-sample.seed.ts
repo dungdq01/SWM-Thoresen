@@ -12,6 +12,18 @@ import {
   CustomerType,
   VehicleCategory,
 } from '@prisma/client';
+import crypto from 'crypto';
+
+function generateDimHash(siteId: string, warehouseCode: string, locationCode: string, ownerCode: string, statusCode: string): string {
+  const normalized = [
+    siteId.trim().toUpperCase(),
+    warehouseCode.trim().toUpperCase(),
+    locationCode.trim().toUpperCase(),
+    ownerCode.trim().toUpperCase(),
+    statusCode.trim().toUpperCase(),
+  ].join('|');
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
 
 /**
  * Seed dữ liệu mẫu Master Data đầy đủ theo docs/master-data-sample-sheet.md
@@ -363,6 +375,145 @@ export async function seedMasterDataSample(prisma: PrismaClient) {
     });
   }
   console.log(`  ✅ Inventory Statuses: ${statusSeeds.length} records`);
+
+  // ============================================================
+  // 12. On-Hand Seed — Tạo tồn kho mẫu cho các item mới
+  // ============================================================
+
+  // Collect item IDs
+  const allItems = await prisma.mdItem.findMany({ select: { id: true, itemCode: true } });
+  const itemIdMap: Record<string, string> = {};
+  for (const it of allItems) itemIdMap[it.itemCode] = it.id;
+
+  // Collect owner IDs
+  const allOwners = await prisma.mdOwner.findMany({ select: { id: true, ownerCode: true } });
+  const ownerIdMap: Record<string, string> = {};
+  for (const o of allOwners) ownerIdMap[o.ownerCode] = o.id;
+
+  // Collect warehouse IDs (use whMap from above + existing)
+  const allWarehouses = await prisma.mdWarehouse.findMany({ select: { id: true, warehouseCode: true } });
+  const whIdMap: Record<string, string> = {};
+  for (const w of allWarehouses) whIdMap[w.warehouseCode] = w.id;
+
+  // Collect location IDs
+  const allLocations = await prisma.mdLocation.findMany({ select: { id: true, locationCode: true, warehouseId: true } });
+  const locIdMap: Record<string, string> = {};
+  for (const l of allLocations) locIdMap[l.locationCode] = l.id;
+
+  // Collect inventory status IDs
+  const allStatuses = await prisma.mdInventoryStatus.findMany({ select: { id: true, statusCode: true } });
+  const statusIdMap: Record<string, string> = {};
+  for (const s of allStatuses) statusIdMap[s.statusCode] = s.id;
+
+  // Collect UOM IDs
+  const allUoms = await prisma.mdUom.findMany({ select: { id: true, uomCode: true } });
+  const uomIdMap: Record<string, string> = {};
+  for (const u of allUoms) uomIdMap[u.uomCode] = u.id;
+
+  // On-hand seed definitions: item + owner + warehouse + location + status + qty
+  const onHandSeeds = [
+    // Gạo 5% tấm — OWN-001 (TVL) tại WH-02 (Kho hàng bao)
+    { item: 'RICE-5T',   owner: 'OWN-001', wh: 'WH-02', loc: 'WH02-A-01',    status: 'AVAILABLE', qty: 18500, uom: 'KG' },
+    // Gạo 15% tấm — OWN-002 (NSMT) tại WH-02
+    { item: 'RICE-15T',  owner: 'OWN-002', wh: 'WH-02', loc: 'WH02-A-02',    status: 'AVAILABLE', qty: 12000, uom: 'KG' },
+    // Gạo rời — OWN-005 (COFCO) tại WH-01 (Kho hàng rời)
+    { item: 'RICE-BLK',  owner: 'OWN-005', wh: 'WH-01', loc: 'WH01-A-01',    status: 'AVAILABLE', qty: 45000, uom: 'KG' },
+    // Phân Urea rời — OWN-004 (PVFCCo) tại WH-03 (Kho phân bón)
+    { item: 'UREA-BLK',  owner: 'OWN-004', wh: 'WH-03', loc: 'WH03-STG-01',  status: 'AVAILABLE', qty: 80000, uom: 'KG' },
+    // Phân Urea bao — OWN-004 (PVFCCo) tại WH-03
+    { item: 'UREA-50',   owner: 'OWN-004', wh: 'WH-03', loc: 'WH03-STG-02',  status: 'AVAILABLE', qty: 35000, uom: 'KG' },
+    // Phân DAP bao — OWN-005 (COFCO) tại WH-03
+    { item: 'DAP-50',    owner: 'OWN-005', wh: 'WH-03', loc: 'WH03-STG-01',  status: 'AVAILABLE', qty: 22000, uom: 'KG' },
+    // Thép cuộn cán nóng — OWN-006 (VNSteel) tại OY-01 (Bãi hở)
+    { item: 'STEEL-HR',  owner: 'OWN-006', wh: 'OY-01', loc: 'OY01-STG-01',  status: 'AVAILABLE', qty: 150000, uom: 'KG' },
+    // Thép thanh vằn — OWN-006 (VNSteel) tại OY-01
+    { item: 'STEEL-RB',  owner: 'OWN-006', wh: 'OY-01', loc: 'OY01-STG-02',  status: 'AVAILABLE', qty: 95000, uom: 'KG' },
+    // Xút NaOH lỏng — OWN-007 (HCDA) tại WH-01
+    { item: 'CHEM-NaOH', owner: 'OWN-007', wh: 'WH-01', loc: 'WH01-A-02',   status: 'AVAILABLE', qty: 8000, uom: 'KG' },
+    // Clinker — OWN-001 (TVL) tại WH-01
+    { item: 'CLINKER',   owner: 'OWN-001', wh: 'WH-01', loc: 'WH01-B-01',    status: 'AVAILABLE', qty: 120000, uom: 'KG' },
+    // Gạo Jasmine Jumbo — OWN-001 (TVL) tại WH-02
+    { item: 'RICE-JB',   owner: 'OWN-001', wh: 'WH-02', loc: 'WH02-B-01',    status: 'AVAILABLE', qty: 25000, uom: 'KG' },
+    // Damaged stock examples
+    { item: 'RICE-5T',   owner: 'OWN-001', wh: 'WH-02', loc: 'WH02-A-01',    status: 'DAMAGED',   qty: 500, uom: 'KG' },
+    { item: 'UREA-BLK',  owner: 'OWN-004', wh: 'WH-03', loc: 'WH03-STG-01',  status: 'DAMAGED',   qty: 2000, uom: 'KG' },
+  ];
+
+  let onHandCount = 0;
+  for (const oh of onHandSeeds) {
+    const itemId = itemIdMap[oh.item];
+    const ownerId = ownerIdMap[oh.owner];
+    const warehouseId = whIdMap[oh.wh];
+    const locationId = locIdMap[oh.loc];
+    const statusId = statusIdMap[oh.status];
+    const uomId = uomIdMap[oh.uom];
+
+    if (!itemId || !ownerId || !warehouseId || !locationId || !statusId || !uomId) {
+      console.warn(`  ⚠️ Skipping on-hand seed: ${oh.item}/${oh.owner}/${oh.wh}/${oh.loc}/${oh.status} — missing reference`);
+      continue;
+    }
+
+    // Find or create InventDim
+    let inventDim = await prisma.inventDim.findFirst({
+      where: { warehouseId, locationId, ownerId, inventoryStatusId: statusId },
+    });
+
+    if (!inventDim) {
+      const siteId = 'TVL-SITE';
+      const dimHash = generateDimHash(siteId, oh.wh, oh.loc, oh.owner, oh.status);
+
+      // Check if an InventDim with this hash already exists (from a previous run)
+      inventDim = await prisma.inventDim.findUnique({ where: { dimHash } });
+
+      if (!inventDim) {
+        const seq = `${onHandCount}`.padStart(3, '0');
+        inventDim = await prisma.inventDim.create({
+          data: {
+            dimId: `DS-${seq}-${oh.status.slice(0, 4)}`,
+            dimHash,
+            siteId,
+            warehouseId,
+            locationId,
+            ownerId,
+            inventoryStatusId: statusId,
+            createdBy: by,
+          },
+        });
+      }
+    }
+
+    // Upsert OnHand (unique on itemId + inventDimId)
+    const existing = await prisma.onHand.findFirst({
+      where: { itemId, inventDimId: inventDim.id },
+    });
+
+    if (!existing) {
+      await prisma.onHand.create({
+        data: {
+          itemId,
+          inventDimId: inventDim.id,
+          physicalQty: oh.qty,
+          reservedQty: 0,
+          availableQty: oh.qty,
+          orderedQty: 0,
+          uomId,
+          lastMovementAt: new Date(),
+        },
+      });
+      onHandCount++;
+    } else {
+      // Update if qty changed
+      await prisma.onHand.update({
+        where: { id: existing.id },
+        data: {
+          physicalQty: oh.qty,
+          availableQty: oh.qty,
+          lastMovementAt: new Date(),
+        },
+      });
+    }
+  }
+  console.log(`  ✅ On-Hand: ${onHandCount} new records`);
 
   console.log('🎉 Master Data Sample seeded successfully!');
 }

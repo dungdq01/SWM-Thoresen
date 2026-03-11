@@ -2,6 +2,8 @@
  * Module 3: Inventory Core Engine - InventoryHold Repository
  */
 
+const { Decimal } = require('decimal.js');
+
 class HoldRepository {
   constructor(prisma) {
     this.prisma = prisma;
@@ -127,18 +129,18 @@ class HoldRepository {
       return null;
     }
 
-    const newReleasedQty = parseFloat(hold.releasedQty) + parseFloat(releaseQty);
-    const holdQty = parseFloat(hold.holdQty);
+    const newReleasedQty = new Decimal(hold.releasedQty).plus(new Decimal(releaseQty));
+    const holdQty = new Decimal(hold.holdQty);
 
     let newStatus = 'PARTIALLY_RELEASED';
-    if (newReleasedQty >= holdQty) {
+    if (newReleasedQty.gte(holdQty)) {
       newStatus = 'RELEASED';
     }
 
     return client.inventoryHold.update({
       where: { id },
       data: {
-        releasedQty: newReleasedQty,
+        releasedQty: newReleasedQty.toFixed(3),
         status: newStatus,
         releasedAt: new Date(),
         releasedBy,
@@ -253,7 +255,7 @@ class HoldRepository {
       },
     });
 
-    return parseFloat(result._sum.holdQty || 0);
+    return new Decimal(result._sum.holdQty || 0).toNumber();
   }
 }
 

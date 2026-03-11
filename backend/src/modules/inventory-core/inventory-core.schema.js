@@ -43,13 +43,13 @@ const reversalSchema = Joi.object({
 const holdCreateSchema = Joi.object({
   externalId: Joi.string().max(120).optional(),
   correlationId: Joi.string().max(120).required(),
-  shipmentId: Joi.string().max(50).optional(),
-  shipmentLineId: Joi.string().max(50).optional(),
-  workHeaderId: Joi.string().max(50).optional(),
+  shipmentId: Joi.string().allow('').max(50).optional(),
+  shipmentLineId: Joi.string().allow('').max(50).optional(),
+  workHeaderId: Joi.string().allow('').max(50).optional(),
   itemId: Joi.string().uuid().required(),
   qty: Joi.string().required(),
   dim: dimInputSchema.required(),
-  reasonCode: Joi.string().max(50).optional(),
+  reasonCode: Joi.string().allow('').max(50).optional(),
 });
 
 const holdReleaseSchema = Joi.object({
@@ -91,6 +91,31 @@ const holdQuerySchema = Joi.object({
   pageSize: Joi.number().integer().min(1).max(100).default(50),
 });
 
+const reconciliationRunSchema = Joi.object({
+  runType: Joi.string().valid('SCHEDULED', 'ON_DEMAND', 'SYSTEM').default('ON_DEMAND'),
+  scopeType: Joi.string().valid('FULL', 'WAREHOUSE', 'OWNER', 'ITEM').default('FULL'),
+  warehouseId: Joi.string().uuid().optional(),
+  ownerId: Joi.string().uuid().optional(),
+  itemId: Joi.string().uuid().optional(),
+  correlationId: Joi.string().max(120).required(),
+});
+
+const snapshotRunSchema = Joi.object({
+  snapshotDate: Joi.date().optional(),
+  warehouseId: Joi.string().uuid().optional(),
+  mode: Joi.string().valid('SCHEDULED', 'MANUAL', 'RERUN').default('MANUAL'),
+  correlationId: Joi.string().max(120).required(),
+});
+
+const snapshotBillingQuerySchema = Joi.object({
+  warehouseId: Joi.string().uuid().optional(),
+  ownerId: Joi.string().uuid().optional(),
+  fromDate: Joi.date().optional(),
+  toDate: Joi.date().optional(),
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(200).default(100),
+});
+
 module.exports = {
   dimInputSchema,
   postingSchema,
@@ -100,4 +125,7 @@ module.exports = {
   onhandQuerySchema,
   transactionQuerySchema,
   holdQuerySchema,
+  reconciliationRunSchema,
+  snapshotRunSchema,
+  snapshotBillingQuerySchema,
 };

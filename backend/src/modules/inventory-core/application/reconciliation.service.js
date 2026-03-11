@@ -42,7 +42,7 @@ class ReconciliationService {
         itemId,
         status: 'RUNNING',
         startedAt: new Date(),
-        triggeredBy,
+        requestedBy: triggeredBy,
         correlationId,
       },
     });
@@ -55,7 +55,6 @@ class ReconciliationService {
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
-          totalChecked: results.totalChecked,
           mismatchCount: results.mismatchCount,
         },
       });
@@ -74,7 +73,6 @@ class ReconciliationService {
         data: {
           status: 'FAILED',
           completedAt: new Date(),
-          errorMessage: error.message,
         },
       });
       throw error;
@@ -102,6 +100,9 @@ class ReconciliationService {
       },
     });
 
+    // Include reservedQty for reconciliation result
+    // onHandRecords already has physicalQty and reservedQty from OnHand model
+
     const ledgerAggregates = await this.calculateLedgerAggregates(whereClause);
     const results = [];
     let mismatchCount = 0;
@@ -115,17 +116,22 @@ class ReconciliationService {
       if (!variance.isZero()) {
         mismatchCount++;
         const severity = this.calculateSeverity(variance, onHandQty);
+        const reservedQty = new Decimal(onHand.reservedQty || 0);
+        const availableQty = onHandQty.minus(reservedQty);
 
         const result = await this.prisma.inventoryReconciliationResult.create({
           data: {
             runId: run.id,
             itemId: onHand.itemId,
             inventDimId: onHand.inventDimId,
-            onHandQty: onHandQty.toFixed(3),
+            onhandPhysicalQty: onHandQty.toFixed(3),
             ledgerQty: ledgerQty.toFixed(3),
-            varianceQty: variance.toFixed(3),
+            reservedQty: reservedQty.toFixed(3),
+            availableQty: availableQty.toFixed(3),
+            diffQty: variance.toFixed(3),
             severity,
-            status: ReconciliationResultStatus.MISMATCH,
+            ruleCode: 'LEDGER_VS_ONHAND',
+            resultStatus: ReconciliationResultStatus.MISMATCH,
           },
         });
 
@@ -135,9 +141,9 @@ class ReconciliationService {
           warehouseCode: onHand.inventDim.warehouse.warehouseCode,
           locationCode: onHand.inventDim.location?.locationCode,
           ownerCode: onHand.inventDim.owner?.ownerCode,
-          onHandQty: onHandQty.toString(),
+          onhandPhysicalQty: onHandQty.toString(),
           ledgerQty: ledgerQty.toString(),
-          varianceQty: variance.toString(),
+          diffQty: variance.toString(),
           severity,
         });
       }
@@ -274,14 +280,11 @@ class ReconciliationService {
   /**
    * Mark result as reviewed
    */
-  async reviewResult(resultId, reviewedBy, note) {
+  async reviewResult(resultId, _reviewedBy, _note) {
     return this.prisma.inventoryReconciliationResult.update({
       where: { id: resultId },
       data: {
-        status: ReconciliationResultStatus.REVIEWED,
-        reviewedBy,
-        reviewedAt: new Date(),
-        note,
+        resultStatus: ReconciliationResultStatus.REVIEWED,
       },
     });
   }
@@ -289,14 +292,11 @@ class ReconciliationService {
   /**
    * Mark result as resolved
    */
-  async resolveResult(resultId, resolvedBy, resolutionNote) {
+  async resolveResult(resultId, _resolvedBy, _resolutionNote) {
     return this.prisma.inventoryReconciliationResult.update({
       where: { id: resultId },
       data: {
-        status: ReconciliationResultStatus.RESOLVED,
-        resolvedBy,
-        resolvedAt: new Date(),
-        resolutionNote,
+        resultStatus: ReconciliationResultStatus.RESOLVED,
       },
     });
   }

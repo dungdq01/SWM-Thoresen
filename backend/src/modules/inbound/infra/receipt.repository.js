@@ -30,12 +30,19 @@ class ReceiptRepository {
 
   /**
    * Tìm receipt theo ID
+   * BUG-FIX: Added optional tx parameter to read within transaction context
+   * BUG-FIX: Include uom relation in lines for correct UOM resolution
    */
-  async findById(id, includeRelations = true) {
-    return this.prisma.receiptHeader.findUnique({
+  async findById(id, includeRelations = true, tx = null) {
+    const db = tx || this.prisma;
+    return db.receiptHeader.findUnique({
       where: { id },
       include: includeRelations ? {
-        lines: true,
+        lines: {
+          include: {
+            uom: { select: { id: true, uomCode: true, description: true } },
+          },
+        },
         owner: { select: { id: true, ownerCode: true, ownerName: true } },
         vendor: { select: { id: true, vendorCode: true, vendorName: true } },
         warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } },

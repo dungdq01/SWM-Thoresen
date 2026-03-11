@@ -3,17 +3,21 @@ import { CustomerRepository } from '../repositories/customer.repository';
 import { CreateCustomerDto, UpdateCustomerDto, ListCustomerDto } from '../dto/customer.dto';
 import { DeactivateDto, ReactivateDto, PaginatedResult, RequestContext } from '../dto/common.dto';
 import { MdCustomer } from '@prisma/client';
+import { LogService } from '../../foundation/services/log.service';
 
 @Injectable()
 export class CustomerService {
-  constructor(private readonly customerRepository: CustomerRepository) {}
+  constructor(
+    private readonly customerRepository: CustomerRepository,
+    private readonly logService: LogService,
+  ) {}
 
   async create(dto: CreateCustomerDto, ctx: RequestContext): Promise<MdCustomer> {
     const existing = await this.customerRepository.findByCode(dto.customerCode);
     if (existing) {
       throw new ConflictException(`Customer code ${dto.customerCode} already exists`);
     }
-    return this.customerRepository.create({
+    const result = await this.customerRepository.create({
       customerCode: dto.customerCode,
       customerName: dto.customerName,
       shortName: dto.shortName,
@@ -28,6 +32,16 @@ export class CustomerService {
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
+
+    await this.logService.createAuditLog({
+      entityType: 'CUSTOMER',
+      entityId: result.id,
+      action: 'CREATE',
+      userId: ctx.userId,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findById(id: string): Promise<MdCustomer> {
@@ -50,7 +64,9 @@ export class CustomerService {
   async update(id: string, dto: UpdateCustomerDto, ctx: RequestContext): Promise<MdCustomer> {
     const customer = await this.findById(id);
     if (!customer.isActive) throw new BadRequestException('Cannot update inactive customer');
-    return this.customerRepository.update(
+
+    const oldValue = { ...customer };
+    const result = await this.customerRepository.update(
       id,
       {
         customerName: dto.customerName,
@@ -67,18 +83,51 @@ export class CustomerService {
       },
       BigInt(dto.rowVersion),
     );
+
+    await this.logService.createAuditLog({
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdCustomer> {
     const customer = await this.findById(id);
     if (!customer.isActive) throw new BadRequestException('Customer is already inactive');
-    return this.customerRepository.deactivate(id, ctx.userId!, customer.rowVersion);
+    const result = await this.customerRepository.deactivate(id, ctx.userId!, customer.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: customer,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdCustomer> {
     const customer = await this.findById(id);
     if (customer.isActive) throw new BadRequestException('Customer is already active');
-    return this.customerRepository.reactivate(id, ctx.userId!, customer.rowVersion);
+    const result = await this.customerRepository.reactivate(id, ctx.userId!, customer.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'CUSTOMER',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: customer,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdCustomer[]> {

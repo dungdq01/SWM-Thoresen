@@ -21,19 +21,22 @@ const {
 const { requiresReasonCode, getOnHandImpact } = require('../domain/inventory.rules');
 
 class PostingEngineService {
-  constructor(prisma) {
+  constructor(prisma, auditLogAdapter = null) {
     this.prisma = prisma;
     this.inventDimService = new InventDimService(prisma);
     this.inventTransRepo = new InventTransRepository(prisma);
     this.onHandRepo = new OnHandRepository(prisma);
     this.eventMappingRepo = new EventMappingRepository(prisma);
+    this.auditLogAdapter = auditLogAdapter;
   }
 
   /**
    * Post inventory transaction
    * Main entry point for all inventory postings
+   * BUG-FIX: Added optional externalTx parameter to participate in caller's transaction
+   * instead of creating a nested transaction which breaks atomicity
    */
-  async postInventory(command) {
+  async postInventory(command, externalTx = null) {
     const {
       externalId,
       correlationId,
@@ -52,7 +55,7 @@ class PostingEngineService {
       weighbridgeTicketId,
     } = command;
 
-    return this.prisma.$transaction(async (tx) => {
+    const executePosting = async (tx) => {
       const eventMapping = await this.eventMappingRepo.findActiveByEventCode(eventCode, tx);
       if (!eventMapping) {
         throw invalidEventCodeError(eventCode);
@@ -175,7 +178,7 @@ class PostingEngineService {
         };
       }
 
-      return {
+      const result = {
         transId: inventTrans.transId,
         transDbId: inventTrans.id,
         transType: inventTrans.transType,
@@ -184,7 +187,41 @@ class PostingEngineService {
         onHandAfter,
         idempotentReplay: false,
       };
-    });
+
+      return result;
+    };
+
+    // BUG-FIX: If externalTx is provided, execute within that transaction (no nesting)
+    // Otherwise create own transaction (backward compatible for standalone callers)
+    if (externalTx) {
+      return executePosting(externalTx);
+    }
+    return this.prisma.$transaction(executePosting);
+  }
+
+  /**
+   * Log posting to audit trail (fire-and-forget)
+   */
+  async logPostingAudit(command, result) {
+    if (!this.auditLogAdapter || result.idempotentReplay) return;
+    try {
+      await this.auditLogAdapter.logPosting({
+        transId: result.transId,
+        transType: result.transType,
+        itemId: result.itemId,
+        qty: result.qty,
+        dimFromId: command.dimFrom ? undefined : null,
+        dimToId: command.dimTo ? undefined : null,
+        postedBy: command.postedBy,
+        correlationId: command.correlationId,
+        requestId: command.requestId,
+        refType: command.refType,
+        refId: command.refId,
+        externalId: command.externalId,
+      });
+    } catch (err) {
+      console.error('Audit log posting failed (non-blocking):', err.message);
+    }
   }
 
   /**

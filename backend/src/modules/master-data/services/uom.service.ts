@@ -20,7 +20,7 @@ export class UomService {
     const existing = await this.uomRepository.findByCode(dto.uomCode);
     if (existing) throw new ConflictException(`UOM code ${dto.uomCode} already exists`);
 
-    return this.uomRepository.create({
+    const result = await this.uomRepository.create({
       uomCode: dto.uomCode,
       description: dto.description,
       uomClass: dto.uomClass,
@@ -29,6 +29,16 @@ export class UomService {
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
+
+    await this.logService.createAuditLog({
+      entityType: 'UOM',
+      entityId: result.id,
+      action: 'CREATE',
+      userId: ctx.userId,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findById(id: string): Promise<MdUom> {
@@ -45,23 +55,57 @@ export class UomService {
     const uom = await this.findById(id);
     if (!uom.isActive) throw new BadRequestException('Cannot update inactive UOM');
 
-    return this.uomRepository.update(id, {
+    const oldValue = { ...uom };
+    const result = await this.uomRepository.update(id, {
       description: dto.description,
       decimalPrecision: dto.decimalPrecision,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
+
+    await this.logService.createAuditLog({
+      entityType: 'UOM',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdUom> {
     const uom = await this.findById(id);
     if (!uom.isActive) throw new BadRequestException('UOM is already inactive');
-    return this.uomRepository.deactivate(id, ctx.userId!, uom.rowVersion);
+    const result = await this.uomRepository.deactivate(id, ctx.userId!, uom.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'UOM',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: uom,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdUom> {
     const uom = await this.findById(id);
     if (uom.isActive) throw new BadRequestException('UOM is already active');
-    return this.uomRepository.reactivate(id, ctx.userId!, uom.rowVersion);
+    const result = await this.uomRepository.reactivate(id, ctx.userId!, uom.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'UOM',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: uom,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdUom[]> {

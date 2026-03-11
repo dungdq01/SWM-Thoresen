@@ -19,10 +19,17 @@ export class LocationService {
   ) {}
 
   async create(dto: CreateLocationDto, ctx: RequestContext): Promise<MdLocation> {
+    // FK pre-validation
+    const warehouse = await this.prisma.mdWarehouse.findUnique({ where: { id: dto.warehouseId } });
+    if (!warehouse) throw new BadRequestException('Warehouse not found');
+    const zone = await this.prisma.mdZone.findUnique({ where: { id: dto.zoneId } });
+    if (!zone) throw new BadRequestException('Zone not found');
+    if (zone.warehouseId !== dto.warehouseId) throw new BadRequestException('Zone does not belong to the specified warehouse');
+
     const existing = await this.locationRepository.findByWarehouseAndCode(dto.warehouseId, dto.locationCode);
     if (existing) throw new ConflictException(`Location code ${dto.locationCode} already exists in warehouse`);
 
-    return this.locationRepository.create({
+    const result = await this.locationRepository.create({
       warehouse: { connect: { id: dto.warehouseId } },
       zone: { connect: { id: dto.zoneId } },
       locationCode: dto.locationCode,
@@ -41,6 +48,16 @@ export class LocationService {
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
+
+    await this.logService.createAuditLog({
+      entityType: 'LOCATION',
+      entityId: result.id,
+      action: 'CREATE',
+      userId: ctx.userId,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findById(id: string): Promise<MdLocation> {
@@ -57,7 +74,8 @@ export class LocationService {
     const location = await this.findById(id);
     if (!location.isActive) throw new BadRequestException('Cannot update inactive location');
 
-    return this.locationRepository.update(id, {
+    const oldValue = { ...location };
+    const result = await this.locationRepository.update(id, {
       locationType: dto.locationType,
       locationProfile: dto.locationProfile,
       status: dto.status,
@@ -72,18 +90,51 @@ export class LocationService {
       yCoord: dto.yCoord,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
+
+    await this.logService.createAuditLog({
+      entityType: 'LOCATION',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdLocation> {
     const location = await this.findById(id);
     if (!location.isActive) throw new BadRequestException('Location is already inactive');
-    return this.locationRepository.deactivate(id, ctx.userId!, location.rowVersion);
+    const result = await this.locationRepository.deactivate(id, ctx.userId!, location.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'LOCATION',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: location,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdLocation> {
     const location = await this.findById(id);
     if (location.isActive) throw new BadRequestException('Location is already active');
-    return this.locationRepository.reactivate(id, ctx.userId!, location.rowVersion);
+    const result = await this.locationRepository.reactivate(id, ctx.userId!, location.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'LOCATION',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: location,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findByWarehouse(warehouseId: string): Promise<MdLocation[]> {

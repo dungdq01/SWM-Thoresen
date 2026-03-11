@@ -49,4 +49,48 @@ export const inventoryCoreApi = {
     (holdId, data) => inventoryCoreMockApi.cancelHold(holdId, data),
     (holdId, data) => httpClient.post(`${BASE_URL}/holds/${holdId}/cancel`, data)
   ),
+
+  // Reconciliation APIs
+  createReconciliationRun: withDataSource(
+    (data) => inventoryCoreMockApi.createReconciliationRun(data),
+    (data) => httpClient.post(`${BASE_URL}/reconciliation/runs`, data)
+  ),
+  getReconciliationRuns: withDataSource(
+    (params) => inventoryCoreMockApi.getReconciliationRuns(params),
+    (params) => httpClient.get(`${BASE_URL}/reconciliation/runs`, { params })
+  ),
+  getReconciliationRun: withDataSource(
+    (runId) => inventoryCoreMockApi.getReconciliationRun(runId),
+    (runId) => httpClient.get(`${BASE_URL}/reconciliation/runs/${runId}`)
+  ),
+  reviewReconciliationResult: withDataSource(
+    (resultId, data) => inventoryCoreMockApi.reviewReconciliationResult(resultId, data),
+    (resultId, data) => httpClient.post(`${BASE_URL}/reconciliation/results/${resultId}/review`, data)
+  ),
+  resolveReconciliationResult: withDataSource(
+    (resultId, data) => inventoryCoreMockApi.resolveReconciliationResult(resultId, data),
+    (resultId, data) => httpClient.post(`${BASE_URL}/reconciliation/results/${resultId}/resolve`, data)
+  ),
+
+  // Snapshot APIs
+  createSnapshotRun: withDataSource(
+    (data) => inventoryCoreMockApi.createSnapshotRun(data),
+    (data) => httpClient.post(`${BASE_URL}/snapshots/runs`, data)
+  ),
+  getSnapshotRuns: withDataSource(
+    (params) => inventoryCoreMockApi.getSnapshotRuns(params),
+    (params) => httpClient.get(`${BASE_URL}/snapshots/runs`, { params })
+  ),
+  getSnapshotRun: withDataSource(
+    (runId) => inventoryCoreMockApi.getSnapshotRun(runId),
+    (runId) => httpClient.get(`${BASE_URL}/snapshots/runs/${runId}`)
+  ),
+  getSnapshotsBilling: withDataSource(
+    (params) => inventoryCoreMockApi.getSnapshotsBilling(params),
+    (params) => httpClient.get(`${BASE_URL}/snapshots/billing`, { params })
+  ),
+  getSnapshotsBillingAggregate: withDataSource(
+    (params) => inventoryCoreMockApi.getSnapshotsBillingAggregate(params),
+    (params) => httpClient.get(`${BASE_URL}/snapshots/billing/aggregate`, { params })
+  ),
 }

@@ -17,8 +17,14 @@ export class OwnerService {
   ) {}
 
   async create(dto: CreateOwnerDto, ctx: RequestContext): Promise<MdOwner> {
+    // FK pre-validation
+    if (dto.defaultWarehouseId) {
+      const wh = await this.prisma.mdWarehouse.findUnique({ where: { id: dto.defaultWarehouseId } });
+      if (!wh) throw new BadRequestException('Default warehouse not found');
+    }
+
     // Wrap trong transaction để tránh race condition
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Generate code trong transaction
       const ownerCode = dto.ownerCode || await this.generateNextCode(tx);
       
@@ -46,6 +52,16 @@ export class OwnerService {
         },
       });
     });
+
+    await this.logService.createAuditLog({
+      entityType: 'OWNER',
+      entityId: result.id,
+      action: 'CREATE',
+      userId: ctx.userId,
+      newValue: result,
+    });
+
+    return result;
   }
 
   private async generateNextCode(tx: any): Promise<string> {
@@ -82,7 +98,14 @@ export class OwnerService {
     const owner = await this.findById(id);
     if (!owner.isActive) throw new BadRequestException('Cannot update inactive owner');
 
-    return this.ownerRepository.update(
+    // FK pre-validation
+    if (dto.defaultWarehouseId) {
+      const wh = await this.prisma.mdWarehouse.findUnique({ where: { id: dto.defaultWarehouseId } });
+      if (!wh) throw new BadRequestException('Default warehouse not found');
+    }
+
+    const oldValue = { ...owner };
+    const result = await this.ownerRepository.update(
       id,
       {
         ownerName: dto.ownerName,
@@ -100,18 +123,51 @@ export class OwnerService {
       },
       BigInt(dto.rowVersion),
     );
+
+    await this.logService.createAuditLog({
+      entityType: 'OWNER',
+      entityId: id,
+      action: 'UPDATE',
+      userId: ctx.userId,
+      oldValue,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdOwner> {
     const owner = await this.findById(id);
     if (!owner.isActive) throw new BadRequestException('Owner is already inactive');
-    return this.ownerRepository.deactivate(id, ctx.userId!, owner.rowVersion);
+    const result = await this.ownerRepository.deactivate(id, ctx.userId!, owner.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'OWNER',
+      entityId: id,
+      action: 'DEACTIVATE',
+      userId: ctx.userId,
+      oldValue: owner,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdOwner> {
     const owner = await this.findById(id);
     if (owner.isActive) throw new BadRequestException('Owner is already active');
-    return this.ownerRepository.reactivate(id, ctx.userId!, owner.rowVersion);
+    const result = await this.ownerRepository.reactivate(id, ctx.userId!, owner.rowVersion);
+
+    await this.logService.createAuditLog({
+      entityType: 'OWNER',
+      entityId: id,
+      action: 'REACTIVATE',
+      userId: ctx.userId,
+      oldValue: owner,
+      newValue: result,
+    });
+
+    return result;
   }
 
   async findAllActive(): Promise<MdOwner[]> {

@@ -16,8 +16,8 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node", "jest"]
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts"],
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
