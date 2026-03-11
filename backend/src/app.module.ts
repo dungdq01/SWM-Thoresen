@@ -18,6 +18,7 @@ import { VasModule } from './modules/vas/vas.module';
 import { InventoryCoreModule } from './modules/inventory-core/inventory-core.module';
 import { InventoryControlModule } from './modules/inventory-control/inventory-control.module';
 import { WorkExecutionModule } from './modules/work-execution/work-execution.module.nest';
+import { IntegrationMonitoringModule } from './modules/integration/integration-monitoring.module.nest';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { WorkExecutionModule } from './modules/work-execution/work-execution.mod
     InventoryCoreModule,
     InventoryControlModule,
     WorkExecutionModule,
+    IntegrationMonitoringModule,
   ],
   controllers: [HealthController],
   providers: [

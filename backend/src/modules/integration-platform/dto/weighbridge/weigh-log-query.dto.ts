@@ -12,16 +12,16 @@ export class WeighLogQueryDto {
   vehicleNumber?: string;
 
   @IsOptional()
-  @IsEnum(ReferenceType)
-  referenceType?: ReferenceType;
+  @IsString()
+  referenceType?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   referenceId?: string;
 
   @IsOptional()
-  @IsEnum(WeighingType)
-  weighingType?: WeighingType;
+  @IsString()
+  weighingType?: string;
 
   @IsOptional()
   @IsDateString()

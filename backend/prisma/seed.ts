@@ -198,6 +198,20 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['work.execution.skip', 'WORK_EXECUTION', 'WORK', 'SKIP', true],
   ['work.execution.cancel', 'WORK_EXECUTION', 'WORK', 'CANCEL', true],
   ['work.dashboard.read', 'WORK_EXECUTION', 'DASHBOARD', 'READ', false],
+  // Module 8: Integration Monitoring
+  ['integration.monitoring.read', 'INTEGRATION', 'MONITORING', 'READ', false],
+  ['integration.alerts.read', 'INTEGRATION', 'ALERTS', 'READ', false],
+  ['integration.alerts.manage', 'INTEGRATION', 'ALERTS', 'MANAGE', true],
+  ['integration.weighbridge.read', 'INTEGRATION', 'WEIGHBRIDGE', 'READ', false],
+  ['integration.weighbridge.manage', 'INTEGRATION', 'WEIGHBRIDGE', 'MANAGE', true],
+  // Legacy integration-platform permissions (uppercase format)
+  ['INTEGRATION.MONITORING.VIEW', 'INTEGRATION', 'MONITORING', 'VIEW', false],
+  ['INTEGRATION.ALERT.READ', 'INTEGRATION', 'ALERT', 'READ', false],
+  ['INTEGRATION.ALERT.ACKNOWLEDGE', 'INTEGRATION', 'ALERT', 'ACKNOWLEDGE', true],
+  ['INTEGRATION.ALERT.RESOLVE', 'INTEGRATION', 'ALERT', 'RESOLVE', true],
+  ['INTEGRATION.WEIGHBRIDGE.READ', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'READ', false],
+  ['INTEGRATION.WEIGHBRIDGE.DEVICE.READ', 'INTEGRATION', 'WEIGHBRIDGE_DEVICE', 'READ', false],
+  ['INTEGRATION.WEIGHBRIDGE.MANAGE', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'MANAGE', true],
 ];
 
 async function main() {
@@ -1321,6 +1335,223 @@ async function main() {
   } else {
     console.log('⚠️ Skipping Work Execution seed - missing required master data');
   }
+
+  // ==================== Module 8: Integration Alerts ====================
+  // Clear existing alerts first for reset capability
+  await prisma.m8IntegrationAlert.deleteMany({});
+  
+  const alertSeeds = [
+    {
+      alertCode: 'WB_CONN_LOST',
+      alertSource: 'WEIGHBRIDGE',
+      severity: 'CRITICAL' as const,
+      title: 'Weighbridge Connection Lost',
+      description: 'Connection to Weighbridge WB-02 has been lost for more than 5 minutes',
+      status: 'OPEN' as const,
+    },
+    {
+      alertCode: 'ERP_SYNC_FAIL',
+      alertSource: 'ERP_SYNC',
+      severity: 'CRITICAL' as const,
+      title: 'ERP Sync Failed',
+      description: 'Failed to sync shipment SHP-20260312-001 to M3 ERP after 3 retries',
+      status: 'OPEN' as const,
+    },
+    {
+      alertCode: 'MOBILE_OFFLINE',
+      alertSource: 'MOBILE_SYNC',
+      severity: 'WARN' as const,
+      title: 'Mobile Device Offline',
+      description: 'Mobile device MOBILE-003 has not synced for 30 minutes',
+      status: 'ACKNOWLEDGED' as const,
+      acknowledgedBy: admin.id,
+      acknowledgedAt: new Date(),
+    },
+    {
+      alertCode: 'WB_VARIANCE',
+      alertSource: 'WEIGHBRIDGE',
+      severity: 'WARN' as const,
+      title: 'Weight Variance Exceeded',
+      description: 'Weight variance of 5.2% exceeded threshold of 3% for vehicle 51C-12345',
+      status: 'OPEN' as const,
+    },
+    {
+      alertCode: 'OCR_FAIL',
+      alertSource: 'OCR',
+      severity: 'INFO' as const,
+      title: 'OCR Recognition Failed',
+      description: 'OCR failed to recognize license plate for image IMG-20260312-001',
+      status: 'OPEN' as const,
+    },
+    {
+      alertCode: 'ERP_TIMEOUT',
+      alertSource: 'ERP_SYNC',
+      severity: 'WARN' as const,
+      title: 'ERP Push Timeout',
+      description: 'ERP push for receipt RCV-20260312-003 timed out after 30 seconds',
+      status: 'RESOLVED' as const,
+      resolvedBy: admin.id,
+      resolvedAt: new Date(),
+      resolutionNote: 'Retried successfully after network recovery',
+    },
+    {
+      alertCode: 'MOBILE_CONFLICT',
+      alertSource: 'MOBILE_SYNC',
+      severity: 'CRITICAL' as const,
+      title: 'Mobile Sync Conflict',
+      description: 'Data conflict detected for inventory count IC-20260312-001',
+      status: 'OPEN' as const,
+    },
+  ];
+
+  for (const alert of alertSeeds) {
+    await prisma.m8IntegrationAlert.create({
+      data: {
+        ...alert,
+        firstRaisedAt: new Date(Date.now() - Math.random() * 86400000),
+        lastSeenAt: new Date(),
+      },
+    });
+  }
+  console.log('✅ Module 8 Integration Alerts sample data seeded successfully');
+
+  // ==================== Module 8: Weighbridge Devices & Logs ====================
+  // Clear existing data first for reset capability
+  await prisma.m8WeighbridgeEventState.deleteMany({});
+  await prisma.m8WeighbridgeLog.deleteMany({});
+  await prisma.m8WeighbridgeDevice.deleteMany({});
+
+  // Create weighbridge devices
+  const deviceSeeds = [
+    {
+      deviceCode: 'WB-01',
+      deviceName: 'Weighbridge Station 1',
+      warehouseId: warehouse?.id,
+      portName: 'COM1',
+      baudRate: 9600,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'NONE',
+      heartbeatIntervalSec: 300,
+      stableWindowMs: 1000,
+      isActive: true,
+      lastSeenAt: new Date(),
+      lastStatus: 'ONLINE' as const,
+    },
+    {
+      deviceCode: 'WB-02',
+      deviceName: 'Weighbridge Station 2',
+      warehouseId: warehouse?.id,
+      portName: 'COM2',
+      baudRate: 9600,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'NONE',
+      heartbeatIntervalSec: 300,
+      stableWindowMs: 1000,
+      isActive: true,
+      lastSeenAt: new Date(Date.now() - 600000), // 10 minutes ago
+      lastStatus: 'DEGRADED' as const,
+    },
+  ];
+
+  for (const device of deviceSeeds) {
+    await prisma.m8WeighbridgeDevice.create({ data: device });
+  }
+
+  // Create weighbridge logs
+  const weighLogSeeds = [
+    {
+      weighbridgeEventId: `WB-EVT-${Date.now()}-001`,
+      vehicleNumber: '51C-12345',
+      weighingType: 'WEIGH_IN' as const,
+      weighingSequence: 1,
+      grossWeightKg: 45200,
+      tareWeightKg: 15800,
+      netWeightKg: 29400,
+      isStableWeight: true,
+      scaleDeviceId: 'WB-01',
+      latencyMs: 180,
+      externalId: `EXT-WB-${Date.now()}-001`,
+      correlationId: crypto.randomUUID(),
+      sourceChannel: 'SCALE_DIRECT',
+      weighingTimestamp: new Date(Date.now() - 1800000),
+      createdBy: 'system',
+    },
+    {
+      weighbridgeEventId: `WB-EVT-${Date.now()}-002`,
+      vehicleNumber: '51C-67890',
+      weighingType: 'WEIGH_IN' as const,
+      weighingSequence: 1,
+      grossWeightKg: 38500,
+      tareWeightKg: 14200,
+      netWeightKg: 24300,
+      isStableWeight: true,
+      scaleDeviceId: 'WB-02',
+      latencyMs: 220,
+      externalId: `EXT-WB-${Date.now()}-002`,
+      correlationId: crypto.randomUUID(),
+      sourceChannel: 'SCALE_DIRECT',
+      weighingTimestamp: new Date(Date.now() - 3600000),
+      createdBy: 'system',
+    },
+    {
+      weighbridgeEventId: `WB-EVT-${Date.now()}-003`,
+      vehicleNumber: '51C-11111',
+      weighingType: 'WEIGH_OUT' as const,
+      weighingSequence: 2,
+      grossWeightKg: 52000,
+      tareWeightKg: 16500,
+      netWeightKg: 35500,
+      isStableWeight: true,
+      scaleDeviceId: 'WB-01',
+      latencyMs: 195,
+      externalId: `EXT-WB-${Date.now()}-003`,
+      correlationId: crypto.randomUUID(),
+      sourceChannel: 'SCALE_DIRECT',
+      weighingTimestamp: new Date(Date.now() - 5400000),
+      createdBy: 'system',
+    },
+    {
+      weighbridgeEventId: `WB-EVT-${Date.now()}-004`,
+      vehicleNumber: '51C-22222',
+      weighingType: 'WEIGH_IN' as const,
+      weighingSequence: 1,
+      grossWeightKg: 41000,
+      tareWeightKg: 15000,
+      netWeightKg: 26000,
+      isStableWeight: true,
+      scaleDeviceId: 'WB-01',
+      latencyMs: 210,
+      externalId: `EXT-WB-${Date.now()}-004`,
+      correlationId: crypto.randomUUID(),
+      sourceChannel: 'SCALE_DIRECT',
+      weighingTimestamp: new Date(Date.now() - 7200000),
+      createdBy: 'system',
+    },
+    {
+      weighbridgeEventId: `WB-EVT-${Date.now()}-005`,
+      vehicleNumber: '51C-33333',
+      weighingType: 'WEIGH_IN' as const,
+      weighingSequence: 1,
+      grossWeightKg: 48500,
+      tareWeightKg: 16000,
+      netWeightKg: 32500,
+      isStableWeight: true,
+      scaleDeviceId: 'WB-02',
+      latencyMs: 185,
+      externalId: `EXT-WB-${Date.now()}-005`,
+      correlationId: crypto.randomUUID(),
+      sourceChannel: 'SCALE_DIRECT',
+      weighingTimestamp: new Date(Date.now() - 10800000),
+      createdBy: 'system',
+    },
+  ];
+
+  for (const log of weighLogSeeds) {
+    await prisma.m8WeighbridgeLog.create({ data: log });
+  }
+  console.log('✅ Module 8 Weighbridge Devices & Logs sample data seeded successfully');
 }
 
 main()
