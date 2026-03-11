@@ -105,6 +105,7 @@ const getMenuConfig = (t) => [
         icon: Truck,
         basePath: '/app/inbound-operations',
         children: [
+          { to: '/app/inbound-operations/purchase-orders', label: t('sidebar.items.purchaseOrders'), icon: FileText },
           { to: '/app/inbound-operations/receipts', label: t('sidebar.items.receipts'), icon: ClipboardCheck },
           { to: '/app/inbound-operations/execution', label: t('sidebar.items.execution'), icon: Scale },
           { to: '/app/inbound-operations/exceptions', label: t('sidebar.items.exceptions'), icon: AlertTriangle },

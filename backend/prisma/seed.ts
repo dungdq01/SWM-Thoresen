@@ -130,6 +130,16 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['inbound.po.confirm', 'INBOUND', 'PO', 'CONFIRM', true],
   ['inbound.po.close', 'INBOUND', 'PO', 'CLOSE', true],
   ['inbound.po.cancel', 'INBOUND', 'PO', 'CANCEL', true],
+  // Outbound: Shipments & Operations
+  ['OUTBOUND.SHIPMENT.CREATE', 'OUTBOUND', 'SHIPMENT', 'CREATE', true],
+  ['OUTBOUND.SHIPMENT.READ', 'OUTBOUND', 'SHIPMENT', 'READ', false],
+  ['OUTBOUND.SHIPMENT.CONFIRM', 'OUTBOUND', 'SHIPMENT', 'CONFIRM', true],
+  ['OUTBOUND.SHIPMENT.CANCEL', 'OUTBOUND', 'SHIPMENT', 'CANCEL', true],
+  ['OUTBOUND.SHIPMENT.SHIP', 'OUTBOUND', 'SHIPMENT', 'SHIP', true],
+  ['OUTBOUND.ALLOCATION.EXECUTE', 'OUTBOUND', 'ALLOCATION', 'EXECUTE', true],
+  ['OUTBOUND.WEIGH.RECEIVE', 'OUTBOUND', 'WEIGH', 'RECEIVE', true],
+  ['OUTBOUND.APPROVAL.DECIDE', 'OUTBOUND', 'APPROVAL', 'DECIDE', true],
+  ['OUTBOUND.DASHBOARD.READ', 'OUTBOUND', 'DASHBOARD', 'READ', false],
 ];
 
 async function main() {
