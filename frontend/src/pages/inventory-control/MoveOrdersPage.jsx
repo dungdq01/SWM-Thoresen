@@ -67,10 +67,10 @@ export function MoveOrdersPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Move Orders (Internal Movement)</h2>
+        <h2 className="section-title">Lệnh di chuyển nội bộ</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Create Move Order</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo lệnh di chuyển</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
@@ -83,16 +83,16 @@ export function MoveOrdersPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Move Order</TableHead>
-              <TableHead>Warehouse / Reason</TableHead>
-              <TableHead align="right">Lines / Qty</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Số lệnh</TableHead>
+              <TableHead>Kho / Lý do</TableHead>
+              <TableHead align="right">Dòng / SL</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No move orders available" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Chưa có lệnh di chuyển nào" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -104,7 +104,7 @@ export function MoveOrdersPage() {
                   <p className="text-xs text-navy-400">{row.reasonCode || 'N/A'}</p>
                 </TableCell>
                 <TableCell align="right">
-                  <p className="font-semibold text-navy-900">{row.lines?.length || 0} line(s)</p>
+                  <p className="font-semibold text-navy-900">{row.lines?.length || 0} dòng</p>
                   <p className="text-xs text-navy-400">{row.lines?.reduce((sum, l) => sum + (l.requestedQty || 0), 0).toLocaleString()} kg</p>
                 </TableCell>
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
@@ -126,43 +126,43 @@ export function MoveOrdersPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Create Move Order"
-        description="Move inventory between locations within the same warehouse."
+        title="Tạo lệnh di chuyển"
+        description="Di chuyển hàng hóa giữa các vị trí trong cùng một kho."
         size="lg"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleCreate} disabled={createMoveOrder.isPending}>
-              {createMoveOrder.isPending ? 'Đang xử lý...' : 'Create Move Order'}
+              {createMoveOrder.isPending ? 'Đang xử lý...' : 'Tạo lệnh'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
-          <Select label="Reason code" value={draft.reasonCode} onChange={(e) => setDraft((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: '', label: '-- Chọn Reason --' }, { value: 'CONSOLIDATE', label: 'CONSOLIDATE' }, { value: 'REPLENISH', label: 'REPLENISH' }, { value: 'REORGANIZE', label: 'REORGANIZE' }]} />
+          <Select label="Lý do" value={draft.reasonCode} onChange={(e) => setDraft((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: '', label: '-- Chọn lý do --' }, { value: 'CONSOLIDATE', label: 'CONSOLIDATE' }, { value: 'REPLENISH', label: 'REPLENISH' }, { value: 'REORGANIZE', label: 'REORGANIZE' }]} />
 
           <div className="border-t border-moon-200 pt-4">
-            <p className="text-sm font-semibold text-navy-900 mb-3">Line 1</p>
+            <p className="text-sm font-semibold text-navy-900 mb-3">Dòng 1</p>
             <div className="space-y-3">
               <div>
-                <Select label="Item" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
+                <Select label="Hàng hóa" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
                 {errors.itemId && <p className="text-xs text-danger mt-1">{errors.itemId}</p>}
               </div>
-              <Select label="Owner" value={draft.lines[0].ownerId} onChange={(e) => updateLine(0, 'ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+              <Select label="Chủ hàng" value={draft.lines[0].ownerId} onChange={(e) => updateLine(0, 'ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
               <div>
-                <Select label="From Location" value={draft.lines[0].fromLocationId} onChange={(e) => updateLine(0, 'fromLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn Location --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+                <Select label="Vị trí nguồn" value={draft.lines[0].fromLocationId} onChange={(e) => updateLine(0, 'fromLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
                 {errors.fromLocationId && <p className="text-xs text-danger mt-1">{errors.fromLocationId}</p>}
               </div>
               <div>
-                <Select label="To Location" value={draft.lines[0].toLocationId} onChange={(e) => updateLine(0, 'toLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn Location --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+                <Select label="Vị trí đích" value={draft.lines[0].toLocationId} onChange={(e) => updateLine(0, 'toLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
                 {errors.toLocationId && <p className="text-xs text-danger mt-1">{errors.toLocationId}</p>}
               </div>
               <div>
-                <Input label="Qty (kg)" type="number" value={draft.lines[0].requestedQty} onChange={(e) => updateLine(0, 'requestedQty', e.target.value)} />
+                <Input label="Số lượng (kg)" type="number" value={draft.lines[0].requestedQty} onChange={(e) => updateLine(0, 'requestedQty', e.target.value)} />
                 {errors.requestedQty && <p className="text-xs text-danger mt-1">{errors.requestedQty}</p>}
               </div>
             </div>

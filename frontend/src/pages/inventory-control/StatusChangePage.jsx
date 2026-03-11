@@ -62,10 +62,10 @@ export function StatusChangePage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Inventory Status Change</h2>
+        <h2 className="section-title">Đổi trạng thái tồn kho</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Create Status Change</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo yêu cầu đổi trạng thái</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
@@ -77,17 +77,17 @@ export function StatusChangePage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Status Change #</TableHead>
-              <TableHead>Item / Owner</TableHead>
-              <TableHead>From → To</TableHead>
-              <TableHead align="right">Qty</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead align="center">Status</TableHead>
+              <TableHead>Số phiếu</TableHead>
+              <TableHead>Hàng hóa / Chủ hàng</TableHead>
+              <TableHead>Từ → Đến</TableHead>
+              <TableHead align="right">Số lượng</TableHead>
+              <TableHead>Lý do</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No status changes available" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Chưa có yêu cầu đổi trạng thái nào" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -120,51 +120,51 @@ export function StatusChangePage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Create Status Change"
-        description="Change inventory status (AVAILABLE ↔ BLOCKED / DAMAGED)."
+        title="Tạo yêu cầu đổi trạng thái"
+        description="Đổi trạng thái tồn kho (SẴN SÀNG ↔ TẠM GIỮ / HƯ HỎMG)."
         size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleCreate} disabled={createStatusChange.isPending}>
-              {createStatusChange.isPending ? 'Đang xử lý...' : 'Create Status Change'}
+              {createStatusChange.isPending ? 'Đang xử lý...' : 'Tạo yêu cầu'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
           <div>
-            <Select label="Location" value={draft.locationId} onChange={(e) => setDraft((prev) => ({ ...prev, locationId: e.target.value }))} options={[{ value: '', label: '-- Chọn Location --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+            <Select label="Vị trí" value={draft.locationId} onChange={(e) => setDraft((prev) => ({ ...prev, locationId: e.target.value }))} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
             {errors.locationId && <p className="text-xs text-danger mt-1">{errors.locationId}</p>}
           </div>
           <div>
-            <Select label="Item" value={draft.itemId} onChange={(e) => setDraft((prev) => ({ ...prev, itemId: e.target.value }))} options={[{ value: '', label: '-- Chọn Item --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
+            <Select label="Hàng hóa" value={draft.itemId} onChange={(e) => setDraft((prev) => ({ ...prev, itemId: e.target.value }))} options={[{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
             {errors.itemId && <p className="text-xs text-danger mt-1">{errors.itemId}</p>}
           </div>
           <div>
-            <Select label="Owner" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+            <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
             {errors.ownerId && <p className="text-xs text-danger mt-1">{errors.ownerId}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Select label="From Status" value={draft.fromStatus} onChange={(e) => setDraft((prev) => ({ ...prev, fromStatus: e.target.value }))} options={[{ value: 'AVAILABLE', label: 'AVAILABLE' }, { value: 'BLOCKED', label: 'BLOCKED' }, { value: 'DAMAGED', label: 'DAMAGED' }]} />
+            <Select label="Trạng thái hiện tại" value={draft.fromStatus} onChange={(e) => setDraft((prev) => ({ ...prev, fromStatus: e.target.value }))} options={[{ value: 'AVAILABLE', label: 'AVAILABLE' }, { value: 'BLOCKED', label: 'BLOCKED' }, { value: 'DAMAGED', label: 'DAMAGED' }]} />
             <div>
-              <Select label="To Status" value={draft.toStatus} onChange={(e) => setDraft((prev) => ({ ...prev, toStatus: e.target.value }))} options={[{ value: 'AVAILABLE', label: 'AVAILABLE' }, { value: 'BLOCKED', label: 'BLOCKED' }, { value: 'DAMAGED', label: 'DAMAGED' }]} />
+              <Select label="Trạng thái mới" value={draft.toStatus} onChange={(e) => setDraft((prev) => ({ ...prev, toStatus: e.target.value }))} options={[{ value: 'AVAILABLE', label: 'AVAILABLE' }, { value: 'BLOCKED', label: 'BLOCKED' }, { value: 'DAMAGED', label: 'DAMAGED' }]} />
               {errors.toStatus && <p className="text-xs text-danger mt-1">{errors.toStatus}</p>}
             </div>
           </div>
           <div>
-            <Input label="Qty (kg)" type="number" value={draft.qty} onChange={(e) => setDraft((prev) => ({ ...prev, qty: e.target.value }))} />
+            <Input label="Số lượng (kg)" type="number" value={draft.qty} onChange={(e) => setDraft((prev) => ({ ...prev, qty: e.target.value }))} />
             {errors.qty && <p className="text-xs text-danger mt-1">{errors.qty}</p>}
           </div>
           <div>
-            <Select label="Reason Code" value={draft.reasonCode} onChange={(e) => setDraft((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: '', label: '-- Chọn Reason --' }, { value: 'QUALITY_HOLD', label: 'QUALITY_HOLD' }, { value: 'QC_PASSED', label: 'QC_PASSED' }, { value: 'DAMAGE_FOUND', label: 'DAMAGE_FOUND' }, { value: 'CUSTOMER_REQUEST', label: 'CUSTOMER_REQUEST' }]} />
+            <Select label="Mã lý do" value={draft.reasonCode} onChange={(e) => setDraft((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: '', label: '-- Chọn lý do --' }, { value: 'QUALITY_HOLD', label: 'QUALITY_HOLD' }, { value: 'QC_PASSED', label: 'QC_PASSED' }, { value: 'DAMAGE_FOUND', label: 'DAMAGE_FOUND' }, { value: 'CUSTOMER_REQUEST', label: 'CUSTOMER_REQUEST' }]} />
             {errors.reasonCode && <p className="text-xs text-danger mt-1">{errors.reasonCode}</p>}
           </div>
-          <Textarea label="Reason Text" rows={2} value={draft.reasonText} onChange={(e) => setDraft((prev) => ({ ...prev, reasonText: e.target.value }))} />
+          <Textarea label="Mô tả lý do" rows={2} value={draft.reasonText} onChange={(e) => setDraft((prev) => ({ ...prev, reasonText: e.target.value }))} />
         </div>
       </Modal>
     </>
