@@ -57,10 +57,17 @@ export class VasWorkOrderRepository {
     id: string,
     tx: Prisma.TransactionClient,
   ): Promise<VasWorkOrder | null> {
-    const result = await tx.$queryRaw<VasWorkOrder[]>`
-      SELECT * FROM vas_work_order WHERE id = ${id}::uuid FOR UPDATE
-    `;
-    return result[0] || null;
+    // Use Prisma's findFirst with raw lock instead of raw query to get proper field mapping
+    const wo = await tx.vasWorkOrder.findFirst({
+      where: { id },
+    });
+    
+    if (!wo) return null;
+    
+    // Apply row-level lock
+    await tx.$executeRaw`SELECT 1 FROM vas_work_order WHERE id = ${id}::uuid FOR UPDATE`;
+    
+    return wo;
   }
 
   async update(

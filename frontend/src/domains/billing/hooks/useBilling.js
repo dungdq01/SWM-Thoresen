@@ -10,10 +10,20 @@ const QUERY_KEYS = {
   dashboard: ['billing', 'dashboard'],
 }
 
+const cleanFilters = (filters) => {
+  const cleaned = {}
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== '' && value !== undefined && value !== null) {
+      cleaned[key] = value
+    }
+  }
+  return cleaned
+}
+
 export function useDebitNotes(filters = {}) {
   return useQuery({
     queryKey: [...QUERY_KEYS.debitNotes, filters],
-    queryFn: () => billingApi.getDebitNotes(filters),
+    queryFn: () => billingApi.getDebitNotes(cleanFilters(filters)),
     staleTime: 15000,
   })
 }
@@ -29,7 +39,7 @@ export function useDebitNoteDetail(id) {
 export function useContracts(filters = {}) {
   return useQuery({
     queryKey: [...QUERY_KEYS.contracts, filters],
-    queryFn: () => billingApi.getContracts(filters),
+    queryFn: () => billingApi.getContracts(cleanFilters(filters)),
     staleTime: 30000,
   })
 }
@@ -37,7 +47,7 @@ export function useContracts(filters = {}) {
 export function useBillingEvents(filters = {}) {
   return useQuery({
     queryKey: [...QUERY_KEYS.events, filters],
-    queryFn: () => billingApi.getEvents(filters),
+    queryFn: () => billingApi.getEvents(cleanFilters(filters)),
     staleTime: 15000,
   })
 }
@@ -50,6 +60,25 @@ export function useBillingDashboard(params = {}) {
   })
 }
 
+const billingErrorMessages = {
+  'BIL-DN-NO-CHARGES-422': 'Không có sự kiện thanh toán nào trong kỳ này để tạo phiếu nợ',
+  'BIL-DN-NOT-FOUND-404': 'Không tìm thấy phiếu nợ',
+  'BIL-DN-INVALID-STATE-409': 'Trạng thái phiếu nợ không hợp lệ',
+  'BIL-DN-EXTERNAL-ID-EXISTS-409': 'Phiếu nợ đã tồn tại cho kỳ này',
+  'BIL-DN-BLOCKER-EXCEPTION-422': 'Có ngoại lệ chặn phiếu nợ này',
+  'BIL-CONTRACT-NOT-FOUND-404': 'Không tìm thấy hợp đồng',
+  'BIL-CONTRACT-OVERLAP-409': 'Hợp đồng trùng lặp với hợp đồng đang hoạt động',
+}
+
+function getErrorMessage(error, fallback) {
+  const code = error?.error?.code || error?.code
+  const message = error?.error?.message || error?.message
+  if (code && billingErrorMessages[code]) {
+    return billingErrorMessages[code]
+  }
+  return message || fallback
+}
+
 function useInvalidateQueries(keys, successMessage, errorMessage) {
   const queryClient = useQueryClient()
   return {
@@ -58,7 +87,7 @@ function useInvalidateQueries(keys, successMessage, errorMessage) {
       keys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }))
       toast.success(successMessage)
     },
-    onError: (error) => toast.error(error?.error?.message || errorMessage),
+    onError: (error) => toast.error(getErrorMessage(error, errorMessage)),
   }
 }
 
@@ -80,6 +109,11 @@ export function useApproveDebitNote() {
 export function useLockDebitNote() {
   const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.debitNotes, QUERY_KEYS.dashboard], 'Đã lock debit note', 'Không thể lock debit note')
   return useMutation({ mutationFn: (id) => billingApi.lockDebitNote(id), onSuccess, onError })
+}
+
+export function useCaptureEvent() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.events, QUERY_KEYS.dashboard], 'Đã tạo sự kiện thanh toán', 'Không thể tạo sự kiện')
+  return useMutation({ mutationFn: (data) => billingApi.captureEvent(data), onSuccess, onError })
 }
 
 export function useCreateContract() {

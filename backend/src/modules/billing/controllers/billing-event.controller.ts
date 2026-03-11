@@ -42,6 +42,18 @@ export class BillingEventController {
       data: event,
     };
   }
+
+  @Post('capture')
+  @HttpCode(HttpStatus.CREATED)
+  @Permission('BILLING.EVENT.READ')
+  async capture(@Body() dto: CaptureEventDto) {
+    const result = await this.eventService.captureEvent(dto);
+    return {
+      success: true,
+      data: result.data,
+      meta: { isReplay: result.isReplay },
+    };
+  }
 }
 
 @Controller('internal/billing/events')

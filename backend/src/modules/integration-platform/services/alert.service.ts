@@ -53,6 +53,7 @@ export class AlertService {
     page?: number;
     limit?: number;
   }) {
+    // Read from database - map severity for frontend (CRITICAL/ERROR->HIGH, WARN->MEDIUM, INFO->LOW)
     const result = await this.alertRepo.findMany({
       alertSource: params.alertSource,
       severity: params.severity,
@@ -64,8 +65,19 @@ export class AlertService {
       take: params.limit || 20,
     });
 
+    // Map database fields to frontend expected format
+    const mappedData = result.data.map((alert: any) => ({
+      id: alert.id,
+      title: alert.title,
+      alertSource: alert.alertSource,
+      severity: this.mapSeverity(alert.severity),
+      message: alert.description,
+      status: alert.status,
+      createdAt: alert.createdAt,
+    }));
+
     return {
-      data: result.data,
+      data: mappedData,
       pagination: {
         total: result.total,
         page: params.page || 1,
@@ -73,6 +85,12 @@ export class AlertService {
         totalPages: Math.ceil(result.total / (params.limit || 20)),
       },
     };
+  }
+
+  private mapSeverity(dbSeverity: string): string {
+    if (dbSeverity === 'CRITICAL' || dbSeverity === 'ERROR') return 'HIGH';
+    if (dbSeverity === 'WARN') return 'MEDIUM';
+    return 'LOW';
   }
 
   async getAlertById(id: string) {

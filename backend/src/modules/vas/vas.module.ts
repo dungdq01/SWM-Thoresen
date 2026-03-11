@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
+import { FoundationModule } from '../foundation/foundation.module';
 
 import { VasWorkOrderCommandController } from './controllers/vas-wo-command.controller';
 import { VasWorkOrderQueryController } from './controllers/vas-wo-query.controller';
@@ -24,19 +25,15 @@ import { VasInventoryFacade } from './facades/vas-inventory.facade';
 import { VasBillingFacade } from './facades/vas-billing.facade';
 import { VasValidationService } from './services/vas-validation.service';
 import { InventoryCoreAdapter } from './adapters/inventory-core.adapter';
-import { VasAuthGuard, VasPermissionGuard } from './guards/vas-auth.guard';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, FoundationModule],
   controllers: [
     VasWorkOrderCommandController,
     VasWorkOrderQueryController,
     VasSessionController,
   ],
   providers: [
-    // Guards
-    VasAuthGuard,
-    VasPermissionGuard,
     // Adapters
     InventoryCoreAdapter,
     // Services

@@ -91,6 +91,10 @@ export class WeighbridgeLogService {
   }
 
   private mapLogToResponse(log: any) {
+    // Map to frontend expected format
+    const referenceType = log.receiptId ? 'RECEIPT' : log.shipmentId ? 'SHIPMENT' : null;
+    const referenceId = log.receiptId || log.shipmentId || null;
+    
     return {
       id: log.id,
       weighbridgeEventId: log.weighbridgeEventId,
@@ -100,6 +104,11 @@ export class WeighbridgeLogService {
       grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : null,
       tareWeightKg: log.tareWeightKg ? Number(log.tareWeightKg) : null,
       netWeightKg: log.netWeightKg ? Number(log.netWeightKg) : null,
+      // Frontend expected fields
+      referenceType,
+      referenceId,
+      weightKg: log.netWeightKg ? Number(log.netWeightKg) : (log.grossWeightKg ? Number(log.grossWeightKg) : null),
+      capturedAt: log.weighingTimestamp,
       isStableWeight: log.isStableWeight,
       isDuplicateSignal: log.isDuplicateSignal,
       isManualEntry: log.isManualEntry,

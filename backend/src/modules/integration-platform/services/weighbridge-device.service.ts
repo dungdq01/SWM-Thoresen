@@ -17,12 +17,36 @@ export class WeighbridgeDeviceService {
 
   async getDevices(params: { warehouseId?: string; isActive?: boolean; page?: number; limit?: number }) {
     const skip = ((params.page || 1) - 1) * (params.limit || 50);
-    return this.deviceRepo.findAll({
+    const result = await this.deviceRepo.findAll({
       warehouseId: params.warehouseId,
       isActive: params.isActive,
       skip,
       take: params.limit || 50,
     });
+
+    // Map to frontend expected format
+    const mappedData = result.data.map((device: any) => ({
+      id: device.id,
+      deviceCode: device.deviceCode,
+      name: device.deviceName,
+      warehouseId: device.warehouseId,
+      healthStatus: device.lastStatus || 'UNKNOWN',
+      agentVersion: '1.0.0', // Placeholder
+      isActive: device.isActive,
+      lastHeartbeatAt: device.lastSeenAt,
+      createdAt: device.createdAt,
+      updatedAt: device.updatedAt,
+    }));
+
+    return {
+      data: mappedData,
+      pagination: {
+        total: result.total,
+        page: params.page || 1,
+        limit: params.limit || 50,
+        totalPages: Math.ceil(result.total / (params.limit || 50)),
+      },
+    };
   }
 
   async getDeviceByCode(deviceCode: string) {

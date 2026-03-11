@@ -8,7 +8,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum VasWoStatusQuery {
@@ -32,6 +32,7 @@ export class QueryVasWoDto {
 
   @ApiPropertyOptional({ description: 'Filter theo status', enum: VasWoStatusQuery })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEnum(VasWoStatusQuery)
   status?: VasWoStatusQuery;
 
@@ -64,6 +65,12 @@ export class QueryVasWoDto {
   @IsOptional()
   @IsDateString()
   completedTo?: string;
+
+  @ApiPropertyOptional({ description: 'Filter theo VAS type (BAGGING, REPACKING)' })
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  @IsString()
+  vasType?: string;
 
   @ApiPropertyOptional({ description: 'Tìm kiếm theo wo_number' })
   @IsOptional()

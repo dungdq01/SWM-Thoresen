@@ -37,18 +37,22 @@ export function InvoicesPage() {
 
   const validate = () => {
     const e = {}
-    if (!draft.ownerId) e.ownerId = 'Owner là bắt buộc'
-    if (!draft.warehouseId) e.warehouseId = 'Warehouse là bắt buộc'
-    if (!draft.periodStart) e.periodStart = 'Period Start là bắt buộc'
-    if (!draft.periodEnd) e.periodEnd = 'Period End là bắt buộc'
-    if (draft.periodStart && draft.periodEnd && draft.periodStart > draft.periodEnd) e.periodEnd = 'Period End phải sau Period Start'
+    if (!draft.ownerId) e.ownerId = 'Chủ sở hữu là bắt buộc'
+    if (!draft.warehouseId) e.warehouseId = 'Kho là bắt buộc'
+    if (!draft.periodStart) e.periodStart = 'Ngày bắt đầu là bắt buộc'
+    if (!draft.periodEnd) e.periodEnd = 'Ngày kết thúc là bắt buộc'
+    if (draft.periodStart && draft.periodEnd && draft.periodStart > draft.periodEnd) e.periodEnd = 'Ngày kết thúc phải sau ngày bắt đầu'
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
   const handleGenerate = async () => {
     if (!validate()) return
-    await generateDebitNote.mutateAsync(draft)
+    const payload = {
+      ...draft,
+      externalId: `DN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+    }
+    await generateDebitNote.mutateAsync(payload)
     setDraft(initialDraft)
     setErrors({})
     setShowCreate(false)
@@ -57,38 +61,38 @@ export function InvoicesPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Debit Notes</h2>
+        <h2 className="section-title">Phiếu Nợ</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Generate Debit Note</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo Phiếu Nợ</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'REVIEWED', label: 'REVIEWED' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'LOCKED', label: 'LOCKED' }]} placeholder="Status" />
-          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Owner" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'Nháp' }, { value: 'REVIEWED', label: 'Đã xem xét' }, { value: 'APPROVED', label: 'Đã phê duyệt' }, { value: 'LOCKED', label: 'Đã khóa' }]} placeholder="Trạng thái" />
+          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Chủ sở hữu" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Debit Note #</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead align="right">Amount</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Số Phiếu Nợ</TableHead>
+              <TableHead>Chủ sở hữu</TableHead>
+              <TableHead>Kỳ hạn</TableHead>
+              <TableHead align="right">Số tiền</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No invoices" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không có phiếu nợ" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
                   <p className="font-semibold text-navy-900">{row.dnNumber || row.invoiceNumber}</p>
-                  <p className="text-xs text-navy-400">{row.lineCount} lines</p>
+                  <p className="text-xs text-navy-400">{row.lineCount} dòng</p>
                 </TableCell>
                 <TableCell>
                   <p className="font-medium text-navy-800">{row.owner?.code || row.ownerId}</p>
@@ -104,9 +108,9 @@ export function InvoicesPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => reviewDebitNote.mutate(row.id)}>Review</Button>}
-                    {row.status === 'REVIEWED' && <Button variant="accent" size="sm" onClick={() => approveDebitNote.mutate(row.id)}>Approve</Button>}
-                    {row.status === 'APPROVED' && <Button variant="gold" size="sm" onClick={() => lockDebitNote.mutate(row.id)}>Lock</Button>}
+                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => reviewDebitNote.mutate(row.id)}>Xem xét</Button>}
+                    {row.status === 'REVIEWED' && <Button variant="accent" size="sm" onClick={() => approveDebitNote.mutate(row.id)}>Phê duyệt</Button>}
+                    {row.status === 'APPROVED' && <Button variant="gold" size="sm" onClick={() => lockDebitNote.mutate(row.id)}>Khóa</Button>}
                   </div>
                 </TableCell>
               </TableRow>
@@ -120,33 +124,33 @@ export function InvoicesPage() {
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title="Generate Debit Note"
-        description="Generate debit note for owner based on billing events."
+        title="Tạo Phiếu Nợ"
+        description="Tạo phiếu nợ cho chủ sở hữu dựa trên các sự kiện thanh toán."
         size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
             <Button variant="accent" onClick={handleGenerate} disabled={generateDebitNote.isPending}>
-              {generateDebitNote.isPending ? 'Đang xử lý...' : 'Generate Debit Note'}
+              {generateDebitNote.isPending ? 'Đang xử lý...' : 'Tạo Phiếu Nợ'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <Select label="Owner" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+            <Select label="Chủ sở hữu" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Chủ sở hữu --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
             {errors.ownerId && <p className="text-xs text-danger mt-1">{errors.ownerId}</p>}
           </div>
           <div>
-            <Select label="Warehouse" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
           <div>
-            <Input label="Period Start" type="date" value={draft.periodStart} onChange={(e) => setDraft((prev) => ({ ...prev, periodStart: e.target.value }))} />
+            <Input label="Ngày bắt đầu" type="date" value={draft.periodStart} onChange={(e) => setDraft((prev) => ({ ...prev, periodStart: e.target.value }))} />
             {errors.periodStart && <p className="text-xs text-danger mt-1">{errors.periodStart}</p>}
           </div>
           <div>
-            <Input label="Period End" type="date" value={draft.periodEnd} onChange={(e) => setDraft((prev) => ({ ...prev, periodEnd: e.target.value }))} />
+            <Input label="Ngày kết thúc" type="date" value={draft.periodEnd} onChange={(e) => setDraft((prev) => ({ ...prev, periodEnd: e.target.value }))} />
             {errors.periodEnd && <p className="text-xs text-danger mt-1">{errors.periodEnd}</p>}
           </div>
         </div>

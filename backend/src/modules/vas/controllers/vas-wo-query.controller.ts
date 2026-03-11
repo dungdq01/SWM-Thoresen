@@ -30,6 +30,16 @@ export class VasWorkOrderQueryController {
     return this.queryService.list(query);
   }
 
+  @Get('dashboard')
+  @HttpCode(HttpStatus.OK)
+  @Permission('VAS.DASHBOARD.READ')
+  @ApiOperation({ summary: 'Lấy dashboard VAS' })
+  @ApiResponse({ status: 200, description: 'Dashboard data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getDashboard() {
+    return this.queryService.getDashboard();
+  }
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @Permission('VAS.WO.READ')
