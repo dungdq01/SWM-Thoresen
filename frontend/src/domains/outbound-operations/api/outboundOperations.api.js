@@ -21,6 +21,14 @@ export const outboundOperationsApi = {
     (id) => outboundOperationsMockApi.getShipmentById(id),
     (id) => httpClient.get(`${BASE_URL}/shipments/${id}`)
   ),
+  getShipmentByNumber: withDataSource(
+    (shipmentNumber) => outboundOperationsMockApi.getShipmentByNumber(shipmentNumber),
+    (shipmentNumber) => httpClient.get(`${BASE_URL}/shipments/by-number/${shipmentNumber}`)
+  ),
+  getShipmentLines: withDataSource(
+    (shipmentId) => outboundOperationsMockApi.getShipmentLines(shipmentId),
+    (shipmentId) => httpClient.get(`${BASE_URL}/shipments/${shipmentId}/lines`)
+  ),
   createShipment: withDataSource(
     (data) => outboundOperationsMockApi.createShipment(data),
     (data) => httpClient.post(`${BASE_URL}/shipments`, data)

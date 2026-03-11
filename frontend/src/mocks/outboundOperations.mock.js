@@ -474,6 +474,28 @@ export const outboundOperationsMockApi = {
     return delay({ data: shipment ? enrichShipment(shipment) : null })
   },
 
+  getShipmentByNumber: async (shipmentNumber) => {
+    const shipment = shipmentDb.shipments.find((s) => s.shipmentNumber === shipmentNumber)
+    return delay({ data: shipment ? enrichShipment(shipment) : null })
+  },
+
+  getShipmentLines: async (shipmentId) => {
+    const shipment = shipmentDb.shipments.find((s) => s.id === shipmentId || s.shipmentNumber === shipmentId)
+    if (!shipment) return delay({ data: [] })
+    const enrichedShipment = enrichShipment(shipment)
+    return delay({
+      data: enrichedShipment.lines.map((line) => ({
+        ...line,
+        shipmentId: shipment.id,
+        shipmentNumber: shipment.shipmentNumber,
+        ownerId: shipment.ownerId,
+        ownerCode: enrichedShipment.owner?.ownerCode,
+        warehouseId: shipment.warehouseId,
+        warehouseCode: enrichedShipment.warehouse?.warehouseCode,
+      })),
+    })
+  },
+
   createShipment: async (data) => {
     const shipment = {
       id: `shp-${Date.now()}`,

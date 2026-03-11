@@ -39,6 +39,23 @@ export function useOutboundShipmentDetail(id) {
   })
 }
 
+export function useOutboundShipmentByNumber(shipmentNumber) {
+  return useQuery({
+    queryKey: ['outbound-operations', 'shipments', 'by-number', shipmentNumber],
+    queryFn: () => outboundOperationsApi.getShipmentByNumber(shipmentNumber),
+    enabled: Boolean(shipmentNumber),
+  })
+}
+
+export function useOutboundShipmentLines(shipmentId) {
+  return useQuery({
+    queryKey: ['outbound-operations', 'shipment-lines', shipmentId],
+    queryFn: () => outboundOperationsApi.getShipmentLines(shipmentId),
+    enabled: Boolean(shipmentId),
+    select: (response) => response?.data || [],
+  })
+}
+
 export function useOutboundShipmentHistory(id) {
   return useQuery({
     queryKey: QUERY_KEYS.shipmentHistory(id),

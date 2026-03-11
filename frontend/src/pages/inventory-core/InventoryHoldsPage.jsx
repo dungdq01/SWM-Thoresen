@@ -1,7 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useCancelHold, useCreateHold, useHoldList, useReleaseHold } from '@domains/inventory-core'
-import { useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
+import { useLookupItems, useLookupLocations, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
+import { useOutboundShipmentLines } from '@domains/outbound-operations'
 import { Badge, Button, Input, Modal, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
+import { useDebouncedValue } from '@shared/hooks'
 
 const holdTone = (status) => {
   if (status === 'ACTIVE') return 'success'
@@ -18,10 +20,14 @@ const HOLD_STATUS_LABELS = {
   CANCELLED: 'Đã hủy',
 }
 
+const INITIAL_DRAFT = { shipmentId: '', shipmentLineId: '', itemId: '', qty: '', warehouseCode: '', locationCode: '', ownerCode: '', statusCode: 'AVAILABLE' }
+
 export function InventoryHoldsPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, itemId: '', ownerId: '', shipmentId: '', status: '' })
   const [showCreate, setShowCreate] = useState(false)
-  const [draft, setDraft] = useState({ shipmentId: '', shipmentLineId: '', itemId: '', qty: '', warehouseCode: '', locationCode: '', ownerCode: '', statusCode: 'AVAILABLE' })
+  const [draft, setDraft] = useState(INITIAL_DRAFT)
+  const [shipmentInput, setShipmentInput] = useState('')
+  const debouncedShipmentInput = useDebouncedValue(shipmentInput, 500)
 
   const { data: response, isLoading, refetch } = useHoldList({
     ...filters,
@@ -37,6 +43,11 @@ export function InventoryHoldsPage() {
   const { data: itemOptions = [] } = useLookupItems()
   const { data: ownerOptions = [] } = useLookupOwners()
   const { data: warehouseOptions = [] } = useLookupWarehouses()
+  
+  const selectedWarehouse = warehouseOptions.find((w) => w.code === draft.warehouseCode)
+  const { data: locationOptions = [] } = useLookupLocations(selectedWarehouse?.id)
+  
+  const { data: shipmentLines = [], isFetching: isLoadingLines } = useOutboundShipmentLines(debouncedShipmentInput)
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -48,6 +59,35 @@ export function InventoryHoldsPage() {
   const handleDraftChange = useCallback((key, value) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }, [])
+
+  const handleShipmentLineSelect = useCallback((lineId) => {
+    const line = shipmentLines.find((l) => l.id === lineId)
+    if (line) {
+      setDraft((prev) => ({
+        ...prev,
+        shipmentId: line.shipmentNumber || line.shipmentId,
+        shipmentLineId: lineId,
+        itemId: line.itemId || '',
+        qty: String(line.expectedQty || ''),
+        warehouseCode: line.warehouseCode || '',
+        ownerCode: line.ownerCode || '',
+      }))
+    } else {
+      setDraft((prev) => ({ ...prev, shipmentLineId: lineId }))
+    }
+  }, [shipmentLines])
+
+  const handleOpenModal = useCallback(() => {
+    setDraft(INITIAL_DRAFT)
+    setShipmentInput('')
+    setShowCreate(true)
+  }, [])
+
+  useEffect(() => {
+    if (debouncedShipmentInput) {
+      setDraft((prev) => ({ ...prev, shipmentId: debouncedShipmentInput }))
+    }
+  }, [debouncedShipmentInput])
 
   const handleCreateHold = async () => {
     await createHold.mutateAsync({
@@ -74,7 +114,7 @@ export function InventoryHoldsPage() {
         <h2 className="section-title">Quản lý giữ hàng</h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
-          <Button variant="accent" size="sm" onClick={() => setShowCreate(true)}>+ Tạo giữ hàng</Button>
+          <Button variant="accent" size="sm" onClick={handleOpenModal}>+ Tạo giữ hàng</Button>
         </div>
       </div>
 
@@ -152,31 +192,91 @@ export function InventoryHoldsPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleCreateHold} disabled={createHold.isPending}>
+            <Button variant="accent" onClick={handleCreateHold} disabled={createHold.isPending || !draft.itemId || !draft.qty || !draft.warehouseCode || !draft.locationCode || !draft.ownerCode || !draft.statusCode}>
               {createHold.isPending ? 'Đang tạo...' : 'Tạo giữ hàng'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Mã phiếu xuất" value={draft.shipmentId} onChange={(e) => handleDraftChange('shipmentId', e.target.value)} />
-            <Input label="Mã dòng phiếu xuất" value={draft.shipmentLineId} onChange={(e) => handleDraftChange('shipmentLineId', e.target.value)} />
+          {/* TODO: Enable when shipment API is connected
+          <div className="bg-navy-50 rounded-lg p-3">
+            <p className="text-sm font-medium text-navy-700 mb-2">Điền nhanh từ phiếu xuất (tùy chọn)</p>
+            <Input 
+              placeholder="Ví dụ: SHP-20260308-0001" 
+              value={shipmentInput} 
+              onChange={(e) => setShipmentInput(e.target.value)} 
+            />
+            {isLoadingLines && <p className="text-xs text-navy-400 mt-1">Đang tìm...</p>}
+            {!shipmentInput && <p className="text-xs text-navy-400 mt-1">Nhập mã phiếu xuất để tự động điền thông tin, hoặc bỏ qua để tạo thủ công</p>}
+            
+            {shipmentLines.length > 0 && (
+              <div className="mt-2">
+                <select 
+                  className="wrs-input" 
+                  value={draft.shipmentLineId} 
+                  onChange={(e) => handleShipmentLineSelect(e.target.value)}
+                >
+                  <option value="">Chọn dòng để tự động điền</option>
+                  {shipmentLines.map((line) => (
+                    <option key={line.id} value={line.id}>
+                      Dòng {line.lineNumber}: {line.item?.itemCode || line.itemId} - {line.expectedQty} {line.uom || 'KG'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-          <select className="wrs-input" value={draft.itemId} onChange={(e) => handleDraftChange('itemId', e.target.value)}>
-            <option value="">Chọn mặt hàng</option>
-            {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
-          </select>
-          <Input label="Số lượng giữ" value={draft.qty} onChange={(e) => handleDraftChange('qty', e.target.value)} />
-          <select className="wrs-input" value={draft.warehouseCode} onChange={(e) => handleDraftChange('warehouseCode', e.target.value)}>
-            <option value="">Chọn kho</option>
-            {warehouseOptions.map((option) => <option key={option.id} value={option.code}>{option.code} - {option.name}</option>)}
-          </select>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Mã vị trí" value={draft.locationCode} onChange={(e) => handleDraftChange('locationCode', e.target.value)} />
-            <Input label="Mã chủ hàng" value={draft.ownerCode} onChange={(e) => handleDraftChange('ownerCode', e.target.value)} />
+          */}
+
+          <div>
+            <p className="text-sm font-medium text-navy-600 mb-3">Thông tin giữ hàng</p>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Mặt hàng *</label>
+                <select className="wrs-input" value={draft.itemId} onChange={(e) => handleDraftChange('itemId', e.target.value)}>
+                  <option value="">Chọn mặt hàng</option>
+                  {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Số lượng giữ *</label>
+                <Input value={draft.qty} onChange={(e) => handleDraftChange('qty', e.target.value)} placeholder="Nhập số lượng" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Kho *</label>
+                <select className="wrs-input" value={draft.warehouseCode} onChange={(e) => handleDraftChange('warehouseCode', e.target.value)}>
+                  <option value="">Chọn kho</option>
+                  {warehouseOptions.map((option) => <option key={option.id} value={option.code}>{option.code} - {option.name}</option>)}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1">Vị trí *</label>
+                  <select className="wrs-input" value={draft.locationCode} onChange={(e) => handleDraftChange('locationCode', e.target.value)} disabled={!draft.warehouseCode}>
+                    <option value="">{draft.warehouseCode ? 'Chọn vị trí' : 'Chọn kho trước'}</option>
+                    {locationOptions.map((option) => <option key={option.id} value={option.code}>{option.code}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1">Chủ hàng *</label>
+                  <select className="wrs-input" value={draft.ownerCode} onChange={(e) => handleDraftChange('ownerCode', e.target.value)}>
+                    <option value="">Chọn chủ hàng</option>
+                    {ownerOptions.map((option) => <option key={option.id} value={option.code}>{option.code} - {option.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Trạng thái tồn kho *</label>
+                <Input value={draft.statusCode} onChange={(e) => handleDraftChange('statusCode', e.target.value)} placeholder="AVAILABLE" />
+              </div>
+            </div>
           </div>
-          <Input label="Mã trạng thái" value={draft.statusCode} onChange={(e) => handleDraftChange('statusCode', e.target.value)} />
         </div>
       </Modal>
     </>
