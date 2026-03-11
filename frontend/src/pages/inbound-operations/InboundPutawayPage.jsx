@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCompleteInboundPutaway, useCloseInboundReceipt, useInboundPutawayQueue } from '@domains/inbound-operations'
+import { useLookupItems, useLookupLocations, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Textarea } from '@shared/ui'
 
 const putawayTone = (status) => {
@@ -9,13 +10,25 @@ const putawayTone = (status) => {
 }
 
 export function InboundPutawayPage() {
-  const [filters, setFilters] = useState({ page: 1, pageSize: 20, status: '' })
+  const [filters, setFilters] = useState({ page: 1, pageSize: 20, status: '', keyword: '', ownerId: '', warehouseId: '', itemId: '' })
   const [selectedReceipt, setSelectedReceipt] = useState(null)
   const [putawayForm, setPutawayForm] = useState({ targetLocationId: '', note: '' })
   
-  const { data: response, isLoading, refetch } = useInboundPutawayQueue({ ...filters, status: filters.status || undefined })
+  const { data: response, isLoading, refetch } = useInboundPutawayQueue({
+    ...filters,
+    status: filters.status || undefined,
+    keyword: filters.keyword || undefined,
+    ownerId: filters.ownerId || undefined,
+    warehouseId: filters.warehouseId || undefined,
+    itemId: filters.itemId || undefined,
+  })
   const completePutaway = useCompleteInboundPutaway()
   const closeReceipt = useCloseInboundReceipt()
+
+  const { data: owners = [] } = useLookupOwners()
+  const { data: warehouses = [] } = useLookupWarehouses()
+  const { data: items = [] } = useLookupItems()
+  const { data: locations = [] } = useLookupLocations(selectedReceipt?.warehouseId || undefined)
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -49,8 +62,36 @@ export function InboundPutawayPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'RECEIVED', label: 'Đã nhận' }, { value: 'PUTAWAY', label: 'Đang lưu kho' }]} placeholder="Trạng thái" className="max-w-xs" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <Input
+            placeholder="Tìm số phiếu, PO, B/L..."
+            value={filters.keyword}
+            onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))}
+          />
+          <Select
+            value={filters.status}
+            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))}
+            options={[{ value: '', label: 'Tất cả trạng thái' }, { value: 'RECEIVED', label: 'Đã nhận' }, { value: 'PUTAWAY', label: 'Đang lưu kho' }]}
+            placeholder="Trạng thái"
+          />
+          <Select
+            value={filters.ownerId}
+            onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))}
+            options={[{ value: '', label: 'Tất cả chủ hàng' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]}
+            placeholder="Chủ hàng"
+          />
+          <Select
+            value={filters.warehouseId}
+            onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))}
+            options={[{ value: '', label: 'Tất cả kho' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
+            placeholder="Kho"
+          />
+          <Select
+            value={filters.itemId}
+            onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))}
+            options={[{ value: '', label: 'Tất cả hàng hóa' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]}
+            placeholder="Hàng hóa"
+          />
         </div>
 
         <Table>
@@ -120,11 +161,11 @@ export function InboundPutawayPage() {
             {selectedReceipt.status === 'RECEIVED' && (
               <div className="border-t border-moon-200 pt-4 space-y-3">
                 <h4 className="text-sm font-semibold text-navy-900">Thông tin bàn giao</h4>
-                <Input 
-                  label="Vị trí lưu kho đích" 
-                  placeholder="Nhập mã vị trí..." 
-                  value={putawayForm.targetLocationId} 
-                  onChange={(e) => setPutawayForm((prev) => ({ ...prev, targetLocationId: e.target.value }))} 
+                <Select
+                  label="Vị trí lưu kho đích"
+                  value={putawayForm.targetLocationId}
+                  onChange={(e) => setPutawayForm((prev) => ({ ...prev, targetLocationId: e.target.value }))}
+                  options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: `${l.code} - ${l.zone?.zoneName || ''}` }))]}
                 />
                 <Textarea 
                   label="Ghi chú" 

@@ -46,14 +46,28 @@ class SnapshotService {
       };
     }
 
+    // Get next version number for this date/warehouse combination
+    const latestRun = await this.prisma.inventorySnapshotRun.findFirst({
+      where: {
+        snapshotDate: targetDate,
+        warehouseId: warehouseId || null,
+      },
+      orderBy: { versionNo: 'desc' },
+    });
+    const nextVersionNo = (latestRun?.versionNo || 0) + 1;
+
+    const runNo = await this.generateRunNo(targetDate);
     const run = await this.prisma.inventorySnapshotRun.create({
       data: {
+        runNo,
         snapshotDate: targetDate,
-        warehouseId,
-        mode,
+        warehouseId: warehouseId || null,
+        cutOffTime: new Date(),
+        runMode: mode,
+        versionNo: nextVersionNo,
         status: SnapshotRunStatus.RUNNING,
         startedAt: new Date(),
-        triggeredBy,
+        requestedBy: triggeredBy || null,
         correlationId,
       },
     });
@@ -84,9 +98,9 @@ class SnapshotService {
         data: {
           status: SnapshotRunStatus.FAILED,
           completedAt: new Date(),
-          errorMessage: error.message,
         },
       });
+      console.error('Snapshot error:', error.message);
       throw error;
     }
   }
@@ -122,20 +136,24 @@ class SnapshotService {
       totalQtyKg = totalQtyKg.plus(qtyKg);
 
       snapshots.push({
-        runId: run.id,
+        snapshotRunId: run.id,
         snapshotDate,
         warehouseId: onHand.inventDim.warehouseId,
         locationId: onHand.inventDim.locationId,
         ownerId: onHand.inventDim.ownerId,
         itemId: onHand.itemId,
-        cargoForm: onHand.item.cargoForm,
-        qtyKg: qtyKg.toFixed(3),
-        qtyMt: qtyKg.div(1000).toFixed(6),
+        inventDimId: onHand.inventDimId,
+        openingQty: qtyKg.toFixed(3),
+        inboundTodayQty: '0.000',
+        outboundTodayQty: '0.000',
+        closingQty: qtyKg.toFixed(3),
+        cutOffTime: new Date(),
+        snapshotSource: 'MANUAL',
       });
     }
 
     if (snapshots.length > 0) {
-      if (run.mode === SnapshotRunMode.RERUN) {
+      if (run.runMode === SnapshotRunMode.RERUN) {
         await this.prisma.dailyStorageSnapshot.deleteMany({
           where: {
             snapshotDate,
@@ -262,6 +280,20 @@ class SnapshotService {
       avgQtyMt: new Decimal(row.avg_qty_mt || 0).toFixed(6),
       totalMtDays: new Decimal(row.total_mt_days || 0).toFixed(6),
     }));
+  }
+
+  /**
+   * Generate unique run number
+   */
+  async generateRunNo(snapshotDate) {
+    const dateStr = snapshotDate.toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await this.prisma.inventorySnapshotRun.count({
+      where: {
+        runNo: { startsWith: `SNAP-${dateStr}` },
+      },
+    });
+    const seq = String(count + 1).padStart(4, '0');
+    return `SNAP-${dateStr}-${seq}`;
   }
 }
 

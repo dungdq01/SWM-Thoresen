@@ -134,9 +134,10 @@ export function PurchaseOrdersPage() {
       vendorId: po.vendorId,
       warehouseId: po.warehouseId,
       externalPoNumber: po.externalPoNumber || '',
-      expectedDeliveryDate: po.expectedDeliveryDate || '',
+      expectedDeliveryDate: po.expectedDeliveryDate ? po.expectedDeliveryDate.split('T')[0] : '',
       notes: po.notes || '',
       currency: po.currency || 'VND',
+      rowVersion: po.rowVersion ?? 0,
       lines: po.lines.map((l) => ({
         id: l.id,
         itemId: l.itemId,
@@ -154,13 +155,11 @@ export function PurchaseOrdersPage() {
   const handleUpdate = async () => {
     if (!editDraft) return
     const payload = {
-      ...editDraft,
-      lines: editDraft.lines.filter((l) => l.itemId).map((l) => ({
-        ...l,
-        expectedQty: Number(l.expectedQty || 0),
-        unitPrice: Number(l.unitPrice || 0),
-        receivedQty: Number(l.receivedQty || 0),
-      })),
+      externalPoNumber: editDraft.externalPoNumber || '',
+      expectedDeliveryDate: editDraft.expectedDeliveryDate || null,
+      notes: editDraft.notes || '',
+      currency: editDraft.currency || 'VND',
+      rowVersion: editDraft.rowVersion ?? 0,
     }
     await updatePo.mutateAsync({ id: editDraft.id, data: payload })
     setEditDraft(null)

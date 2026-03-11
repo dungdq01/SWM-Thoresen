@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
-import { ClipboardCheck, FilePlus2, Scale, Truck } from 'lucide-react'
-import { useCreateInboundReceipt, useInboundDashboardSummary, useInboundReceipts, useConfirmInboundReceipt } from '@domains/inbound-operations'
+import { useMemo, useState, useEffect } from 'react'
+import { ClipboardCheck, FilePlus2, Scale, Truck, Sparkles } from 'lucide-react'
+import { useCreateInboundReceipt, useInboundDashboardSummary, useInboundReceipts, useConfirmInboundReceipt, usePurchaseOrders } from '@domains/inbound-operations'
 import { useLookupItems, useLookupLocations, useLookupOwners, useLookupVendors, useLookupWarehouses } from '@domains/master-data'
 import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
@@ -13,6 +13,7 @@ const statusTone = (status) => {
 
 const initialDraft = {
   receiptType: 'STANDARD',
+  poId: '',
   poNumber: '',
   asnNumber: '',
   ownerId: '',
@@ -25,6 +26,12 @@ const initialDraft = {
   expectedQty: '',
   cargoForm: 'BULK',
   bagCount: '',
+}
+
+const generateAsnNumber = () => {
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
+  return `ASN-${today}-${rand}`
 }
 
 export function InboundReceiptsPage() {
@@ -51,6 +58,49 @@ export function InboundReceiptsPage() {
   const { data: items = [] } = useLookupItems()
   const { data: warehouses = [] } = useLookupWarehouses()
   const { data: locations = [] } = useLookupLocations(draft.warehouseId || undefined)
+
+  // Fetch POs with status CONFIRMED for dropdown
+  const { data: poResponse } = usePurchaseOrders({ status: 'CONFIRMED', limit: 100 })
+  const confirmedPOs = poResponse?.data || []
+
+  // Auto-generate ASN when modal opens
+  useEffect(() => {
+    if (showCreate && !draft.asnNumber) {
+      setDraft((prev) => ({ ...prev, asnNumber: generateAsnNumber() }))
+    }
+  }, [showCreate])
+
+  // When PO is selected, auto-fill owner, vendor, warehouse, item from PO
+  const handlePoSelect = (poId) => {
+    const selectedPo = confirmedPOs.find((po) => po.id === poId)
+    if (selectedPo) {
+      const firstLine = selectedPo.lines?.[0]
+      setDraft((prev) => ({
+        ...prev,
+        poId,
+        poNumber: selectedPo.poNumber,
+        ownerId: selectedPo.ownerId || '',
+        vendorId: selectedPo.vendorId || '',
+        warehouseId: selectedPo.warehouseId || '',
+        itemId: firstLine?.itemId || '',
+        expectedQty: firstLine?.expectedQty?.toString() || '',
+        cargoForm: firstLine?.item?.cargoForm || 'BULK',
+      }))
+    } else {
+      // Reset all auto-filled fields when PO is deselected
+      setDraft((prev) => ({
+        ...prev,
+        poId: '',
+        poNumber: '',
+        ownerId: '',
+        vendorId: '',
+        warehouseId: '',
+        itemId: '',
+        expectedQty: '',
+        cargoForm: 'BULK',
+      }))
+    }
+  }
 
   const summary = summaryResponse?.data || {}
   const rows = response?.data || []
@@ -158,8 +208,25 @@ export function InboundReceiptsPage() {
         <div className="space-y-4">
           <Select label="Loại phiếu" value={draft.receiptType} onChange={(e) => setDraft((prev) => ({ ...prev, receiptType: e.target.value }))} options={[{ value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Số PO" value={draft.poNumber} onChange={(e) => setDraft((prev) => ({ ...prev, poNumber: e.target.value }))} />
-            <Input label="Số ASN" value={draft.asnNumber} onChange={(e) => setDraft((prev) => ({ ...prev, asnNumber: e.target.value }))} />
+            <Select
+              label="Số PO"
+              value={draft.poId}
+              onChange={(e) => handlePoSelect(e.target.value)}
+              options={[
+                { value: '', label: '-- Chọn PO --' },
+                ...confirmedPOs.map((po) => ({
+                  value: po.id,
+                  label: `${po.poNumber} - ${po.owner?.ownerCode || ''} (${po.totalExpectedQty?.toLocaleString() || 0} kg)`,
+                })),
+              ]}
+            />
+            <div>
+              <label className="block text-sm font-medium text-navy-700 mb-1.5">Số ASN <span className="text-xs text-navy-400 font-normal">(Tự động)</span></label>
+              <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2">
+                <Sparkles className="h-4 w-4 text-ice shrink-0" />
+                <span className="font-mono font-semibold text-navy-900">{draft.asnNumber || '...'}</span>
+              </div>
+            </div>
           </div>
           <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
           <Select label="Nhà cung cấp" value={draft.vendorId} onChange={(e) => setDraft((prev) => ({ ...prev, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn nhà cung cấp --' }, ...vendors.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />

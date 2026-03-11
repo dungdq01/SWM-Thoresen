@@ -36,7 +36,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Create a new receipt' })
   @ApiResponse({ status: 201, description: 'Receipt created' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  @Permission('INBOUND.RECEIPT.CREATE')
+  @Permission('inbound.receipt.create')
   async create(@Body() dto: CreateReceiptDto, @CurrentUser() user?: RequestUser) {
     return this.receiptService.createReceipt(dto, user?.id || 'system');
   }
@@ -44,7 +44,7 @@ export class ReceiptController {
   @Get('receipts')
   @ApiOperation({ summary: 'List receipts with pagination and filters' })
   @ApiResponse({ status: 200, description: 'List of receipts' })
-  @Permission('INBOUND.RECEIPT.READ')
+  @Permission('inbound.receipt.view')
   async list(@Query() query: ReceiptQueryDto) {
     return this.receiptService.listReceipts(query);
   }
@@ -54,7 +54,7 @@ export class ReceiptController {
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt details' })
   @ApiResponse({ status: 404, description: 'Receipt not found' })
-  @Permission('INBOUND.RECEIPT.READ')
+  @Permission('inbound.receipt.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.receiptService.getReceipt(id);
   }
@@ -63,7 +63,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Get receipt status history' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt history' })
-  @Permission('INBOUND.RECEIPT.READ')
+  @Permission('inbound.receipt.view')
   async getHistory(@Param('id', ParseUUIDPipe) id: string) {
     return this.receiptService.getReceiptHistory(id);
   }
@@ -73,7 +73,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Confirm receipt' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt confirmed' })
-  @Permission('INBOUND.RECEIPT.CONFIRM')
+  @Permission('inbound.receipt.confirm')
   async confirm(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ConfirmReceiptDto,
@@ -87,7 +87,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Cancel receipt' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt cancelled' })
-  @Permission('INBOUND.RECEIPT.CANCEL')
+  @Permission('inbound.receipt.cancel')
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CancelReceiptDto,
@@ -101,7 +101,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Reweigh receipt' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt set for reweigh' })
-  @Permission('INBOUND.RECEIPT.REWEIGH')
+  @Permission('inbound.receipt.reweigh')
   async reweigh(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: RequestUser) {
     return this.receiptService.reweighReceipt(id, user?.id || 'system');
   }
@@ -111,7 +111,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Complete putaway for receipt' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Putaway completed' })
-  @Permission('INBOUND.RECEIPT.CLOSE')
+  @Permission('inbound.receipt.close')
   async putawayComplete(@Param('id', ParseUUIDPipe) id: string, @Body() dto: any, @CurrentUser() user?: RequestUser) {
     return this.receiptService.putawayComplete(id, dto, user?.id || 'system');
   }
@@ -121,7 +121,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Close receipt' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt closed' })
-  @Permission('INBOUND.RECEIPT.CLOSE')
+  @Permission('inbound.receipt.close')
   async close(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: RequestUser) {
     return this.receiptService.closeReceipt(id, user?.id || 'system');
   }
@@ -131,7 +131,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Start processing receipt' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt processing started' })
-  @Permission('INBOUND.WEIGH.RECEIVE')
+  @Permission('inbound.weigh.receive')
   async startProcessing(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: RequestUser) {
     return this.receiptService.startProcessing(id, user?.id || 'system');
   }
@@ -141,7 +141,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Apply manual weight' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Manual weight applied' })
-  @Permission('INBOUND.WEIGH.RECEIVE')
+  @Permission('inbound.weigh.receive')
   async applyManualWeight(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: any,
@@ -154,7 +154,7 @@ export class ReceiptController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Receive weigh-in event' })
   @ApiResponse({ status: 200, description: 'Weigh-in recorded' })
-  @Permission('INBOUND.WEIGH.RECEIVE')
+  @Permission('inbound.weigh.receive')
   async weighIn(@Body() dto: WeighInDto, @CurrentUser() user?: RequestUser) {
     return this.receiptService.receiveWeighIn(dto, user?.id || 'system');
   }
@@ -163,7 +163,7 @@ export class ReceiptController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Receive weigh-out event' })
   @ApiResponse({ status: 200, description: 'Weigh-out recorded' })
-  @Permission('INBOUND.WEIGH.RECEIVE')
+  @Permission('inbound.weigh.receive')
   async weighOut(@Body() dto: WeighOutDto, @CurrentUser() user?: RequestUser) {
     return this.receiptService.receiveWeighOut(dto, user?.id || 'system');
   }
@@ -172,7 +172,7 @@ export class ReceiptController {
   @ApiOperation({ summary: 'Get dashboard summary' })
   @ApiQuery({ name: 'warehouseId', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Dashboard summary' })
-  @Permission('INBOUND.DASHBOARD.READ')
+  @Permission('inbound.dashboard.view')
   async getDashboardSummary(@Query('warehouseId') warehouseId?: string) {
     return this.receiptService.getDashboardSummary(warehouseId);
   }

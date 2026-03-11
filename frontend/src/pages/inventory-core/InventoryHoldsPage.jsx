@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useCancelHold, useCreateHold, useHoldList, useOnHandList, useReleaseHold } from '@domains/inventory-core'
-import { useLookupItems, useLookupOwners } from '@domains/master-data'
+import { useLookupItems, useLookupOwners, useLookupWarehouses, useLookupLocations } from '@domains/master-data'
 import { Badge, Button, Input, Modal, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
 
 const holdTone = (status) => {
@@ -27,7 +27,7 @@ function formatQty(val) {
 }
 
 export function InventoryHoldsPage() {
-  const [filters, setFilters] = useState({ page: 1, pageSize: 20, itemId: '', ownerId: '', shipmentId: '', status: '' })
+  const [filters, setFilters] = useState({ page: 1, pageSize: 20, itemId: '', ownerId: '', shipmentId: '', status: '', warehouseId: '' })
   const [showCreate, setShowCreate] = useState(false)
   const [draft, setDraft] = useState(INITIAL_DRAFT)
 
@@ -37,6 +37,7 @@ export function InventoryHoldsPage() {
     ownerId: filters.ownerId || undefined,
     shipmentId: filters.shipmentId || undefined,
     status: filters.status || undefined,
+    warehouseId: filters.warehouseId || undefined,
   })
 
   const createHold = useCreateHold()
@@ -44,6 +45,7 @@ export function InventoryHoldsPage() {
   const cancelHold = useCancelHold()
   const { data: itemOptions = [] } = useLookupItems()
   const { data: ownerOptions = [] } = useLookupOwners()
+  const { data: warehouseOptions = [] } = useLookupWarehouses()
 
   const { data: onHandResponse } = useOnHandList({ hasStock: true, pageSize: 100 })
   const stockRows = useMemo(() => onHandResponse?.data || [], [onHandResponse])
@@ -205,7 +207,7 @@ export function InventoryHoldsPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <select className="wrs-input" value={filters.itemId} onChange={(e) => handleFilterChange('itemId', e.target.value)}>
             <option value="">Tất cả mặt hàng</option>
             {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code}</option>)}
@@ -213,6 +215,10 @@ export function InventoryHoldsPage() {
           <select className="wrs-input" value={filters.ownerId} onChange={(e) => handleFilterChange('ownerId', e.target.value)}>
             <option value="">Tất cả chủ hàng</option>
             {ownerOptions.map((option) => <option key={option.id} value={option.id}>{option.code}</option>)}
+          </select>
+          <select className="wrs-input" value={filters.warehouseId} onChange={(e) => handleFilterChange('warehouseId', e.target.value)}>
+            <option value="">Tất cả kho</option>
+            {warehouseOptions.map((option) => <option key={option.id} value={option.id}>{option.code} — {option.name}</option>)}
           </select>
           <Input placeholder="Mã phiếu xuất" value={filters.shipmentId} onChange={(e) => handleFilterChange('shipmentId', e.target.value)} />
           <select className="wrs-input" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}>
@@ -231,14 +237,15 @@ export function InventoryHoldsPage() {
               <TableHead>Mã giữ hàng</TableHead>
               <TableHead>Phiếu xuất</TableHead>
               <TableHead>Mặt hàng / Chủ hàng</TableHead>
+              <TableHead>Kho / Vị trí</TableHead>
               <TableHead align="right">Số lượng</TableHead>
               <TableHead align="center">Trạng thái</TableHead>
               <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không có dữ liệu giữ hàng" /> : null}
+            {isLoading ? <TableLoading colSpan={7} /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={7} message="Không có dữ liệu giữ hàng" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -254,6 +261,10 @@ export function InventoryHoldsPage() {
                 <TableCell>
                   <p className="font-medium text-navy-900">{row.item?.itemCode || row.itemId}</p>
                   <p className="text-xs text-navy-400">{row.inventDim?.owner?.ownerCode || '—'}</p>
+                </TableCell>
+                <TableCell>
+                  <p className="font-medium text-navy-800">{row.inventDim?.warehouse?.warehouseCode || '—'}</p>
+                  <p className="text-xs text-navy-400">{row.inventDim?.location?.locationCode || '—'}</p>
                 </TableCell>
                 <TableCell align="right" className="font-semibold text-navy-900">{row.holdQty || row.qty}</TableCell>
                 <TableCell align="center"><Badge variant={holdTone(row.status)}>{HOLD_STATUS_LABELS[row.status] || row.status || 'Đang giữ'}</Badge></TableCell>

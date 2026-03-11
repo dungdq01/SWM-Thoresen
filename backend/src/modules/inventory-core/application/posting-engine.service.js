@@ -250,18 +250,20 @@ class PostingEngineService {
 
   /**
    * Generate transaction ID using number sequence
+   * BUG-FIX: Added random suffix to prevent duplicate transId on concurrent requests
    */
   async generateTransId(tx) {
     const date = new Date();
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+    // Always add random suffix to guarantee uniqueness
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
     
     const sequence = await tx.numberSequence.findFirst({
       where: { sequenceCode: 'TRX', isActive: true },
     });
 
     if (!sequence) {
-      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      return `TRX-${dateStr}-${random}`;
+      return `TRX-${dateStr}-${randomSuffix}${Date.now().toString(36).toUpperCase()}`;
     }
 
     const counter = await tx.numberSequenceCounter.upsert({
@@ -284,7 +286,7 @@ class PostingEngineService {
     });
 
     const seqNo = String(counter.lastNumber).padStart(sequence.runningNoLength, '0');
-    return `TRX-${dateStr}-${seqNo}`;
+    return `TRX-${dateStr}-${seqNo}-${randomSuffix}`;
   }
 }
 

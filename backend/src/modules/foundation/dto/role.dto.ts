@@ -77,6 +77,12 @@ export class CreateRoleDto {
 }
 
 export class UpdateRoleDto {
+  // roleCode is accepted but ignored (cannot be changed after creation)
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  roleCode?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(150)

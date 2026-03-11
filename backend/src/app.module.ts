@@ -44,14 +44,14 @@ import { InventoryCoreModule } from './modules/inventory-core/inventory-core.mod
       provide: APP_INTERCEPTOR,
       useClass: ResponseInterceptor,
     },
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: AuthGuard,
-    // },
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: PermissionGuard,
-    // },
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionGuard,
+    },
   ],
 })
 export class AppModule {}

@@ -210,8 +210,14 @@ class HoldRepository {
     if (filters.shipmentId) {
       where.shipmentId = filters.shipmentId;
     }
-    if (filters.ownerId) {
-      where.inventDim = { ownerId: filters.ownerId };
+    if (filters.ownerId || filters.warehouseId) {
+      where.inventDim = {};
+      if (filters.ownerId) {
+        where.inventDim.ownerId = filters.ownerId;
+      }
+      if (filters.warehouseId) {
+        where.inventDim.warehouseId = filters.warehouseId;
+      }
     }
 
     const [items, total] = await Promise.all([

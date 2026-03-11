@@ -61,18 +61,24 @@ export function UomConversionsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
-    const data = {
-      fromUomId: formData.get('fromUomId'),
-      toUomId: formData.get('toUomId'),
-      conversionFactor: parseFloat(formData.get('conversionFactor')),
-      description: formData.get('description'),
-    }
 
     try {
       if (formModal.data?.id) {
-        await updateMutation.mutateAsync({ id: formModal.data.id, data: { ...data, rowVersion: Number(formModal.data.rowVersion) } })
+        // Update only accepts conversionFactor and rowVersion
+        await updateMutation.mutateAsync({
+          id: formModal.data.id,
+          data: {
+            conversionFactor: parseFloat(formData.get('conversionFactor')),
+            rowVersion: Number(formModal.data.rowVersion),
+          },
+        })
       } else {
-        await createMutation.mutateAsync(data)
+        // Create only accepts fromUomId, toUomId, conversionFactor, itemId
+        await createMutation.mutateAsync({
+          fromUomId: formData.get('fromUomId'),
+          toUomId: formData.get('toUomId'),
+          conversionFactor: parseFloat(formData.get('conversionFactor')),
+        })
       }
       closeFormModal()
     } catch (error) {
@@ -127,7 +133,6 @@ export function UomConversionsPage() {
             <TableHead align="center">→</TableHead>
             <TableHead>Đến UOM</TableHead>
             <TableHead align="right">Hệ số quy đổi</TableHead>
-            <TableHead>Mô tả</TableHead>
             <TableHead align="center" className="w-24">Thao tác</TableHead>
           </TableRow>
         </TableHeader>
@@ -155,9 +160,6 @@ export function UomConversionsPage() {
               </TableCell>
               <TableCell align="right">
                 <span className="font-mono font-bold text-ice text-lg">{conv.conversionFactor}</span>
-              </TableCell>
-              <TableCell>
-                <span className="text-navy-600">{conv.description}</span>
               </TableCell>
               <TableCell align="center">
                 <div className="flex items-center justify-center gap-1">
@@ -215,12 +217,6 @@ export function UomConversionsPage() {
             required
             defaultValue={formModal.data?.conversionFactor || ''}
             placeholder="VD: 1000 (1 MT = 1000 KG)"
-          />
-          <Input
-            label="Mô tả"
-            name="description"
-            defaultValue={formModal.data?.description || ''}
-            placeholder="VD: 1 MT = 1000 KG"
           />
           <div className="flex justify-end gap-3 pt-4 border-t border-navy-100">
             <Button variant="outline" type="button" onClick={closeFormModal}>

@@ -27,11 +27,11 @@ export const REASON_CODE_DOMAINS = [
 export const SEQUENCE_SCOPE_TYPES = [
   { value: 'GLOBAL', label: 'Toàn hệ thống' },
   { value: 'PER_WAREHOUSE', label: 'Theo kho' },
-  { value: 'PER_OWNER', label: 'Theo chủ hàng' },
+  { value: 'CUSTOM', label: 'Tùy chỉnh' },
 ]
 
 export const SEQUENCE_RESET_POLICIES = [
-  { value: 'NEVER', label: 'Không reset' },
+  { value: 'NONE', label: 'Không reset' },
   { value: 'DAILY', label: 'Hàng ngày' },
   { value: 'MONTHLY', label: 'Hàng tháng' },
   { value: 'YEARLY', label: 'Hàng năm' },
