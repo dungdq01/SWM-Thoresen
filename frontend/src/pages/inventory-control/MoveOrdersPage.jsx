@@ -33,7 +33,7 @@ export function MoveOrdersPage() {
   const { data: owners = [] } = useLookupOwners()
   const { data: items = [] } = useLookupItems()
   const { data: warehouses = [] } = useLookupWarehouses()
-  const { data: locations = [] } = useLookupLocations()
+  const { data: locations = [] } = useLookupLocations(draft.warehouseId)
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -140,7 +140,7 @@ export function MoveOrdersPage() {
       >
         <div className="space-y-4">
           <div>
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value, lines: prev.lines.map(l => ({ ...l, fromLocationId: '', toLocationId: '' })) }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
           <Select label="Lý do" value={draft.reasonCode} onChange={(e) => setDraft((prev) => ({ ...prev, reasonCode: e.target.value }))} options={[{ value: '', label: '-- Chọn lý do --' }, { value: 'CONSOLIDATE', label: 'CONSOLIDATE' }, { value: 'REPLENISH', label: 'REPLENISH' }, { value: 'REORGANIZE', label: 'REORGANIZE' }]} />

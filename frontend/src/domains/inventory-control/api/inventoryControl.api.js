@@ -85,6 +85,14 @@ export const inventoryControlApi = {
     (data) => inventoryControlMockApi.createStatusChange(data),
     (data) => httpClient.post(`${BASE_URL}/status-changes`, data)
   ),
+  executeStatusChange: withDataSource(
+    (id) => Promise.resolve({ success: true }),
+    (id) => httpClient.post(`${BASE_URL}/status-changes/${id}/execute`)
+  ),
+  cancelStatusChange: withDataSource(
+    (id) => Promise.resolve({ success: true }),
+    (id) => httpClient.post(`${BASE_URL}/status-changes/${id}/cancel`)
+  ),
   getCycleCounts: withDataSource(
     (params) => inventoryControlMockApi.getCycleCounts(params),
     (params) => httpClient.get(`${BASE_URL}/cycle-counts`, { params })

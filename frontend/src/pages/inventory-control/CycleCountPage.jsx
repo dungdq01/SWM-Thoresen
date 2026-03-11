@@ -41,7 +41,7 @@ export function CycleCountPage() {
   const { data: warehouses = [] } = useLookupWarehouses()
   const { data: items = [] } = useLookupItems()
   const { data: owners = [] } = useLookupOwners()
-  const { data: locations = [] } = useLookupLocations()
+  const { data: locations = [] } = useLookupLocations(draft.warehouseId)
 
   const validate = () => {
     const e = {}
@@ -180,7 +180,7 @@ export function CycleCountPage() {
       >
         <div className="space-y-4">
           <div>
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value, lines: [{ ...prev.lines[0], locationId: '' }] }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
           <Select label="Loại kiểm kê" value={draft.countType} onChange={(e) => setDraft((prev) => ({ ...prev, countType: e.target.value }))} options={[{ value: 'SPOT', label: 'SPOT' }, { value: 'FULL', label: 'FULL' }, { value: 'SAMPLE', label: 'SAMPLE' }]} />
@@ -192,7 +192,7 @@ export function CycleCountPage() {
             <p className="text-sm font-semibold text-navy-900 mb-2">Dòng 1</p>
             <div className="space-y-3">
               <div>
-                <Select label="Vị trí" value={draft.lines[0].locationId} onChange={(e) => updateLine('locationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+                <Select label="Vị trí" value={draft.lines[0].locationId} onChange={(e) => updateLine('locationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} disabled={!draft.warehouseId} />
                 {errors.locationId && <p className="text-xs text-danger mt-1">{errors.locationId}</p>}
               </div>
               <div>

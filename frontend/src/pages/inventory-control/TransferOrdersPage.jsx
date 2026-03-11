@@ -35,7 +35,7 @@ export function TransferOrdersPage() {
   const { data: owners = [] } = useLookupOwners()
   const { data: items = [] } = useLookupItems()
   const { data: warehouses = [] } = useLookupWarehouses()
-  const { data: locations = [] } = useLookupLocations()
+  const { data: fromLocations = [] } = useLookupLocations(draft.fromWarehouseId)
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -146,7 +146,7 @@ export function TransferOrdersPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Select label="Kho nguồn" value={draft.fromWarehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, fromWarehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho nguồn --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+              <Select label="Kho nguồn" value={draft.fromWarehouseId} onChange={(e) => { setDraft((prev) => ({ ...prev, fromWarehouseId: e.target.value, lines: prev.lines.map(l => ({ ...l, fromLocationId: '' })) })) }} options={[{ value: '', label: '-- Chọn kho nguồn --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
               {errors.fromWarehouseId && <p className="text-xs text-danger mt-1">{errors.fromWarehouseId}</p>}
             </div>
             <div>
@@ -164,7 +164,7 @@ export function TransferOrdersPage() {
                 {errors.itemId && <p className="text-xs text-danger mt-1">{errors.itemId}</p>}
               </div>
               <Select label="Chủ hàng" value={draft.lines[0].ownerId} onChange={(e) => updateLine(0, 'ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-              <Select label="Vị trí nguồn" value={draft.lines[0].fromLocationId} onChange={(e) => updateLine(0, 'fromLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+              <Select label="Vị trí nguồn" value={draft.lines[0].fromLocationId} onChange={(e) => updateLine(0, 'fromLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...fromLocations.map((l) => ({ value: l.id, label: l.code }))]} disabled={!draft.fromWarehouseId} />
               <div>
                 <Input label="Số lượng (kg)" type="number" value={draft.lines[0].requestedQty} onChange={(e) => updateLine(0, 'requestedQty', e.target.value)} />
                 {errors.requestedQty && <p className="text-xs text-danger mt-1">{errors.requestedQty}</p>}

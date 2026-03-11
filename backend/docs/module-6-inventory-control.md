@@ -271,6 +271,42 @@ src/modules/inventory-control/
 - `reasonCode` mandatory
 - Không đổi status stock đang reserved
 
+#### POST `/api/v1/inventory-control/status-changes/:id/execute`
+**Mục đích:** Thực hiện status change (chuyển từ CREATED → POSTED)
+
+**Permission:** `inventory.control.status.execute`
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "statusChangeNumber": "STC-20260311-0001",
+  "status": "POSTED",
+  "postedAt": "2026-03-11T10:00:00Z",
+  "approvedBy": "uuid"
+}
+```
+
+**Validation:**
+- Status hiện tại phải là `CREATED`
+
+#### POST `/api/v1/inventory-control/status-changes/:id/cancel`
+**Mục đích:** Hủy status change (chuyển từ CREATED → CANCELLED)
+
+**Permission:** `inventory.control.status.cancel`
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "statusChangeNumber": "STC-20260311-0001",
+  "status": "CANCELLED"
+}
+```
+
+**Validation:**
+- Status hiện tại phải là `CREATED`
+
 #### POST `/api/v1/inventory-control/status-changes/:id/reverse`
 **Mục đích:** Reverse status change đã post
 

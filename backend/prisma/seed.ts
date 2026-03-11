@@ -156,6 +156,48 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['OUTBOUND.WEIGH.RECEIVE', 'OUTBOUND', 'WEIGH', 'RECEIVE', true],
   ['OUTBOUND.APPROVAL.DECIDE', 'OUTBOUND', 'APPROVAL', 'DECIDE', true],
   ['OUTBOUND.DASHBOARD.READ', 'OUTBOUND', 'DASHBOARD', 'READ', false],
+  // Module 6: Inventory Control - Move Orders
+  ['inventory.control.move.read', 'INVENTORY_CONTROL', 'MOVE_ORDER', 'READ', false],
+  ['inventory.control.move.create', 'INVENTORY_CONTROL', 'MOVE_ORDER', 'CREATE', true],
+  ['inventory.control.move.confirm', 'INVENTORY_CONTROL', 'MOVE_ORDER', 'CONFIRM', true],
+  ['inventory.control.move.execute', 'INVENTORY_CONTROL', 'MOVE_ORDER', 'EXECUTE', true],
+  ['inventory.control.move.cancel', 'INVENTORY_CONTROL', 'MOVE_ORDER', 'CANCEL', true],
+  // Module 6: Inventory Control - Transfer Orders
+  ['inventory.control.transfer.read', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'READ', false],
+  ['inventory.control.transfer.create', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'CREATE', true],
+  ['inventory.control.transfer.release', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'RELEASE', true],
+  ['inventory.control.transfer.ship', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'SHIP', true],
+  ['inventory.control.transfer.receive', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'RECEIVE', true],
+  ['inventory.control.transfer.close', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'CLOSE', true],
+  ['inventory.control.transfer.cancel', 'INVENTORY_CONTROL', 'TRANSFER_ORDER', 'CANCEL', true],
+  // Module 6: Inventory Control - Status Change
+  ['inventory.control.status.read', 'INVENTORY_CONTROL', 'STATUS_CHANGE', 'READ', false],
+  ['inventory.control.status.create', 'INVENTORY_CONTROL', 'STATUS_CHANGE', 'CREATE', true],
+  ['inventory.control.status.execute', 'INVENTORY_CONTROL', 'STATUS_CHANGE', 'EXECUTE', true],
+  ['inventory.control.status.cancel', 'INVENTORY_CONTROL', 'STATUS_CHANGE', 'CANCEL', true],
+  // Module 6: Inventory Control - Cycle Count
+  ['inventory.control.cycle_count.read', 'INVENTORY_CONTROL', 'CYCLE_COUNT', 'READ', false],
+  ['inventory.control.cycle_count.create', 'INVENTORY_CONTROL', 'CYCLE_COUNT', 'CREATE', true],
+  ['inventory.control.cycle_count.release', 'INVENTORY_CONTROL', 'CYCLE_COUNT', 'RELEASE', true],
+  ['inventory.control.cycle_count.approve', 'INVENTORY_CONTROL', 'CYCLE_COUNT', 'APPROVE', true],
+  ['inventory.control.cycle_count.post', 'INVENTORY_CONTROL', 'CYCLE_COUNT', 'POST', true],
+  // Module 6: Inventory Control - Adjustment
+  ['inventory.control.adjustment.read', 'INVENTORY_CONTROL', 'ADJUSTMENT', 'READ', false],
+  ['inventory.control.adjustment.create', 'INVENTORY_CONTROL', 'ADJUSTMENT', 'CREATE', true],
+  ['inventory.control.adjustment.submit', 'INVENTORY_CONTROL', 'ADJUSTMENT', 'SUBMIT', true],
+  ['inventory.control.adjustment.approve', 'INVENTORY_CONTROL', 'ADJUSTMENT', 'APPROVE', true],
+  ['inventory.control.adjustment.post', 'INVENTORY_CONTROL', 'ADJUSTMENT', 'POST', true],
+  // Module 6: Inventory Control - On-Hand & Movement History
+  ['inventory.control.onhand.read', 'INVENTORY_CONTROL', 'ONHAND', 'READ', false],
+  ['inventory.control.movement.read', 'INVENTORY_CONTROL', 'MOVEMENT', 'READ', false],
+  // Module 7: Work Execution
+  ['work.execution.read', 'WORK_EXECUTION', 'WORK', 'READ', false],
+  ['work.execution.claim', 'WORK_EXECUTION', 'WORK', 'CLAIM', true],
+  ['work.execution.start', 'WORK_EXECUTION', 'WORK', 'START', true],
+  ['work.execution.complete', 'WORK_EXECUTION', 'WORK', 'COMPLETE', true],
+  ['work.execution.skip', 'WORK_EXECUTION', 'WORK', 'SKIP', true],
+  ['work.execution.cancel', 'WORK_EXECUTION', 'WORK', 'CANCEL', true],
+  ['work.dashboard.read', 'WORK_EXECUTION', 'DASHBOARD', 'READ', false],
 ];
 
 async function main() {
@@ -1017,6 +1059,268 @@ async function main() {
   }
 
   console.log('✅ Module 3 Inventory Event Mapping seeded successfully');
+
+  // ========== Module 7: Work Execution Sample Data ==========
+  const weWarehouse = await prisma.mdWarehouse.findFirst({ where: { warehouseCode: 'MAYY-20' } });
+  const weItems = await prisma.mdItem.findMany({ take: 5 });
+  const weOwners = await prisma.mdOwner.findMany({ take: 3 });
+  const weLocations = await prisma.mdLocation.findMany({ where: { warehouseId: weWarehouse?.id }, take: 5 });
+
+  if (weWarehouse && weItems.length > 0 && weOwners.length > 0 && weLocations.length > 0) {
+    const workSeeds = [
+      // PICK works - OPEN status
+      {
+        workId: 'WRK-PICK-001',
+        workType: 'PICK' as const,
+        status: 'OPEN' as const,
+        priorityNo: 10,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M5' as const,
+        sourceType: 'SHIPMENT' as const,
+        sourceRefId: 'SHP-001',
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-001`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PICK' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[0].id, expectedQty: 100, uom: 'KG' },
+          { lineNum: 2, stepType: 'PICK' as const, itemId: weItems[1]?.id || weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[1]?.id || weLocations[0].id, expectedQty: 50, uom: 'KG' },
+        ],
+      },
+      {
+        workId: 'WRK-PICK-002',
+        workType: 'PICK' as const,
+        status: 'OPEN' as const,
+        priorityNo: 20,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M5' as const,
+        sourceType: 'SHIPMENT' as const,
+        sourceRefId: 'SHP-002',
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-002`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PICK' as const, itemId: weItems[2]?.id || weItems[0].id, ownerId: weOwners[1]?.id || weOwners[0].id, fromLocationId: weLocations[2]?.id || weLocations[0].id, expectedQty: 200, uom: 'KG' },
+        ],
+      },
+      // PUTAWAY works - OPEN status
+      {
+        workId: 'WRK-PUT-001',
+        workType: 'PUTAWAY' as const,
+        status: 'OPEN' as const,
+        priorityNo: 15,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M4' as const,
+        sourceType: 'RECEIPT' as const,
+        sourceRefId: 'RCP-001',
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-003`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PUT' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, toLocationId: weLocations[0].id, expectedQty: 500, uom: 'KG' },
+        ],
+      },
+      // MOVE works - OPEN status
+      {
+        workId: 'WRK-MOV-001',
+        workType: 'MOVE' as const,
+        status: 'OPEN' as const,
+        priorityNo: 30,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M6' as const,
+        sourceType: 'MOVE_ORDER' as const,
+        sourceRefId: 'MOV-001',
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-004`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'MOVE' as const, itemId: weItems[1]?.id || weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[0].id, toLocationId: weLocations[1]?.id || weLocations[0].id, expectedQty: 150, uom: 'KG' },
+        ],
+      },
+      // IN_PROGRESS work - assigned to admin
+      {
+        workId: 'WRK-PICK-003',
+        workType: 'PICK' as const,
+        status: 'IN_PROGRESS' as const,
+        priorityNo: 5,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M5' as const,
+        sourceType: 'SHIPMENT' as const,
+        sourceRefId: 'SHP-003',
+        assignedTo: admin.id,
+        assignedAt: new Date(),
+        startedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-005`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PICK' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[0].id, expectedQty: 75, uom: 'KG', status: 'IN_PROGRESS' as const },
+        ],
+      },
+      // COMPLETED work
+      {
+        workId: 'WRK-PUT-002',
+        workType: 'PUTAWAY' as const,
+        status: 'COMPLETED' as const,
+        priorityNo: 25,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M4' as const,
+        sourceType: 'RECEIPT' as const,
+        sourceRefId: 'RCP-002',
+        assignedTo: admin.id,
+        assignedAt: new Date(Date.now() - 3600000),
+        startedAt: new Date(Date.now() - 3000000),
+        completedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-006`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PUT' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, toLocationId: weLocations[0].id, expectedQty: 300, actualQty: 300, uom: 'KG', status: 'COMPLETED' as const },
+        ],
+      },
+      // 5 additional IN_PROGRESS works assigned to admin for My Work page
+      {
+        workId: 'WRK-PICK-004',
+        workType: 'PICK' as const,
+        status: 'IN_PROGRESS' as const,
+        priorityNo: 10,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M5' as const,
+        sourceType: 'SHIPMENT' as const,
+        sourceRefId: 'SHP-004',
+        assignedTo: admin.id,
+        assignedAt: new Date(),
+        startedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-007`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PICK' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[0].id, expectedQty: 120, uom: 'KG' },
+          { lineNum: 2, stepType: 'PICK' as const, itemId: weItems[1]?.id || weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[1]?.id || weLocations[0].id, expectedQty: 80, uom: 'KG' },
+        ],
+      },
+      {
+        workId: 'WRK-PUT-003',
+        workType: 'PUTAWAY' as const,
+        status: 'IN_PROGRESS' as const,
+        priorityNo: 15,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M4' as const,
+        sourceType: 'RECEIPT' as const,
+        sourceRefId: 'RCP-003',
+        assignedTo: admin.id,
+        assignedAt: new Date(),
+        startedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-008`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PUT' as const, itemId: weItems[2]?.id || weItems[0].id, ownerId: weOwners[1]?.id || weOwners[0].id, toLocationId: weLocations[2]?.id || weLocations[0].id, expectedQty: 450, uom: 'KG' },
+        ],
+      },
+      {
+        workId: 'WRK-MOV-002',
+        workType: 'MOVE' as const,
+        status: 'IN_PROGRESS' as const,
+        priorityNo: 20,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M6' as const,
+        sourceType: 'MOVE_ORDER' as const,
+        sourceRefId: 'MOV-002',
+        assignedTo: admin.id,
+        assignedAt: new Date(),
+        startedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-009`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'MOVE' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[0].id, toLocationId: weLocations[1]?.id || weLocations[0].id, expectedQty: 200, uom: 'KG' },
+        ],
+      },
+      {
+        workId: 'WRK-PICK-005',
+        workType: 'PICK' as const,
+        status: 'IN_PROGRESS' as const,
+        priorityNo: 8,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M5' as const,
+        sourceType: 'SHIPMENT' as const,
+        sourceRefId: 'SHP-005',
+        assignedTo: admin.id,
+        assignedAt: new Date(),
+        startedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-010`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PICK' as const, itemId: weItems[1]?.id || weItems[0].id, ownerId: weOwners[0].id, fromLocationId: weLocations[1]?.id || weLocations[0].id, expectedQty: 95, uom: 'KG' },
+        ],
+      },
+      {
+        workId: 'WRK-PUT-004',
+        workType: 'PUTAWAY' as const,
+        status: 'IN_PROGRESS' as const,
+        priorityNo: 12,
+        warehouseId: weWarehouse.id,
+        sourceModule: 'M4' as const,
+        sourceType: 'RECEIPT' as const,
+        sourceRefId: 'RCP-004',
+        assignedTo: admin.id,
+        assignedAt: new Date(),
+        startedAt: new Date(),
+        assignmentMode: 'SELF_CLAIM' as const,
+        externalId: `EXT-WRK-${Date.now()}-011`,
+        correlationId: crypto.randomUUID(),
+        sourceApp: 'WEB' as const,
+        createdBy: admin.id,
+        lines: [
+          { lineNum: 1, stepType: 'PUT' as const, itemId: weItems[0].id, ownerId: weOwners[0].id, toLocationId: weLocations[0].id, expectedQty: 350, uom: 'KG' },
+          { lineNum: 2, stepType: 'PUT' as const, itemId: weItems[1]?.id || weItems[0].id, ownerId: weOwners[0].id, toLocationId: weLocations[1]?.id || weLocations[0].id, expectedQty: 250, uom: 'KG' },
+        ],
+      },
+    ];
+
+    for (const work of workSeeds) {
+      const { lines, ...headerData } = work;
+      const existing = await prisma.weWorkHeader.findUnique({ where: { workId: work.workId } });
+      if (!existing) {
+        await prisma.weWorkHeader.create({
+          data: {
+            ...headerData,
+            lines: {
+              create: lines.map((line: any) => ({
+                ...line,
+                status: line.status || 'OPEN',
+                postingStatus: 'PENDING',
+              })),
+            },
+          },
+        });
+      }
+    }
+    console.log('✅ Module 7 Work Execution sample data seeded successfully');
+  } else {
+    console.log('⚠️ Skipping Work Execution seed - missing required master data');
+  }
 }
 
 main()

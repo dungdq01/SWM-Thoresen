@@ -31,7 +31,7 @@ export function AdjustmentsPage() {
   const { data: owners = [] } = useLookupOwners()
   const { data: items = [] } = useLookupItems()
   const { data: warehouses = [] } = useLookupWarehouses()
-  const { data: locations = [] } = useLookupLocations()
+  const { data: locations = [] } = useLookupLocations(draft.warehouseId)
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -138,7 +138,7 @@ export function AdjustmentsPage() {
       >
         <div className="space-y-4">
           <div>
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value, lines: prev.lines.map(l => ({ ...l, locationId: '' })) }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
           </div>
 
@@ -146,7 +146,7 @@ export function AdjustmentsPage() {
             <p className="text-sm font-semibold text-navy-900 mb-3">Dòng 1</p>
             <div className="space-y-3">
               <div>
-                <Select label="Vị trí" value={draft.lines[0].locationId} onChange={(e) => updateLine(0, 'locationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} />
+                <Select label="Vị trí" value={draft.lines[0].locationId} onChange={(e) => updateLine(0, 'locationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} disabled={!draft.warehouseId} />
                 {errors.locationId && <p className="text-xs text-danger mt-1">{errors.locationId}</p>}
               </div>
               <div>

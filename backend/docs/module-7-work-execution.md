@@ -129,12 +129,50 @@ Lấy chi tiết work.
 ---
 
 #### `GET /api/v1/works/:id/history`
-Xem timeline status/event.
+Xem timeline status/event của work.
+
+**Permission:** `work.execution.read`
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "workHeaderId": "uuid",
+      "eventType": "WORK_CLAIMED",
+      "actor": "user-uuid",
+      "payload": {},
+      "createdAt": "2026-03-12T10:00:00Z"
+    }
+  ]
+}
+```
 
 ---
 
 #### `GET /api/v1/works/:id/exceptions`
 Xem exceptions của work.
+
+**Permission:** `work.execution.read`
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "workHeaderId": "uuid",
+      "workLineId": "uuid",
+      "type": "POSTING_FAILED",
+      "reasonCode": "INV_INSUFFICIENT",
+      "note": "Không đủ tồn kho",
+      "resolvedAt": null,
+      "createdAt": "2026-03-12T10:05:00Z"
+    }
+  ]
+}
+```
 
 ---
 
@@ -162,6 +200,8 @@ Dashboard summary.
 #### `POST /api/v1/works/:id/claim`
 Claim work để thực thi.
 
+**Permission:** `work.execution.claim`
+
 **Request Body:**
 ```json
 {
@@ -172,33 +212,74 @@ Claim work để thực thi.
 **Response:**
 ```json
 {
-  "success": true,
-  "data": { "workId": "WRK-001", "status": "OPEN", "assignedTo": "user-uuid" },
-  "isIdempotent": false
+  "id": "uuid",
+  "workId": "WRK-001",
+  "status": "OPEN",
+  "assignedTo": "user-uuid",
+  "assignedAt": "2026-03-12T10:00:00Z",
+  "lines": [...]
 }
 ```
 
+**Validation:**
+- Status hiện tại phải là `OPEN`
+
 **Lỗi có thể xảy ra:**
 - `WE-404-001`: Work not found
-- `WE-409-001`: Work already claimed
+- `WE-409-001`: Work already claimed / Cannot claim work with status X
 
 ---
 
 #### `POST /api/v1/works/:id/release`
-Trả work về pool.
+Trả work về pool (bỏ assign).
+
+**Permission:** `work.execution.claim`
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "workId": "WRK-001",
+  "assignedTo": null,
+  "assignedAt": null,
+  "lines": [...]
+}
+```
+
+**Validation:**
+- Chỉ user đang được assign mới có thể release
 
 ---
 
 #### `POST /api/v1/works/:id/start`
 Bắt đầu thực thi work (chuyển OPEN → IN_PROGRESS).
 
+**Permission:** `work.execution.start`
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "workId": "WRK-001",
+  "status": "IN_PROGRESS",
+  "startedAt": "2026-03-12T10:05:00Z",
+  "lines": [...]
+}
+```
+
+**Validation:**
+- Status hiện tại phải là `OPEN`
+- Work phải được assign cho user hiện tại
+
 **Lỗi có thể xảy ra:**
-- `WE-409-005`: Work not claimed
+- `WE-409-005`: Work not claimed / Cannot start this work
 
 ---
 
 #### `POST /api/v1/works/:id/cancel`
 Hủy work.
+
+**Permission:** `work.execution.cancel`
 
 **Request Body:**
 ```json
@@ -208,6 +289,21 @@ Hủy work.
 }
 ```
 
+**Response:**
+```json
+{
+  "id": "uuid",
+  "workId": "WRK-001",
+  "status": "CANCELLED",
+  "cancelledAt": "2026-03-12T10:10:00Z",
+  "cancelReasonCode": "CUSTOMER_CANCEL",
+  "lines": [...]
+}
+```
+
+**Validation:**
+- Status hiện tại phải là `OPEN` hoặc `IN_PROGRESS`
+
 ---
 
 ### Command APIs - Line Level
@@ -215,10 +311,14 @@ Hủy work.
 #### `POST /api/v1/works/:id/lines/:lineNum/start`
 Bắt đầu thực thi line.
 
+**Permission:** `work.execution.start`
+
 ---
 
 #### `POST /api/v1/works/:id/lines/:lineNum/complete`
 Hoàn tất line và tạo inventory posting.
+
+**Permission:** `work.execution.complete`
 
 **Request Body:**
 ```json
@@ -246,11 +346,24 @@ Hoàn tất line và tạo inventory posting.
 #### `POST /api/v1/works/:id/lines/:lineNum/skip`
 Bỏ qua line (cần manager).
 
+**Permission:** `work.execution.skip`
+
 **Request Body:**
 ```json
 {
   "reasonCode": "ITEM_NOT_FOUND",
   "remark": "Không tìm thấy hàng tại vị trí"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "lineNum": 1,
+  "status": "SKIPPED",
+  "reasonCode": "ITEM_NOT_FOUND",
+  "completedAt": "2026-03-12T10:15:00Z"
 }
 ```
 

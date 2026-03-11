@@ -37,7 +37,7 @@ export const workExecutionApi = {
   ),
   getMyWorks: withDataSource(
     (params) => workExecutionMockApi.getMyWorks(params),
-    (params) => httpClient.get(`${BASE_MOBILE}/works/my`, { params })
+    (params) => httpClient.get(`${BASE_WORKS}/my`, { params })
   ),
   generateWork: withDataSource(
     (data) => workExecutionMockApi.generateWork(data),

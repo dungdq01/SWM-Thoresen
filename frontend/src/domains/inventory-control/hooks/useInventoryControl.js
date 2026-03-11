@@ -170,6 +170,16 @@ export function useCreateStatusChange() {
   return useMutation({ mutationFn: (data) => inventoryControlApi.createStatusChange(data), onSuccess, onError })
 }
 
+export function useExecuteStatusChange() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.statusChanges, QUERY_KEYS.onHand], 'Đã thực hiện đổi trạng thái', 'Không thể thực hiện')
+  return useMutation({ mutationFn: (id) => inventoryControlApi.executeStatusChange(id), onSuccess, onError })
+}
+
+export function useCancelStatusChange() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.statusChanges], 'Đã hủy yêu cầu đổi trạng thái', 'Không thể hủy')
+  return useMutation({ mutationFn: (id) => inventoryControlApi.cancelStatusChange(id), onSuccess, onError })
+}
+
 export function useCreateCycleCount() {
   const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.cycleCounts], 'Đã tạo cycle count', 'Không thể tạo cycle count')
   return useMutation({ mutationFn: (data) => inventoryControlApi.createCycleCount(data), onSuccess, onError })

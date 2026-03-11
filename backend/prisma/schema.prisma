@@ -2571,6 +2571,7 @@ model IcAdjustmentLine {
   qtyDelta           Decimal                @map("qty_delta") @db.Decimal(18, 3)
   uom                String                 @db.VarChar(20)
   reasonCode         String                 @map("reason_code") @db.VarChar(50)
+  note               String?                @db.VarChar(500)
   postedTransId      String?                @map("posted_trans_id") @db.VarChar(100)
   lineStatus         IcAdjustmentLineStatus @default(OPEN) @map("line_status")
   rowVersion         BigInt                 @default(0) @map("row_version")
