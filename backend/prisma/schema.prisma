@@ -532,6 +532,7 @@ model MdUom {
   receiptLines        ReceiptLine[]
   shipmentLines       ShipmentLine[]
   purchaseOrderLines  PurchaseOrderLine[]
+  salesOrderLines     SalesOrderLine[]
 
   @@map("md_uom")
 }
@@ -598,6 +599,7 @@ model MdWarehouse {
   bilContractFeeLines BilContractFeeLine[]
   bilEvents          BilEvent[]
   bilStorageSnapshots BilStorageSnapshot[]
+  salesOrders        SalesOrder[]
 
   @@map("md_warehouse")
 }
@@ -709,6 +711,7 @@ model MdOwner {
   bilDebitNotes      BilDebitNote[]
   bilDebitNoteLines  BilDebitNoteLine[]
   bilExceptions      BilException[]
+  salesOrders        SalesOrder[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -764,6 +767,7 @@ model MdCustomer {
   deactivatedBy String?       @map("deactivated_by") @db.Uuid
 
   shipmentHeaders ShipmentHeader[]
+  salesOrders    SalesOrder[]
 
   @@index([customerGroup, isActive])
   @@index([customerType, isActive])
@@ -834,6 +838,7 @@ model MdItem {
   bilEvents             BilEvent[]
   bilStorageSnapshots   BilStorageSnapshot[]
   bilDebitNoteLines     BilDebitNoteLine[]
+  salesOrderLines      SalesOrderLine[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -1810,6 +1815,7 @@ model ShipmentHeader {
   id                   String             @id @default(uuid()) @db.Uuid
   shipmentNumber       String?            @unique @map("shipment_number") @db.VarChar(40)
   soId                 String?            @map("so_id") @db.VarChar(50)
+  salesOrderId         String?            @map("sales_order_id") @db.Uuid
   sourceType           ShipmentSourceType @map("source_type")
   ownerId              String             @map("owner_id") @db.Uuid
   customerId           String?            @map("customer_id") @db.Uuid
@@ -1840,6 +1846,7 @@ model ShipmentHeader {
   warehouse   MdWarehouse    @relation(fields: [warehouseId], references: [id])
   vehicleType MdVehicleType? @relation(fields: [vehicleTypeId], references: [id])
   customer    MdCustomer?    @relation(fields: [customerId], references: [id])
+  salesOrder  SalesOrder?    @relation(fields: [salesOrderId], references: [id])
 
   lines             ShipmentLine[]
   allocationRecords ShipmentAllocationRecord[]
@@ -2092,6 +2099,8 @@ model ShipmentSoLink {
   shipmentHeaderId String    @map("shipment_header_id") @db.Uuid
   soId             String    @map("so_id") @db.VarChar(50)
   soLineId         String?   @map("so_line_id") @db.VarChar(50)
+  salesOrderId     String?   @map("sales_order_id") @db.Uuid
+  salesOrderLineId String?   @map("sales_order_line_id") @db.Uuid
   expectedQtyKg    Decimal   @map("expected_qty_kg") @db.Decimal(18, 3)
   allocatedQtyKg   Decimal   @default(0) @map("allocated_qty_kg") @db.Decimal(18, 3)
   shippedQtyKg     Decimal   @default(0) @map("shipped_qty_kg") @db.Decimal(18, 3)
@@ -2100,10 +2109,13 @@ model ShipmentSoLink {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  header         ShipmentHeader  @relation(fields: [shipmentHeaderId], references: [id])
+  salesOrder     SalesOrder?     @relation(fields: [salesOrderId], references: [id])
+  salesOrderLine SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id])
 
   @@unique([shipmentHeaderId, soId, soLineId])
   @@index([soId, soLineId])
+  @@index([salesOrderId, salesOrderLineId])
   @@map("shipment_so_link")
 }
 
@@ -4564,6 +4576,134 @@ model AuthAccountLock {
   @@index([userId, lockedAt(sort: Desc)])
   @@index([lockedUntil])
   @@map("auth_account_lock")
+}
+
+// ========== Sales Orders Enums ==========
+
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  PARTIALLY_RELEASED
+  FULLY_RELEASED
+  SHIPPED
+  CLOSED
+  CANCELLED
+}
+
+enum SalesOrderLineStatus {
+  OPEN
+  PARTIALLY_RELEASED
+  FULLY_RELEASED
+  SHIPPED
+  CLOSED
+  CANCELLED
+}
+
+enum SalesOrderType {
+  STANDARD
+  CONSIGNMENT
+  INTERNAL
+}
+
+// ========== Sales Orders Models ==========
+
+model SalesOrder {
+  id                   String           @id @default(uuid()) @db.Uuid
+  soNumber             String           @unique @map("so_number") @db.VarChar(40)
+  externalSoNumber     String?          @map("external_so_number") @db.VarChar(100)
+  orderType            SalesOrderType   @default(STANDARD) @map("order_type")
+  status               SalesOrderStatus @default(DRAFT)
+  ownerId              String           @map("owner_id") @db.Uuid
+  customerId           String           @map("customer_id") @db.Uuid
+  warehouseId          String           @map("warehouse_id") @db.Uuid
+  expectedDeliveryDate DateTime?        @map("expected_delivery_date") @db.Date
+  deliveryAddress      String?          @map("delivery_address") @db.VarChar(500)
+  notes                String?          @db.Text
+  currency             String           @default("VND") @db.VarChar(10)
+  totalExpectedQtyKg   Decimal          @default(0) @map("total_expected_qty_kg") @db.Decimal(18, 3)
+  totalReleasedQtyKg   Decimal          @default(0) @map("total_released_qty_kg") @db.Decimal(18, 3)
+  totalShippedQtyKg    Decimal          @default(0) @map("total_shipped_qty_kg") @db.Decimal(18, 3)
+  cancelReasonCode     String?          @map("cancel_reason_code") @db.VarChar(50)
+  closedAt             DateTime?        @map("closed_at")
+  externalId           String           @unique @map("external_id") @db.VarChar(120)
+  correlationId        String           @map("correlation_id") @db.VarChar(120)
+  sourceApp            SourceApp        @map("source_app")
+  rowVersion           BigInt           @default(0) @map("row_version")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  createdBy            String?          @map("created_by") @db.Uuid
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  updatedBy            String?          @map("updated_by") @db.Uuid
+
+  owner     MdOwner     @relation(fields: [ownerId], references: [id])
+  customer  MdCustomer  @relation(fields: [customerId], references: [id])
+  warehouse MdWarehouse @relation(fields: [warehouseId], references: [id])
+
+  lines           SalesOrderLine[]
+  statusHistory   SalesOrderStatusHistory[]
+  shipmentHeaders ShipmentHeader[]
+  shipmentSoLinks ShipmentSoLink[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([ownerId, customerId, status])
+  @@index([soNumber])
+  @@index([externalSoNumber])
+  @@index([correlationId])
+  @@map("sales_orders")
+}
+
+model SalesOrderLine {
+  id                  String               @id @default(uuid()) @db.Uuid
+  soId                String               @map("so_id") @db.Uuid
+  lineNumber          Int                  @map("line_number")
+  itemId              String               @map("item_id") @db.Uuid
+  cargoForm           CargoForm            @map("cargo_form")
+  uomId               String               @map("uom_id") @db.Uuid
+  expectedQty         Decimal              @map("expected_qty") @db.Decimal(18, 3)
+  expectedQtyKg       Decimal              @map("expected_qty_kg") @db.Decimal(18, 3)
+  releasedQtyKg       Decimal              @default(0) @map("released_qty_kg") @db.Decimal(18, 3)
+  shippedQtyKg        Decimal              @default(0) @map("shipped_qty_kg") @db.Decimal(18, 3)
+  unitPrice           Decimal?             @map("unit_price") @db.Decimal(18, 4)
+  bagCount            Int?                 @map("bag_count")
+  nominalWeightPerBag Decimal?             @map("nominal_weight_per_bag") @db.Decimal(18, 3)
+  notes               String?              @db.Text
+  status              SalesOrderLineStatus @default(OPEN)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  createdBy           String?              @map("created_by") @db.Uuid
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  updatedBy           String?              @map("updated_by") @db.Uuid
+
+  so   SalesOrder @relation(fields: [soId], references: [id])
+  item MdItem     @relation(fields: [itemId], references: [id])
+  uom  MdUom      @relation(fields: [uomId], references: [id])
+
+  shipmentSoLinks ShipmentSoLink[]
+
+  @@unique([soId, lineNumber])
+  @@index([itemId, cargoForm])
+  @@index([soId, status])
+  @@map("sales_order_lines")
+}
+
+model SalesOrderStatusHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  soId          String   @map("so_id") @db.Uuid
+  soLineId      String?  @map("so_line_id") @db.Uuid
+  entityLevel   String   @map("entity_level") @db.VarChar(10)
+  fromStatus    String?  @map("from_status") @db.VarChar(30)
+  toStatus      String   @map("to_status") @db.VarChar(30)
+  triggerAction String   @map("trigger_action") @db.VarChar(50)
+  changedBy     String?  @map("changed_by") @db.Uuid
+  changedAt     DateTime @default(now()) @map("changed_at")
+  reasonCode    String?  @map("reason_code") @db.VarChar(50)
+  note          String?  @db.Text
+  correlationId String   @map("correlation_id") @db.VarChar(120)
+
+  so SalesOrder @relation(fields: [soId], references: [id])
+
+  @@index([soId, changedAt(sort: Desc)])
+  @@index([soLineId, changedAt(sort: Desc)])
+  @@index([toStatus, changedAt(sort: Desc)])
+  @@map("sales_order_status_history")
 }
 
 model DropdownConfig {

@@ -6,7 +6,7 @@ import { AllocationStatus, Prisma } from '@prisma/client';
 export class AllocationRecordRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Prisma.ShipmentAllocationRecordCreateInput) {
+  async create(data: Prisma.ShipmentAllocationRecordUncheckedCreateInput) {
     return this.prisma.shipmentAllocationRecord.create({
       data,
       include: {

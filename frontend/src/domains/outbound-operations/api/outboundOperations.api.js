@@ -2,7 +2,7 @@ import { httpClient } from '@shared/api/httpClient'
 import { outboundOperationsMockApi } from '@mocks/outboundOperations.mock'
 import { isMockApiEnabled } from '@mocks/utils'
 
-const BASE_URL = '/api/v1/outbound'
+const BASE_URL = '/outbound'
 
 const withDataSource = (mockHandler, apiHandler) => (...args) => {
   return isMockApiEnabled() ? mockHandler(...args) : apiHandler(...args)

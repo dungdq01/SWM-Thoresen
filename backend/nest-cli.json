@@ -10,6 +10,10 @@
       {
         "include": "modules/inbound/**/*.js",
         "outDir": "dist/src"
+      },
+      {
+        "include": "modules/sales-orders/**/*.js",
+        "outDir": "dist/src"
       }
     ],
     "watchAssets": true

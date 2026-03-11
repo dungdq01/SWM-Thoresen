@@ -141,12 +141,18 @@ export function useAllocateOutboundShipment() {
   const { queryClient, onError } = useInvalidateOutboundQueries('Đã allocate shipment', 'Không thể allocate shipment')
   return useMutation({
     mutationFn: (id) => outboundOperationsApi.allocateShipment(id),
-    onSuccess: (_, id) => {
+    onSuccess: (response, id) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.summary })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shipments })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shipmentDetail(id) })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.allocations(id) })
-      toast.success('Đã allocate shipment')
+      const data = response?.data || response
+      if (data?.success === false) {
+        const errMsg = data.errors?.join(', ') || 'Không đủ tồn kho để phân bổ'
+        toast.error(`Phân bổ thất bại: ${errMsg}`)
+      } else {
+        toast.success(`Đã phân bổ ${data?.allocatedLines || ''} dòng thành công`)
+      }
     },
     onError,
   })

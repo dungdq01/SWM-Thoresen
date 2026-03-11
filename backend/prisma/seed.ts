@@ -146,6 +146,15 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['inbound.receipt.close', 'INBOUND', 'RECEIPT', 'CLOSE', true],
   ['inbound.weigh.receive', 'INBOUND', 'WEIGH', 'RECEIVE', true],
   ['inbound.dashboard.view', 'INBOUND', 'DASHBOARD', 'VIEW', false],
+  // Sales Orders
+  ['sales_order.view', 'SALES_ORDER', 'SALES_ORDER', 'VIEW', false],
+  ['sales_order.create', 'SALES_ORDER', 'SALES_ORDER', 'CREATE', true],
+  ['sales_order.update', 'SALES_ORDER', 'SALES_ORDER', 'UPDATE', true],
+  ['sales_order.confirm', 'SALES_ORDER', 'SALES_ORDER', 'CONFIRM', true],
+  ['sales_order.cancel', 'SALES_ORDER', 'SALES_ORDER', 'CANCEL', true],
+  ['sales_order.close', 'SALES_ORDER', 'SALES_ORDER', 'CLOSE', true],
+  ['sales_order.release', 'SALES_ORDER', 'SALES_ORDER', 'RELEASE', true],
+  ['sales_order.dashboard.view', 'SALES_ORDER', 'DASHBOARD', 'VIEW', false],
   // Outbound: Shipments & Operations
   ['OUTBOUND.SHIPMENT.CREATE', 'OUTBOUND', 'SHIPMENT', 'CREATE', true],
   ['OUTBOUND.SHIPMENT.READ', 'OUTBOUND', 'SHIPMENT', 'READ', false],

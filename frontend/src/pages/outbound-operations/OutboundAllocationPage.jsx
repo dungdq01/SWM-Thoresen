@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutboundShipments, useAllocateOutboundShipment, useUnallocateOutboundShipment, useOutboundAllocations } from '@domains/outbound-operations'
+import { useOutboundShipments, useOutboundShipmentDetail, useAllocateOutboundShipment, useUnallocateOutboundShipment, useOutboundAllocations } from '@domains/outbound-operations'
 import { Badge, Button, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 
 const statusTone = (status) => {
@@ -20,13 +20,15 @@ export function OutboundAllocationPage() {
   const allocateShipment = useAllocateOutboundShipment()
   const unallocateShipment = useUnallocateOutboundShipment()
 
-  const allRows = response?.data || []
+  const allRows = response?.items || response?.data || []
   const rows = allRows.filter((r) => ['CONFIRMED', 'ALLOCATED'].includes(r.status))
-  const pagination = response?.pagination || { page: 1, totalPages: 1 }
-  const selected = rows.find((r) => r.id === selectedId)
+  const pagination = { page: response?.page || 1, totalPages: response?.totalPages || 1 }
 
-  const { data: allocationsResponse } = useOutboundAllocations(selected?.id)
-  const allocations = allocationsResponse?.data || []
+  const { data: detailResponse } = useOutboundShipmentDetail(selectedId)
+  const selected = detailResponse?.data || detailResponse || null
+
+  const { data: allocationsResponse } = useOutboundAllocations(selectedId)
+  const allocations = allocationsResponse?.items || allocationsResponse?.data || allocationsResponse || []
 
   const openDetail = (id) => setSelectedId(id)
   const closeDetail = () => setSelectedId(null)
@@ -61,15 +63,15 @@ export function OutboundAllocationPage() {
                 <TableCell>
                   <div>
                     <p className="font-semibold text-navy-900">{row.shipmentNumber}</p>
-                    <p className="text-xs text-navy-400">{row.lines?.length || 0} line(s)</p>
+                    <p className="text-xs text-navy-400">{row._count?.lines || row.lines?.length || 0} dòng</p>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <p className="font-medium text-navy-800">{row.owner?.code || row.ownerId}</p>
+                  <p className="font-medium text-navy-800">{row.owner?.ownerCode || row.owner?.code || row.ownerId}</p>
                   <p className="text-xs text-navy-400">{row.vehicleNumber || 'N/A'}</p>
                 </TableCell>
                 <TableCell align="right" className="font-semibold text-navy-900">
-                  {row.lines?.reduce((sum, l) => sum + (l.expectedQty || 0), 0).toLocaleString()} kg
+                  {(row.lines || []).reduce((sum, l) => sum + (l.expectedQty || 0), 0).toLocaleString() || '—'} kg
                 </TableCell>
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
@@ -101,10 +103,10 @@ export function OutboundAllocationPage() {
         {selected && (
           <div className="space-y-5">
             <div className="rounded-xl border border-moon-300 bg-moon-50/70 p-4 text-sm text-navy-700 grid grid-cols-2 gap-2">
-              <p><strong>Status:</strong> {selected.status}</p>
-              <p><strong>Owner:</strong> {selected.owner?.code || selected.ownerId}</p>
-              <p><strong>Vehicle:</strong> {selected.vehicleNumber || 'N/A'}</p>
-              <p><strong>Lines:</strong> {selected.lines?.length || 0}</p>
+              <p><strong>Trạng thái:</strong> {selected.status}</p>
+              <p><strong>Owner:</strong> {selected.owner?.ownerCode || selected.owner?.code || selected.ownerId}</p>
+              <p><strong>Xe:</strong> {selected.vehicleNumber || 'N/A'}</p>
+              <p><strong>Số dòng:</strong> {selected.lines?.length || 0}</p>
             </div>
 
             <div className="border-t border-moon-200 pt-4 space-y-3">
@@ -112,7 +114,7 @@ export function OutboundAllocationPage() {
               {selected.lines?.map((line) => (
                 <div key={line.id} className="rounded-xl border border-moon-200 p-3 space-y-1">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-navy-800">Line {line.lineNumber}: {line.item?.code || line.itemId}</p>
+                    <p className="font-semibold text-navy-800">Dòng {line.lineNumber}: {line.item?.itemCode || line.item?.code || line.itemId}</p>
                     <Badge variant={line.lineStatus === 'ALLOCATED' ? 'success' : 'default'}>{line.lineStatus}</Badge>
                   </div>
                   <p className="text-xs text-navy-500">Expected: {line.expectedQty?.toLocaleString()} kg · {line.cargoForm}</p>

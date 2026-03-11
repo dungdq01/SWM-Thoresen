@@ -4,6 +4,12 @@ export const translations = {
     sidebar: {
       collapse: 'Collapse',
       expand: 'Expand',
+      sections: {
+        data: 'Data',
+        operations: 'Operations',
+        services: 'Services',
+        system: 'System',
+      },
       groups: {
         center: 'Center',
         masterData: 'Master Data',
@@ -71,6 +77,10 @@ export const translations = {
         invoices: 'Invoices',
         rateCards: 'Rate Cards',
         billableEvents: 'Billable Events',
+        billingDashboard: 'Billing Dashboard',
+        vasExecution: 'Execution',
+        vasDashboard: 'VAS Dashboard',
+        snapshots: 'Snapshot & Billing',
         reportingMenu: 'Reporting & Audit',
         reportingDashboard: 'KPI Dashboard',
         inventoryReport: 'Inventory Report',
@@ -128,6 +138,12 @@ export const translations = {
     sidebar: {
       collapse: 'Thu gọn',
       expand: 'Mở rộng',
+      sections: {
+        data: 'Dữ liệu',
+        operations: 'Vận hành',
+        services: 'Dịch vụ',
+        system: 'Hệ thống',
+      },
       groups: {
         center: 'Trung tâm',
         masterData: 'Dữ liệu nền',
@@ -195,6 +211,10 @@ export const translations = {
         invoices: 'Hóa đơn',
         rateCards: 'Biểu giá',
         billableEvents: 'Sự kiện tính phí',
+        billingDashboard: 'Tổng quan thanh toán',
+        vasExecution: 'Thực hiện đóng bao',
+        vasDashboard: 'Tổng quan VAS',
+        snapshots: 'Snapshot & Billing',
         reportingMenu: 'Báo cáo & Kiểm toán',
         reportingDashboard: 'KPI Dashboard',
         inventoryReport: 'Báo cáo tồn kho',
