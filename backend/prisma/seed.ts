@@ -22,6 +22,7 @@ import {
   InventoryStage,
 } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { seedMasterDataSample } from './seed/master-data-sample.seed';
 
 const prisma = new PrismaClient();
 
@@ -887,6 +888,9 @@ async function main() {
 
   console.log('✅ Module 2 Master Data seeded successfully');
   console.log('✅ Module 3 Inventory Transactions seeded successfully');
+
+  // ========== Master Data Sample (expanded) ==========
+  await seedMasterDataSample(prisma);
 
   // ========== Module 3: Inventory Event Mapping ==========
   const eventMappingSeeds: Array<{
