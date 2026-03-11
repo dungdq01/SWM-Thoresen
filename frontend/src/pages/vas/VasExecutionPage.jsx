@@ -10,14 +10,17 @@ const statusTone = (status) => {
 
 export function VasExecutionPage() {
   const [selectedWoId, setSelectedWoId] = useState(null)
-  const [sessionDraft, setSessionDraft] = useState({ sessionQtyKg: '', sessionBagCount: '', shiftCode: 'DAY', workHours: '' })
+  const [sessionDraft, setSessionDraft] = useState({ sessionQtyKg: '', sessionBagCount: '', shiftCode: 'MORNING', workHours: '' })
 
-  const { data: woResponse, refetch: refetchWo } = useVasWorkOrders({ status: 'IN_PROGRESS' })
+  // Show both CONFIRMED (ready to execute) and IN_PROGRESS work orders
+  const { data: woResponse, refetch: refetchWo } = useVasWorkOrders({ })
 
   const addSession = useAddVasSession()
   const completeWorkOrder = useCompleteVasWorkOrder()
 
-  const workOrders = woResponse?.data || []
+  // Filter to show only CONFIRMED and IN_PROGRESS work orders for execution
+  const allWorkOrders = woResponse?.data || []
+  const workOrders = allWorkOrders.filter((wo) => ['CONFIRMED', 'IN_PROGRESS'].includes(wo.status))
   const selectedWo = workOrders.find((w) => w.id === selectedWoId)
 
   const openDetail = (id) => setSelectedWoId(id)
@@ -52,17 +55,17 @@ export function VasExecutionPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">VAS Execution</h2>
-        <Button variant="outline" size="sm" onClick={refetchWo}>Refresh</Button>
+        <h2 className="section-title">Thực Hiện VAS</h2>
+        <Button variant="outline" size="sm" onClick={refetchWo}>Làm Mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Work Order</TableHead>
-              <TableHead align="right">Progress</TableHead>
-              <TableHead align="center">Action</TableHead>
+              <TableHead>Đơn Hàng</TableHead>
+              <TableHead align="right">Tiến Độ</TableHead>
+              <TableHead align="center">Hành Động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -70,16 +73,16 @@ export function VasExecutionPage() {
               <TableRow key={wo.id} onClick={() => openDetail(wo.id)}>
                 <TableCell>
                   <p className="font-semibold text-navy-900">{wo.woNumber}</p>
-                  <p className="text-xs text-navy-400">{wo.sourceItem?.code}</p>
+                  <p className="text-xs text-navy-400">{wo.bulkSourceItem?.itemCode || '-'}</p>
                 </TableCell>
                 <TableCell align="right">
-                  <p className="font-semibold text-navy-900">{wo.actualBagsProduced} / {wo.targetQty}</p>
+                  <p className="font-semibold text-navy-900">{wo.actualBagCount || 0} / {wo.packagingQtyPlanned || 0}</p>
                   <div className="w-full bg-moon-200 rounded-full h-1.5 mt-1">
-                    <div className="bg-ice h-1.5 rounded-full" style={{ width: `${wo.targetQty > 0 ? (wo.actualBagsProduced / wo.targetQty) * 100 : 0}%` }} />
+                    <div className="bg-ice h-1.5 rounded-full" style={{ width: `${wo.packagingQtyPlanned > 0 ? ((wo.actualBagCount || 0) / wo.packagingQtyPlanned) * 100 : 0}%` }} />
                   </div>
                 </TableCell>
                 <TableCell align="center">
-                  <Button variant="ghost" size="sm" onClick={() => openDetail(wo.id)}>Execute</Button>
+                  <Button variant="ghost" size="sm" onClick={() => openDetail(wo.id)}>Thực Hiện</Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -90,41 +93,45 @@ export function VasExecutionPage() {
       <Modal
         isOpen={!!selectedWo}
         onClose={closeDetail}
-        title={`Work Order: ${selectedWo?.woNumber || ''}`}
-        description={`${selectedWo?.vasType || ''} · ${selectedWo?.sourceItem?.code || ''}`}
+        title={`Đơn Hàng: ${selectedWo?.woNumber || ''}`}
+        description={`Đóng Bao · ${selectedWo?.bulkSourceItem?.itemCode || '-'}`}
         size="lg"
       >
         {selectedWo && (
           <div className="space-y-5">
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-xl font-bold text-navy-900">{selectedWo.sourceQty?.toLocaleString()}</p>
-                <p className="text-xs text-navy-500">Source (kg)</p>
+                <p className="text-xl font-bold text-navy-900">{selectedWo.plannedQtyKg ? Number(selectedWo.plannedQtyKg).toLocaleString() : '-'}</p>
+                <p className="text-xs text-navy-500">Nguồn (kg)</p>
               </div>
               <div className="rounded-xl bg-moon-50 p-3">
-                <p className="text-xl font-bold text-navy-900">{selectedWo.targetQty?.toLocaleString()}</p>
-                <p className="text-xs text-navy-500">Target (bags)</p>
+                <p className="text-xl font-bold text-navy-900">{selectedWo.packagingQtyPlanned?.toLocaleString() || '-'}</p>
+                <p className="text-xs text-navy-500">Mục Tiêu (bao)</p>
               </div>
               <div className="rounded-xl bg-ice/10 p-3">
-                <p className="text-xl font-bold text-ice">{selectedWo.actualBagsProduced?.toLocaleString()}</p>
-                <p className="text-xs text-navy-500">Produced</p>
+                <p className="text-xl font-bold text-ice">{(selectedWo.actualBagCount || 0).toLocaleString()}</p>
+                <p className="text-xs text-navy-500">Sản Xuất</p>
               </div>
             </div>
 
-            {selectedWo.actualBagsProduced >= selectedWo.targetQty && (
-              <Button variant="accent" className="w-full" onClick={handleCompleteWorkOrder}>Complete Work Order</Button>
+            {(selectedWo.actualBagCount || 0) >= (selectedWo.packagingQtyPlanned || 0) && selectedWo.packagingQtyPlanned > 0 && (
+              <Button variant="accent" className="w-full" onClick={handleCompleteWorkOrder}>Hoàn Thành Đơn Hàng</Button>
             )}
 
             <div className="border-t border-moon-200 pt-4 space-y-3">
-              <h4 className="text-sm font-semibold text-navy-900">Add Session</h4>
+              <h4 className="text-sm font-semibold text-navy-900">Thêm Phiên Làm Việc</h4>
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Qty (kg)" type="number" value={sessionDraft.sessionQtyKg} onChange={(e) => setSessionDraft((prev) => ({ ...prev, sessionQtyKg: e.target.value }))} />
-                <Input label="Bag Count" type="number" value={sessionDraft.sessionBagCount} onChange={(e) => setSessionDraft((prev) => ({ ...prev, sessionBagCount: e.target.value }))} />
-                <Input label="Work Hours" type="number" value={sessionDraft.workHours} onChange={(e) => setSessionDraft((prev) => ({ ...prev, workHours: e.target.value }))} />
-                <Input label="Shift" value={sessionDraft.shiftCode} onChange={(e) => setSessionDraft((prev) => ({ ...prev, shiftCode: e.target.value }))} />
+                <Input label="Khối Lượng (kg)" type="number" value={sessionDraft.sessionQtyKg} onChange={(e) => setSessionDraft((prev) => ({ ...prev, sessionQtyKg: e.target.value }))} />
+                <Input label="Số Bao" type="number" value={sessionDraft.sessionBagCount} onChange={(e) => setSessionDraft((prev) => ({ ...prev, sessionBagCount: e.target.value }))} />
+                <Input label="Giờ Làm Việc" type="number" value={sessionDraft.workHours} onChange={(e) => setSessionDraft((prev) => ({ ...prev, workHours: e.target.value }))} />
+                <select className="w-full px-3 py-2 border border-moon-300 rounded-lg text-sm" value={sessionDraft.shiftCode} onChange={(e) => setSessionDraft((prev) => ({ ...prev, shiftCode: e.target.value }))}>
+                  <option value="MORNING">Sáng</option>
+                  <option value="AFTERNOON">Chiều</option>
+                  <option value="NIGHT">Đêm</option>
+                </select>
               </div>
               <Button variant="accent" className="w-full" onClick={handleAddSession} disabled={addSession.isPending}>
-                {addSession.isPending ? 'Adding...' : 'Add Session'}
+                {addSession.isPending ? 'Đang thêm...' : 'Thêm Phiên'}
               </Button>
             </div>
           </div>

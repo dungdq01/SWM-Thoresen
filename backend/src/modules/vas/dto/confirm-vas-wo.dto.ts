@@ -1,9 +1,10 @@
-import { IsString, MaxLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MaxLength, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ConfirmVasWoDto {
-  @ApiProperty({ description: 'External ID cho idempotency' })
+  @ApiPropertyOptional({ description: 'External ID cho idempotency (tự động sinh nếu không truyền)' })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  externalId!: string;
+  externalId?: string;
 }

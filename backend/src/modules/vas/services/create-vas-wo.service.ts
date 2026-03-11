@@ -31,50 +31,41 @@ export class CreateVasWoService {
     actor: { userId: string; role: string },
   ): Promise<CreateVasWoResult> {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await this.woRepo.findByExternalId(dto.externalId, tx);
-      if (existing) {
-        this.logger.warn(`Duplicate externalId: ${dto.externalId}`);
-        return {
-          id: existing.id,
-          woNumber: existing.woNumber,
-          status: existing.status,
-        };
-      }
-
+      // Validate master data using simplified params
       await this.validationService.validateMasterData(
         {
           ownerId: dto.ownerId,
           warehouseId: dto.warehouseId,
-          bulkSourceItemId: dto.bulkSourceItemId,
-          baggedOutputItemId: dto.baggedOutputItemId,
-          packagingItemId: dto.packagingItemId,
-          packagingOwnerId: dto.packagingOwnerId,
+          sourceItemId: dto.sourceItemId,
         },
         tx,
       );
 
       const woNumber = await this.generateWoNumber(tx);
       const correlationId = uuidv4();
+      const externalId = `VAS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+      // Map frontend fields to Prisma schema fields
+      // sourceItemId -> bulkSourceItemId (same item used as both source and output for simplicity)
+      // sourceQty -> plannedQtyKg
+      // targetQty -> packagingQtyPlanned
+      // Use owner as packaging owner (TVL_OWNED by default)
       const wo = await this.woRepo.create(
         {
           woNumber,
           status: VasWoStatus.DRAFT,
           owner: { connect: { id: dto.ownerId } },
           warehouse: { connect: { id: dto.warehouseId } },
-          bulkSourceItem: { connect: { id: dto.bulkSourceItemId } },
-          baggedOutputItem: { connect: { id: dto.baggedOutputItemId } },
-          plannedQtyKg: new Prisma.Decimal(dto.plannedQtyKg),
-          packagingOwnership: dto.packagingOwnership as any,
-          packagingItem: { connect: { id: dto.packagingItemId } },
-          packagingOwner: { connect: { id: dto.packagingOwnerId } },
-          packagingQtyPlanned: dto.packagingQtyPlanned,
-          startDate: new Date(dto.startDate),
-          estimatedCompletionDate: dto.estimatedCompletionDate
-            ? new Date(dto.estimatedCompletionDate)
-            : null,
+          bulkSourceItem: { connect: { id: dto.sourceItemId } },
+          baggedOutputItem: { connect: { id: dto.sourceItemId } }, // Same item for simplicity
+          plannedQtyKg: new Prisma.Decimal(dto.sourceQty),
+          packagingOwnership: 'TVL_OWNED' as any,
+          packagingItem: { connect: { id: dto.sourceItemId } }, // Placeholder - same item
+          packagingOwner: { connect: { id: dto.ownerId } }, // Same owner
+          packagingQtyPlanned: dto.targetQty,
+          startDate: new Date(),
           notes: dto.notes,
-          externalId: dto.externalId,
+          externalId,
           correlationId,
           createdBy: actor.userId,
         },

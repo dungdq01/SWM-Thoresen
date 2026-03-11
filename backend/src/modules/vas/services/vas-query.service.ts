@@ -83,4 +83,56 @@ export class VasQueryService {
     if (!wo) throw new VasWoNotFoundError(woId);
     return this.stateHistoryRepo.findByWoId(woId);
   }
+
+  async getDashboard() {
+    // Get work order counts by status
+    const { data: allWos } = await this.woRepo.findMany({ take: 1000 });
+    
+    const statusCounts = {
+      draftCount: 0,
+      confirmedCount: 0,
+      inProgressCount: 0,
+      completedCount: 0,
+      cancelledCount: 0,
+    };
+
+    let totalBagsToday = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const wo of allWos) {
+      switch (wo.status) {
+        case 'DRAFT':
+          statusCounts.draftCount++;
+          break;
+        case 'CONFIRMED':
+          statusCounts.confirmedCount++;
+          break;
+        case 'IN_PROGRESS':
+          statusCounts.inProgressCount++;
+          break;
+        case 'COMPLETED':
+          statusCounts.completedCount++;
+          break;
+        case 'CANCELLED':
+          statusCounts.cancelledCount++;
+          break;
+      }
+
+      // Sum bags produced today
+      if (wo.createdAt >= today) {
+        totalBagsToday += wo.actualBagCount || 0;
+      }
+    }
+
+    // Active sessions = IN_PROGRESS work orders count
+    const activeSessions = statusCounts.inProgressCount;
+
+    return {
+      totalWorkOrders: allWos.length,
+      ...statusCounts,
+      activeSessions,
+      totalBagsToday,
+    };
+  }
 }

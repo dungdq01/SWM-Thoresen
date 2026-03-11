@@ -43,6 +43,6 @@ export const vasApi = {
   ),
   getDashboard: withDataSource(
     (params) => vasMockApi.getDashboard(params),
-    (params) => httpClient.get(`${BASE_URL}`, { params })
+    (params) => httpClient.get(`${BASE_URL}/dashboard`, { params })
   ),
 }

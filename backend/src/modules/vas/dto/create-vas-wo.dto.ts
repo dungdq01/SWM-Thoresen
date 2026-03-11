@@ -4,7 +4,6 @@ import {
   IsNumber,
   IsEnum,
   IsOptional,
-  IsDateString,
   IsInt,
   Min,
   MaxLength,
@@ -12,69 +11,60 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export enum VasTypeDto {
+  BAGGING = 'BAGGING',
+  REPACKING = 'REPACKING',
+}
+
 export enum PackagingOwnershipDto {
   TVL_OWNED = 'TVL_OWNED',
   CLIENT_OWNED = 'CLIENT_OWNED',
 }
 
+/**
+ * Simplified DTO for frontend compatibility.
+ * Maps to Prisma schema fields in service layer.
+ */
 export class CreateVasWoDto {
-  @ApiProperty({ description: 'Owner ID của hàng bulk/bagged' })
+  @ApiPropertyOptional({ description: 'Loại VAS (BAGGING hoặc REPACKING)', enum: VasTypeDto })
+  @IsOptional()
+  @IsEnum(VasTypeDto)
+  vasType?: VasTypeDto;
+
+  @ApiProperty({ description: 'Owner ID của hàng' })
   @IsUUID()
   ownerId!: string;
 
-  @ApiProperty({ description: 'Warehouse ID nơi thực hiện bagging' })
+  @ApiProperty({ description: 'Warehouse ID nơi thực hiện' })
   @IsUUID()
   warehouseId!: string;
 
-  @ApiProperty({ description: 'Item ID hàng xá nguồn (bulk source)' })
+  @ApiProperty({ description: 'Item ID nguồn (source item) - maps to bulkSourceItemId' })
   @IsUUID()
-  bulkSourceItemId!: string;
+  sourceItemId!: string;
 
-  @ApiProperty({ description: 'Item ID hàng bao đầu ra (bagged output)' })
-  @IsUUID()
-  baggedOutputItemId!: string;
-
-  @ApiProperty({ description: 'Khối lượng kế hoạch (kg)', minimum: 0.001 })
+  @ApiProperty({ description: 'Khối lượng nguồn (kg) - maps to plannedQtyKg', minimum: 0.001 })
   @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0.001)
   @Type(() => Number)
-  plannedQtyKg!: number;
+  sourceQty!: number;
 
-  @ApiProperty({ description: 'Loại sở hữu bao bì', enum: PackagingOwnershipDto })
-  @IsEnum(PackagingOwnershipDto)
-  packagingOwnership!: PackagingOwnershipDto;
-
-  @ApiProperty({ description: 'Item ID vật tư bao bì' })
-  @IsUUID()
-  packagingItemId!: string;
-
-  @ApiProperty({ description: 'Owner ID của bao bì stock' })
-  @IsUUID()
-  packagingOwnerId!: string;
-
-  @ApiProperty({ description: 'Số lượng bao kế hoạch', minimum: 1 })
+  @ApiProperty({ description: 'Số lượng bao mục tiêu - maps to packagingQtyPlanned', minimum: 1 })
   @IsInt()
   @Min(1)
   @Type(() => Number)
-  packagingQtyPlanned!: number;
+  targetQty!: number;
 
-  @ApiProperty({ description: 'Ngày bắt đầu dự kiến (YYYY-MM-DD)' })
-  @IsDateString()
-  startDate!: string;
-
-  @ApiPropertyOptional({ description: 'Ngày hoàn thành dự kiến (YYYY-MM-DD)' })
+  @ApiPropertyOptional({ description: 'Trọng lượng mỗi bao (kg)', minimum: 0.001 })
   @IsOptional()
-  @IsDateString()
-  estimatedCompletionDate?: string;
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  @Type(() => Number)
+  bagWeightKg?: number;
 
   @ApiPropertyOptional({ description: 'Ghi chú' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   notes?: string;
-
-  @ApiProperty({ description: 'External ID cho idempotency' })
-  @IsString()
-  @MaxLength(100)
-  externalId!: string;
 }

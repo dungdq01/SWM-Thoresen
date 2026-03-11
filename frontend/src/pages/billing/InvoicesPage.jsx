@@ -33,7 +33,6 @@ export function InvoicesPage() {
   const { data: warehouses = [] } = useLookupWarehouses()
 
   const rows = response?.data || []
-  const ownerMap = Object.fromEntries(owners.map(o => [o.id, o]))
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
   const validate = () => {
@@ -96,15 +95,15 @@ export function InvoicesPage() {
                   <p className="text-xs text-navy-400">{row.lineCount} dòng</p>
                 </TableCell>
                 <TableCell>
-                  <p className="font-medium text-navy-800">{row.owner?.name || ownerMap[row.ownerId]?.name || '-'}</p>
-                  <p className="text-xs text-navy-400">{row.owner?.code || ownerMap[row.ownerId]?.code}</p>
+                  <p className="font-medium text-navy-800">{row.owner?.code || row.ownerId}</p>
+                  <p className="text-xs text-navy-400">{row.owner?.name}</p>
                 </TableCell>
                 <TableCell>
-                  <p className="text-sm text-navy-700">{row.billingPeriodStart?.split('T')[0] || row.periodStart || '-'}</p>
-                  <p className="text-xs text-navy-400">→ {row.billingPeriodEnd?.split('T')[0] || row.periodEnd || '-'}</p>
+                  <p className="text-sm text-navy-700">{row.periodStart || row.periodFrom}</p>
+                  <p className="text-xs text-navy-400">→ {row.periodEnd || row.periodTo}</p>
                 </TableCell>
                 <TableCell align="right">
-                  <p className="font-semibold text-navy-900">{(row.grandTotal || row.totalAmount)?.toLocaleString()} {row.currencyCode || 'VND'}</p>
+                  <p className="font-semibold text-navy-900">{row.totalAmount?.toLocaleString()} {row.currency}</p>
                 </TableCell>
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
