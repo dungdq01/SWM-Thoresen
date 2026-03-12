@@ -98,6 +98,9 @@ const AuditTrailPage = lazy(() => import('@pages/reporting').then(m => ({ defaul
 const ReconciliationPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.ReconciliationPage })))
 const GoLiveChecklistPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.GoLiveChecklistPage })))
 
+// Warehouse Monitoring
+const WarehouseMonitoringPage = lazy(() => import('@pages/warehouse-monitoring').then(m => ({ default: m.WarehouseMonitoringPage })))
+
 const withSuspense = (Component) => (
   <Suspense fallback={<PageLoader />}>
     <Component />
@@ -118,6 +121,11 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: withSuspense(DashboardPage),
+      },
+      // Warehouse Monitoring
+      {
+        path: 'warehouse-monitoring',
+        element: withSuspense(WarehouseMonitoringPage),
       },
       // Settings routes
       {

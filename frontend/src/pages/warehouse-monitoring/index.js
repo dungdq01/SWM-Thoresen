@@ -1,0 +1,1 @@
+export { WarehouseMonitoringPage } from './WarehouseMonitoringPage'

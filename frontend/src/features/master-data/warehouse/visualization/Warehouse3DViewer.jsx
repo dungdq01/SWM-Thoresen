@@ -1,8 +1,9 @@
-import { useMemo, Suspense, useRef } from 'react'
+import { useMemo, Suspense, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Text, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { INDUSTRIAL_COLORS, SCENE_CONFIG } from './constants'
+import { Eye, EyeOff } from 'lucide-react'
 
 const IC = INDUSTRIAL_COLORS
 const SC = SCENE_CONFIG
@@ -336,7 +337,7 @@ function InfoLabel3D({ warehouse, geometry }) {
 
 // ==================== MAIN 3D COMPONENT ====================
 
-function WarehouseScene({ geometry, docks, roof, columnPositions, warehouse }) {
+function WarehouseScene({ geometry, docks, roof, columnPositions, warehouse, showRoof }) {
   const { length, width, height } = geometry
 
   return (
@@ -348,14 +349,18 @@ function WarehouseScene({ geometry, docks, roof, columnPositions, warehouse }) {
         <Walls length={length} width={width} height={height} />
         <Columns positions={columnPositions} height={height} />
         <DockBays3D docks={docks} geometry={geometry} />
-        <RoofStructure length={length} width={width} height={height} roof={roof} />
-        <Trusses
-          length={length}
-          width={width}
-          height={height}
-          roof={roof}
-          columnSpacingM={geometry.columnSpacingM}
-        />
+        {showRoof && (
+          <>
+            <RoofStructure length={length} width={width} height={height} roof={roof} />
+            <Trusses
+              length={length}
+              width={width}
+              height={height}
+              roof={roof}
+              columnSpacingM={geometry.columnSpacingM}
+            />
+          </>
+        )}
         <InfoLabel3D warehouse={warehouse} geometry={geometry} />
       </group>
 
@@ -399,6 +404,7 @@ export function Warehouse3DViewer({
   className = '',
 }) {
   const { length, width, height } = geometry
+  const [showRoof, setShowRoof] = useState(true)
 
   return (
     <div className={`relative w-full h-full min-h-[400px] rounded-xl overflow-hidden ${className}`}>
@@ -420,9 +426,26 @@ export function Warehouse3DViewer({
             roof={roof}
             columnPositions={columnPositions}
             warehouse={warehouse}
+            showRoof={showRoof}
           />
         </Canvas>
       </Suspense>
+
+      {/* Roof toggle button */}
+      <div className="absolute top-3 right-3">
+        <button
+          onClick={() => setShowRoof(!showRoof)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg backdrop-blur-sm transition-colors ${
+            showRoof
+              ? 'bg-white/90 text-navy-700 hover:bg-white'
+              : 'bg-navy-600/90 text-white hover:bg-navy-600'
+          }`}
+          title={showRoof ? 'Ẩn mái' : 'Hiện mái'}
+        >
+          {showRoof ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          <span className="text-xs font-medium">{showRoof ? 'Ẩn mái' : 'Hiện mái'}</span>
+        </button>
+      </div>
 
       {/* Controls hint overlay */}
       <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg">

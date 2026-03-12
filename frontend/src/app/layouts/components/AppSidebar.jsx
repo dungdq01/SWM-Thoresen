@@ -17,6 +17,7 @@ import {
   BarChart3,
   ClipboardList,
   X,
+  ScanEye,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { useLanguage } from '@shared/i18n'
@@ -28,6 +29,12 @@ const getMenuConfig = (t) => [
     label: t('sidebar.items.dashboard'),
     icon: LayoutDashboard,
     to: '/app',
+  },
+  {
+    id: 'warehouse-monitoring',
+    label: 'Giám sát kho',
+    icon: ScanEye,
+    to: '/app/warehouse-monitoring',
   },
   { _divider: true, label: t('sidebar.sections.data') },
   {
