@@ -70,7 +70,7 @@ export class InventoryReportRepository {
       paramIndex++;
     }
     if (filters.inventoryStatus) {
-      whereConditions.push(`is.status_code = $${paramIndex}`);
+      whereConditions.push(`inv_st.status_code = $${paramIndex}`);
       params.push(filters.inventoryStatus);
       paramIndex++;
     }
@@ -84,7 +84,7 @@ export class InventoryReportRepository {
       JOIN md_owner o ON id.owner_id = o.id
       JOIN md_warehouse wh ON id.warehouse_id = wh.id
       JOIN md_item i ON oh.item_id = i.id
-      JOIN md_inventory_status is ON id.inventory_status_id = is.id
+      JOIN md_inventory_status inv_st ON id.inventory_status_id = inv_st.id
       WHERE ${whereClause}
     `, ...params);
 
@@ -96,16 +96,16 @@ export class InventoryReportRepository {
         o.owner_name as "ownerName",
         i.item_code as "itemCode",
         i.item_name as "itemName",
-        is.status_code as "inventoryStatus",
-        oh.qty::numeric as qty,
-        COALESCE(oh.reserved_qty_picking, 0)::numeric + COALESCE(oh.reserved_qty_shipping, 0)::numeric as "reservedQty",
-        (oh.qty - COALESCE(oh.reserved_qty_picking, 0) - COALESCE(oh.reserved_qty_shipping, 0))::numeric as "availableQty"
+        inv_st.status_code as "inventoryStatus",
+        oh.physical_qty::numeric as qty,
+        oh.reserved_qty::numeric as "reservedQty",
+        oh.available_qty::numeric as "availableQty"
       FROM on_hand oh
       JOIN invent_dim id ON oh.invent_dim_id = id.id
       JOIN md_owner o ON id.owner_id = o.id
       JOIN md_warehouse wh ON id.warehouse_id = wh.id
       JOIN md_item i ON oh.item_id = i.id
-      JOIN md_inventory_status is ON id.inventory_status_id = is.id
+      JOIN md_inventory_status inv_st ON id.inventory_status_id = inv_st.id
       WHERE ${whereClause}
       ORDER BY wh.warehouse_code, o.owner_code, i.item_code
       OFFSET ${offset} LIMIT ${limit}
@@ -183,7 +183,7 @@ export class InventoryReportRepository {
         wh.warehouse_code as "warehouseCode",
         o.owner_code as "ownerCode",
         COALESCE(loc.location_code, 'N/A') as "locationCode",
-        is.status_code as "inventoryStatus",
+        inv_st.status_code as "inventoryStatus",
         it.created_by::text as "createdBy"
       FROM invent_trans it
       JOIN invent_dim id ON it.invent_dim_id = id.id
@@ -191,7 +191,7 @@ export class InventoryReportRepository {
       JOIN md_owner o ON it.owner_id = o.id
       JOIN md_warehouse wh ON id.warehouse_id = wh.id
       LEFT JOIN md_location loc ON id.location_id = loc.id
-      JOIN md_inventory_status is ON id.inventory_status_id = is.id
+      JOIN md_inventory_status inv_st ON id.inventory_status_id = inv_st.id
       WHERE ${whereClause}
       ORDER BY it.posted_at DESC, it.trans_id DESC
       OFFSET ${offset} LIMIT ${limit}
@@ -249,7 +249,7 @@ export class InventoryReportRepository {
           WHEN dss.days_in_storage <= ${buckets[2]} THEN '${buckets[1]}-${buckets[2]} days'
           ELSE '>${buckets[2]} days'
         END as "ageGroup",
-        oh.qty::numeric as qty,
+        oh.physical_qty::numeric as qty,
         COALESCE(dss.days_in_storage, 0) as "daysInStorage"
       FROM on_hand oh
       JOIN invent_dim id ON oh.invent_dim_id = id.id
@@ -291,8 +291,8 @@ export class InventoryReportRepository {
 
     const result = await this.prisma.$queryRawUnsafe<{ total_qty: number; total_reserved: number }[]>(`
       SELECT 
-        COALESCE(SUM(oh.qty), 0)::numeric as total_qty,
-        COALESCE(SUM(COALESCE(oh.reserved_qty_picking, 0) + COALESCE(oh.reserved_qty_shipping, 0)), 0)::numeric as total_reserved
+        COALESCE(SUM(oh.physical_qty), 0)::numeric as total_qty,
+        COALESCE(SUM(oh.reserved_qty), 0)::numeric as total_reserved
       FROM on_hand oh
       JOIN invent_dim id ON oh.invent_dim_id = id.id
       WHERE ${whereClause}

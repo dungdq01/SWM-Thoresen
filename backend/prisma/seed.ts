@@ -24,6 +24,7 @@ import {
 import * as argon2 from 'argon2';
 import crypto from 'crypto';
 import { seedMasterDataSample } from './seed/master-data-sample.seed';
+import { seedBillingSample } from './seed/billing-sample.seed';
 
 const prisma = new PrismaClient();
 
@@ -244,6 +245,19 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['VAS.SESSION.READ', 'VAS', 'SESSION', 'READ', false],
   ['VAS.SESSION.CREATE', 'VAS', 'SESSION', 'CREATE', true],
   ['VAS.DASHBOARD.READ', 'VAS', 'DASHBOARD', 'READ', false],
+  // Module 11: Reporting
+  ['REPORTING.DASHBOARD.READ', 'REPORTING', 'DASHBOARD', 'READ', false],
+  ['REPORTING.INVENTORY.READ', 'REPORTING', 'INVENTORY', 'READ', false],
+  ['REPORTING.BILLING.READ', 'REPORTING', 'BILLING', 'READ', false],
+  ['REPORTING.AUDIT.READ', 'REPORTING', 'AUDIT', 'READ', false],
+  ['REPORTING.RECONCILIATION.RUN', 'REPORTING', 'RECONCILIATION', 'RUN', true],
+  ['REPORTING.RECONCILIATION.READ', 'REPORTING', 'RECONCILIATION', 'READ', false],
+  ['REPORTING.RECONCILIATION.RESOLVE', 'REPORTING', 'RECONCILIATION', 'RESOLVE', true],
+  ['REPORTING.GOLIVE.READ', 'REPORTING', 'GOLIVE', 'READ', false],
+  ['REPORTING.GOLIVE.CHECK', 'REPORTING', 'GOLIVE', 'CHECK', true],
+  ['REPORTING.GOLIVE.SIGNOFF', 'REPORTING', 'GOLIVE', 'SIGNOFF', true],
+  ['REPORTING.EXPORT.CREATE', 'REPORTING', 'EXPORT', 'CREATE', true],
+  ['REPORTING.EXPORT.READ', 'REPORTING', 'EXPORT', 'READ', false],
 ];
 
 async function main() {
@@ -1660,6 +1674,9 @@ async function main() {
     await prisma.m8WeighbridgeLog.create({ data: log });
   }
   console.log('✅ Module 8 Weighbridge Devices & Logs sample data seeded successfully');
+
+  // Seed billing sample data
+  await seedBillingSample(prisma);
 }
 
 main()

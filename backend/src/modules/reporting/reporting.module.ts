@@ -5,6 +5,8 @@ import { FoundationModule } from '../foundation/foundation.module';
 import { 
   DashboardController, 
   InventoryReportController, 
+  BillingReportController,
+  AuditTrailController,
   ReconciliationController,
   GoLiveController,
   ExportController,
@@ -31,6 +33,8 @@ import {
   controllers: [
     DashboardController,
     InventoryReportController,
+    BillingReportController,
+    AuditTrailController,
     ReconciliationController,
     GoLiveController,
     ExportController,

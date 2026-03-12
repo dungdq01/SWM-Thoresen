@@ -9,7 +9,7 @@ const STATUS_OPTIONS = [
 ]
 
 export function ReconciliationPage() {
-  const [filters, setFilters] = useState({ status: '', page: 1, limit: 20 })
+  const [filters, setFilters] = useState({ resultStatus: '', page: 1, pageSize: 20 })
   const { data: response, refetch, isLoading } = useReconResults(filters)
   const rows = response?.data || []
   const pagination = response?.pagination || {}
@@ -36,19 +36,19 @@ export function ReconciliationPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Reconciliation — RECON-001</h2>
+        <h2 className="section-title">Đối soát — RECON-001</h2>
         <div className="flex items-center gap-2">
-          <p className="text-xs text-navy-400">Hourly · SLA ≤5 phút · OnHand = SUM(InventTrans)</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>Refresh</Button>
+          <p className="text-xs text-navy-400">Hàng giờ · SLA ≤5 phút · Tồn kho = SUM(InventTrans)</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Làm mới</Button>
         </div>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Results (current page)</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Kết quả (trang hiện tại)</h3>
           <SummaryDonut
-            centerLabel="Total"
+            centerLabel="Tổng"
             centerValue={passCount + failCount}
             data={[
               { name: 'PASS', value: passCount, color: '#059669' },
@@ -66,8 +66,8 @@ export function ReconciliationPage() {
           />
           <div>
             <p className={`text-3xl font-bold ${avgDuration > 300 ? 'text-rose-600' : 'text-navy-900'}`}>{formatDuration(avgDuration)}</p>
-            <p className="text-sm text-navy-500 mt-1">Avg Duration</p>
-            <p className="text-xs text-navy-400">SLA target: ≤ 5 minutes</p>
+            <p className="text-sm text-navy-500 mt-1">Thời gian TB</p>
+            <p className="text-xs text-navy-400">Mục tiêu SLA: ≤ 5 phút</p>
           </div>
         </div>
       </div>
@@ -77,14 +77,14 @@ export function ReconciliationPage() {
         <div className="flex gap-3">
           <select
             className="wrs-input h-9 text-sm w-40"
-            value={filters.status}
-            onChange={(e) => setFilter('status', e.target.value)}
+            value={filters.resultStatus}
+            onChange={(e) => setFilter('resultStatus', e.target.value)}
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={() => setFilters({ status: '', page: 1, limit: 20 })}>
+          <Button variant="outline" size="sm" onClick={() => setFilters({ resultStatus: '', page: 1, pageSize: 20 })}>
             Reset
           </Button>
         </div>
@@ -95,20 +95,20 @@ export function ReconciliationPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Run ID</TableHead>
-              <TableHead>Started At</TableHead>
-              <TableHead>Completed At</TableHead>
-              <TableHead className="text-right">Duration</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Discrepancies</TableHead>
-              <TableHead className="text-right">Owners</TableHead>
-              <TableHead className="text-right">Locations</TableHead>
-              <TableHead>Note</TableHead>
+              <TableHead>Mã chạy</TableHead>
+              <TableHead>Bắt đầu</TableHead>
+              <TableHead>Hoàn thành</TableHead>
+              <TableHead className="text-right">Thời gian</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead className="text-right">Sai lệch</TableHead>
+              <TableHead className="text-right">Chủ hàng</TableHead>
+              <TableHead className="text-right">Vị trí</TableHead>
+              <TableHead>Ghi chú</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && <TableLoading cols={9} />}
-            {!isLoading && rows.length === 0 && <TableEmpty cols={9} message="Không có kết quả RECON" />}
+            {!isLoading && rows.length === 0 && <TableEmpty cols={9} message="Không có kết quả đối soát" />}
             {rows.map((row) => (
               <TableRow key={row.id} className={row.status === 'FAIL' ? 'bg-rose-50' : ''}>
                 <TableCell className="font-mono text-xs text-navy-700">{row.runId}</TableCell>
@@ -136,7 +136,7 @@ export function ReconciliationPage() {
           <div className="p-3 border-t border-moon-200">
             <Pagination
               page={filters.page}
-              pageSize={filters.limit}
+              pageSize={filters.pageSize}
               total={pagination.total}
               onPageChange={setPage}
             />

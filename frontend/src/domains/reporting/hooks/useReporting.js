@@ -21,9 +21,13 @@ export function useReportingDashboard() {
 }
 
 export function useInventoryReport(filters = {}) {
+  // Filter out empty string values to avoid validation errors
+  const cleanFilters = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  )
   return useQuery({
-    queryKey: [...QUERY_KEYS.inventoryReport, filters],
-    queryFn: () => reportingApi.getInventoryReport(filters),
+    queryKey: [...QUERY_KEYS.inventoryReport, cleanFilters],
+    queryFn: () => reportingApi.getInventoryReport(cleanFilters),
     staleTime: 15000,
   })
 }
@@ -37,17 +41,25 @@ export function useBillingReport(params = {}) {
 }
 
 export function useAuditLogs(filters = {}) {
+  // Filter out empty string values to avoid validation errors
+  const cleanFilters = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  )
   return useQuery({
-    queryKey: [...QUERY_KEYS.auditLogs, filters],
-    queryFn: () => reportingApi.getAuditLogs(filters),
+    queryKey: [...QUERY_KEYS.auditLogs, cleanFilters],
+    queryFn: () => reportingApi.getAuditLogs(cleanFilters),
     staleTime: 15000,
   })
 }
 
 export function useReconResults(filters = {}) {
+  // Filter out empty string values to avoid validation errors
+  const cleanFilters = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+  )
   return useQuery({
-    queryKey: [...QUERY_KEYS.reconResults, filters],
-    queryFn: () => reportingApi.getReconResults(filters),
+    queryKey: [...QUERY_KEYS.reconResults, cleanFilters],
+    queryFn: () => reportingApi.getReconResults(cleanFilters),
     staleTime: 30000,
     refetchInterval: 120000,
   })

@@ -14,10 +14,11 @@ export class DashboardController {
 
   @Get('summary')
   @Permission(REPORTING_CONSTANTS.PERMISSION_CODES.DASHBOARD_READ)
-  @ApiOperation({ summary: 'Lấy tổng hợp các widget dashboard' })
-  @ApiResponse({ status: 200, description: 'Dashboard summary với tất cả widgets' })
-  async getSummary(@Query() query: DashboardSummaryQueryDto, @CurrentUser() user: RequestUser) {
-    return this.dashboardService.getSummary(query, user.id, user.roleCodes[0] || 'VIEWER');
+  @ApiOperation({ summary: 'Lấy tổng hợp dashboard dạng flat cho frontend' })
+  @ApiResponse({ status: 200, description: 'Dashboard summary với tất cả KPIs' })
+  async getSummary(@Query() query: DashboardSummaryQueryDto) {
+    // Return flat dashboard format matching frontend expectations
+    return this.dashboardService.getFlatDashboard(query);
   }
 
   @Get('widgets/:code')

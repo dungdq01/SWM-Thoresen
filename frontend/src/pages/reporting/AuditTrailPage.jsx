@@ -69,21 +69,21 @@ export function AuditTrailPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Audit Trail</h2>
-        <p className="text-xs text-navy-400">Chỉ đọc · AC-AUD-1..3: searchable, date filter, entity type filter</p>
+        <h2 className="section-title">Nhật ký kiểm toán</h2>
+        <p className="text-xs text-navy-400">Chỉ đọc · AC-AUD-1..3: tìm kiếm, lọc ngày, lọc loại entity</p>
       </div>
 
       {/* Filters */}
       <div className="wrs-card p-4 mb-4">
         <div className="flex flex-wrap gap-3">
           <Input
-            placeholder="Tìm entity ID..."
+            placeholder="Tìm mã đối tượng..."
             value={filters.entityId}
             onChange={(e) => setFilter('entityId', e.target.value)}
             className="w-52"
           />
           <Input
-            placeholder="User ID..."
+            placeholder="Mã người dùng..."
             value={filters.userId}
             onChange={(e) => setFilter('userId', e.target.value)}
             className="w-52"
@@ -125,17 +125,17 @@ export function AuditTrailPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Entity Type</TableHead>
-              <TableHead>Entity ID</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Changes</TableHead>
+              <TableHead>Thời gian</TableHead>
+              <TableHead>Loại đối tượng</TableHead>
+              <TableHead>Mã đối tượng</TableHead>
+              <TableHead>Thao tác</TableHead>
+              <TableHead>Người dùng</TableHead>
+              <TableHead>Thay đổi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && <TableLoading cols={6} />}
-            {!isLoading && rows.length === 0 && <TableEmpty cols={6} message="Không có audit log" />}
+            {!isLoading && rows.length === 0 && <TableEmpty cols={6} message="Không có nhật ký" />}
             {rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="text-xs text-navy-500 whitespace-nowrap">{formatTs(row.timestamp)}</TableCell>

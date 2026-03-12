@@ -3,7 +3,8 @@ import { Button, SummaryDonut, StatHighlight, MiniBarList } from '@shared/ui'
 
 export function BillingReportPage() {
   const { data: response, refetch, isLoading } = useBillingReport()
-  const report = response?.data || {}
+  // Handle both mock API (returns { data: {...} }) and real API (returns data directly after httpClient unwrap)
+  const report = response?.data || response || {}
   const summary = report.summary || {}
   const byOwner = report.byOwner || []
   const byServiceType = report.byServiceType || []
@@ -11,12 +12,12 @@ export function BillingReportPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Billing Report</h2>
+        <h2 className="section-title">Báo cáo doanh thu</h2>
         <div className="flex items-center gap-2">
           <p className="text-xs text-navy-400">
             {summary.periodFrom} → {summary.periodTo}
           </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>Refresh</Button>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Làm mới</Button>
         </div>
       </div>
 
@@ -27,27 +28,27 @@ export function BillingReportPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Revenue Breakdown</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Phân bổ doanh thu</h3>
           <SummaryDonut
-            centerLabel="Total"
+            centerLabel="Tổng"
             data={[
-              { name: 'Approved', value: summary.approvedRevenue || 0, color: '#059669' },
-              { name: 'Draft/Pending', value: summary.pendingRevenue || 0, color: '#d97706' },
+              { name: 'Đã duyệt', value: summary.approvedRevenue || 0, color: '#059669' },
+              { name: 'Nháp/Chờ duyệt', value: summary.pendingRevenue || 0, color: '#d97706' },
             ]}
           />
         </div>
         <div className="wrs-card p-5 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-navy-900">Revenue</h3>
-          <StatHighlight value={summary.totalRevenue?.toLocaleString() || '0'} label="Total Revenue (VND)" color="text-navy-900" bgColor="bg-moon-50" />
-          <StatHighlight value={summary.outstandingDNs || 0} label="Outstanding DNs" color="text-rose-600" bgColor="bg-rose-50" />
+          <h3 className="text-sm font-semibold text-navy-900">Doanh thu</h3>
+          <StatHighlight value={summary.totalRevenue?.toLocaleString() || '0'} label="Tổng doanh thu (VND)" color="text-navy-900" bgColor="bg-moon-50" />
+          <StatHighlight value={summary.outstandingDNs || 0} label="DN chưa thanh toán" color="text-rose-600" bgColor="bg-rose-50" />
         </div>
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">DN Status</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Trạng thái DN</h3>
           <MiniBarList
             data={[
-              { name: 'Approved', value: summary.approvedRevenue || 0, color: '#059669' },
-              { name: 'Pending', value: summary.pendingRevenue || 0, color: '#d97706' },
-              { name: 'Outstanding', value: summary.outstandingDNs || 0, color: '#e11d48' },
+              { name: 'Đã duyệt', value: summary.approvedRevenue || 0, color: '#059669' },
+              { name: 'Chờ duyệt', value: summary.pendingRevenue || 0, color: '#d97706' },
+              { name: 'Chưa thanh toán', value: summary.outstandingDNs || 0, color: '#e11d48' },
             ]}
           />
         </div>
@@ -56,18 +57,18 @@ export function BillingReportPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* By Owner */}
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Revenue by Owner</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Doanh thu theo chủ hàng</h3>
           {isLoading ? (
             <p className="text-sm text-navy-400">Đang tải...</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-moon-200">
-                  <th className="text-left py-2 text-navy-500 font-medium">Owner</th>
-                  <th className="text-right py-2 text-navy-500 font-medium">Revenue</th>
-                  <th className="text-right py-2 text-navy-500 font-medium">Draft DNs</th>
-                  <th className="text-right py-2 text-navy-500 font-medium">Approved</th>
-                  <th className="text-right py-2 text-navy-500 font-medium">Events</th>
+                  <th className="text-left py-2 text-navy-500 font-medium">Chủ hàng</th>
+                  <th className="text-right py-2 text-navy-500 font-medium">Doanh thu</th>
+                  <th className="text-right py-2 text-navy-500 font-medium">DN nháp</th>
+                  <th className="text-right py-2 text-navy-500 font-medium">Đã duyệt</th>
+                  <th className="text-right py-2 text-navy-500 font-medium">Sự kiện</th>
                 </tr>
               </thead>
               <tbody>
@@ -90,7 +91,7 @@ export function BillingReportPage() {
 
         {/* By Service Type */}
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Revenue by Service Type</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Doanh thu theo loại dịch vụ</h3>
           {isLoading ? (
             <p className="text-sm text-navy-400">Đang tải...</p>
           ) : (

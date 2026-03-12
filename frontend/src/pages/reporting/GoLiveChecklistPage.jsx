@@ -58,13 +58,13 @@ function GateCard({ gate, onUpdate }) {
 
       {gate.status === 'WAIVED' && gate.waivedReason && (
         <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-2">
-          <span className="font-semibold">Waived reason:</span> {gate.waivedReason}
+          <span className="font-semibold">Lý do bỏ qua:</span> {gate.waivedReason}
         </div>
       )}
 
       {gate.checkedAt && (
         <p className="text-xs text-navy-400 mb-2">
-          Checked by <span className="font-medium">{gate.checkedBy}</span> at {new Date(gate.checkedAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+          Kiểm tra bởi <span className="font-medium">{gate.checkedBy}</span> lúc {new Date(gate.checkedAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
         </p>
       )}
 
@@ -73,13 +73,13 @@ function GateCard({ gate, onUpdate }) {
           <textarea
             className="wrs-input w-full text-sm resize-none"
             rows={2}
-            placeholder="Nhập lý do WAIVE (bắt buộc)..."
+            placeholder="Nhập lý do bỏ qua (bắt buộc)..."
             value={waiveReason}
             onChange={(e) => setWaiveReason(e.target.value)}
           />
           <div className="flex gap-2">
             <Button size="sm" variant="warning" onClick={handleSubmitWaive} disabled={!waiveReason.trim() || isPending}>
-              Xác nhận WAIVE
+              Xác nhận bỏ qua
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowWaiveInput(false)}>
               Hủy
@@ -96,7 +96,7 @@ function GateCard({ gate, onUpdate }) {
             onClick={() => handleMark('PASS')}
             disabled={isPending}
           >
-            Mark PASS
+            Đánh dấu PASS
           </Button>
           <Button
             size="sm"
@@ -117,7 +117,7 @@ function GateCard({ gate, onUpdate }) {
             onClick={() => handleMark('FAIL')}
             disabled={isPending}
           >
-            Revert to FAIL
+            Chuyển về FAIL
           </Button>
         </div>
       )}
@@ -143,8 +143,8 @@ export function GoLiveChecklistPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Go-Live Checklist — 12 Gates</h2>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>Refresh</Button>
+        <h2 className="section-title">Checklist Go-Live — 12 Gates</h2>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Làm mới</Button>
       </div>
 
       {/* Status Banner */}
@@ -152,7 +152,7 @@ export function GoLiveChecklistPage() {
         <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-4 mb-5 flex items-center gap-3">
           <span className="text-2xl">✅</span>
           <div>
-            <p className="font-bold text-emerald-800">READY FOR GO-LIVE</p>
+            <p className="font-bold text-emerald-800">SẴN SÀNG GO-LIVE</p>
             <p className="text-sm text-emerald-700">Tất cả {gates.length} gates đã PASS hoặc WAIVED. Hệ thống sẵn sàng đưa vào production.</p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export function GoLiveChecklistPage() {
         <div className="bg-rose-50 border border-rose-300 rounded-lg p-4 mb-5 flex items-center gap-3">
           <span className="text-2xl">🚫</span>
           <div>
-            <p className="font-bold text-rose-800">NOT READY — {failCount} gate(s) còn FAIL</p>
+            <p className="font-bold text-rose-800">CHƯA SẴN SÀNG — {failCount} gate(s) còn FAIL</p>
             <p className="text-sm text-rose-700">Hoàn thành tất cả gates hoặc WAIVE với lý do trước khi go-live.</p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export function GoLiveChecklistPage() {
       <div className="grid grid-cols-4 gap-3 mb-5">
         <div className="wrs-card p-3 text-center">
           <p className="text-xl font-bold text-navy-900">{gates.length}</p>
-          <p className="text-xs text-navy-500">Total Gates</p>
+          <p className="text-xs text-navy-500">Tổng Gates</p>
         </div>
         <div className="wrs-card p-3 text-center">
           <p className="text-xl font-bold text-emerald-600">{passCount}</p>
@@ -188,7 +188,7 @@ export function GoLiveChecklistPage() {
 
       {/* Gates by Category */}
       {isLoading ? (
-        <div className="wrs-card p-8 text-center text-navy-400 text-sm">Đang tải gates...</div>
+        <div className="wrs-card p-8 text-center text-navy-400 text-sm">Đang tải danh sách kiểm tra...</div>
       ) : (
         <div className="space-y-5">
           {Object.entries(byCategory).map(([category, categoryGates]) => (
