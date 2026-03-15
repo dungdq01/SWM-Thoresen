@@ -109,4 +109,15 @@ export class PurchaseOrderController {
   ) {
     return this.poService.cancel(id, dto, user?.id);
   }
+
+  @Post(':id/unconfirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unconfirm purchase order (revert to NEW status)' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 200, description: 'Purchase order unconfirmed' })
+  @ApiResponse({ status: 400, description: 'Cannot unconfirm PO with receipts' })
+  @Permission('inbound.po.confirm')
+  async unconfirm(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: RequestUser) {
+    return this.poService.unconfirm(id, user?.id);
+  }
 }

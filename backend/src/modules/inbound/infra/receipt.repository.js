@@ -40,8 +40,10 @@ class ReceiptRepository {
       include: includeRelations ? {
         lines: {
           include: {
+            item: { select: { id: true, itemCode: true, itemName: true, cargoForm: true } },
             uom: { select: { id: true, uomCode: true, description: true } },
           },
+          orderBy: { lineNumber: 'asc' },
         },
         owner: { select: { id: true, ownerCode: true, ownerName: true } },
         vendor: { select: { id: true, vendorCode: true, vendorName: true } },
@@ -102,7 +104,13 @@ class ReceiptRepository {
         take: limit,
         orderBy: { [sortBy]: sortOrder },
         include: {
-          lines: true,
+          lines: {
+            include: {
+              item: { select: { id: true, itemCode: true, itemName: true, cargoForm: true } },
+              uom: { select: { id: true, uomCode: true, description: true } },
+            },
+            orderBy: { lineNumber: 'asc' },
+          },
           owner: { select: { ownerCode: true, ownerName: true } },
           vendor: { select: { vendorCode: true, vendorName: true } },
           warehouse: { select: { warehouseCode: true, warehouseName: true } },

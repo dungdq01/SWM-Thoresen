@@ -90,8 +90,27 @@ function useInvalidateInboundQueries(successMessage, errorMessage) {
 }
 
 export function useCreateInboundReceipt() {
-  const { onSuccess, onError } = useInvalidateInboundQueries('Đã tạo receipt inbound', 'Không thể tạo receipt inbound')
+  const { onSuccess, onError } = useInvalidateInboundQueries('Đã tạo phiếu nhập', 'Không thể tạo phiếu nhập')
   return useMutation({ mutationFn: (data) => inboundOperationsApi.createReceipt(data), onSuccess, onError })
+}
+
+export function useUpdateInboundReceipt() {
+  const { queryClient, onError } = useInvalidateInboundQueries('Đã cập nhật phiếu nhập', 'Không thể cập nhật phiếu nhập')
+  return useMutation({
+    mutationFn: ({ id, data }) => inboundOperationsApi.updateReceipt(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.summary })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.receipts })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.receiptDetail(id) })
+      toast.success('Đã cập nhật phiếu nhập')
+    },
+    onError,
+  })
+}
+
+export function useDeleteInboundReceipt() {
+  const { onSuccess, onError } = useInvalidateInboundQueries('Đã xóa phiếu nhập', 'Không thể xóa phiếu nhập')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.deleteReceipt(id), onSuccess, onError })
 }
 
 export function useConfirmInboundReceipt() {
@@ -224,6 +243,43 @@ export function useClosePurchaseOrder() {
 export function useCancelPurchaseOrder() {
   const { onSuccess, onError } = useInvalidatePOQueries('Đã hủy Purchase Order', 'Không thể hủy Purchase Order')
   return useMutation({ mutationFn: (id) => inboundOperationsApi.cancelPurchaseOrder(id), onSuccess, onError })
+}
+
+// ── Inbound Documents hooks ──
+export function useInboundDocuments(filters = {}) {
+  return useQuery({
+    queryKey: ['inbound-documents', filters],
+    queryFn: () => inboundOperationsApi.getDocuments(filters),
+    staleTime: 15000,
+  })
+}
+
+export function useUploadInboundDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (formData) => inboundOperationsApi.uploadDocument(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-documents'] })
+      toast.success('Đã tải lên chứng từ')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể tải lên chứng từ')
+    },
+  })
+}
+
+export function useDeleteInboundDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => inboundOperationsApi.deleteDocument(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-documents'] })
+      toast.success('Đã xóa chứng từ')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể xóa chứng từ')
+    },
+  })
 }
 
 export { QUERY_KEYS as INBOUND_OPERATIONS_QUERY_KEYS }

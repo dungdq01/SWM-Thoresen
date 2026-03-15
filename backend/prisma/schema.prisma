@@ -660,7 +660,6 @@ model MdLocation {
   zone              MdZone                     @relation(fields: [zoneId], references: [id])
   inventDims        InventDim[]
   dailySnapshots    DailyStorageSnapshot[]
-  receiptHeaders    ReceiptHeader[]
   allocationRecords ShipmentAllocationRecord[]
   bilStorageSnapshots BilStorageSnapshot[]
 
@@ -712,6 +711,7 @@ model MdOwner {
   bilDebitNoteLines  BilDebitNoteLine[]
   bilExceptions      BilException[]
   salesOrders        SalesOrder[]
+  inboundDocuments   InboundDocument[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -1522,6 +1522,23 @@ enum IntegrationDeliveryStatus {
   DEAD_LETTER
 }
 
+enum InboundDocumentType {
+  BILL_OF_LADING
+  PACKING_LIST
+  COMMERCIAL_INVOICE
+  CERTIFICATE_OF_ORIGIN
+  QUALITY_CERTIFICATE
+  WEIGHT_CERTIFICATE
+  OTHER
+}
+
+enum InboundDocumentStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
 // ========== Module 4: Inbound Operations Models ==========
 
 model ReceiptHeader {
@@ -1533,13 +1550,13 @@ model ReceiptHeader {
   ownerId               String        @map("owner_id") @db.Uuid
   vendorId              String        @map("vendor_id") @db.Uuid
   warehouseId           String        @map("warehouse_id") @db.Uuid
-  receivingLocationId   String        @map("receiving_location_id") @db.Uuid
   vehicleNumber         String        @map("vehicle_number") @db.VarChar(30)
   blNumber              String?       @map("bl_number") @db.VarChar(50)
   expectedQty           Decimal       @map("expected_qty") @db.Decimal(18, 3)
   grossWeightKg         Decimal?      @map("gross_weight_kg") @db.Decimal(18, 3)
   tareWeightKg          Decimal?      @map("tare_weight_kg") @db.Decimal(18, 3)
   netWeightKg           Decimal?      @map("net_weight_kg") @db.Decimal(18, 3)
+  notes                 String?       @db.VarChar(500)
   status                ReceiptStatus @default(DRAFT)
   attemptNumber         Int           @default(1) @map("attempt_number")
   tolerancePctApplied   Decimal?      @map("tolerance_pct_applied") @db.Decimal(8, 4)
@@ -1563,13 +1580,13 @@ model ReceiptHeader {
   owner             MdOwner     @relation(fields: [ownerId], references: [id])
   vendor            MdVendor    @relation(fields: [vendorId], references: [id])
   warehouse         MdWarehouse @relation(fields: [warehouseId], references: [id])
-  receivingLocation MdLocation  @relation(fields: [receivingLocationId], references: [id])
 
   lines             ReceiptLine[]
   weighingLogs      ReceiptWeighingLog[]
   statusHistory     ReceiptStatusHistory[]
   exceptionLogs     ReceiptExceptionLog[]
   integrationStates ReceiptIntegrationState[]
+  documents         InboundDocument[]
 
   @@index([vehicleNumber, status, createdAt(sort: Desc)])
   @@index([blNumber, status, createdAt(sort: Desc)])
@@ -1591,6 +1608,7 @@ model ReceiptLine {
   bagCount            Int?              @map("bag_count")
   nominalWeightPerBag Decimal?          @map("nominal_weight_per_bag") @db.Decimal(18, 3)
   cargoForm           CargoForm         @map("cargo_form")
+  notes               String?           @db.VarChar(500)
   status              ReceiptLineStatus @default(OPEN)
   createdAt           DateTime          @default(now()) @map("created_at")
   createdBy           String?           @map("created_by") @db.Uuid
@@ -1605,6 +1623,33 @@ model ReceiptLine {
   @@index([itemId, cargoForm])
   @@index([receiptHeaderId, status])
   @@map("receipt_line")
+}
+
+model InboundDocument {
+  id              String                 @id @default(uuid()) @db.Uuid
+  documentCode    String                 @unique @map("document_code") @db.VarChar(50)
+  receiptHeaderId String?                @map("receipt_header_id") @db.Uuid
+  docType         InboundDocumentType    @map("doc_type")
+  ownerId         String?                @map("owner_id") @db.Uuid
+  vehicleNumber   String?                @map("vehicle_number") @db.VarChar(30)
+  fileName        String                 @map("file_name") @db.VarChar(255)
+  filePath        String                 @map("file_path") @db.VarChar(500)
+  fileSize        Int                    @map("file_size")
+  mimeType        String                 @map("mime_type") @db.VarChar(100)
+  notes           String?                @db.VarChar(500)
+  status          InboundDocumentStatus  @default(DRAFT)
+  uploadedAt      DateTime               @default(now()) @map("uploaded_at")
+  uploadedBy      String?                @map("uploaded_by") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  receiptHeader ReceiptHeader? @relation(fields: [receiptHeaderId], references: [id])
+  owner         MdOwner?       @relation(fields: [ownerId], references: [id])
+
+  @@index([receiptHeaderId])
+  @@index([ownerId, docType])
+  @@index([status, uploadedAt(sort: Desc)])
+  @@map("inbound_document")
 }
 
 model ReceiptWeighingLog {

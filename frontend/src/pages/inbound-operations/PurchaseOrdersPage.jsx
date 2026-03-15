@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from 'react'
-import { Plus, Check, Lock, Ban, ChevronDown, ChevronUp, Package, Pencil } from 'lucide-react'
+import { Plus, Check, Lock, Ban, ChevronDown, ChevronUp, Package, Pencil, RotateCcw, FileInput } from 'lucide-react'
 import {
   usePurchaseOrders,
   useCreatePurchaseOrder,
   useUpdatePurchaseOrder,
   useConfirmPurchaseOrder,
+  useUnconfirmPurchaseOrder,
   useClosePurchaseOrder,
   useCancelPurchaseOrder,
   useNextPoNumber,
+  useCreateInboundReceipt,
 } from '@domains/inbound-operations'
 import { useLookupOwners, useLookupVendors, useLookupWarehouses, useLookupItems, useLookupUoms } from '@domains/master-data'
 import {
@@ -15,7 +17,7 @@ import {
   Table, TableBody, TableCell, TableEmpty, TableHead,
   TableHeader, TableLoading, TableRow,
 } from '@shared/ui'
-import { POFormDrawer } from '@features/inbound-operations'
+import { POFormDrawer, CreateInboundReceiptModal } from '@features/inbound-operations'
 
 const PO_STATUSES = [
   { value: '', label: 'Tất cả' },
@@ -39,6 +41,7 @@ export function PurchaseOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '', vendorId: '' })
   const [drawerState, setDrawerState] = useState({ isOpen: false, data: null })
   const [expandedId, setExpandedId] = useState(null)
+  const [receiptModalState, setReceiptModalState] = useState({ isOpen: false, po: null })
 
   const isDrawerOpen = drawerState.isOpen
   const { data: nextPoResponse } = useNextPoNumber(isDrawerOpen && !drawerState.data)
@@ -57,6 +60,8 @@ export function PurchaseOrdersPage() {
   const confirmPo = useConfirmPurchaseOrder()
   const closePo = useClosePurchaseOrder()
   const cancelPo = useCancelPurchaseOrder()
+  const unconfirmPo = useUnconfirmPurchaseOrder()
+  const createReceipt = useCreateInboundReceipt()
 
   const { data: owners = [] } = useLookupOwners()
   const { data: vendors = [] } = useLookupVendors()
@@ -70,6 +75,18 @@ export function PurchaseOrdersPage() {
   const handleAdd = () => setDrawerState({ isOpen: true, data: null })
   const handleEdit = (po) => setDrawerState({ isOpen: true, data: po })
   const handleCloseDrawer = () => setDrawerState({ isOpen: false, data: null })
+
+  const handleOpenReceiptModal = (po) => setReceiptModalState({ isOpen: true, po })
+  const handleCloseReceiptModal = () => setReceiptModalState({ isOpen: false, po: null })
+
+  const handleCreateReceipt = async (payload) => {
+    try {
+      await createReceipt.mutateAsync(payload)
+      handleCloseReceiptModal()
+    } catch {
+      // Error handled by mutation
+    }
+  }
 
   const handleSubmit = async (payload) => {
     try {
@@ -202,8 +219,11 @@ export function PurchaseOrdersPage() {
                       )}
                       {po.status === 'CONFIRMED' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => closePo.mutate(po.id)} title="Đóng PO">
-                            <Lock className="h-3.5 w-3.5" />
+                          <Button variant="outline" size="sm" onClick={() => unconfirmPo.mutate(po.id)} title="Hủy xác nhận">
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập">
+                            <FileInput className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy PO">
                             <Ban className="h-3.5 w-3.5" />
@@ -308,6 +328,17 @@ export function PurchaseOrdersPage() {
         nextPoNumber={nextPoNumber}
         owners={owners}
         vendors={vendors}
+        warehouses={warehouses}
+        items={items}
+        uoms={uoms}
+      />
+
+      <CreateInboundReceiptModal
+        isOpen={receiptModalState.isOpen}
+        onClose={handleCloseReceiptModal}
+        onSubmit={handleCreateReceipt}
+        purchaseOrder={receiptModalState.po}
+        isLoading={createReceipt.isPending}
         warehouses={warehouses}
         items={items}
         uoms={uoms}

@@ -43,7 +43,7 @@ class ReceiptService {
    * CR-2 FIX: Wrapped trong $transaction để tránh race condition
    */
   async createReceipt(data, context = {}) {
-    const { externalId, ownerId, vendorId, warehouseId, receivingLocationId, lines } = data;
+    const { externalId, ownerId, vendorId, warehouseId, lines } = data;
 
     return this.prisma.$transaction(async (tx) => {
       // Check idempotency (trong transaction để tránh race condition)
@@ -56,16 +56,7 @@ class ReceiptService {
       }
 
       // Validate master data references
-      await this.validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }, tx);
-
-      // Validate receiving location type - temporarily disabled for testing
-      // const location = await tx.mdLocation.findUnique({
-      //   where: { id: receivingLocationId },
-      //   select: { locationType: true },
-      // });
-      // if (location.locationType !== 'RECEIVING') {
-      //   throw createLocationTypeError(location.locationType);
-      // }
+      await this.validateMasterReferences({ ownerId, vendorId, warehouseId }, tx);
 
       // Validate lines
       if (!lines || lines.length === 0) {
@@ -81,21 +72,71 @@ class ReceiptService {
         await this.validateLineItem(line, tx);
       }
 
-      // Create receipt
+      // Calculate totalExpectedQty in KG (convert from source UOM to KG)
+      const kgUom = await tx.mdUom.findFirst({ where: { uomCode: 'KG' } });
+      let totalExpectedQtyKg = 0;
+      const linesWithConversion = [];
+
+      for (const line of lines) {
+        const qty = Number(line.expectedQty) || 0;
+        let expectedQtyKg = qty;
+
+        if (line.uomId && kgUom && line.uomId !== kgUom.id) {
+          const conversion = await tx.mdUomConversion.findFirst({
+            where: { fromUomId: line.uomId, toUomId: kgUom.id },
+          });
+          if (conversion) {
+            expectedQtyKg = qty * Number(conversion.conversionFactor);
+          }
+        }
+
+        totalExpectedQtyKg += expectedQtyKg;
+        linesWithConversion.push({
+          ...line,
+          expectedQtyKg,
+        });
+      }
+
+      // Create receipt - use connect for relations
       const receipt = await tx.receiptHeader.create({
         data: {
-          ...data,
+          externalId: data.externalId,
+          receiptType: data.receiptType || 'STANDARD',
+          poId: data.poId || null,
+          asnId: data.asnId || null,
+          vehicleNumber: data.vehicleNumber,
+          blNumber: data.blNumber || null,
+          expectedQty: totalExpectedQtyKg,
+          notes: data.notes || null,
           status: RECEIPT_STATUS.DRAFT,
           correlationId: context.correlationId || `corr-${Date.now()}`,
           sourceApp: data.sourceApp || 'WEB',
+          owner: { connect: { id: data.ownerId } },
+          vendor: { connect: { id: data.vendorId } },
+          warehouse: { connect: { id: data.warehouseId } },
           lines: {
-            create: lines.map((line, index) => ({
-              ...line,
+            create: linesWithConversion.map((line, index) => ({
+              item: { connect: { id: line.itemId } },
+              uom: { connect: { id: line.uomId } },
+              expectedQty: line.expectedQtyKg,
+              cargoForm: line.cargoForm || 'BULK',
+              notes: line.notes || null,
               lineNumber: index + 1,
             })),
           },
         },
-        include: { lines: true },
+        include: {
+          lines: {
+            include: {
+              item: { select: { id: true, itemCode: true, itemName: true, cargoForm: true } },
+              uom: { select: { id: true, uomCode: true, description: true } },
+            },
+            orderBy: { lineNumber: 'asc' },
+          },
+          owner: { select: { id: true, ownerCode: true, ownerName: true } },
+          vendor: { select: { id: true, vendorCode: true, vendorName: true } },
+          warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } },
+        },
       });
 
       // Log initial status
@@ -676,19 +717,17 @@ class ReceiptService {
 
   // === Helper Methods ===
 
-  async validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }, tx = null) {
+  async validateMasterReferences({ ownerId, vendorId, warehouseId }, tx = null) {
     const db = tx || this.prisma;
-    const [owner, vendor, warehouse, location] = await Promise.all([
+    const [owner, vendor, warehouse] = await Promise.all([
       db.mdOwner.findUnique({ where: { id: ownerId }, select: { isActive: true } }),
       db.mdVendor.findUnique({ where: { id: vendorId }, select: { isActive: true } }),
       db.mdWarehouse.findUnique({ where: { id: warehouseId }, select: { isActive: true } }),
-      db.mdLocation.findUnique({ where: { id: receivingLocationId }, select: { isActive: true } }),
     ]);
 
     if (!owner?.isActive) throw createMasterReferenceError('Owner', ownerId);
     if (!vendor?.isActive) throw createMasterReferenceError('Vendor', vendorId);
     if (!warehouse?.isActive) throw createMasterReferenceError('Warehouse', warehouseId);
-    if (!location?.isActive) throw createMasterReferenceError('Location', receivingLocationId);
   }
 
   async validateLineItem(line, tx = null) {
