@@ -1414,6 +1414,11 @@ model InventoryEventMapping {
 
 // ========== Module 4: Inbound Operations Enums ==========
 
+enum PurchaseOrderType {
+  SEA
+  LAND
+}
+
 enum PurchaseOrderStatus {
   DRAFT
   CONFIRMED
@@ -1431,14 +1436,15 @@ enum PurchaseOrderLineStatus {
 model PurchaseOrder {
   id                   String                @id @default(uuid()) @db.Uuid
   poNumber             String                @unique @map("po_number") @db.VarChar(40)
-  externalPoNumber     String?               @map("external_po_number") @db.VarChar(100)
+  poType               PurchaseOrderType     @default(SEA) @map("po_type")
   status               PurchaseOrderStatus   @default(DRAFT)
   ownerId              String                @map("owner_id") @db.Uuid
   vendorId             String                @map("vendor_id") @db.Uuid
   warehouseId          String                @map("warehouse_id") @db.Uuid
-  expectedDeliveryDate DateTime?             @map("expected_delivery_date") @db.Date
+  vesselName           String?               @map("vessel_name") @db.VarChar(200)
+  origin               String?               @db.VarChar(200)
+  blNumber             String?               @map("bl_number") @db.VarChar(100)
   notes                String?               @db.Text
-  currency             String                @default("VND") @db.VarChar(10)
   totalExpectedQty     Decimal               @default(0) @map("total_expected_qty") @db.Decimal(18, 3)
   totalReceivedQty     Decimal               @default(0) @map("total_received_qty") @db.Decimal(18, 3)
   cancelReasonCode     String?               @map("cancel_reason_code") @db.VarChar(50)
@@ -1456,6 +1462,7 @@ model PurchaseOrder {
   @@index([status, createdAt(sort: Desc)])
   @@index([ownerId, vendorId, status])
   @@index([poNumber])
+  @@index([poType, status])
   @@map("purchase_orders")
 }
 
@@ -1464,16 +1471,15 @@ model PurchaseOrderLine {
   poId         String                  @map("po_id") @db.Uuid
   lineNumber   Int                     @map("line_number")
   itemId       String                  @map("item_id") @db.Uuid
-  uomId        String                  @map("uom_id") @db.Uuid
+  uomId        String?                 @map("uom_id") @db.Uuid
   expectedQty  Decimal                 @map("expected_qty") @db.Decimal(18, 3)
   receivedQty  Decimal                 @default(0) @map("received_qty") @db.Decimal(18, 3)
-  unitPrice    Decimal?                @map("unit_price") @db.Decimal(18, 4)
   notes        String?                 @db.Text
   status       PurchaseOrderLineStatus @default(OPEN)
 
   po   PurchaseOrder @relation(fields: [poId], references: [id])
   item MdItem        @relation(fields: [itemId], references: [id])
-  uom  MdUom         @relation(fields: [uomId], references: [id])
+  uom  MdUom?        @relation(fields: [uomId], references: [id])
 
   @@unique([poId, lineNumber])
   @@map("purchase_order_lines")

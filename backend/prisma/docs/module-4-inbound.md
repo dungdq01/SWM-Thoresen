@@ -3,16 +3,18 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-08 (FB-v3 - CR-1 DONE)
+> **Last Updated:** 2026-03-15 (PO Schema Update)
 
 ---
 
 ## 1. Tổng quan
 
-Module 4 sử dụng 6 bảng chính để quản lý lifecycle của Receipt:
+Module 4 sử dụng 8 bảng chính để quản lý lifecycle của Purchase Order và Receipt:
 
 | Table | Mục đích | Record Type |
 |-------|----------|-------------|
+| `purchase_orders` | Header Purchase Order | Runtime |
+| `purchase_order_lines` | Dòng hàng trong PO | Runtime |
 | `receipt_header` | Header phiếu nhận hàng | Runtime |
 | `receipt_line` | Dòng hàng trong receipt | Runtime |
 | `receipt_weighing_log` | Log cân weigh-in/weigh-out | Audit/Log |
@@ -23,6 +25,28 @@ Module 4 sử dụng 6 bảng chính để quản lý lifecycle của Receipt:
 ---
 
 ## 2. Enums
+
+### 2.0 PurchaseOrderType (NEW - 2026-03-15)
+```
+SEA   - Nhập đường thủy (có thông tin tàu, B/L)
+LAND  - Nhập đường bộ
+```
+
+### 2.0.1 PurchaseOrderStatus
+```
+DRAFT      - Vừa tạo, chưa confirm
+CONFIRMED  - Đã xác nhận
+CLOSED     - Đã đóng (terminal)
+CANCELLED  - Đã hủy (terminal)
+```
+
+### 2.0.2 PurchaseOrderLineStatus
+```
+OPEN      - Chưa nhận
+PARTIAL   - Đã nhận một phần
+RECEIVED  - Đã nhận đủ
+CANCELLED - Đã hủy
+```
 
 ### 2.1 ReceiptType
 ```
@@ -69,6 +93,81 @@ DEAD_LETTER - Đã hết retry
 ---
 
 ## 3. Chi tiết bảng
+
+### 3.0 `purchase_orders` (NEW - 2026-03-15)
+
+**Mục đích:** Lưu thông tin header của Purchase Order
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Primary key |
+| `po_number` | VARCHAR(40) | NO | Số PO (unique, auto-gen) |
+| `po_type` | ENUM | NO | `SEA` (đường thủy) / `LAND` (đường bộ). Default: `SEA` |
+| `status` | ENUM | NO | DRAFT / CONFIRMED / CLOSED / CANCELLED |
+| `owner_id` | UUID | NO | FK → md_owner (Chủ hàng) |
+| `vendor_id` | UUID | NO | FK → md_vendor (Nhà vận tải) |
+| `warehouse_id` | UUID | NO | FK → md_warehouse (Kho phân phối) |
+| `vessel_name` | VARCHAR(200) | YES | Tên tàu / Nguồn gốc (chỉ dùng khi `po_type=SEA`) |
+| `origin` | VARCHAR(200) | YES | Nguồn gốc hàng hóa (chỉ dùng khi `po_type=SEA`) |
+| `bl_number` | VARCHAR(100) | YES | Số Bill of Lading (chỉ dùng khi `po_type=SEA`) |
+| `notes` | TEXT | YES | Ghi chú |
+| `total_expected_qty` | DECIMAL(18,3) | NO | Tổng số lượng dự kiến |
+| `total_received_qty` | DECIMAL(18,3) | NO | Tổng số lượng đã nhận |
+| `cancel_reason_code` | VARCHAR(50) | YES | Reason code khi cancel |
+| `row_version` | BIGINT | NO | Optimistic lock |
+| `created_at` | TIMESTAMP | NO | Thời gian tạo |
+| `created_by` | UUID | YES | Người tạo |
+| `updated_at` | TIMESTAMP | NO | Thời gian cập nhật |
+| `updated_by` | UUID | YES | Người cập nhật |
+
+**Indexes:**
+- `UNIQUE(po_number)`
+- `INDEX(status, created_at DESC)`
+- `INDEX(owner_id, vendor_id, status)`
+- `INDEX(po_number)`
+- `INDEX(po_type, status)` - Filter theo loại PO
+
+**Relations:**
+- `owner` → `md_owner`
+- `vendor` → `md_vendor`
+- `warehouse` → `md_warehouse`
+- `lines` → `purchase_order_lines[]`
+
+**Ghi chú:**
+- Khi `po_type = SEA`: Các trường `vessel_name`, `origin`, `bl_number` được sử dụng
+- Khi `po_type = LAND`: Các trường trên có thể để trống
+
+---
+
+### 3.0.1 `purchase_order_lines` (NEW - 2026-03-15)
+
+**Mục đích:** Lưu các dòng hàng trong Purchase Order
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Primary key |
+| `po_id` | UUID | NO | FK → purchase_orders |
+| `line_number` | INT | NO | Số thứ tự dòng |
+| `item_id` | UUID | NO | FK → md_item (Mặt hàng) |
+| `uom_id` | UUID | YES | FK → md_uom (Đơn vị tính) - Optional |
+| `expected_qty` | DECIMAL(18,3) | NO | Số lượng dự kiến |
+| `received_qty` | DECIMAL(18,3) | NO | Số lượng đã nhận (default 0) |
+| `notes` | TEXT | YES | Ghi chú dòng |
+| `status` | ENUM | NO | OPEN / PARTIAL / RECEIVED / CANCELLED |
+
+**Indexes:**
+- `UNIQUE(po_id, line_number)`
+
+**Relations:**
+- `po` → `purchase_orders`
+- `item` → `md_item`
+- `uom` → `md_uom` (optional)
+
+**Ghi chú:**
+- `uom_id` là optional, cho phép không chọn đơn vị tính khi tạo line
+- `status` tự động cập nhật dựa trên `received_qty` so với `expected_qty`
+
+---
 
 ### 3.1 `receipt_header`
 
@@ -286,6 +385,15 @@ DEAD_LETTER - Đã hết retry
 ## 4. Quan hệ dữ liệu
 
 ```
+# Purchase Order Relations
+purchase_orders      1───N purchase_order_lines
+purchase_orders      N───1 md_owner
+purchase_orders      N───1 md_vendor
+purchase_orders      N───1 md_warehouse
+purchase_order_lines N───1 md_item
+purchase_order_lines N───1 md_uom (optional)
+
+# Receipt Relations
 receipt_header 1───N receipt_line
 receipt_header 1───N receipt_weighing_log
 receipt_header 1───N receipt_status_history
@@ -308,11 +416,51 @@ receipt_line   N───1 md_uom
 - Enums: `SourceApp`, `ExceptionSeverity`, `CargoForm` (từ Module 2)
 
 ### 5.2 New Enums
+- `PurchaseOrderType` (NEW - 2026-03-15)
+- `PurchaseOrderStatus`
+- `PurchaseOrderLineStatus`
 - `ReceiptType`
 - `ReceiptStatus`
 - `ReceiptLineStatus`
 - `WeighPhase`
 - `IntegrationDeliveryStatus`
+
+### 5.4 Migration: PO Schema Update (2026-03-15)
+
+**New Tables:**
+- `purchase_orders` - Header PO với `po_type` (SEA/LAND)
+- `purchase_order_lines` - Dòng hàng PO
+
+**Schema Changes:**
+```sql
+-- Add new enum
+CREATE TYPE "PurchaseOrderType" AS ENUM ('SEA', 'LAND');
+
+-- Add new column to purchase_orders
+ALTER TABLE "purchase_orders" ADD COLUMN "po_type" "PurchaseOrderType" NOT NULL DEFAULT 'SEA';
+ALTER TABLE "purchase_orders" ADD COLUMN "vessel_name" VARCHAR(200);
+ALTER TABLE "purchase_orders" ADD COLUMN "origin" VARCHAR(200);
+ALTER TABLE "purchase_orders" ADD COLUMN "bl_number" VARCHAR(100);
+
+-- Remove deprecated columns
+ALTER TABLE "purchase_orders" DROP COLUMN IF EXISTS "external_po_number";
+ALTER TABLE "purchase_orders" DROP COLUMN IF EXISTS "expected_delivery_date";
+ALTER TABLE "purchase_orders" DROP COLUMN IF EXISTS "currency";
+
+-- Make uom_id optional in purchase_order_lines
+ALTER TABLE "purchase_order_lines" ALTER COLUMN "uom_id" DROP NOT NULL;
+
+-- Remove unit_price from purchase_order_lines
+ALTER TABLE "purchase_order_lines" DROP COLUMN IF EXISTS "unit_price";
+
+-- Add new index
+CREATE INDEX "purchase_orders_po_type_status_idx" ON "purchase_orders"("po_type", "status");
+```
+
+**Migration Command:**
+```bash
+npx prisma migrate dev --name add_po_type_vessel_fields
+```
 
 ### 5.3 Partition Strategy (Future)
 Khi volume tăng, cân nhắc partition theo tháng:

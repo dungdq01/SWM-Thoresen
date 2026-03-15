@@ -92,28 +92,32 @@ const receiptQuerySchema = Joi.object({
 
 const poLineSchema = Joi.object({
   itemId: Joi.string().uuid().required(),
-  uomId: Joi.string().uuid().required(),
+  uomId: Joi.string().uuid().optional().allow(''),
   expectedQty: Joi.number().positive().required(),
-  unitPrice: Joi.number().min(0).optional(),
   notes: Joi.string().max(500).optional().allow(''),
 });
 
 const createPurchaseOrderSchema = Joi.object({
+  poType: Joi.string().valid('SEA', 'LAND').default('SEA'),
   ownerId: Joi.string().uuid().required(),
   vendorId: Joi.string().uuid().required(),
   warehouseId: Joi.string().uuid().required(),
-  externalPoNumber: Joi.string().max(100).optional().allow(''),
-  expectedDeliveryDate: Joi.date().iso().optional().allow(null),
+  vesselName: Joi.string().max(200).optional().allow(''),
+  origin: Joi.string().max(200).optional().allow(''),
+  blNumber: Joi.string().max(100).optional().allow(''),
   notes: Joi.string().max(1000).optional().allow(''),
-  currency: Joi.string().max(10).default('VND'),
   lines: Joi.array().items(poLineSchema).min(1).required(),
 });
 
 const updatePurchaseOrderSchema = Joi.object({
-  externalPoNumber: Joi.string().max(100).optional().allow(''),
-  expectedDeliveryDate: Joi.date().iso().optional().allow(null),
+  poType: Joi.string().valid('SEA', 'LAND').optional(),
+  ownerId: Joi.string().uuid().optional(),
+  vendorId: Joi.string().uuid().optional(),
+  warehouseId: Joi.string().uuid().optional(),
+  vesselName: Joi.string().max(200).optional().allow(''),
+  origin: Joi.string().max(200).optional().allow(''),
+  blNumber: Joi.string().max(100).optional().allow(''),
   notes: Joi.string().max(1000).optional().allow(''),
-  currency: Joi.string().max(10).optional(),
   rowVersion: Joi.number().integer().min(0).required(),
 });
 

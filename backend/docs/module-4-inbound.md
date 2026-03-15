@@ -4,16 +4,17 @@
 > **Status:** ✅ Implemented (Feedback Fixed v3 - CR-1 DONE)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-08 (FB-v3)
+> **Last Updated:** 2026-03-15 (PO Schema Update)
 
 ---
 
 ## 1. Mục đích Module
 
-Module 4 quản lý toàn bộ **lifecycle của Receipt** (phiếu nhận hàng) từ khi tạo đến khi đóng. Đây là **operational gatekeeper** cho luồng nhập hàng vào kho.
+Module 4 quản lý toàn bộ **lifecycle của Receipt** (phiếu nhận hàng) và **Purchase Order** từ khi tạo đến khi đóng. Đây là **operational gatekeeper** cho luồng nhập hàng vào kho.
 
 ### 1.1 Chức năng chính
 
+- **Purchase Order Management**: Tạo, confirm, cancel, close PO (đường thủy/đường bộ)
 - **Receipt Management**: Tạo, confirm, cancel, close receipt
 - **Weighing Flow**: Nhận dữ liệu cân gross/tare từ weighbridge
 - **Tolerance Check**: Tự động kiểm tra variance so với expected quantity
@@ -54,7 +55,20 @@ src/modules/inbound/
 
 ## 3. API Endpoints
 
-### 3.1 Receipt Management
+### 3.1 Purchase Order Management
+
+| Method | Path | Description | Permission |
+|--------|------|-------------|------------|
+| POST | `/api/v1/inbound/purchase-orders` | Tạo PO mới | `INBOUND.PO.CREATE` |
+| GET | `/api/v1/inbound/purchase-orders` | List POs (filter, paginate) | `INBOUND.PO.READ` |
+| GET | `/api/v1/inbound/purchase-orders/:id` | Get PO detail | `INBOUND.PO.READ` |
+| GET | `/api/v1/inbound/purchase-orders/next-number` | Get next PO number | `INBOUND.PO.READ` |
+| PUT | `/api/v1/inbound/purchase-orders/:id` | Update PO | `INBOUND.PO.UPDATE` |
+| POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO | `INBOUND.PO.CONFIRM` |
+| POST | `/api/v1/inbound/purchase-orders/:id/close` | Close PO | `INBOUND.PO.CLOSE` |
+| POST | `/api/v1/inbound/purchase-orders/:id/cancel` | Cancel PO | `INBOUND.PO.CANCEL` |
+
+### 3.2 Receipt Management
 
 | Method | Path | Description | Permission |
 |--------|------|-------------|------------|
@@ -68,14 +82,14 @@ src/modules/inbound/
 | POST | `/api/v1/inbound/receipts/:id/close` | Close receipt | `INBOUND.RECEIPT.CLOSE` |
 | POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing | `INBOUND.WEIGH.RECEIVE` |
 
-### 3.2 Weighing Events
+### 3.4 Weighing Events
 
 | Method | Path | Description | Permission |
 |--------|------|-------------|------------|
 | POST | `/api/v1/inbound/weigh-events/in` | Nhận weigh-in (gross) | `INBOUND.WEIGH.RECEIVE` |
 | POST | `/api/v1/inbound/weigh-events/out` | Nhận weigh-out (tare) | `INBOUND.WEIGH.RECEIVE` |
 
-### 3.3 Dashboard
+### 3.5 Dashboard
 
 | Method | Path | Description | Permission |
 |--------|------|-------------|------------|
@@ -85,7 +99,101 @@ src/modules/inbound/
 
 ## 4. Chi tiết từng API
 
-### 4.1 POST `/api/v1/inbound/receipts` - Tạo Receipt
+### 4.1 Purchase Order APIs
+
+#### 4.1.1 POST `/api/v1/inbound/purchase-orders` - Tạo PO
+
+**Mục đích:** Tạo Purchase Order mới (đường thủy hoặc đường bộ)
+
+**Request Body:**
+```json
+{
+  "poType": "SEA",
+  "ownerId": "uuid-owner",
+  "vendorId": "uuid-vendor",
+  "warehouseId": "uuid-warehouse",
+  "vesselName": "MV OCEAN STAR",
+  "origin": "Thailand",
+  "blNumber": "BL-2026-RICE-001",
+  "notes": "Ghi chú PO",
+  "lines": [
+    {
+      "itemId": "uuid-item",
+      "uomId": "uuid-uom",
+      "expectedQty": 30000,
+      "notes": "Ghi chú dòng"
+    }
+  ]
+}
+```
+
+**Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `poType` | enum | No | `SEA` (đường thủy) hoặc `LAND` (đường bộ). Default: `SEA` |
+| `ownerId` | UUID | Yes | Chủ hàng (Owner) |
+| `vendorId` | UUID | Yes | Nhà vận tải (Vendor) |
+| `warehouseId` | UUID | Yes | Kho phân phối (Warehouse) |
+| `vesselName` | string | No | Tên tàu / Nguồn gốc (chỉ dùng khi `poType=SEA`) |
+| `origin` | string | No | Nguồn gốc hàng hóa (chỉ dùng khi `poType=SEA`) |
+| `blNumber` | string | No | Số Bill of Lading (chỉ dùng khi `poType=SEA`) |
+| `notes` | string | No | Ghi chú PO |
+| `lines` | array | Yes | Danh sách dòng hàng (min 1) |
+
+**Line Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `itemId` | UUID | Yes | Mặt hàng |
+| `uomId` | UUID | No | Đơn vị tính |
+| `expectedQty` | number | Yes | Số lượng dự kiến |
+| `notes` | string | No | Ghi chú dòng |
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-po",
+    "poNumber": "PO-20260315-001",
+    "poType": "SEA",
+    "status": "DRAFT",
+    "ownerId": "uuid-owner",
+    "vendorId": "uuid-vendor",
+    "warehouseId": "uuid-warehouse",
+    "vesselName": "MV OCEAN STAR",
+    "blNumber": "BL-2026-RICE-001",
+    "totalExpectedQty": 30000,
+    "lines": [...]
+  }
+}
+```
+
+#### 4.1.2 PUT `/api/v1/inbound/purchase-orders/:id` - Update PO
+
+**Request Body:**
+```json
+{
+  "poType": "SEA",
+  "ownerId": "uuid-owner",
+  "vendorId": "uuid-vendor",
+  "warehouseId": "uuid-warehouse",
+  "vesselName": "MV OCEAN STAR",
+  "origin": "Thailand",
+  "blNumber": "BL-2026-RICE-001",
+  "notes": "Ghi chú cập nhật",
+  "rowVersion": 0
+}
+```
+
+**Validation:**
+- `rowVersion` bắt buộc để kiểm tra optimistic locking
+- Chỉ update được khi `status = DRAFT`
+
+---
+
+### 4.2 POST `/api/v1/inbound/receipts` - Tạo Receipt
 
 **Mục đích:** Tạo receipt mới với thông tin PO, vehicle, expected qty
 

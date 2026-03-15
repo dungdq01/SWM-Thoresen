@@ -700,16 +700,17 @@ export const inboundOperationsMockApi = {
     const po = {
       id: `po-${Date.now()}`,
       poNumber: `PO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(poDb.purchaseOrders.length + 1).padStart(3, '0')}`,
-      externalPoNumber: data.externalPoNumber || '',
+      poType: data.poType || 'SEA',
       status: 'DRAFT',
       ownerId: data.ownerId,
       vendorId: data.vendorId,
       warehouseId: data.warehouseId,
-      expectedDeliveryDate: data.expectedDeliveryDate || '',
+      vesselName: data.vesselName || '',
+      origin: data.origin || '',
+      blNumber: data.blNumber || '',
       notes: data.notes || '',
       totalExpectedQty: 0,
       totalReceivedQty: 0,
-      currency: data.currency || 'VND',
       createdBy: data.createdBy || 'planner.user',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -723,9 +724,8 @@ export const inboundOperationsMockApi = {
         expectedQty: Number(line.expectedQty || 0),
         receivedQty: 0,
         uomId: line.uomId || 'uom-001',
-        unitPrice: Number(line.unitPrice || 0),
         notes: line.notes || '',
-        status: 'OPEN',
+        status: 'NEW',
       }))
       po.totalExpectedQty = po.lines.reduce((sum, l) => sum + l.expectedQty, 0)
     }
@@ -739,12 +739,14 @@ export const inboundOperationsMockApi = {
     const current = poDb.purchaseOrders[index]
     const updated = {
       ...current,
+      poType: data.poType ?? current.poType,
       ownerId: data.ownerId ?? current.ownerId,
       vendorId: data.vendorId ?? current.vendorId,
       warehouseId: data.warehouseId ?? current.warehouseId,
-      expectedDeliveryDate: data.expectedDeliveryDate ?? current.expectedDeliveryDate,
+      vesselName: data.vesselName ?? current.vesselName,
+      origin: data.origin ?? current.origin,
+      blNumber: data.blNumber ?? current.blNumber,
       notes: data.notes ?? current.notes,
-      currency: data.currency ?? current.currency,
       updatedAt: new Date().toISOString(),
     }
     if (data.lines) {
@@ -755,9 +757,8 @@ export const inboundOperationsMockApi = {
         expectedQty: Number(line.expectedQty || 0),
         receivedQty: Number(line.receivedQty || 0),
         uomId: line.uomId || 'uom-001',
-        unitPrice: Number(line.unitPrice || 0),
         notes: line.notes || '',
-        status: line.status || 'OPEN',
+        status: line.status || 'NEW',
       }))
       updated.totalExpectedQty = updated.lines.reduce((sum, l) => sum + l.expectedQty, 0)
       updated.totalReceivedQty = updated.lines.reduce((sum, l) => sum + l.receivedQty, 0)
