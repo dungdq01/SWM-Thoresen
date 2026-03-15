@@ -40,9 +40,6 @@ const MODULE_ITEMS = [
   { id: 'workbench', label: 'Posting Workbench', labelVi: 'Bàn làm việc', group: 'Inventory Core', route: '/app/inventory-core/workbench', icon: 'BookOpen', type: 'module' },
   // Inbound
   { id: 'receipts', label: 'Receipts', labelVi: 'Phiếu nhận hàng', group: 'Inbound', route: '/app/inbound-operations/receipts', icon: 'ClipboardCheck', type: 'module' },
-  { id: 'inbound-execution', label: 'Inbound Execution', labelVi: 'Cân xe nhập', group: 'Inbound', route: '/app/inbound-operations/execution', icon: 'Scale', type: 'module' },
-  { id: 'exceptions', label: 'Exceptions', labelVi: 'Ngoại lệ nhập', group: 'Inbound', route: '/app/inbound-operations/exceptions', icon: 'AlertTriangle', type: 'module' },
-  { id: 'putaway', label: 'Putaway', labelVi: 'Nhập vị trí kho', group: 'Inbound', route: '/app/inbound-operations/putaway', icon: 'Waypoints', type: 'module' },
   // Outbound
   { id: 'shipments', label: 'Shipments', labelVi: 'Phiếu xuất kho', group: 'Outbound', route: '/app/outbound-operations/shipments', icon: 'ClipboardList', type: 'module' },
   { id: 'allocation', label: 'Allocation', labelVi: 'Phân bổ tồn kho', group: 'Outbound', route: '/app/outbound-operations/allocation', icon: 'Package', type: 'module' },

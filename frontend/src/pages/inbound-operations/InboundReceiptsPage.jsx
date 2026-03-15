@@ -1,193 +1,21 @@
-import { useMemo, useState, useEffect } from 'react'
-import { ClipboardCheck, FilePlus2, Scale, Truck, Sparkles } from 'lucide-react'
-import { useCreateInboundReceipt, useInboundDashboardSummary, useInboundReceipts, useConfirmInboundReceipt, usePurchaseOrders } from '@domains/inbound-operations'
-import { useLookupItems, useLookupLocations, useLookupOwners, useLookupVendors, useLookupWarehouses } from '@domains/master-data'
-import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
-
-const statusTone = (status) => {
-  if (['RECEIVED', 'CLOSED'].includes(status)) return 'success'
-  if (['REJECTED', 'CANCELLED'].includes(status)) return 'danger'
-  if (['PUTAWAY', 'PROCESSING', 'WEIGHED_IN', 'WEIGHED_OUT'].includes(status)) return 'warning'
-  return 'default'
-}
-
-const initialDraft = {
-  receiptType: 'STANDARD',
-  poId: '',
-  poNumber: '',
-  asnNumber: '',
-  ownerId: '',
-  vendorId: '',
-  itemId: '',
-  warehouseId: '',
-  receivingLocationId: '',
-  vehicleNumber: '',
-  blNumber: '',
-  expectedQty: '',
-  cargoForm: 'BULK',
-  bagCount: '',
-}
-
-const generateAsnNumber = () => {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase()
-  return `ASN-${today}-${rand}`
-}
+import { useState } from 'react'
+import { Button, Modal } from '@shared/ui'
 
 export function InboundReceiptsPage() {
-  const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', receiptType: '', ownerId: '', warehouseId: '', itemId: '' })
   const [showCreate, setShowCreate] = useState(false)
-  const [draft, setDraft] = useState(initialDraft)
-
-  const { data: summaryResponse } = useInboundDashboardSummary()
-  const { data: response, isLoading, refetch } = useInboundReceipts({
-    ...filters,
-    keyword: filters.keyword || undefined,
-    status: filters.status || undefined,
-    receiptType: filters.receiptType || undefined,
-    ownerId: filters.ownerId || undefined,
-    warehouseId: filters.warehouseId || undefined,
-    itemId: filters.itemId || undefined,
-  })
-
-  const createReceipt = useCreateInboundReceipt()
-  const confirmReceipt = useConfirmInboundReceipt()
-
-  const { data: owners = [] } = useLookupOwners()
-  const { data: vendors = [] } = useLookupVendors()
-  const { data: items = [] } = useLookupItems()
-  const { data: warehouses = [] } = useLookupWarehouses()
-  const { data: locations = [] } = useLookupLocations(draft.warehouseId || undefined)
-
-  // Fetch POs with status CONFIRMED for dropdown
-  const { data: poResponse } = usePurchaseOrders({ status: 'CONFIRMED', limit: 100 })
-  const confirmedPOs = poResponse?.data || []
-
-  // Auto-generate ASN when modal opens
-  useEffect(() => {
-    if (showCreate && !draft.asnNumber) {
-      setDraft((prev) => ({ ...prev, asnNumber: generateAsnNumber() }))
-    }
-  }, [showCreate])
-
-  // When PO is selected, auto-fill owner, vendor, warehouse, item from PO
-  const handlePoSelect = (poId) => {
-    const selectedPo = confirmedPOs.find((po) => po.id === poId)
-    if (selectedPo) {
-      const firstLine = selectedPo.lines?.[0]
-      setDraft((prev) => ({
-        ...prev,
-        poId,
-        poNumber: selectedPo.poNumber,
-        ownerId: selectedPo.ownerId || '',
-        vendorId: selectedPo.vendorId || '',
-        warehouseId: selectedPo.warehouseId || '',
-        itemId: firstLine?.itemId || '',
-        expectedQty: firstLine?.expectedQty?.toString() || '',
-        cargoForm: firstLine?.item?.cargoForm || 'BULK',
-      }))
-    } else {
-      // Reset all auto-filled fields when PO is deselected
-      setDraft((prev) => ({
-        ...prev,
-        poId: '',
-        poNumber: '',
-        ownerId: '',
-        vendorId: '',
-        warehouseId: '',
-        itemId: '',
-        expectedQty: '',
-        cargoForm: 'BULK',
-      }))
-    }
-  }
-
-  const summary = summaryResponse?.data || {}
-  const rows = response?.data || []
-  const pagination = response?.pagination || { page: 1, totalPages: 1 }
-
-  const handleCreate = async () => {
-    await createReceipt.mutateAsync({
-      ...draft,
-      expectedQty: Number(draft.expectedQty || 0),
-      bagCount: draft.bagCount ? Number(draft.bagCount) : null,
-      correlationId: `corr-inb-create-${Date.now()}`,
-      sourceApp: 'WEB',
-      createdBy: localStorage.getItem('userCode') || 'admin',
-    })
-    setDraft(initialDraft)
-    setShowCreate(false)
-  }
 
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Lập kế hoạch & tạo phiếu nhập</h2>
+        <h2 className="section-title">Phiếu nhập</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setShowCreate(true) }}>Tạo phiếu nhập</Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
+          <Button variant="accent" size="sm" onClick={() => setShowCreate(true)}>Tạo phiếu nhập</Button>
+          <Button variant="outline" size="sm">Làm mới</Button>
         </div>
       </div>
 
-      <div className="wrs-card p-5 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Input placeholder="Số phiếu/PO/ASN/B/L/Biển số xe" value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'AWAITING_WEIGHING', label: 'AWAITING_WEIGHING' }, { value: 'REJECTED', label: 'REJECTED' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'PUTAWAY', label: 'PUTAWAY' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Trạng thái" />
-          <Select value={filters.receiptType} onChange={(e) => setFilters((prev) => ({ ...prev, receiptType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} placeholder="Loại phiếu" />
-          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Chủ hàng" />
-          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Kho" />
-          <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Hàng hóa" />
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow hoverable={false}>
-              <TableHead>Phiếu nhập</TableHead>
-              <TableHead>PO / Xe</TableHead>
-              <TableHead>Chủ hàng / Hàng hóa</TableHead>
-              <TableHead align="right">SL dự kiến</TableHead>
-              <TableHead align="center">Trạng thái</TableHead>
-              <TableHead align="center">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không có phiếu nhập phù hợp" /> : null}
-            {!isLoading ? rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>
-                  <div>
-                    <p className="font-semibold text-navy-900">{row.receiptNumber}</p>
-                    <p className="text-xs text-navy-400">{row.receiptType} · lần {row.attemptNumber}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium text-navy-800">{row.poNumber || 'N/A'}</p>
-                    <p className="text-xs text-navy-400">{row.vehicleNumber || row.blNumber || 'Chưa có xe'}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium text-navy-900">{row.owner?.ownerCode || row.ownerId}</p>
-                    <p className="text-xs text-navy-400">{row.item?.itemCode || row.itemId}</p>
-                  </div>
-                </TableCell>
-                <TableCell align="right" className="font-semibold text-navy-900">{row.expectedQty}</TableCell>
-                <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
-                <TableCell align="center">
-                  {row.status === 'DRAFT' ? (
-                    <Button variant="outline" size="sm" onClick={() => confirmReceipt.mutate(row.id)}>Xác nhận</Button>
-                  ) : (
-                    <span className="text-xs text-navy-400">Đang xử lý</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            )) : null}
-          </TableBody>
-        </Table>
-
-        <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
+      <div className="wrs-card p-8 text-center text-navy-400">
+        <p>Phiếu nhập đang được định nghĩa lại.</p>
       </div>
 
       <Modal
@@ -199,51 +27,12 @@ export function InboundReceiptsPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleCreate} disabled={createReceipt.isPending}>
-              {createReceipt.isPending ? 'Đang xử lý...' : 'Tạo phiếu'}
-            </Button>
+            <Button variant="accent">Tạo phiếu</Button>
           </>
         }
       >
-        <div className="space-y-4">
-          <Select label="Loại phiếu" value={draft.receiptType} onChange={(e) => setDraft((prev) => ({ ...prev, receiptType: e.target.value }))} options={[{ value: 'STANDARD', label: 'STANDARD' }, { value: 'VESSEL', label: 'VESSEL' }]} />
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Số PO"
-              value={draft.poId}
-              onChange={(e) => handlePoSelect(e.target.value)}
-              options={[
-                { value: '', label: '-- Chọn PO --' },
-                ...confirmedPOs.map((po) => ({
-                  value: po.id,
-                  label: `${po.poNumber} - ${po.owner?.ownerCode || ''} (${po.totalExpectedQty?.toLocaleString() || 0} kg)`,
-                })),
-              ]}
-            />
-            <div>
-              <label className="block text-sm font-medium text-navy-700 mb-1.5">Số ASN <span className="text-xs text-navy-400 font-normal">(Tự động)</span></label>
-              <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2">
-                <Sparkles className="h-4 w-4 text-ice shrink-0" />
-                <span className="font-mono font-semibold text-navy-900">{draft.asnNumber || '...'}</span>
-              </div>
-            </div>
-          </div>
-          <Select label="Chủ hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <Select label="Nhà cung cấp" value={draft.vendorId} onChange={(e) => setDraft((prev) => ({ ...prev, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn nhà cung cấp --' }, ...vendors.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <Select label="Hàng hóa" value={draft.itemId} onChange={(e) => setDraft((prev) => ({ ...prev, itemId: e.target.value }))} options={[{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-          <div className="grid grid-cols-2 gap-4">
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} />
-            <Select label="Vị trí nhận hàng" value={draft.receivingLocationId} onChange={(e) => setDraft((prev) => ({ ...prev, receivingLocationId: e.target.value }))} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((item) => ({ value: item.id, label: `${item.code}` }))]} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Biển số xe" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
-            <Input label="Số B/L" value={draft.blNumber} onChange={(e) => setDraft((prev) => ({ ...prev, blNumber: e.target.value }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="SL dự kiến (kg)" type="number" value={draft.expectedQty} onChange={(e) => setDraft((prev) => ({ ...prev, expectedQty: e.target.value }))} />
-            <Input label="Số bao" type="number" value={draft.bagCount} onChange={(e) => setDraft((prev) => ({ ...prev, bagCount: e.target.value }))} />
-          </div>
-          <Select label="Hình thức hàng" value={draft.cargoForm} onChange={(e) => setDraft((prev) => ({ ...prev, cargoForm: e.target.value }))} options={[{ value: 'BULK', label: 'BULK' }, { value: 'BAGGED_25KG', label: 'BAGGED_25KG' }, { value: 'BAGGED_50KG', label: 'BAGGED_50KG' }, { value: 'JUMBO_1000KG', label: 'JUMBO_1000KG' }]} />
+        <div className="space-y-4 text-navy-400 text-center py-8">
+          <p>Form tạo phiếu nhập sẽ được định nghĩa tại đây.</p>
         </div>
       </Modal>
     </>

@@ -79,9 +79,6 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/inbound-operations/purchase-orders', label: t('sidebar.items.purchaseOrders') },
       { to: '/app/inbound-operations/receipts', label: t('sidebar.items.receipts') },
-      { to: '/app/inbound-operations/execution', label: t('sidebar.items.execution') },
-      { to: '/app/inbound-operations/exceptions', label: t('sidebar.items.exceptions') },
-      { to: '/app/inbound-operations/putaway', label: t('sidebar.items.putaway') },
     ],
   },
   {

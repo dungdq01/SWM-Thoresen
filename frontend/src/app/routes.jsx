@@ -40,9 +40,6 @@ const InventorySnapshotBillingPage = lazy(() => import('@pages/inventory-core').
 // Inbound Operations Pages
 const InboundOperationsLayout = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundOperationsLayout })))
 const InboundReceiptsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundReceiptsPage })))
-const InboundExecutionPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExecutionPage })))
-const InboundExceptionsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundExceptionsPage })))
-const InboundPutawayPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundPutawayPage })))
 const PurchaseOrdersPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.PurchaseOrdersPage })))
 
 // Outbound Operations Pages
@@ -273,18 +270,6 @@ export const router = createBrowserRouter([
           {
             path: 'receipts',
             element: withSuspense(InboundReceiptsPage),
-          },
-          {
-            path: 'execution',
-            element: withSuspense(InboundExecutionPage),
-          },
-          {
-            path: 'exceptions',
-            element: withSuspense(InboundExceptionsPage),
-          },
-          {
-            path: 'putaway',
-            element: withSuspense(InboundPutawayPage),
           },
         ],
       },
