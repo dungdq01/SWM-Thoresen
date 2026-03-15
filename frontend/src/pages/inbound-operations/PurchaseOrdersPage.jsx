@@ -268,7 +268,7 @@ export function PurchaseOrdersPage() {
                 </td>
                 <td className="px-3 py-2 text-center">
                   <Badge variant={lineStatusTone(line.status)} className="text-xs">
-                    {line.status === 'OPEN' ? 'Chờ nhận' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
+                    {line.status === 'OPEN' ? 'Mới' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
                   </Badge>
                 </td>
                 <td className="px-3 py-2">
@@ -444,7 +444,7 @@ export function PurchaseOrdersPage() {
                                 </td>
                                 <td className="py-2 text-center">
                                   <Badge variant={line.status === 'RECEIVED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'} className="text-xs">
-                                    {line.status === 'OPEN' ? 'Chờ nhận' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
+                                    {line.status === 'OPEN' ? 'Mới' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
                                   </Badge>
                                 </td>
                               </tr>
