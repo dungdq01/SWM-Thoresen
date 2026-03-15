@@ -14,6 +14,16 @@ export interface OcrExtractedData {
   productConfidence?: number;
   vesselName?: string;
   vesselConfidence?: number;
+  customerName?: string;
+  customerConfidence?: number;
+  deliveryLocation?: string;
+  deliveryConfidence?: number;
+  grossWeight?: number;
+  grossWeightUom?: string;
+  grossWeightConfidence?: number;
+  tareWeight?: number;
+  tareWeightUom?: string;
+  tareWeightConfidence?: number;
   qtyExtracted?: number;
   qtyUom?: string;
   qtyConfidence?: number;
@@ -66,6 +76,16 @@ export class OcrExtractService {
       if (extractedData.productConfidence !== undefined) updatePayload.productConfidence = extractedData.productConfidence;
       if (extractedData.vesselName !== undefined) updatePayload.vesselName = extractedData.vesselName;
       if (extractedData.vesselConfidence !== undefined) updatePayload.vesselConfidence = extractedData.vesselConfidence;
+      if (extractedData.customerName !== undefined) updatePayload.customerName = extractedData.customerName;
+      if (extractedData.customerConfidence !== undefined) updatePayload.customerConfidence = extractedData.customerConfidence;
+      if (extractedData.deliveryLocation !== undefined) updatePayload.deliveryLocation = extractedData.deliveryLocation;
+      if (extractedData.deliveryConfidence !== undefined) updatePayload.deliveryConfidence = extractedData.deliveryConfidence;
+      if (extractedData.grossWeight !== undefined) updatePayload.grossWeight = extractedData.grossWeight;
+      if (extractedData.grossWeightUom !== undefined) updatePayload.grossWeightUom = extractedData.grossWeightUom;
+      if (extractedData.grossWeightConfidence !== undefined) updatePayload.grossWeightConfidence = extractedData.grossWeightConfidence;
+      if (extractedData.tareWeight !== undefined) updatePayload.tareWeight = extractedData.tareWeight;
+      if (extractedData.tareWeightUom !== undefined) updatePayload.tareWeightUom = extractedData.tareWeightUom;
+      if (extractedData.tareWeightConfidence !== undefined) updatePayload.tareWeightConfidence = extractedData.tareWeightConfidence;
       if (extractedData.qtyExtracted !== undefined) updatePayload.qtyExtracted = extractedData.qtyExtracted;
       if (extractedData.qtyUom !== undefined) updatePayload.qtyUom = extractedData.qtyUom;
       if (extractedData.qtyConfidence !== undefined) updatePayload.qtyConfidence = extractedData.qtyConfidence;
@@ -136,6 +156,10 @@ export class OcrExtractService {
       fields.vehicleConfidence,
       fields.productConfidence,
       fields.vesselConfidence,
+      fields.customerConfidence,
+      fields.deliveryConfidence,
+      fields.grossWeightConfidence,
+      fields.tareWeightConfidence,
       fields.qtyConfidence,
     ].filter((c) => c > 0);
 
@@ -152,6 +176,16 @@ export class OcrExtractService {
       productConfidence: fields.productConfidence,
       vesselName: fields.vesselName,
       vesselConfidence: fields.vesselConfidence,
+      customerName: fields.customerName,
+      customerConfidence: fields.customerConfidence,
+      deliveryLocation: fields.deliveryLocation,
+      deliveryConfidence: fields.deliveryConfidence,
+      grossWeight: fields.grossWeight,
+      grossWeightUom: fields.grossWeightUom,
+      grossWeightConfidence: fields.grossWeightConfidence,
+      tareWeight: fields.tareWeight,
+      tareWeightUom: fields.tareWeightUom,
+      tareWeightConfidence: fields.tareWeightConfidence,
       qtyExtracted: fields.qtyExtracted,
       qtyUom: fields.qtyUom,
       qtyConfidence: fields.qtyConfidence,

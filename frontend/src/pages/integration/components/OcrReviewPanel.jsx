@@ -8,6 +8,10 @@ const CONFIDENCE_THRESHOLD = {
   vehicle: 90,
   product: 85,
   vessel: 85,
+  customer: 85,
+  delivery: 85,
+  grossWeight: 85,
+  tareWeight: 85,
   qty: 85,
 }
 
@@ -68,6 +72,12 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
         vehicleNumber: result.vehicleNumber || '',
         productName: result.productName || '',
         vesselName: result.vesselName || '',
+        customerName: result.customerName || '',
+        deliveryLocation: result.deliveryLocation || '',
+        grossWeight: result.grossWeight != null ? String(result.grossWeight) : '',
+        grossWeightUom: result.grossWeightUom || '',
+        tareWeight: result.tareWeight != null ? String(result.tareWeight) : '',
+        tareWeightUom: result.tareWeightUom || '',
         qtyExtracted: result.qtyExtracted != null ? String(result.qtyExtracted) : '',
         qtyUom: result.qtyUom || '',
       })
@@ -82,6 +92,12 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
         confirmedVehicleNumber: edits.vehicleNumber,
         confirmedProductName: edits.productName,
         confirmedVesselName: edits.vesselName,
+        confirmedCustomerName: edits.customerName,
+        confirmedDeliveryLocation: edits.deliveryLocation,
+        confirmedGrossWeight: edits.grossWeight ? parseFloat(edits.grossWeight) : undefined,
+        confirmedGrossWeightUom: edits.grossWeightUom,
+        confirmedTareWeight: edits.tareWeight ? parseFloat(edits.tareWeight) : undefined,
+        confirmedTareWeightUom: edits.tareWeightUom,
         confirmedQty: edits.qtyExtracted ? parseFloat(edits.qtyExtracted) : undefined,
         confirmedQtyUom: edits.qtyUom,
       },
@@ -193,13 +209,22 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
                   isLow={Number(result.blConfidence || 0) > 0 && Number(result.blConfidence || 0) < CONFIDENCE_THRESHOLD.bl}
                 />
                 <FieldRow
-                  label="Biển số xe"
-                  value={result.vehicleNumber}
-                  confidence={result.vehicleConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.vehicle}
-                  editValue={edits.vehicleNumber}
-                  onEditChange={updateEdit('vehicleNumber')}
-                  isLow={Number(result.vehicleConfidence || 0) > 0 && Number(result.vehicleConfidence || 0) < CONFIDENCE_THRESHOLD.vehicle}
+                  label="Tên tàu"
+                  value={result.vesselName}
+                  confidence={result.vesselConfidence || 0}
+                  threshold={CONFIDENCE_THRESHOLD.vessel}
+                  editValue={edits.vesselName}
+                  onEditChange={updateEdit('vesselName')}
+                  isLow={Number(result.vesselConfidence || 0) > 0 && Number(result.vesselConfidence || 0) < CONFIDENCE_THRESHOLD.vessel}
+                />
+                <FieldRow
+                  label="Khách hàng"
+                  value={result.customerName}
+                  confidence={result.customerConfidence || 0}
+                  threshold={CONFIDENCE_THRESHOLD.customer}
+                  editValue={edits.customerName}
+                  onEditChange={updateEdit('customerName')}
+                  isLow={Number(result.customerConfidence || 0) > 0 && Number(result.customerConfidence || 0) < CONFIDENCE_THRESHOLD.customer}
                 />
                 <FieldRow
                   label="Hàng hóa"
@@ -210,31 +235,101 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
                   onEditChange={updateEdit('productName')}
                   isLow={Number(result.productConfidence || 0) > 0 && Number(result.productConfidence || 0) < CONFIDENCE_THRESHOLD.product}
                 />
+                <FieldRow
+                  label="Biển số xe"
+                  value={result.vehicleNumber}
+                  confidence={result.vehicleConfidence || 0}
+                  threshold={CONFIDENCE_THRESHOLD.vehicle}
+                  editValue={edits.vehicleNumber}
+                  onEditChange={updateEdit('vehicleNumber')}
+                  isLow={Number(result.vehicleConfidence || 0) > 0 && Number(result.vehicleConfidence || 0) < CONFIDENCE_THRESHOLD.vehicle}
+                />
+                <FieldRow
+                  label="Nơi giao"
+                  value={result.deliveryLocation}
+                  confidence={result.deliveryConfidence || 0}
+                  threshold={CONFIDENCE_THRESHOLD.delivery}
+                  editValue={edits.deliveryLocation}
+                  onEditChange={updateEdit('deliveryLocation')}
+                  isLow={Number(result.deliveryConfidence || 0) > 0 && Number(result.deliveryConfidence || 0) < CONFIDENCE_THRESHOLD.delivery}
+                />
               </div>
-              <div className="px-4 py-3">
-                <span className="text-xs font-medium text-muted-foreground">Trọng lượng hàng</span>
-                <div className="flex gap-2 mt-1.5">
-                  <Input
-                    value={edits.qtyExtracted}
-                    onChange={(e) => updateEdit('qtyExtracted')(e.target.value)}
-                    placeholder="Trọng lượng"
-                    type="number"
-                    className="flex-1"
-                    disabled={!canEdit}
-                  />
-                  <Input
-                    value={edits.qtyUom}
-                    onChange={(e) => updateEdit('qtyUom')(e.target.value)}
-                    placeholder="ĐVT"
-                    className="w-20"
-                    disabled={!canEdit}
-                  />
-                </div>
-                {(result.qtyConfidence || 0) > 0 && (
-                  <div className="mt-1.5">
-                    <ConfidenceBar value={result.qtyConfidence} threshold={CONFIDENCE_THRESHOLD.qty} />
+              <div className="px-4 py-3 space-y-3">
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Trọng lượng xe hàng</span>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      value={edits.grossWeight}
+                      onChange={(e) => updateEdit('grossWeight')(e.target.value)}
+                      placeholder="TL xe hàng"
+                      type="number"
+                      className="flex-1"
+                      disabled={!canEdit}
+                    />
+                    <Input
+                      value={edits.grossWeightUom}
+                      onChange={(e) => updateEdit('grossWeightUom')(e.target.value)}
+                      placeholder="ĐVT"
+                      className="w-20"
+                      disabled={!canEdit}
+                    />
                   </div>
-                )}
+                  {Number(result.grossWeightConfidence || 0) > 0 && (
+                    <div className="mt-1.5">
+                      <ConfidenceBar value={result.grossWeightConfidence} threshold={CONFIDENCE_THRESHOLD.grossWeight} />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Trọng lượng xe rỗng</span>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      value={edits.tareWeight}
+                      onChange={(e) => updateEdit('tareWeight')(e.target.value)}
+                      placeholder="TL xe rỗng"
+                      type="number"
+                      className="flex-1"
+                      disabled={!canEdit}
+                    />
+                    <Input
+                      value={edits.tareWeightUom}
+                      onChange={(e) => updateEdit('tareWeightUom')(e.target.value)}
+                      placeholder="ĐVT"
+                      className="w-20"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  {Number(result.tareWeightConfidence || 0) > 0 && (
+                    <div className="mt-1.5">
+                      <ConfidenceBar value={result.tareWeightConfidence} threshold={CONFIDENCE_THRESHOLD.tareWeight} />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Trọng lượng hàng</span>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      value={edits.qtyExtracted}
+                      onChange={(e) => updateEdit('qtyExtracted')(e.target.value)}
+                      placeholder="TL hàng"
+                      type="number"
+                      className="flex-1"
+                      disabled={!canEdit}
+                    />
+                    <Input
+                      value={edits.qtyUom}
+                      onChange={(e) => updateEdit('qtyUom')(e.target.value)}
+                      placeholder="ĐVT"
+                      className="w-20"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  {Number(result.qtyConfidence || 0) > 0 && (
+                    <div className="mt-1.5">
+                      <ConfidenceBar value={result.qtyConfidence} threshold={CONFIDENCE_THRESHOLD.qty} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

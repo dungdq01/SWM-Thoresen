@@ -9,6 +9,16 @@ export interface ParsedOcrFields {
   productConfidence: number;
   vesselName?: string;
   vesselConfidence: number;
+  customerName?: string;
+  customerConfidence: number;
+  deliveryLocation?: string;
+  deliveryConfidence: number;
+  grossWeight?: number;
+  grossWeightUom?: string;
+  grossWeightConfidence: number;
+  tareWeight?: number;
+  tareWeightUom?: string;
+  tareWeightConfidence: number;
   qtyExtracted?: number;
   qtyUom?: string;
   qtyConfidence: number;
@@ -24,199 +34,360 @@ export class OcrFieldParserService {
       vehicleConfidence: 0,
       productConfidence: 0,
       vesselConfidence: 0,
+      customerConfidence: 0,
+      deliveryConfidence: 0,
+      grossWeightConfidence: 0,
+      tareWeightConfidence: 0,
       qtyConfidence: 0,
     };
 
-    result.blNumber = this.extractBlNumber(fullText);
+    const lines = fullText.split('\n').map((l) => l.trim());
+
+    // Build a label→value map using line-by-line pairing
+    // Vision API outputs labels and values in spatial order:
+    //   "Biển số:" (label-only line)
+    //   "Tàu:" (label-only line)
+    //   "Số phiếu: 222510080233" (label+value on same line)
+    //   "72H05214" (orphan value for "Biển số")
+    //   "LAN NING 15" (orphan value for "Tàu")
+    const labelMap = this.buildLabelValueMap(lines);
+
+    this.logger.log(`Label map: ${JSON.stringify(Object.fromEntries(labelMap))}`);
+
+    // --- Số phiếu ---
+    result.blNumber = this.resolveField(labelMap, fullText, [
+      { mapKeys: ['số phiếu'] },
+      { regex: /S[oố]\s*phi[eế]u[:\s]+(\d{6,})/i },
+      { regex: /S[oố]\s*phi[eế]u[:\s]+([A-Z0-9\-]{5,})/i },
+      { regex: /V[aậ]n\s*đ[oơ]n[:\s]*([A-Z0-9\-/]{5,})/i },
+      { regex: /B\/L\s*No[.:\s]*([A-Z0-9\-]+)/i },
+    ]);
     result.blConfidence = this.calcConfidence(result.blNumber, 'bl');
 
-    result.vehicleNumber = this.extractVehicleNumber(fullText);
+    // --- Biển số xe ---
+    result.vehicleNumber = this.resolveField(labelMap, fullText, [
+      { mapKeys: ['biển số', 'biển số xe', 'số xe'] },
+    ]);
+    // Fallback: find plate pattern directly in text
+    if (!result.vehicleNumber) {
+      const plateMatch = fullText.match(/\b(\d{2}[A-Z]\d?\d{4,5})\b/) ||
+        fullText.match(/\b(\d{2}[A-Z]\d?[-]\d{3,5})\b/i);
+      if (plateMatch?.[1]) result.vehicleNumber = plateMatch[1];
+    }
+    if (result.vehicleNumber) {
+      result.vehicleNumber = result.vehicleNumber.replace(/\s+/g, '').toUpperCase();
+    }
     result.vehicleConfidence = this.calcConfidence(result.vehicleNumber, 'vehicle');
 
-    result.productName = this.extractProductName(fullText);
+    // --- Hàng hóa ---
+    // Note: Vision API may group "Salan:" with "Hàng hoá:" — Salan can steal the product value
+    result.productName = this.resolveField(labelMap, fullText, [
+      { mapKeys: ['hàng hoá', 'hàng hóa', 'tên hàng', 'mặt hàng', 'sản phẩm', 'salan'] },
+      { regex: /H[aà]ng\s*h[oóòỏõọôốồổỗộ][aáàảãạ][:\s]+([^\n]+)/i },
+    ]);
+    if (result.productName) {
+      result.productName = result.productName.split(/\s{2,}|V[aậ]n\s*đ[oơ]n|Lo[aạ]i\s*h[aà]ng/i)[0].trim();
+    }
     result.productConfidence = this.calcConfidence(result.productName, 'product');
 
-    result.vesselName = this.extractVesselName(fullText);
+    // --- Tên tàu ---
+    result.vesselName = this.resolveField(labelMap, fullText, [
+      { mapKeys: ['tàu', 'tên tàu'] },
+      { regex: /(?:Vessel|M\/V|MV)[:\s]*([^\n,]+)/i },
+    ]);
+    if (result.vesselName) {
+      result.vesselName = result.vesselName.split(/\s{2,}|Kho|Salan|Bãi/i)[0].trim();
+      if (result.vesselName.length <= 2) result.vesselName = undefined;
+    }
     result.vesselConfidence = this.calcConfidence(result.vesselName, 'vessel');
 
-    const qty = this.extractQuantity(fullText);
-    if (qty) {
-      result.qtyExtracted = qty.value;
-      result.qtyUom = qty.uom;
-      result.qtyConfidence = qty.confidence;
+    // --- Khách hàng ---
+    result.customerName = this.resolveField(labelMap, fullText, [
+      { mapKeys: ['chủ hàng', 'khách hàng'] },
+      { regex: /Ch[uủ]\s*h[aà]ng[:\s]+([^\n]+)/i },
+      { regex: /(?:Consignee|Shipper|Customer)[:\s]*([^\n]+)/i },
+    ]);
+    result.customerConfidence = this.calcConfidence(result.customerName, 'customer');
+
+    // --- Nơi giao (Đích/Nguồn) ---
+    result.deliveryLocation = this.resolveField(labelMap, fullText, [
+      { mapKeys: ['đích', 'nơi giao', 'nguồn'] },
+      { regex: /(?:Port\s*of\s*Discharge|Destination)[:\s]*([^\n]+)/i },
+    ]);
+    // Filter out false positives
+    if (result.deliveryLocation && (
+      /^C[aâ]n\s*xe/i.test(result.deliveryLocation) ||       // weight label
+      /^\d{2}\/\d{2}\/\d{4}/.test(result.deliveryLocation) || // timestamp
+      /^\d[\d.,]+\s*\(?(kg|MT|ton)/i.test(result.deliveryLocation) // weight value
+    )) {
+      result.deliveryLocation = undefined;
+    }
+    result.deliveryConfidence = this.calcConfidence(result.deliveryLocation, 'delivery');
+
+    // --- Weights: use positional extraction ---
+    // Vision API outputs weight values in order: gross, tare, net
+    // Pattern: "Cân xe hàng:\nCân xe rỗng:\n36.020 (kg)...\n18.580 (kg)...\nTrọng lượng hàng:\n17.440 (kg)"
+    const weights = this.extractAllWeights(lines);
+    if (weights.gross) {
+      result.grossWeight = weights.gross.value;
+      result.grossWeightUom = weights.gross.uom;
+      result.grossWeightConfidence = weights.gross.confidence;
+    }
+    if (weights.tare) {
+      result.tareWeight = weights.tare.value;
+      result.tareWeightUom = weights.tare.uom;
+      result.tareWeightConfidence = weights.tare.confidence;
+    }
+    if (weights.net) {
+      result.qtyExtracted = weights.net.value;
+      result.qtyUom = weights.net.uom;
+      result.qtyConfidence = weights.net.confidence;
     }
 
     this.logger.log(
-      `Parsed fields: BL=${result.blNumber || 'N/A'}, Vehicle=${result.vehicleNumber || 'N/A'}, ` +
+      `Parsed: BL=${result.blNumber || 'N/A'}, Vehicle=${result.vehicleNumber || 'N/A'}, ` +
       `Product=${result.productName || 'N/A'}, Vessel=${result.vesselName || 'N/A'}, ` +
-      `Qty=${result.qtyExtracted || 'N/A'} ${result.qtyUom || ''}`,
+      `Customer=${result.customerName || 'N/A'}, Delivery=${result.deliveryLocation || 'N/A'}, ` +
+      `Gross=${result.grossWeight || 'N/A'} ${result.grossWeightUom || ''}, ` +
+      `Tare=${result.tareWeight || 'N/A'} ${result.tareWeightUom || ''}, ` +
+      `Net=${result.qtyExtracted || 'N/A'} ${result.qtyUom || ''}`,
     );
 
     return result;
   }
 
-  private extractBlNumber(text: string): string | undefined {
-    // Vietnamese weighbridge ticket: "Số phiếu: 222510080233" or "Số phiếu:\n222510080233"
-    const blPatterns = [
-      /S[oố]\s*phi[eế]u[:\s]+(\d{6,})/i,
-      /S[oố]\s*phi[eế]u\s*:\s*\n\s*(\d{6,})/i,
-      /S[oố]\s*phi[eế]u[:\s]+([A-Z0-9\-]{5,})/i,
-      /V[aậ]n\s*đ[oơ]n[:\s]*([A-Z0-9\-/]{5,})/i,
-      /V[aậ]n\s*đ[oơ]n\s*:\s*\n\s*([A-Z0-9\-/]{5,})/i,
-      /B\/L\s*No[.:\s]*([A-Z0-9\-]+)/i,
-      /BL\s*No[.:\s]*([A-Z0-9\-]+)/i,
-    ];
+  /**
+   * Build a map of label→value from Vision API line output.
+   * Handles: "Label: Value" on same line, and "Label:" followed by value on a later line.
+   * For empty labels, values are resolved by scanning forward past other empty labels.
+   */
+  private buildLabelValueMap(lines: string[]): Map<string, string> {
+    const map = new Map<string, string>();
+    const emptyLabels: { label: string; lineIndex: number }[] = [];
 
-    for (const pattern of blPatterns) {
-      const match = text.match(pattern);
-      if (match?.[1]) {
-        return match[1].trim();
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+
+      // "Label: Value" on same line (but not just "Label:")
+      const sameLineMatch = line.match(/^([^:]+):\s+(.+)$/);
+      if (sameLineMatch) {
+        const label = sameLineMatch[1].trim().toLowerCase();
+        const value = sameLineMatch[2].trim();
+        // Skip if value is just another label ending with ":"
+        if (!value.endsWith(':') && value.length > 0) {
+          map.set(label, value);
+          continue;
+        }
+      }
+
+      // "Label:" on its own (empty value)
+      const emptyLabelMatch = line.match(/^([^:]+):\s*$/);
+      if (emptyLabelMatch) {
+        emptyLabels.push({ label: emptyLabelMatch[1].trim().toLowerCase(), lineIndex: i });
+        continue;
       }
     }
-    return undefined;
+
+    // Resolve empty labels: find their values by scanning forward
+    // Vision API groups labels first, then values in same order
+    // E.g. lines: ["Biển số:", "Tàu:", "Số phiếu: 222510080233", "72H05214", "LAN NING 15"]
+    // → "Biển số" = "72H05214", "Tàu" = "LAN NING 15"
+    this.resolveEmptyLabels(lines, emptyLabels, map);
+
+    return map;
   }
 
-  private extractVehicleNumber(text: string): string | undefined {
-    // Vietnamese weighbridge ticket: "Biển số: 72H05214" or "Biển số:\n72H05214"
-    // Plate formats: 72H05214, 51A-12345, 60H-123.45, 29B1-12345
-    const vehiclePatterns = [
-      /(?:Bi[eể]n\s*s[oố](?:\s*xe)?)[:\s]+(\d{2}[A-Z]\d?[\s\-.]?\d{3,5}(?:\.\d{2})?)/i,
-      /(?:Bi[eể]n\s*s[oố](?:\s*xe)?)\s*:\s*\n\s*(\d{2}[A-Z]\d?[\s\-.]?\d{3,5}(?:\.\d{2})?)/i,
-      /(?:S[oố]\s*xe)[:\s]+(\d{2}[A-Z]\d?[\s\-.]?\d{3,5}(?:\.\d{2})?)/i,
-      /(?:S[oố]\s*xe)\s*:\s*\n\s*(\d{2}[A-Z]\d?[\s\-.]?\d{3,5}(?:\.\d{2})?)/i,
-      /(?:Vehicle|Plate)[:\s]*(\d{2}[A-Z]\d?[\s\-.]?\d{3,5}(?:\.\d{2})?)/i,
-      /\b(\d{2}[A-Z]\d?[-]\d{3,5}(?:\.\d{2})?)\b/i,
-      // Fallback: direct plate pattern (no dash, e.g. 72H05214) — for Vision API split-line output
-      /\b(\d{2}[A-Z]\d?\d{4,5})\b/,
-    ];
+  private resolveEmptyLabels(
+    lines: string[],
+    emptyLabels: { label: string; lineIndex: number }[],
+    map: Map<string, string>,
+  ): void {
+    if (emptyLabels.length === 0) return;
 
-    for (const pattern of vehiclePatterns) {
-      const match = text.match(pattern);
-      if (match?.[1]) {
-        return match[1].trim().replace(/\s+/g, '').toUpperCase();
+    // Classify each line
+    const lineTypes: ('empty-label' | 'same-line' | 'orphan' | 'other')[] = lines.map(() => 'other');
+    const emptyLabelIndices = new Set(emptyLabels.map((el) => el.lineIndex));
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      if (emptyLabelIndices.has(i)) {
+        lineTypes[i] = 'empty-label';
+      } else if (/^[^:]+:\s+.+$/.test(line)) {
+        lineTypes[i] = 'same-line'; // "Label: Value" — already in map
+      } else {
+        lineTypes[i] = 'orphan'; // Potential value for an empty label
       }
     }
-    return undefined;
+
+    // For each empty label, find its paired orphan value.
+    // Vision API spatial grouping: consecutive empty labels share orphan values
+    // that appear after the block of labels (and after any interleaved same-line pairs).
+    // Strategy: group truly consecutive empty labels (gap=1), then collect orphans after.
+    const consumed = new Set<number>();
+
+    // Group consecutive empty labels (strict: adjacent lines only)
+    const groups: { label: string; lineIndex: number }[][] = [];
+    let curGroup: { label: string; lineIndex: number }[] = [emptyLabels[0]];
+
+    for (let i = 1; i < emptyLabels.length; i++) {
+      if (emptyLabels[i].lineIndex - emptyLabels[i - 1].lineIndex === 1) {
+        curGroup.push(emptyLabels[i]);
+      } else {
+        groups.push(curGroup);
+        curGroup = [emptyLabels[i]];
+      }
+    }
+    groups.push(curGroup);
+
+    // Build set of line indices in each group for fast lookup
+    const groupMemberLines = new Set<number>();
+    for (const g of groups) {
+      for (const el of g) groupMemberLines.add(el.lineIndex);
+    }
+
+    for (const group of groups) {
+      const groupLineSet = new Set(group.map((el) => el.lineIndex));
+      const lastLabelIdx = group[group.length - 1].lineIndex;
+      const orphans: { lineIdx: number; value: string }[] = [];
+
+      // Scan forward from after the last label in this group
+      for (let i = lastLabelIdx + 1; i < lines.length && orphans.length < group.length; i++) {
+        if (consumed.has(i)) continue;
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // STOP if we hit an empty-label from a DIFFERENT group
+        if (lineTypes[i] === 'empty-label' && !groupLineSet.has(i)) break;
+        // Skip same-line "Label: Value" pairs (already resolved)
+        if (lineTypes[i] === 'same-line') continue;
+
+        // This is an orphan value — collect it
+        orphans.push({ lineIdx: i, value: line });
+      }
+
+      // Pair: labels[0]→orphans[0], labels[1]→orphans[1], etc.
+      for (let i = 0; i < Math.min(group.length, orphans.length); i++) {
+        if (!map.has(group[i].label)) {
+          map.set(group[i].label, orphans[i].value);
+          consumed.add(orphans[i].lineIdx);
+        }
+      }
+    }
   }
 
-  private extractProductName(text: string): string | undefined {
-    // Vietnamese weighbridge ticket: "Hàng hóa: UREA" or "Hàng hoá:\nUREA"
-    // Note: Vision API may return "hoá" (with accent on a) instead of "hóa"
-    const productPatterns = [
-      /H[aà]ng\s*h[oóòỏõọôốồổỗộ][aáàảãạ][:\s]+([^\n]+)/i,
-      /H[aà]ng\s*h[oóòỏõọôốồổỗộ][aáàảãạ]\s*:\s*\n\s*([^\n]+)/i,
-      /T[eê]n\s*h[aà]ng[:\s]+([^\n]+)/i,
-      /T[eê]n\s*h[aà]ng\s*:\s*\n\s*([^\n]+)/i,
-      /M[aặ]t\s*h[aà]ng[:\s]+([^\n]+)/i,
-      /S[aả]n\s*ph[aẩ]m[:\s]+([^\n]+)/i,
-      /(?:Description\s*of\s*Goods|Commodity|Goods|Product)[:\s]*([^\n]+)/i,
-    ];
-
-    for (const pattern of productPatterns) {
-      const match = text.match(pattern);
-      if (match?.[1]) {
-        let name = match[1].trim();
-        // Clean: remove trailing labels
-        name = name.split(/\s{2,}|V[aậ]n\s*đ[oơ]n|Lo[aạ]i\s*h[aà]ng/i)[0].trim();
-        if (name.length >= 2 && name.length < 200) {
-          return name;
+  /**
+   * Resolve a field value: first try label map, then fallback to regex on full text.
+   */
+  private resolveField(
+    labelMap: Map<string, string>,
+    fullText: string,
+    strategies: Array<{ mapKeys?: string[]; regex?: RegExp }>,
+  ): string | undefined {
+    for (const strategy of strategies) {
+      if (strategy.mapKeys) {
+        for (const key of strategy.mapKeys) {
+          const val = labelMap.get(key);
+          if (val && val.length >= 1) return val;
+        }
+      }
+      if (strategy.regex) {
+        const match = fullText.match(strategy.regex);
+        if (match?.[1]) {
+          const val = match[1].trim();
+          if (val.length >= 1) return val;
         }
       }
     }
     return undefined;
   }
 
-  private extractVesselName(text: string): string | undefined {
-    // Vietnamese weighbridge ticket: "Tàu: LAN NING 15"
-    const vesselPatterns = [
-      /T[aà]u[:\s]+([^\n,]+)/i,
-      /(?:Vessel|M\/V|MV)[:\s]*([^\n,]+)/i,
-      /(?:Ship)[:\s]*([^\n,]+)/i,
-    ];
+  /**
+   * Extract all 3 weight values (gross, tare, net) using positional approach.
+   * Vision API outputs: "Cân xe hàng:\nCân xe rỗng:\n36.020 (kg)...\n18.580 (kg)...\nTrọng lượng hàng:\n17.440 (kg)"
+   * Strategy: find weight label positions, then find weight values, pair by position.
+   */
+  private extractAllWeights(lines: string[]): {
+    gross?: { value: number; uom: string; confidence: number };
+    tare?: { value: number; uom: string; confidence: number };
+    net?: { value: number; uom: string; confidence: number };
+  } {
+    const result: any = {};
 
-    for (const pattern of vesselPatterns) {
-      const match = text.match(pattern);
-      if (match?.[1]) {
-        // Clean: remove trailing labels like "Kho/bãi:", "Salan:" etc.
-        let name = match[1].trim();
-        name = name.split(/\s{2,}|Kho|Salan|Bãi/i)[0].trim();
-        if (name.length > 2 && name.length < 100) {
-          return name;
-        }
-      }
+    // Find label line indices
+    let grossLabelIdx = -1;
+    let tareLabelIdx = -1;
+    let netLabelIdx = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+      if (/c[aâ]n\s*xe\s*h[aà]ng/.test(line)) grossLabelIdx = i;
+      else if (/c[aâ]n\s*xe\s*r[oỗ]ng/.test(line)) tareLabelIdx = i;
+      else if (/tr[oọ]ng\s*l[uư][oợ]ng\s*h[aà]ng/.test(line)) netLabelIdx = i;
     }
-    return undefined;
-  }
 
-  private extractQuantity(text: string): { value: number; uom: string; confidence: number } | undefined {
-    // Vietnamese weighbridge ticket: "Trọng lượng hàng: 17.440 (kg)" or "Trọng lượng hàng:\n17.440 (kg)"
-    // Note: Vietnamese uses dot as thousands separator: "17.440" = 17440 kg
-    const qtyPatterns = [
-      // Priority 1: "Trọng lượng hàng" same line
-      /Tr[oọ]ng\s*l[uư][oợ]ng\s*h[aà]ng[:\s]*([\d.,]+)\s*\(?([kK][gG]|MT|[tT][aấ]n|TON)\)?/i,
-      // Priority 1b: "Trọng lượng hàng" next line
-      /Tr[oọ]ng\s*l[uư][oợ]ng\s*h[aà]ng\s*:\s*\n\s*([\d.,]+)\s*\(?([kK][gG]|MT|[tT][aấ]n|TON)\)?/i,
-      // Priority 2: Generic weight labels
-      /(?:Net\s*Weight|Tr[oọ]ng\s*l[uư][oợ]ng\s*t[iị]nh|Tr[oọ]ng\s*l[uư][oợ]ng)[:\s]*([\d.,]+)\s*\(?([kK][gG]|MT|[tT][aấ]n|TON)\)?/i,
-      /(?:Net\s*Weight|Tr[oọ]ng\s*l[uư][oợ]ng)\s*:\s*\n\s*([\d.,]+)\s*\(?([kK][gG]|MT|[tT][aấ]n|TON)\)?/i,
-      // Priority 3: General quantity/weight
-      /(?:Quantity|S[oố]\s*l[uư][oợ]ng|Weight|Gross\s*Weight)[:\s]*([\d.,]+)\s*\(?([kK][gG]|MT|[tT][aấ]n|TON|TONS?|CBM|PCS|PKGS?)\)?/i,
-    ];
-
-    for (const pattern of qtyPatterns) {
-      const match = text.match(pattern);
+    // Find all weight values: lines matching "XX.XXX (kg)" pattern
+    const weightValues: { lineIdx: number; value: number; uom: string }[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const match = lines[i].match(/([\d.,]+)\s*\(?(kg|KG|[tT][aấ]n|TON|MT)\)?/i);
       if (match?.[1] && match?.[2]) {
-        // Parse Vietnamese number format: "17.440" (dot as thousands sep) → 17440
-        const raw = this.parseVietnameseNumber(match[1]);
-        if (!isNaN(raw) && raw > 0) {
-          const uom = this.normalizeUom(match[2]);
-          return { value: raw, uom, confidence: 92 };
+        const val = this.parseVietnameseNumber(match[1]);
+        if (!isNaN(val) && val > 0) {
+          weightValues.push({ lineIdx: i, value: val, uom: this.normalizeUom(match[2]) });
         }
       }
     }
-    return undefined;
+
+    this.logger.log(`Weight labels: gross=${grossLabelIdx}, tare=${tareLabelIdx}, net=${netLabelIdx}`);
+    this.logger.log(`Weight values found: ${JSON.stringify(weightValues)}`);
+
+    // Pair: each label gets the closest weight value AFTER it
+    const assignWeight = (labelIdx: number): { value: number; uom: string; confidence: number } | undefined => {
+      if (labelIdx < 0) return undefined;
+      // Find the first weight value after this label that hasn't been assigned yet
+      for (const wv of weightValues) {
+        if (wv.lineIdx > labelIdx && !(wv as any)._used) {
+          (wv as any)._used = true;
+          return { value: wv.value, uom: wv.uom, confidence: 92 };
+        }
+      }
+      return undefined;
+    };
+
+    // Assign in order: gross first, then tare, then net
+    result.gross = assignWeight(grossLabelIdx);
+    result.tare = assignWeight(tareLabelIdx);
+    result.net = assignWeight(netLabelIdx);
+
+    return result;
   }
 
   private parseVietnameseNumber(numStr: string): number {
-    // Vietnamese format: dot = thousands separator, comma = decimal
-    // "17.440" → 17440, "17,440" → 17440, "36.020" → 36020, "1.234,56" → 1234.56
     const trimmed = numStr.trim();
-
-    // If has both dot and comma: "1.234,56" → dot is thousands, comma is decimal
     if (trimmed.includes('.') && trimmed.includes(',')) {
       return parseFloat(trimmed.replace(/\./g, '').replace(',', '.'));
     }
-
-    // If only dot: check if it's thousands separator (e.g. "17.440") or decimal (e.g. "17.5")
     if (trimmed.includes('.')) {
       const parts = trimmed.split('.');
-      const lastPart = parts[parts.length - 1];
-      // If last part has exactly 3 digits → dot is thousands separator
-      if (lastPart.length === 3) {
+      if (parts[parts.length - 1].length === 3) {
         return parseFloat(trimmed.replace(/\./g, ''));
       }
-      // Otherwise treat as decimal point
       return parseFloat(trimmed);
     }
-
-    // If only comma: treat as thousands separator (e.g. "17,440" → 17440)
     if (trimmed.includes(',')) {
       const parts = trimmed.split(',');
-      const lastPart = parts[parts.length - 1];
-      if (lastPart.length === 3) {
+      if (parts[parts.length - 1].length === 3) {
         return parseFloat(trimmed.replace(/,/g, ''));
       }
       return parseFloat(trimmed.replace(',', '.'));
     }
-
     return parseFloat(trimmed);
   }
 
   private normalizeUom(uom: string): string {
     const upper = uom.toUpperCase();
-    if (['TẤN', 'TON', 'TONS', 'MT'].includes(upper) || uom === 'Tấn' || uom === 'tấn') {
-      return 'MT';
-    }
+    if (['TẤN', 'TON', 'TONS', 'MT'].includes(upper) || uom === 'Tấn' || uom === 'tấn') return 'MT';
     if (upper === 'KG') return 'KG';
     if (upper === 'CBM') return 'CBM';
     if (upper === 'PCS' || upper === 'PKGS') return 'PCS';
@@ -225,17 +396,14 @@ export class OcrFieldParserService {
 
   private calcConfidence(value: string | undefined, fieldType: string): number {
     if (!value) return 0;
-
     switch (fieldType) {
       case 'bl': {
-        // Số phiếu numeric (e.g. "222510080233") → high confidence
         if (/^\d{8,}$/.test(value)) return 95;
         if (/^[A-Z]{2,4}[-]?\d{4,}/.test(value)) return 96;
         if (/^[A-Z0-9\-]{5,}$/.test(value)) return 92;
         return 78;
       }
       case 'vehicle': {
-        // 72H05214 (no dash) or 51A-12345 (with dash)
         if (/^\d{2}[A-Z]\d?[-]?\d{3,5}$/.test(value)) return 95;
         return 80;
       }
@@ -248,6 +416,16 @@ export class OcrFieldParserService {
         if (/^(MV|M\/V)\s/i.test(value)) return 93;
         if (value.length > 3) return 87;
         return 72;
+      }
+      case 'customer': {
+        if (value.length > 5) return 90;
+        if (value.length >= 2) return 82;
+        return 75;
+      }
+      case 'delivery': {
+        if (value.length > 3) return 88;
+        if (value.length >= 1) return 80;
+        return 70;
       }
       default:
         return 80;
