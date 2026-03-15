@@ -12,6 +12,7 @@ import {
   FilterBar,
   StatusBadge,
   LocationStatusBadge,
+  LocationTypeBadge,
   ActionMenu,
   DeactivateModal,
   ReactivateModal,
@@ -24,7 +25,6 @@ import {
   LOCATION_TYPES,
 } from '@domains/master-data'
 import { LocationFormDrawer } from '@features/master-data'
-import { Badge } from '@shared/ui'
 
 const STATUS_OPTIONS = [
   { value: 'true', label: 'Hoạt động' },
@@ -150,7 +150,7 @@ export function LocationsPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã vị trí</TableHead>
             <TableHead>Kho / Zone</TableHead>
-            <TableHead>Loại</TableHead>
+            <TableHead align="center">Loại</TableHead>
             <TableHead>Diện tích</TableHead>
             <TableHead>Sức chứa</TableHead>
             <TableHead align="center">Trạng thái vị trí</TableHead>
@@ -164,8 +164,8 @@ export function LocationsPage() {
               <TableRow key={loc.id} onClick={() => setDrawerState({ isOpen: true, data: loc })}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
-                      <MapPin className="w-4 h-4 text-cyan-600" />
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                     </div>
                     <span className="font-medium text-navy-900">{loc.locationCode}</span>
                   </div>
@@ -176,10 +176,8 @@ export function LocationsPage() {
                     <p className="text-navy-500">{loc.zone?.zoneCode || '—'}</p>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="neutral">
-                    {LOCATION_TYPES.find((t) => t.value === loc.locationType)?.label || loc.locationType}
-                  </Badge>
+                <TableCell align="center">
+                  <LocationTypeBadge type={loc.locationType} />
                 </TableCell>
                 <TableCell>
                   <span className="text-navy-700">

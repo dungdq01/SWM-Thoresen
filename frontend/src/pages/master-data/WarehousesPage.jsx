@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Warehouse, Eye } from 'lucide-react'
+import { Warehouse } from 'lucide-react'
 import {
   useWarehouseList,
   useCreateWarehouse,
@@ -177,7 +177,7 @@ export function WarehousesPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã kho</TableHead>
             <TableHead>Tên kho</TableHead>
-            <TableHead>Loại</TableHead>
+            <TableHead align="center">Loại</TableHead>
             <TableHead>Sức chứa</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -192,8 +192,8 @@ export function WarehousesPage() {
                     onClick={() => navigate(`/app/master-data/warehouses/${wh.id}`)}
                     className="flex items-center gap-2 group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                      <Warehouse className="w-4 h-4 text-emerald-600" />
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                      <Warehouse className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <span className="font-medium text-navy-900 group-hover:text-blue-600 transition-colors">{wh.warehouseCode}</span>
                   </button>
@@ -206,7 +206,7 @@ export function WarehousesPage() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell align="center">
                   <WarehouseTypeBadge type={wh.warehouseType} />
                 </TableCell>
                 <TableCell>

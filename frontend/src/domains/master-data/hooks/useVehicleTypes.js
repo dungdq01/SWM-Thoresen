@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vehicleTypeApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useVehicleTypeList(filters = {}) {
   return useQuery({
@@ -30,7 +31,7 @@ export function useCreateVehicleType() {
       toast.success('Tạo loại phương tiện thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo loại phương tiện')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -47,11 +48,7 @@ export function useUpdateVehicleType() {
       toast.success('Cập nhật loại phương tiện thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật loại phương tiện')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -68,7 +65,7 @@ export function useDeactivateVehicleType() {
       toast.success('Đã ngừng hoạt động loại phương tiện')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động loại phương tiện')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -85,7 +82,7 @@ export function useReactivateVehicleType() {
       toast.success('Đã kích hoạt lại loại phương tiện')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại loại phương tiện')
+      toast.error(parseApiError(error))
     },
   })
 }

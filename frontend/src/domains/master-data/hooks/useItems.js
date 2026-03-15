@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { itemApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useItemNextCode(enabled = false) {
   return useQuery({
@@ -39,11 +40,7 @@ export function useCreateItem() {
       toast.success('Tạo mặt hàng thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error(error?.error?.message || 'Mã mặt hàng đã tồn tại. Vui lòng chọn mã khác.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể tạo mặt hàng')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -60,11 +57,7 @@ export function useUpdateItem() {
       toast.success('Cập nhật mặt hàng thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật mặt hàng')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -81,7 +74,7 @@ export function useDeactivateItem() {
       toast.success('Đã ngừng hoạt động mặt hàng')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động mặt hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -98,7 +91,7 @@ export function useReactivateItem() {
       toast.success('Đã kích hoạt lại mặt hàng')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại mặt hàng')
+      toast.error(parseApiError(error))
     },
   })
 }

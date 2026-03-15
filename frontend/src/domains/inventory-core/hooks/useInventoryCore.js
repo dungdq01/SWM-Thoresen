@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 import { inventoryCoreApi } from '../api/inventoryCore.api'
 
 const QUERY_KEYS = {
@@ -96,7 +97,7 @@ export function useCreatePosting() {
       toast.success('Đã post inventory transaction')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể post transaction')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -112,22 +113,11 @@ export function useReversePosting() {
       toast.success('Đã reverse transaction')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể reverse transaction')
+      toast.error(parseApiError(error))
     },
   })
 }
 
-const HOLD_ERROR_MESSAGES = {
-  INV_INSUFFICIENT_STOCK: 'Mặt hàng không đủ tồn kho khả dụng để giữ. Vui lòng kiểm tra lại số lượng hoặc chọn mặt hàng khác.',
-  INV_STATUS_NOT_ALLOCATABLE: 'Trạng thái tồn kho không cho phép giữ hàng.',
-  INV_HOLD_NOT_FOUND: 'Không tìm thấy bản ghi giữ hàng.',
-  INV_HOLD_INSUFFICIENT_QTY: 'Số lượng giải phóng vượt quá số lượng đang giữ.',
-  VALIDATION_ERROR: 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại các trường bắt buộc.',
-}
-
-function getHoldErrorMessage(error, fallback) {
-  return HOLD_ERROR_MESSAGES[error?.error] || error?.message || fallback
-}
 
 export function useCreateHold() {
   const queryClient = useQueryClient()
@@ -140,7 +130,7 @@ export function useCreateHold() {
       toast.success('Đã tạo giữ hàng thành công')
     },
     onError: (error) => {
-      toast.error(getHoldErrorMessage(error, 'Không thể tạo giữ hàng'))
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -156,7 +146,7 @@ export function useReleaseHold() {
       toast.success('Đã giải phóng giữ hàng thành công')
     },
     onError: (error) => {
-      toast.error(getHoldErrorMessage(error, 'Không thể giải phóng giữ hàng'))
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -172,7 +162,7 @@ export function useCancelHold() {
       toast.success('Đã hủy giữ hàng thành công')
     },
     onError: (error) => {
-      toast.error(getHoldErrorMessage(error, 'Không thể hủy giữ hàng'))
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -215,7 +205,7 @@ export function useCreateReconciliationRun() {
       toast.success('Đã tạo phiên đối soát tồn kho')
     },
     onError: (error) => {
-      toast.error(error?.message || 'Không thể tạo phiên đối soát')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -230,7 +220,7 @@ export function useReviewReconciliationResult() {
       toast.success('Đã đánh dấu kết quả là đã xem xét')
     },
     onError: (error) => {
-      toast.error(error?.message || 'Không thể cập nhật trạng thái')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -245,7 +235,7 @@ export function useResolveReconciliationResult() {
       toast.success('Đã xử lý xong chênh lệch')
     },
     onError: (error) => {
-      toast.error(error?.message || 'Không thể cập nhật trạng thái')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -289,7 +279,7 @@ export function useCreateSnapshotRun() {
       toast.success('Đã tạo phiên chụp tồn kho')
     },
     onError: (error) => {
-      toast.error(error?.message || 'Không thể tạo phiên chụp tồn kho')
+      toast.error(parseApiError(error))
     },
   })
 }

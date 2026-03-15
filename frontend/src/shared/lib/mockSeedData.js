@@ -71,6 +71,98 @@ export const recentActivities = [
 ]
 
 // ============================================================
+// Exception Items — Exception-First Dashboard (UX Principle #2)
+// Priority: critical > high > medium
+// Status dùng workflow color spec: delayed | transit | draft | planned | completed
+// ============================================================
+export const exceptionItems = [
+  {
+    id: 'exc-1',
+    priority: 'critical',
+    category: 'outbound',
+    title: 'Lô hàng OUT-2403-089 trễ hạn giao',
+    description: 'Đơn hàng Vingroup #VG-2403-089 đã quá deadline 4 giờ. Cần xử lý ngay.',
+    status: 'delayed',
+    ref: 'OUT-2403-089',
+    customer: 'Vingroup',
+    dueLabel: 'Trễ 4h',
+    action: 'Xem lô hàng',
+    actionPath: '/app/outbound-operations/shipments',
+    ts: Date.now() - 4 * 3600000,
+  },
+  {
+    id: 'exc-2',
+    priority: 'critical',
+    category: 'inventory',
+    title: '3 SKU tồn kho dưới mức an toàn',
+    description: 'SKU BD-6205, VB-SKF-005, DN-SHELL-003 đang dưới min stock. Nguy cơ gián đoạn sản xuất.',
+    status: 'delayed',
+    ref: '3 SKUs',
+    customer: 'Kho A, B',
+    dueLabel: 'Cần PO ngay',
+    action: 'Xem tồn kho',
+    actionPath: '/app/inventory-core/on-hand',
+    ts: Date.now() - 2 * 3600000,
+  },
+  {
+    id: 'exc-3',
+    priority: 'high',
+    category: 'inbound',
+    title: 'Phiếu nhập PO-2403-112 chờ xác nhận 6h',
+    description: 'NCC Samsung giao hàng 09:00. Chưa có GRN. Ảnh hưởng lịch xuất kho chiều.',
+    status: 'transit',
+    ref: 'PO-2403-112',
+    customer: 'Samsung VN',
+    dueLabel: 'Chờ 6h',
+    action: 'Tạo GRN',
+    actionPath: '/app/inbound-operations/receipts',
+    ts: Date.now() - 6 * 3600000,
+  },
+  {
+    id: 'exc-4',
+    priority: 'high',
+    category: 'work',
+    title: '12 Work task chưa được phân công',
+    description: 'Zone B-3 có 12 task picking chờ phân công. Shift hiện tại chỉ còn 2h.',
+    status: 'draft',
+    ref: '12 tasks',
+    customer: 'Zone B-3',
+    dueLabel: 'Còn 2h',
+    action: 'Phân công',
+    actionPath: '/app/work-execution/queue',
+    ts: Date.now() - 30 * 60000,
+  },
+  {
+    id: 'exc-5',
+    priority: 'medium',
+    category: 'billing',
+    title: 'Hóa đơn INV-0341 chờ duyệt 2 ngày',
+    description: 'Hóa đơn tháng 3 cho FPT Retail trị giá 145tr VND chưa được phê duyệt.',
+    status: 'planned',
+    ref: 'INV-0341',
+    customer: 'FPT Retail',
+    dueLabel: 'Chờ 2 ngày',
+    action: 'Phê duyệt',
+    actionPath: '/app/billing/invoices',
+    ts: Date.now() - 48 * 3600000,
+  },
+  {
+    id: 'exc-6',
+    priority: 'medium',
+    category: 'integration',
+    title: 'API kênh Shopee lỗi kết nối 45 phút',
+    description: 'Webhook Shopee không nhận được response từ 14:20. 23 đơn hàng có thể bị trễ sync.',
+    status: 'delayed',
+    ref: 'CH-SHOPEE',
+    customer: 'Shopee',
+    dueLabel: 'Lỗi 45 phút',
+    action: 'Kiểm tra',
+    actionPath: '/app/integration/channels',
+    ts: Date.now() - 45 * 60000,
+  },
+]
+
+// ============================================================
 // All seed data map
 // ============================================================
 export const ALL_SEED_DATA = {
@@ -80,4 +172,5 @@ export const ALL_SEED_DATA = {
   low_stock_alerts: lowStockAlerts,
   top_outbound: topOutboundProducts,
   recent_activities: recentActivities,
+  exception_items: exceptionItems,
 }

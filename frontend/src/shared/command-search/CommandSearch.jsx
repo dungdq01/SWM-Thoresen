@@ -162,7 +162,7 @@ function getIcon(iconName) {
   return ICON_MAP[iconName] || FileText
 }
 
-export function CommandSearch() {
+export function CommandSearch({ autoFocus = false, onSelect }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -170,6 +170,14 @@ export function CommandSearch() {
   const inputRef = useRef(null)
   const listRef = useRef(null)
   const containerRef = useRef(null)
+
+  // Auto-focus khi dùng trong CommandPalette modal
+  useEffect(() => {
+    if (autoFocus) {
+      const t = setTimeout(() => inputRef.current?.focus(), 50)
+      return () => clearTimeout(t)
+    }
+  }, [autoFocus])
 
   const results = useMemo(() => searchItems(query), [query])
 
@@ -216,7 +224,8 @@ export function CommandSearch() {
     setQuery('')
     setIsOpen(false)
     inputRef.current?.blur()
-  }, [navigate])
+    onSelect?.()
+  }, [navigate, onSelect])
 
   const handleKeyDown = useCallback((e) => {
     if (!isOpen || flatResults.length === 0) {

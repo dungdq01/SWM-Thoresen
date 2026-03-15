@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dropdownConfigApi, lookupApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 const DROPDOWN_CONFIG_KEYS = {
   all: ['master-data', 'dropdown-configs'],
@@ -56,7 +57,7 @@ export function useCreateDropdownConfig() {
       toast.success('Thêm giá trị dropdown thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể thêm giá trị dropdown')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -71,7 +72,7 @@ export function useUpdateDropdownConfig() {
       toast.success('Cập nhật giá trị dropdown thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể cập nhật giá trị dropdown')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -86,7 +87,7 @@ export function useDeleteDropdownConfig() {
       toast.success('Xóa giá trị dropdown thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể xóa giá trị dropdown')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -101,7 +102,7 @@ export function useSetDefaultDropdownConfig() {
       toast.success('Đã đặt làm giá trị mặc định')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể đặt giá trị mặc định')
+      toast.error(parseApiError(error))
     },
   })
 }

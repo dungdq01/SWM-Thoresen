@@ -62,7 +62,8 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(7,13,23,0.65)', backdropFilter: 'blur(4px)' }}
           onClick={handleOverlayClick}
         >
           <motion.div
@@ -71,27 +72,35 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
-              'relative w-full rounded-lg border border-border bg-card text-card-foreground shadow-lg',
+              'relative w-full rounded-2xl shadow-2xl',
               sizes[size],
               className
             )}
+            style={{
+              backgroundColor: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text)',
+            }}
           >
             {(title || showClose) && (
-              <div className="flex items-start justify-between border-b border-border p-6">
+              <div className="flex items-start justify-between p-6 pb-4" style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <div>
                   {title && (
-                    <h2 className="text-lg font-semibold leading-none tracking-tight text-foreground">{title}</h2>
+                    <h2 className="text-base font-bold leading-none tracking-tight" style={{ color: 'var(--color-text)' }}>{title}</h2>
                   )}
                   {description && (
-                    <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
+                    <p className="mt-1.5 text-sm" style={{ color: 'var(--color-text-muted)' }}>{description}</p>
                   )}
                 </div>
                 {showClose && (
                   <button
                     onClick={onClose}
-                    className="rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+                    style={{ color: 'var(--color-text-muted)' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'; e.currentTarget.style.color = 'var(--color-text)' }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--color-text-muted)' }}
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -102,7 +111,7 @@ export function Modal({
             </div>
 
             {footer && (
-              <div className="flex items-center justify-end gap-3 rounded-b-lg border-t border-border bg-muted/30 p-6">
+              <div className="flex items-center justify-end gap-3 rounded-b-2xl p-5" style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-subtle)' }}>
                 {footer}
               </div>
             )}

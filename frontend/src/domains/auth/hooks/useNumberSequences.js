@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/api/queryClient'
 import { authApi } from '../api/auth.api'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useNumberSequences(filters = {}) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreateNumberSequence() {
       toast.success('Tạo cấu hình sequence mới thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể tạo sequence')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -36,7 +37,7 @@ export function useUpdateNumberSequence() {
       toast.success('Cập nhật sequence thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể cập nhật sequence')
+      toast.error(parseApiError(error))
     },
   })
 }

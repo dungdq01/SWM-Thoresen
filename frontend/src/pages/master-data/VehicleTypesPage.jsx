@@ -27,9 +27,20 @@ const STATUS_OPTIONS = [
   { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
-const getCategoryLabel = (category) => {
-  const found = VEHICLE_CATEGORIES.find((c) => c.value === category)
-  return found?.label || category
+const VEHICLE_CATEGORY_CONFIG = {
+  TRUCK:           { label: 'Xe tải',       variant: 'warning' },
+  TRAILER:         { label: 'Xe đầu kéo',   variant: 'info' },
+  CONTAINER_TRUCK: { label: 'Xe container', variant: 'primary' },
+  FORKLIFT:        { label: 'Xe nâng',      variant: 'success' },
+  CRANE:           { label: 'Cẩu',          variant: 'danger' },
+  VESSEL:          { label: 'Tàu biển',     variant: 'foreign' },
+  BARGE:           { label: 'Sà lan',       variant: 'local' },
+  CONTAINER:       { label: 'Container',    variant: 'draft' },
+}
+
+const VehicleCategoryBadge = ({ category }) => {
+  const { label, variant } = VEHICLE_CATEGORY_CONFIG[category] || { label: category, variant: 'neutral' }
+  return <Badge variant={variant}>{label}</Badge>
 }
 
 const formatNumber = (num) => {
@@ -159,7 +170,7 @@ export function VehicleTypesPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã loại</TableHead>
             <TableHead>Tên loại</TableHead>
-            <TableHead>Danh mục</TableHead>
+            <TableHead align="center">Danh mục</TableHead>
             <TableHead>Tải trọng tối đa</TableHead>
             <TableHead>Trọng lượng bì</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
@@ -172,8 +183,8 @@ export function VehicleTypesPage() {
               <TableRow key={vt.id} onClick={() => handleEdit(vt)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                      <Truck className="w-4 h-4 text-orange-600" />
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                      <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                     </div>
                     <span className="font-medium text-navy-900">{vt.vehicleTypeCode}</span>
                   </div>
@@ -181,8 +192,8 @@ export function VehicleTypesPage() {
                 <TableCell>
                   <span className="font-medium text-navy-900">{vt.vehicleTypeName}</span>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="info">{getCategoryLabel(vt.category)}</Badge>
+                <TableCell align="center">
+                  <VehicleCategoryBadge category={vt.category} />
                 </TableCell>
                 <TableCell>
                   <span className="text-navy-700">

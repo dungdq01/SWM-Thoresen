@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -69,13 +70,33 @@ export default {
           900: '#0f172a',
           950: '#020617',
         },
-        background: '#f8fafc',
-        foreground: '#0f172a',
-        border: '#e2e8f0',
+        // Semantic surface tokens — map tới CSS vars, tự động đổi khi .dark
+        surface: 'var(--color-bg)',
+        'surface-raised': 'var(--color-bg-card)',
+        'surface-subtle': 'var(--color-bg-subtle)',
+        'border-default': 'var(--color-border)',
+        'text-body': 'var(--color-text)',
+        'text-muted-token': 'var(--color-text-muted)',
+        background: 'var(--color-bg)',
+        foreground: 'var(--color-text)',
+        border: 'var(--color-border)',
+        card: 'var(--color-bg-card)',
+        'card-foreground': 'var(--color-text)',
+        muted: 'var(--color-bg-subtle)',
+        'muted-foreground': 'var(--color-text-muted)',
         success: '#10b981',
         warning: '#f59e0b',
         info: '#3b82f6',
         danger: '#ef4444',
+        // Workflow Status Colors — theo UX Guiding Principles spec
+        // Grey=Draft, Blue=Planned, Orange=In Transit, Green=Completed, Red=Delayed/Error
+        status: {
+          draft:      { DEFAULT: '#64748b', bg: '#f1f5f9', text: '#475569' },
+          planned:    { DEFAULT: '#3b82f6', bg: '#eff6ff', text: '#1d4ed8' },
+          transit:    { DEFAULT: '#f97316', bg: '#fff7ed', text: '#c2410c' },
+          completed:  { DEFAULT: '#10b981', bg: '#f0fdf4', text: '#047857' },
+          delayed:    { DEFAULT: '#ef4444', bg: '#fef2f2', text: '#b91c1c' },
+        },
         sidebar: {
           DEFAULT: '#0c1829',
           foreground: '#f1f5f9',

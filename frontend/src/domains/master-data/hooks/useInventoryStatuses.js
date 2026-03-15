@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { inventoryStatusApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useInventoryStatusList(filters = {}) {
   return useQuery({
@@ -31,11 +32,7 @@ export function useUpdateInventoryStatus() {
       toast.success('Cập nhật trạng thái tồn kho thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật trạng thái tồn kho')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }

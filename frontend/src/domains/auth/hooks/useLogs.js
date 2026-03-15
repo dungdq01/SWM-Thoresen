@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/api/queryClient'
 import { authApi } from '../api/auth.api'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useAuditLogs(filters = {}) {
   return useQuery({
@@ -35,7 +36,7 @@ export function useResolveExceptionLog() {
       toast.success('Đã đánh dấu exception đã xử lý')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể xử lý exception')
+      toast.error(parseApiError(error))
     },
   })
 }

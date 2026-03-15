@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 import { inventoryControlApi } from '../api/inventoryControl.api'
 
 const QUERY_KEYS = {
@@ -111,7 +112,7 @@ function useInvalidateQueries(keys, successMessage, errorMessage) {
       keys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }))
       toast.success(successMessage)
     },
-    onError: (error) => toast.error(error?.error?.message || errorMessage),
+    onError: (error) => toast.error(parseApiError(error)),
   }
 }
 

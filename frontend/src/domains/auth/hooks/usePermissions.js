@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/api/queryClient'
 import { authApi } from '../api/auth.api'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function usePermissions(filters = {}) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreatePermission() {
       toast.success('Tạo quyền mới thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể tạo quyền')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -36,7 +37,7 @@ export function useUpdatePermission() {
       toast.success('Cập nhật quyền thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể cập nhật quyền')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -51,7 +52,7 @@ export function useDeletePermission() {
       toast.success('Đã xóa quyền')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể xóa quyền')
+      toast.error(parseApiError(error))
     },
   })
 }

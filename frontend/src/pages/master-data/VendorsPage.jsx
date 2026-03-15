@@ -28,9 +28,16 @@ const STATUS_OPTIONS = [
   { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
-const getSupplierGroupLabel = (group) => {
-  const found = SUPPLIER_GROUPS.find((g) => g.value === group)
-  return found?.label || group
+const SUPPLIER_GROUP_CONFIG = {
+  DOMESTIC:     { label: 'Nội địa',     variant: 'local' },
+  OVERSEAS:     { label: 'Nước ngoài',  variant: 'foreign' },
+  VESSEL_AGENT: { label: 'Đại lý tàu',  variant: 'info' },
+  TRADER:       { label: 'Thương nhân', variant: 'warning' },
+}
+
+const SupplierGroupBadge = ({ group }) => {
+  const { label, variant } = SUPPLIER_GROUP_CONFIG[group] || { label: group, variant: 'neutral' }
+  return <Badge variant={variant}>{label}</Badge>
 }
 
 export function VendorsPage() {
@@ -174,7 +181,7 @@ export function VendorsPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã NCC</TableHead>
             <TableHead>Tên NCC</TableHead>
-            <TableHead>Nhóm</TableHead>
+            <TableHead align="center">Nhóm</TableHead>
             <TableHead>Liên hệ</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -186,8 +193,8 @@ export function VendorsPage() {
               <TableRow key={vendor.id} onClick={() => handleEdit(vendor)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <Ship className="w-4 h-4 text-blue-600" />
+                    <div className="w-8 h-8 rounded-lg bg-ice/15 flex items-center justify-center">
+                      <Ship className="w-4 h-4 text-ice dark:text-ice-light" />
                     </div>
                     <span className="font-medium text-navy-900">{vendor.vendorCode}</span>
                   </div>
@@ -200,8 +207,8 @@ export function VendorsPage() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="info">{getSupplierGroupLabel(vendor.supplierGroup)}</Badge>
+                <TableCell align="center">
+                  <SupplierGroupBadge group={vendor.supplierGroup} />
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">

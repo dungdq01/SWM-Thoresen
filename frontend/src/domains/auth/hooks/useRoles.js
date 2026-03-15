@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/api/queryClient'
 import { authApi } from '../api/auth.api'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useRoles(filters = {}) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreateRole() {
       toast.success('Tạo vai trò mới thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể tạo vai trò')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -36,7 +37,7 @@ export function useUpdateRole() {
       toast.success('Cập nhật vai trò thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể cập nhật vai trò')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -51,7 +52,7 @@ export function useDeleteRole() {
       toast.success('Đã xóa vai trò')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể xóa vai trò')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -66,7 +67,7 @@ export function useAssignPermissionToRole() {
       toast.success('Gán quyền thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể gán quyền')
+      toast.error(parseApiError(error))
     },
   })
 }

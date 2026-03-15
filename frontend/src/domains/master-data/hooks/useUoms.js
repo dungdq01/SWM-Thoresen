@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { uomApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useUomList(filters = {}) {
   return useQuery({
@@ -30,7 +31,7 @@ export function useCreateUom() {
       toast.success('Tạo đơn vị tính thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo đơn vị tính')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -47,11 +48,7 @@ export function useUpdateUom() {
       toast.success('Cập nhật đơn vị tính thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật đơn vị tính')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -68,7 +65,7 @@ export function useDeactivateUom() {
       toast.success('Đã ngừng hoạt động đơn vị tính')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động đơn vị tính')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -85,7 +82,7 @@ export function useReactivateUom() {
       toast.success('Đã kích hoạt lại đơn vị tính')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại đơn vị tính')
+      toast.error(parseApiError(error))
     },
   })
 }

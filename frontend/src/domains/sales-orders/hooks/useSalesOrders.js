@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 import { salesOrdersApi } from '../api/salesOrders.api'
 
 const QUERY_KEYS = {
@@ -82,7 +83,7 @@ function useInvalidateSOQueries(successMessage, errorMessage) {
       toast.success(successMessage)
     },
     onError: (error) => {
-      toast.error(error?.response?.data?.message || error?.message || errorMessage)
+      toast.error(parseApiError(error))
     },
   }
 }

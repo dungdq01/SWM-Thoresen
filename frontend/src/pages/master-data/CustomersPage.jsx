@@ -203,10 +203,10 @@ export function CustomersPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã khách hàng</TableHead>
             <TableHead>Tên khách hàng</TableHead>
-            <TableHead>Nhóm</TableHead>
-            <TableHead>Loại</TableHead>
+            <TableHead align="center">Nhóm</TableHead>
+            <TableHead align="center">Loại</TableHead>
             <TableHead>Liên hệ</TableHead>
-            <TableHead>Trạng thái</TableHead>
+            <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center">Thao tác</TableHead>
           </TableRow>
         </TableHeader>
@@ -224,10 +224,10 @@ export function CustomersPage() {
                   )}
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell align="center">
                 <CustomerGroupBadge group={customer.customerGroup} />
               </TableCell>
-              <TableCell>
+              <TableCell align="center">
                 <CustomerTypeBadge type={customer.customerType} />
               </TableCell>
               <TableCell>
@@ -236,7 +236,7 @@ export function CustomersPage() {
                   {customer.phone && <div className="text-navy-500">{customer.phone}</div>}
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell align="center">
                 <StatusBadge isActive={customer.isActive} />
               </TableCell>
               <TableCell align="center">

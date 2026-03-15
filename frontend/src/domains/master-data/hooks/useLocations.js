@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { locationApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useLocationList(filters = {}) {
   return useQuery({
@@ -29,7 +30,7 @@ export function useCreateLocation() {
       toast.success('Tạo vị trí thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo vị trí')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -45,11 +46,7 @@ export function useUpdateLocation() {
       toast.success('Cập nhật vị trí thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật vị trí')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -65,7 +62,7 @@ export function useDeactivateLocation() {
       toast.success('Đã ngừng hoạt động vị trí')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động vị trí')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -81,7 +78,7 @@ export function useReactivateLocation() {
       toast.success('Đã kích hoạt lại vị trí')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại vị trí')
+      toast.error(parseApiError(error))
     },
   })
 }

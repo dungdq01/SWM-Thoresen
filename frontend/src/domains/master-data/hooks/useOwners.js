@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ownerApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useOwnerNextCode(enabled = false) {
   return useQuery({
@@ -39,7 +40,7 @@ export function useCreateOwner() {
       toast.success('Tạo chủ hàng thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo chủ hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -56,11 +57,7 @@ export function useUpdateOwner() {
       toast.success('Cập nhật chủ hàng thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật chủ hàng')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -77,7 +74,7 @@ export function useDeactivateOwner() {
       toast.success('Đã ngừng hoạt động chủ hàng')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động chủ hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -94,7 +91,7 @@ export function useReactivateOwner() {
       toast.success('Đã kích hoạt lại chủ hàng')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại chủ hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
