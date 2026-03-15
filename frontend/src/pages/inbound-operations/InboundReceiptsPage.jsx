@@ -125,8 +125,6 @@ export function InboundReceiptsPage() {
     }
   }
 
-  const canSubmit = !createReceipt.isPending && selectedPo && receiptDraft.vehicleNumber && receiptDraft.warehouseId && receiptDraft.lines.some((l) => l.itemId)
-
   return (
     <>
       <div className="flex items-center justify-between mb-4">
