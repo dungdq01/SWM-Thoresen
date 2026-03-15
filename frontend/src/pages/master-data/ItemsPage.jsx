@@ -184,7 +184,7 @@ export function ItemsPage() {
         {!isLoading && items.length > 0 && (
           <TableBody>
             {items.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow key={item.id} onClick={() => handleEdit(item)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice-dark">

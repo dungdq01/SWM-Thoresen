@@ -169,7 +169,7 @@ export function VehicleTypesPage() {
         {!isLoading && vehicleTypes.length > 0 && (
           <TableBody>
             {vehicleTypes.map((vt) => (
-              <TableRow key={vt.id}>
+              <TableRow key={vt.id} onClick={() => handleEdit(vt)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">

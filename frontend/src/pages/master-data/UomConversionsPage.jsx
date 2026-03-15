@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { ArrowRightLeft, Plus, Edit2, Trash2 } from 'lucide-react'
+import { ArrowRightLeft, Edit2, Trash2 } from 'lucide-react'
 import {
   useUomConversionList,
   useCreateUomConversion,
@@ -15,7 +15,8 @@ import {
   TableHead,
   TableCell,
 } from '@domains/master-data'
-import { Button, Modal, Select, Input } from '@shared/ui'
+import { UomConversionFormDrawer } from '@features/master-data'
+import { Button, Modal } from '@shared/ui'
 
 export function UomConversionsPage() {
   const [filters, setFilters] = useState({
@@ -24,7 +25,7 @@ export function UomConversionsPage() {
     keyword: '',
   })
 
-  const [formModal, setFormModal] = useState({ open: false, data: null })
+  const [drawerState, setDrawerState] = useState({ isOpen: false, data: null })
   const [deleteModal, setDeleteModal] = useState({ open: false, data: null })
 
   const { data: response, isLoading } = useUomConversionList({
@@ -54,33 +55,18 @@ export function UomConversionsPage() {
     setFilters((prev) => ({ ...prev, page }))
   }, [])
 
-  const handleAdd = () => setFormModal({ open: true, data: null })
-  const handleEdit = (item) => setFormModal({ open: true, data: item })
-  const closeFormModal = () => setFormModal({ open: false, data: null })
+  const handleAdd = () => setDrawerState({ isOpen: true, data: null })
+  const handleEdit = (item) => setDrawerState({ isOpen: true, data: item })
+  const handleCloseDrawer = () => setDrawerState({ isOpen: false, data: null })
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-
+  const handleSubmit = async (data) => {
     try {
-      if (formModal.data?.id) {
-        // Update only accepts conversionFactor and rowVersion
-        await updateMutation.mutateAsync({
-          id: formModal.data.id,
-          data: {
-            conversionFactor: parseFloat(formData.get('conversionFactor')),
-            rowVersion: Number(formModal.data.rowVersion),
-          },
-        })
+      if (drawerState.data?.id) {
+        await updateMutation.mutateAsync({ id: drawerState.data.id, data })
       } else {
-        // Create only accepts fromUomId, toUomId, conversionFactor, itemId
-        await createMutation.mutateAsync({
-          fromUomId: formData.get('fromUomId'),
-          toUomId: formData.get('toUomId'),
-          conversionFactor: parseFloat(formData.get('conversionFactor')),
-        })
+        await createMutation.mutateAsync(data)
       }
-      closeFormModal()
+      handleCloseDrawer()
     } catch (error) {
       // Error handled by mutation
     }
@@ -98,9 +84,8 @@ export function UomConversionsPage() {
   const uomOptions = uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))
 
   return (
-    <div className="page-section">
+    <div className="p-6">
       <PageHeader
-        icon={ArrowRightLeft}
         title="Quy đổi đơn vị"
         description="Quản lý tỉ lệ quy đổi giữa các đơn vị tính"
         onAdd={handleAdd}
@@ -113,32 +98,30 @@ export function UomConversionsPage() {
         filters={[]}
         onFilterChange={() => {}}
         onClearFilters={handleClearFilters}
-        searchPlaceholder="Tìm theo UOM code, mô tả..."
+        placeholder="Tìm theo UOM code, mô tả..."
       />
 
       <MasterDataTableWrapper
         isLoading={isLoading}
         isEmpty={conversions.length === 0}
         emptyMessage="Chưa có quy đổi nào"
-        pagination={{
-          currentPage: meta.page,
-          totalPages: meta.totalPages,
-          total: meta.total,
-          onPageChange: handlePageChange,
-        }}
+        colSpan={5}
+        page={meta.page}
+        totalPages={meta.totalPages}
+        onPageChange={handlePageChange}
       >
         <TableHeader>
           <TableRow hoverable={false}>
             <TableHead>Từ UOM</TableHead>
-            <TableHead align="center">→</TableHead>
+            <TableHead align="center"></TableHead>
             <TableHead>Đến UOM</TableHead>
             <TableHead align="right">Hệ số quy đổi</TableHead>
-            <TableHead align="center" className="w-24">Thao tác</TableHead>
+            <TableHead align="center" className="w-24"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {conversions.map((conv) => (
-            <TableRow key={conv.id}>
+            <TableRow key={conv.id} onClick={() => handleEdit(conv)}>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-semibold text-navy-900 bg-navy-100 px-2 py-1 rounded">
@@ -162,20 +145,20 @@ export function UomConversionsPage() {
                 <span className="font-mono font-bold text-ice text-lg">{conv.conversionFactor}</span>
               </TableCell>
               <TableCell align="center">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                   <button
-                    onClick={() => handleEdit(conv)}
-                    className="p-1.5 text-navy-400 hover:text-ice hover:bg-ice/10 rounded-lg transition-colors"
+                    onClick={(e) => { e.stopPropagation(); handleEdit(conv) }}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-navy-400 transition-colors hover:bg-ice/15 hover:text-ice-dark"
                     title="Chỉnh sửa"
                   >
-                    <Edit2 className="h-4 w-4" />
+                    <Edit2 className="h-3.5 w-3.5" />
                   </button>
                   <button
-                    onClick={() => setDeleteModal({ open: true, data: conv })}
-                    className="p-1.5 text-navy-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setDeleteModal({ open: true, data: conv }) }}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-navy-400 transition-colors hover:bg-danger/10 hover:text-danger"
                     title="Xóa"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </TableCell>
@@ -184,50 +167,14 @@ export function UomConversionsPage() {
         </TableBody>
       </MasterDataTableWrapper>
 
-      <Modal
-        isOpen={formModal.open}
-        onClose={closeFormModal}
-        title={formModal.data?.id ? 'Chỉnh sửa quy đổi' : 'Thêm quy đổi mới'}
-        size="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Từ UOM"
-              name="fromUomId"
-              required
-              defaultValue={formModal.data?.fromUomId || ''}
-              options={uomOptions}
-              disabled={!!formModal.data?.id}
-            />
-            <Select
-              label="Đến UOM"
-              name="toUomId"
-              required
-              defaultValue={formModal.data?.toUomId || ''}
-              options={uomOptions}
-              disabled={!!formModal.data?.id}
-            />
-          </div>
-          <Input
-            label="Hệ số quy đổi"
-            name="conversionFactor"
-            type="number"
-            step="any"
-            required
-            defaultValue={formModal.data?.conversionFactor || ''}
-            placeholder="VD: 1000 (1 MT = 1000 KG)"
-          />
-          <div className="flex justify-end gap-3 pt-4 border-t border-navy-100">
-            <Button variant="outline" type="button" onClick={closeFormModal}>
-              Hủy
-            </Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {formModal.data?.id ? 'Cập nhật' : 'Thêm mới'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <UomConversionFormDrawer
+        isOpen={drawerState.isOpen}
+        onClose={handleCloseDrawer}
+        onSubmit={handleSubmit}
+        initialData={drawerState.data}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+        uomOptions={uomOptions}
+      />
 
       <Modal
         isOpen={deleteModal.open}
@@ -235,8 +182,12 @@ export function UomConversionsPage() {
         title="Xác nhận xóa"
         size="sm"
       >
-        <p className="text-navy-700 mb-6">
-          Bạn có chắc muốn xóa quy đổi <strong>"{deleteModal.data?.description}"</strong>?
+        <p className="text-sm text-navy-700 mb-6">
+          Bạn có chắc muốn xóa quy đổi{' '}
+          <strong className="text-navy-900">
+            {deleteModal.data?.fromUom?.uomCode} → {deleteModal.data?.toUom?.uomCode}
+          </strong>
+          ?
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => setDeleteModal({ open: false, data: null })}>

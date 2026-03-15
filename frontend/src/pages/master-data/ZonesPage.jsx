@@ -166,7 +166,7 @@ export function ZonesPage() {
         {!isLoading && zones.length > 0 && (
           <TableBody>
             {zones.map((zone) => (
-              <TableRow key={zone.id}>
+              <TableRow key={zone.id} onClick={() => setDrawerState({ isOpen: true, data: zone })}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">

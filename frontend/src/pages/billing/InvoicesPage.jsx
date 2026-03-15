@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useDebitNotes, useGenerateDebitNote, useReviewDebitNote, useApproveDebitNote, useLockDebitNote } from '@domains/billing'
 import { useLookupOwners, useLookupWarehouses } from '@domains/master-data'
-import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { InvoiceFormDrawer } from '@features/billing'
 
 const statusTone = (status) => {
   if (status === 'APPROVED' || status === 'LOCKED') return 'success'
@@ -10,18 +11,9 @@ const statusTone = (status) => {
   return 'default'
 }
 
-const initialDraft = {
-  ownerId: '',
-  warehouseId: '',
-  periodStart: '',
-  periodEnd: '',
-}
-
 export function InvoicesPage() {
   const [filters, setFilters] = useState({ page: 1, limit: 20, status: '', ownerId: '' })
-  const [showCreate, setShowCreate] = useState(false)
-  const [draft, setDraft] = useState(initialDraft)
-  const [errors, setErrors] = useState({})
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const { data: response, isLoading, refetch } = useDebitNotes(filters)
   const generateDebitNote = useGenerateDebitNote()
@@ -35,27 +27,9 @@ export function InvoicesPage() {
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
-  const validate = () => {
-    const e = {}
-    if (!draft.ownerId) e.ownerId = 'Chủ sở hữu là bắt buộc'
-    if (!draft.warehouseId) e.warehouseId = 'Kho là bắt buộc'
-    if (!draft.periodStart) e.periodStart = 'Ngày bắt đầu là bắt buộc'
-    if (!draft.periodEnd) e.periodEnd = 'Ngày kết thúc là bắt buộc'
-    if (draft.periodStart && draft.periodEnd && draft.periodStart > draft.periodEnd) e.periodEnd = 'Ngày kết thúc phải sau ngày bắt đầu'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
-
-  const handleGenerate = async () => {
-    if (!validate()) return
-    const payload = {
-      ...draft,
-      externalId: `DN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-    }
+  const handleSubmit = async (payload) => {
     await generateDebitNote.mutateAsync(payload)
-    setDraft(initialDraft)
-    setErrors({})
-    setShowCreate(false)
+    setDrawerOpen(false)
   }
 
   return (
@@ -63,7 +37,7 @@ export function InvoicesPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Phiếu Nợ</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo Phiếu Nợ</Button>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>Tạo Phiếu Nợ</Button>
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
@@ -121,40 +95,14 @@ export function InvoicesPage() {
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
 
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Tạo Phiếu Nợ"
-        description="Tạo phiếu nợ cho chủ sở hữu dựa trên các sự kiện thanh toán."
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleGenerate} disabled={generateDebitNote.isPending}>
-              {generateDebitNote.isPending ? 'Đang xử lý...' : 'Tạo Phiếu Nợ'}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <Select label="Chủ sở hữu" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Chủ sở hữu --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-            {errors.ownerId && <p className="text-xs text-danger mt-1">{errors.ownerId}</p>}
-          </div>
-          <div>
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
-            {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
-          </div>
-          <div>
-            <Input label="Ngày bắt đầu" type="date" value={draft.periodStart} onChange={(e) => setDraft((prev) => ({ ...prev, periodStart: e.target.value }))} />
-            {errors.periodStart && <p className="text-xs text-danger mt-1">{errors.periodStart}</p>}
-          </div>
-          <div>
-            <Input label="Ngày kết thúc" type="date" value={draft.periodEnd} onChange={(e) => setDraft((prev) => ({ ...prev, periodEnd: e.target.value }))} />
-            {errors.periodEnd && <p className="text-xs text-danger mt-1">{errors.periodEnd}</p>}
-          </div>
-        </div>
-      </Modal>
+      <InvoiceFormDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSubmit={handleSubmit}
+        isLoading={generateDebitNote.isPending}
+        owners={owners}
+        warehouses={warehouses}
+      />
     </>
   )
 }

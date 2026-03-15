@@ -2,8 +2,8 @@ import { useCallback, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useOnHandList } from '@domains/inventory-core'
 import { useLookupInventoryStatuses, useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
-import { InventoryPostingModal } from '@features/inventory-core'
+import { Badge, Button, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
+import { InventoryPostingDrawer } from '@features/inventory-core'
 
 const TOTAL_COLS = 11
 
@@ -24,7 +24,7 @@ export function InventoryOnHandPage() {
     inventoryStatusId: '',
     hasStock: true,
   })
-  const [showPostingModal, setShowPostingModal] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const { data: response, isLoading, refetch } = useOnHandList({
     ...filters,
@@ -52,19 +52,15 @@ export function InventoryOnHandPage() {
         <h2 className="section-title">Tồn kho hiện tại</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
-          <Button size="sm" onClick={() => setShowPostingModal(true)}>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>
             <Plus className="w-4 h-4 mr-1" />
             Nhập tồn kho
           </Button>
         </div>
       </div>
 
-      <Card hover={false}>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Bộ lọc tồn kho</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="wrs-card p-5 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Select
               value={filters.ownerId}
               onChange={(e) => handleChange('ownerId', e.target.value)}
@@ -164,12 +160,11 @@ export function InventoryOnHandPage() {
           </div>
 
           <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
-        </CardContent>
-      </Card>
+      </div>
 
-      <InventoryPostingModal
-        isOpen={showPostingModal}
-        onClose={() => setShowPostingModal(false)}
+      <InventoryPostingDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       />
     </>
   )

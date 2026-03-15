@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTransferOrders, useCreateTransferOrder, useReleaseTransferOrder, useShipTransferOrder, useReceiveTransferOrder, useCloseTransferOrder, useCancelTransferOrder } from '@domains/inventory-control'
 import { useLookupItems, useLookupOwners, useLookupWarehouses, useLookupLocations } from '@domains/master-data'
-import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { TransferOrderFormDrawer } from '@features/inventory-control'
 
 const statusTone = (status) => {
   if (['RECEIVED', 'CLOSED'].includes(status)) return 'success'
@@ -11,18 +12,10 @@ const statusTone = (status) => {
   return 'default'
 }
 
-const initialDraft = {
-  fromWarehouseId: '',
-  toWarehouseId: '',
-  vehicleNumber: '',
-  lines: [{ itemId: '', ownerId: '', fromLocationId: '', toLocationId: '', requestedQty: '' }],
-}
-
 export function TransferOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, limit: 20, status: '' })
-  const [showCreate, setShowCreate] = useState(false)
-  const [draft, setDraft] = useState(initialDraft)
-  const [errors, setErrors] = useState({})
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activeFromWarehouseId, setActiveFromWarehouseId] = useState('')
 
   const { data: response, isLoading, refetch } = useTransferOrders(filters)
   const createTransferOrder = useCreateTransferOrder()
@@ -35,34 +28,15 @@ export function TransferOrdersPage() {
   const { data: owners = [] } = useLookupOwners()
   const { data: items = [] } = useLookupItems()
   const { data: warehouses = [] } = useLookupWarehouses()
-  const { data: fromLocations = [] } = useLookupLocations(draft.fromWarehouseId)
+  const { data: fromLocations = [] } = useLookupLocations(activeFromWarehouseId)
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
-  const validate = () => {
-    const e = {}
-    if (!draft.fromWarehouseId) e.fromWarehouseId = 'From Warehouse là bắt buộc'
-    if (!draft.toWarehouseId) e.toWarehouseId = 'To Warehouse là bắt buộc'
-    if (draft.fromWarehouseId && draft.toWarehouseId && draft.fromWarehouseId === draft.toWarehouseId) e.toWarehouseId = 'From và To Warehouse không được giống nhau'
-    if (!draft.lines[0].itemId) e.itemId = 'Item là bắt buộc'
-    if (!draft.lines[0].requestedQty || Number(draft.lines[0].requestedQty) <= 0) e.requestedQty = 'Qty phải lớn hơn 0'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
-
-  const handleCreate = async () => {
-    if (!validate()) return
-    await createTransferOrder.mutateAsync(draft)
-    setDraft(initialDraft)
-    setErrors({})
-    setShowCreate(false)
-  }
-
-  const updateLine = (index, field, value) => {
-    const newLines = [...draft.lines]
-    newLines[index] = { ...newLines[index], [field]: value }
-    setDraft((prev) => ({ ...prev, lines: newLines }))
+  const handleSubmit = async (payload) => {
+    setActiveFromWarehouseId(payload.fromWarehouseId)
+    await createTransferOrder.mutateAsync(payload)
+    setDrawerOpen(false)
   }
 
   return (
@@ -70,7 +44,7 @@ export function TransferOrdersPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Lệnh chuyển kho</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo lệnh chuyển kho</Button>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>Tạo lệnh chuyển kho</Button>
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
@@ -128,51 +102,16 @@ export function TransferOrdersPage() {
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
 
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Tạo lệnh chuyển kho"
-        description="Chuyển hàng giữa các kho với trạng thái ĐANG VẬN CHUYỂN."
-        size="lg"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleCreate} disabled={createTransferOrder.isPending}>
-              {createTransferOrder.isPending ? 'Đang xử lý...' : 'Tạo lệnh'}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Select label="Kho nguồn" value={draft.fromWarehouseId} onChange={(e) => { setDraft((prev) => ({ ...prev, fromWarehouseId: e.target.value, lines: prev.lines.map(l => ({ ...l, fromLocationId: '' })) })) }} options={[{ value: '', label: '-- Chọn kho nguồn --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
-              {errors.fromWarehouseId && <p className="text-xs text-danger mt-1">{errors.fromWarehouseId}</p>}
-            </div>
-            <div>
-              <Select label="Kho đích" value={draft.toWarehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, toWarehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho đích --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
-              {errors.toWarehouseId && <p className="text-xs text-danger mt-1">{errors.toWarehouseId}</p>}
-            </div>
-          </div>
-          <Input label="Biển số xe" value={draft.vehicleNumber} onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value }))} />
-
-          <div className="border-t border-moon-200 pt-4">
-            <p className="text-sm font-semibold text-navy-900 mb-3">Dòng 1</p>
-            <div className="space-y-3">
-              <div>
-                <Select label="Hàng hóa" value={draft.lines[0].itemId} onChange={(e) => updateLine(0, 'itemId', e.target.value)} options={[{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
-                {errors.itemId && <p className="text-xs text-danger mt-1">{errors.itemId}</p>}
-              </div>
-              <Select label="Chủ hàng" value={draft.lines[0].ownerId} onChange={(e) => updateLine(0, 'ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-              <Select label="Vị trí nguồn" value={draft.lines[0].fromLocationId} onChange={(e) => updateLine(0, 'fromLocationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...fromLocations.map((l) => ({ value: l.id, label: l.code }))]} disabled={!draft.fromWarehouseId} />
-              <div>
-                <Input label="Số lượng (kg)" type="number" value={draft.lines[0].requestedQty} onChange={(e) => updateLine(0, 'requestedQty', e.target.value)} />
-                {errors.requestedQty && <p className="text-xs text-danger mt-1">{errors.requestedQty}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
-      </Modal>
+      <TransferOrderFormDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSubmit={handleSubmit}
+        isLoading={createTransferOrder.isPending}
+        warehouses={warehouses}
+        items={items}
+        owners={owners}
+        locations={fromLocations}
+      />
     </>
   )
 }

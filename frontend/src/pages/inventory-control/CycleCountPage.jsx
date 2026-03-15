@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useCycleCounts, useCreateCycleCount, useReleaseCycleCount, useApproveCycleCount, usePostCycleCount } from '@domains/inventory-control'
 import { useLookupWarehouses, useLookupItems, useLookupOwners, useLookupLocations } from '@domains/master-data'
-import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { CycleCountFormDrawer } from '@features/inventory-control'
 
 const statusTone = (status) => {
   if (status === 'POSTED') return 'success'
@@ -18,19 +19,11 @@ const varianceTone = (pct) => {
   return 'danger'
 }
 
-const initialDraft = {
-  warehouseId: '',
-  countType: 'SPOT',
-  blindCount: true,
-  lines: [{ locationId: '', itemId: '', ownerId: '', snapshotQty: '' }],
-}
-
 export function CycleCountPage() {
   const [filters, setFilters] = useState({ page: 1, limit: 20, status: '', warehouseId: '' })
   const [selectedId, setSelectedId] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-  const [draft, setDraft] = useState(initialDraft)
-  const [errors, setErrors] = useState({})
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activeWarehouseId, setActiveWarehouseId] = useState('')
 
   const { data: response, isLoading, refetch } = useCycleCounts(filters)
   const createCycleCount = useCreateCycleCount()
@@ -41,31 +34,12 @@ export function CycleCountPage() {
   const { data: warehouses = [] } = useLookupWarehouses()
   const { data: items = [] } = useLookupItems()
   const { data: owners = [] } = useLookupOwners()
-  const { data: locations = [] } = useLookupLocations(draft.warehouseId)
+  const { data: locations = [] } = useLookupLocations(activeWarehouseId)
 
-  const validate = () => {
-    const e = {}
-    if (!draft.warehouseId) e.warehouseId = 'Warehouse là bắt buộc'
-    if (!draft.lines[0].itemId) e.itemId = 'Item là bắt buộc'
-    if (!draft.lines[0].locationId) e.locationId = 'Location là bắt buộc'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
-
-  const handleCreate = async () => {
-    if (!validate()) return
-    const payload = {
-      ...draft,
-      lines: draft.lines.map((l) => ({ ...l, snapshotQty: Number(l.snapshotQty) || 0 })),
-    }
+  const handleSubmit = async (payload) => {
+    setActiveWarehouseId(payload.warehouseId)
     await createCycleCount.mutateAsync(payload)
-    setDraft(initialDraft)
-    setErrors({})
-    setShowCreate(false)
-  }
-
-  const updateLine = (field, value) => {
-    setDraft((prev) => ({ ...prev, lines: [{ ...prev.lines[0], [field]: value }] }))
+    setDrawerOpen(false)
   }
 
   const rows = response?.data || []
@@ -77,7 +51,7 @@ export function CycleCountPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Kiểm kê chu kỳ</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo phiếu kiểm kê</Button>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>Tạo phiếu kiểm kê</Button>
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
@@ -163,48 +137,16 @@ export function CycleCountPage() {
         </div>
       )}
 
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Tạo phiếu kiểm kê"
-        description="Tạo phiếu kiểm kê mới theo kho và loại kiểm."
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleCreate} disabled={createCycleCount.isPending}>
-              {createCycleCount.isPending ? 'Đang xử lý...' : 'Tạo phiếu'}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value, lines: [{ ...prev.lines[0], locationId: '' }] }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
-            {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
-          </div>
-          <Select label="Loại kiểm kê" value={draft.countType} onChange={(e) => setDraft((prev) => ({ ...prev, countType: e.target.value }))} options={[{ value: 'SPOT', label: 'SPOT' }, { value: 'FULL', label: 'FULL' }, { value: 'SAMPLE', label: 'SAMPLE' }]} />
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="blindCount" checked={draft.blindCount} onChange={(e) => setDraft((prev) => ({ ...prev, blindCount: e.target.checked }))} className="w-4 h-4 accent-accent" />
-            <label htmlFor="blindCount" className="text-sm text-navy-700">Kiểm kê mù (ẩn số lượng tồn hệ thống)</label>
-          </div>
-          <div className="border-t border-moon-200 pt-3">
-            <p className="text-sm font-semibold text-navy-900 mb-2">Dòng 1</p>
-            <div className="space-y-3">
-              <div>
-                <Select label="Vị trí" value={draft.lines[0].locationId} onChange={(e) => updateLine('locationId', e.target.value)} options={[{ value: '', label: '-- Chọn vị trí --' }, ...locations.map((l) => ({ value: l.id, label: l.code }))]} disabled={!draft.warehouseId} />
-                {errors.locationId && <p className="text-xs text-danger mt-1">{errors.locationId}</p>}
-              </div>
-              <div>
-                <Select label="Hàng hóa" value={draft.lines[0].itemId} onChange={(e) => updateLine('itemId', e.target.value)} options={[{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
-                {errors.itemId && <p className="text-xs text-danger mt-1">{errors.itemId}</p>}
-              </div>
-              <Select label="Chủ hàng" value={draft.lines[0].ownerId} onChange={(e) => updateLine('ownerId', e.target.value)} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-              <Input label="SL tồn hệ thống (kg)" type="number" value={draft.lines[0].snapshotQty} onChange={(e) => updateLine('snapshotQty', e.target.value)} />
-            </div>
-          </div>
-        </div>
-      </Modal>
+      <CycleCountFormDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSubmit={handleSubmit}
+        isLoading={createCycleCount.isPending}
+        warehouses={warehouses}
+        items={items}
+        owners={owners}
+        locations={locations}
+      />
     </>
   )
 }

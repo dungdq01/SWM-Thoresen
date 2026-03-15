@@ -14,46 +14,21 @@ const navItems = [
 export function InventoryControlLayout() {
   return (
     <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Kiểm soát kho</h1>
-        </div>
-      </div>
-
       <div className="module-nav-shell">
         <div className="module-nav-header">
-          <div className="module-nav-icon">
-            <Settings2 className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="module-nav-title">Điều hướng kiểm soát kho</h2>
-            <p className="module-nav-description">Lệnh di chuyển, chuyển kho, đổi trạng thái, kiểm kê và điều chỉnh tồn kho.</p>
-          </div>
+          <div className="module-nav-icon"><Settings2 className="h-4 w-4" /></div>
+          <h1 className="module-nav-title">Kiểm soát kho</h1>
         </div>
-
-        <div className="overflow-x-auto">
-          <nav className="module-nav-list">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'module-nav-item',
-                    isActive
-                      ? 'module-nav-item-active'
-                      : ''
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
+        <nav className="module-nav-list">
+          {navItems.map((item) => (
+            <NavLink key={item.to} to={item.to}
+              className={({ isActive }) => cn('module-nav-item', isActive ? 'module-nav-item-active' : '')}
+            >
+              <item.icon className="h-4 w-4" />{item.label}
+            </NavLink>
+          ))}
+        </nav>
       </div>
-
       <Outlet />
     </div>
   )

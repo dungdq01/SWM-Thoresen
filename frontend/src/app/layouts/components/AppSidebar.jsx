@@ -322,7 +322,7 @@ export function AppSidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose 
         </div>
         <button
           onClick={onMobileClose}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-moon-100/60 transition-colors hover:bg-sidebar-hover hover:text-moon-50 lg:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-moon-100/60 transition-colors hover:bg-sidebar-hover hover:text-moon-50 lg:hidden"
           aria-label="Đóng menu"
         >
           <X className="h-5 w-5" />
