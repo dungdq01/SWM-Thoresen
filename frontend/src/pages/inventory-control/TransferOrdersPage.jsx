@@ -77,7 +77,7 @@ export function TransferOrdersPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'CREATED', label: 'CREATED' }, { value: 'RELEASED', label: 'RELEASED' }, { value: 'SHIPPED', label: 'SHIPPED' }, { value: 'IN_TRANSIT', label: 'IN_TRANSIT' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Status" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'CREATED', label: 'CREATED' }, { value: 'RELEASED', label: 'RELEASED' }, { value: 'SHIPPED', label: 'SHIPPED' }, { value: 'IN_TRANSIT', label: 'IN_TRANSIT' }, { value: 'RECEIVED', label: 'RECEIVED' }, { value: 'CLOSED', label: 'CLOSED' }]} placeholder="Trạng thái" />
         </div>
 
         <Table>
@@ -113,11 +113,11 @@ export function TransferOrdersPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'CREATED' && <Button variant="outline" size="sm" onClick={() => releaseTransferOrder.mutate(row.id)}>Release</Button>}
-                    {row.status === 'RELEASED' && <Button variant="accent" size="sm" onClick={() => shipTransferOrder.mutate({ id: row.id, data: {} })}>Ship</Button>}
-                    {row.status === 'IN_TRANSIT' && <Button variant="accent" size="sm" onClick={() => receiveTransferOrder.mutate({ id: row.id, data: {} })}>Receive</Button>}
-                    {row.status === 'RECEIVED' && <Button variant="outline" size="sm" onClick={() => closeTransferOrder.mutate({ id: row.id, data: {} })}>Close</Button>}
-                    {(row.status === 'CREATED' || row.status === 'RELEASED') && <Button variant="ghost" size="sm" onClick={() => cancelTransferOrder.mutate({ id: row.id, data: {} })}>Cancel</Button>}
+                    {row.status === 'CREATED' && <Button variant="outline" size="sm" onClick={() => releaseTransferOrder.mutate(row.id)}>Xuất kho</Button>}
+                    {row.status === 'RELEASED' && <Button variant="accent" size="sm" onClick={() => shipTransferOrder.mutate({ id: row.id, data: {} })}>Vận chuyển</Button>}
+                    {row.status === 'IN_TRANSIT' && <Button variant="accent" size="sm" onClick={() => receiveTransferOrder.mutate({ id: row.id, data: {} })}>Nhận hàng</Button>}
+                    {row.status === 'RECEIVED' && <Button variant="outline" size="sm" onClick={() => closeTransferOrder.mutate({ id: row.id, data: {} })}>Đóng</Button>}
+                    {(row.status === 'CREATED' || row.status === 'RELEASED') && <Button variant="ghost" size="sm" onClick={() => cancelTransferOrder.mutate({ id: row.id, data: {} })}>Hủy</Button>}
                   </div>
                 </TableCell>
               </TableRow>

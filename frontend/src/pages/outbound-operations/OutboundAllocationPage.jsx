@@ -36,28 +36,28 @@ export function OutboundAllocationPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Allocation-based hold (FIFO)</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Phân bổ hàng (FIFO)</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'All' }, { value: 'CONFIRMED', label: 'CONFIRMED (needs allocation)' }, { value: 'ALLOCATED', label: 'ALLOCATED' }]} placeholder="Filter by status" className="max-w-xs" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'CONFIRMED', label: 'CONFIRMED (cần phân bổ)' }, { value: 'ALLOCATED', label: 'ALLOCATED' }]} placeholder="Lọc theo trạng thái" className="max-w-xs" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Shipment</TableHead>
-              <TableHead>Owner / Vehicle</TableHead>
-              <TableHead align="right">Expected Qty</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Action</TableHead>
+              <TableHead>Chuyến hàng</TableHead>
+              <TableHead>Chủ hàng / Xe</TableHead>
+              <TableHead align="right">SL dự kiến</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No shipments need allocation" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không có chuyến hàng cần phân bổ" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id} onClick={() => openDetail(row.id)}>
                 <TableCell>
@@ -97,7 +97,7 @@ export function OutboundAllocationPage() {
         isOpen={!!selected}
         onClose={closeDetail}
         title={`Shipment: ${selected?.shipmentNumber || ''}`}
-        description="Allocation details and shipment lines"
+        description="Chi tiết phân bổ và dòng hàng"
         size="lg"
       >
         {selected && (
@@ -110,32 +110,32 @@ export function OutboundAllocationPage() {
             </div>
 
             <div className="border-t border-moon-200 pt-4 space-y-3">
-              <h4 className="text-sm font-semibold text-navy-900">Shipment Lines</h4>
+              <h4 className="text-sm font-semibold text-navy-900">Dòng hàng</h4>
               {selected.lines?.map((line) => (
                 <div key={line.id} className="rounded-xl border border-moon-200 p-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-navy-800">Dòng {line.lineNumber}: {line.item?.itemCode || line.item?.code || line.itemId}</p>
                     <Badge variant={line.lineStatus === 'ALLOCATED' ? 'success' : 'default'}>{line.lineStatus}</Badge>
                   </div>
-                  <p className="text-xs text-navy-500">Expected: {line.expectedQty?.toLocaleString()} kg · {line.cargoForm}</p>
-                  <p className="text-xs text-navy-500">Allocated: {line.allocatedQty?.toLocaleString() || '—'} kg</p>
+                  <p className="text-xs text-navy-500">Dự kiến: {line.expectedQty?.toLocaleString()} kg · {line.cargoForm}</p>
+                  <p className="text-xs text-navy-500">Đã phân bổ: {line.allocatedQty?.toLocaleString() || '—'} kg</p>
                 </div>
               ))}
             </div>
 
             <div className="border-t border-moon-200 pt-4 space-y-3">
-              <h4 className="text-sm font-semibold text-navy-900">Allocation Records</h4>
+              <h4 className="text-sm font-semibold text-navy-900">Bản ghi phân bổ</h4>
               {allocations.length === 0 ? (
-                <p className="text-sm text-navy-400">No allocations yet</p>
+                <p className="text-sm text-navy-400">Chưa có phân bổ</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {allocations.map((alloc) => (
                     <div key={alloc.id} className="rounded-xl border border-moon-200 p-3 space-y-1">
                       <div className="flex items-center justify-between">
-                        <p className="font-semibold text-navy-800">Location: {alloc.locationId}</p>
+                        <p className="font-semibold text-navy-800">Vị trí: {alloc.locationId}</p>
                         <Badge variant={alloc.status === 'PICKED' ? 'success' : 'info'}>{alloc.status}</Badge>
                       </div>
-                      <p className="text-xs text-navy-500">Qty: {alloc.allocatedQty?.toLocaleString()} kg · Lot date: {alloc.lotDate}</p>
+                      <p className="text-xs text-navy-500">SL: {alloc.allocatedQty?.toLocaleString()} kg · Ngày lô: {alloc.lotDate}</p>
                     </div>
                   ))}
                 </div>

@@ -305,7 +305,7 @@ export function ReconciliationPage() {
                   <TableHeader>
                     <TableRow hoverable={false}>
                       <TableHead>Mặt hàng</TableHead>
-                      <TableHead align="right">Ledger</TableHead>
+                      <TableHead align="right">Sổ cái</TableHead>
                       <TableHead align="right">On-hand</TableHead>
                       <TableHead align="right">Chênh lệch</TableHead>
                       <TableHead align="center">Mức độ</TableHead>

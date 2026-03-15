@@ -84,8 +84,8 @@ export function CycleCountPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'CREATED', label: 'CREATED' }, { value: 'RELEASED', label: 'RELEASED' }, { value: 'COUNTING', label: 'COUNTING' }, { value: 'UNDER_REVIEW', label: 'UNDER_REVIEW' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'POSTED', label: 'POSTED' }]} placeholder="Status" />
-          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Warehouse" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'CREATED', label: 'CREATED' }, { value: 'RELEASED', label: 'RELEASED' }, { value: 'COUNTING', label: 'COUNTING' }, { value: 'UNDER_REVIEW', label: 'UNDER_REVIEW' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'POSTED', label: 'POSTED' }]} placeholder="Trạng thái" />
+          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Kho" />
         </div>
 
         <Table>
@@ -117,9 +117,9 @@ export function CycleCountPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'CREATED' && <Button variant="outline" size="sm" onClick={() => releaseCycleCount.mutate(row.id)}>Release</Button>}
-                    {row.status === 'UNDER_REVIEW' && <Button variant="accent" size="sm" onClick={() => approveCycleCount.mutate(row.id)}>Approve</Button>}
-                    {row.status === 'APPROVED' && <Button variant="accent" size="sm" onClick={() => postCycleCount.mutate(row.id)}>Post</Button>}
+                    {row.status === 'CREATED' && <Button variant="outline" size="sm" onClick={() => releaseCycleCount.mutate(row.id)}>Phát hành</Button>}
+                    {row.status === 'UNDER_REVIEW' && <Button variant="accent" size="sm" onClick={() => approveCycleCount.mutate(row.id)}>Duyệt</Button>}
+                    {row.status === 'APPROVED' && <Button variant="accent" size="sm" onClick={() => postCycleCount.mutate(row.id)}>Đăng sổ</Button>}
                   </div>
                 </TableCell>
               </TableRow>

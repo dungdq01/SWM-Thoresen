@@ -65,7 +65,7 @@ export function WorkExecutePage() {
   if (!workId) {
     return (
       <div className="wrs-card p-8 text-center">
-        <p className="text-navy-500">Select a work from My Work to start execution.</p>
+        <p className="text-navy-500">Chọn công việc từ 'Công việc của tôi' để bắt đầu thực hiện.</p>
       </div>
     )
   }
@@ -73,7 +73,7 @@ export function WorkExecutePage() {
   if (!work) {
     return (
       <div className="wrs-card p-8 text-center">
-        <p className="text-navy-500">Loading...</p>
+        <p className="text-navy-500">Đang tải...</p>
       </div>
     )
   }
@@ -81,39 +81,39 @@ export function WorkExecutePage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Execute Work: {work.workId}</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Thực hiện công việc: {work.workId}</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-3 mb-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-navy-900">{work.workId}</p>
-            <p className="text-xs text-navy-400">{work.workType} · Priority: {work.priority}</p>
+            <p className="text-xs text-navy-400">{work.workType} · Ưu tiên: {work.priority}</p>
           </div>
           <Badge variant={work.status === 'COMPLETED' ? 'success' : work.status === 'IN_PROGRESS' ? 'warning' : 'info'}>{work.status}</Badge>
         </div>
         <div className="grid grid-cols-4 gap-3 text-sm text-navy-700">
-          <p><strong>Source:</strong> {work.sourceType}</p>
-          <p><strong>Source ID:</strong> {work.sourceId}</p>
-          <p><strong>Warehouse:</strong> {work.warehouse?.code || work.warehouseId}</p>
-          <p><strong>Owner:</strong> {work.owner?.code || work.ownerId}</p>
+          <p><strong>Nguồn:</strong> {work.sourceType}</p>
+          <p><strong>Mã nguồn:</strong> {work.sourceId}</p>
+          <p><strong>Kho:</strong> {work.warehouse?.code || work.warehouseId}</p>
+          <p><strong>Chủ hàng:</strong> {work.owner?.code || work.ownerId}</p>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-navy-900">Work Lines</h3>
+        <h3 className="text-sm font-semibold text-navy-900">Dòng công việc</h3>
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>#</TableHead>
-              <TableHead>Step</TableHead>
-              <TableHead>Item</TableHead>
-              <TableHead>From → To</TableHead>
-              <TableHead align="right">Expected</TableHead>
-              <TableHead align="right">Actual</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Action</TableHead>
+              <TableHead>STT</TableHead>
+              <TableHead>Bước</TableHead>
+              <TableHead>Mặt hàng</TableHead>
+              <TableHead>Từ → Đến</TableHead>
+              <TableHead align="right">Dự kiến</TableHead>
+              <TableHead align="right">Thực tế</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -133,7 +133,7 @@ export function WorkExecutePage() {
                 <TableCell align="center"><Badge variant={lineTone(line.status)}>{line.status}</Badge></TableCell>
                 <TableCell align="center">
                   {['OPEN', 'IN_PROGRESS'].includes(line.status) ? (
-                    <Button variant="ghost" size="sm" onClick={() => { setSelectedLineId(line.id); setActualQty(String(line.expectedQty)) }}>Execute</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setSelectedLineId(line.id); setActualQty(String(line.expectedQty)) }}>Thực hiện</Button>
                   ) : null}
                 </TableCell>
               </TableRow>
@@ -145,29 +145,29 @@ export function WorkExecutePage() {
       <Modal
         isOpen={!!selectedLine}
         onClose={() => { setSelectedLineId(''); setActualQty(''); setScannedLocation('') }}
-        title={`Execute Line ${selectedLine?.lineNum || ''}: ${selectedLine?.stepType || ''}`}
+        title={`Thực hiện dòng ${selectedLine?.lineNum || ''}: ${selectedLine?.stepType || ''}`}
         description={selectedLine?.item?.code || selectedLine?.itemId || ''}
         footer={
           <>
-            <Button variant="ghost" onClick={() => { setSelectedLineId(''); setActualQty(''); setScannedLocation('') }}>Cancel</Button>
-            <Button variant="outline" onClick={handleSkip} disabled={skipLine.isPending}>Skip Line</Button>
-            <Button variant="accent" onClick={handleComplete} disabled={completeLine.isPending}>Complete Line</Button>
+            <Button variant="ghost" onClick={() => { setSelectedLineId(''); setActualQty(''); setScannedLocation('') }}>Hủy</Button>
+            <Button variant="outline" onClick={handleSkip} disabled={skipLine.isPending}>Bỏ qua dòng</Button>
+            <Button variant="accent" onClick={handleComplete} disabled={completeLine.isPending}>Hoàn thành dòng</Button>
           </>
         }
       >
         {selectedLine && (
           <div className="space-y-4">
             <div className="rounded-xl border border-ice/30 bg-ice/5 p-4 grid grid-cols-2 gap-2 text-sm">
-              <p><strong>Expected:</strong> {selectedLine.expectedQty?.toLocaleString()} kg</p>
-              <p><strong>From:</strong> {selectedLine.fromLocation?.code || selectedLine.fromLocationId || '—'}</p>
-              <p><strong>To:</strong> {selectedLine.toLocation?.code || selectedLine.toLocationId || 'Scan to confirm'}</p>
+              <p><strong>Dự kiến:</strong> {selectedLine.expectedQty?.toLocaleString()} kg</p>
+              <p><strong>Từ:</strong> {selectedLine.fromLocation?.code || selectedLine.fromLocationId || '—'}</p>
+              <p><strong>Đến:</strong> {selectedLine.toLocation?.code || selectedLine.toLocationId || 'Quét để xác nhận'}</p>
             </div>
-            <Input label="Actual Qty (kg)" type="number" value={actualQty} onChange={(e) => setActualQty(e.target.value)} />
-            <Input label="Scanned Location (QR)" value={scannedLocation} onChange={(e) => setScannedLocation(e.target.value)} placeholder="Scan QR code..." />
+            <Input label="SL thực tế (kg)" type="number" value={actualQty} onChange={(e) => setActualQty(e.target.value)} />
+            <Input label="Vị trí quét (QR)" value={scannedLocation} onChange={(e) => setScannedLocation(e.target.value)} placeholder="Quét mã QR..." />
 
             {exceptions.length > 0 && (
               <div className="border-t border-moon-200 pt-3 space-y-2">
-                <h4 className="text-sm font-semibold text-navy-900">Exceptions</h4>
+                <h4 className="text-sm font-semibold text-navy-900">Ngoại lệ</h4>
                 {exceptions.map((exc) => (
                   <div key={exc.id} className="rounded-xl border border-danger/30 bg-danger/5 p-3 space-y-1">
                     <p className="font-semibold text-navy-800">{exc.type}</p>
@@ -179,7 +179,7 @@ export function WorkExecutePage() {
 
             {history.length > 0 && (
               <div className="border-t border-moon-200 pt-3 space-y-2">
-                <h4 className="text-sm font-semibold text-navy-900">Event History</h4>
+                <h4 className="text-sm font-semibold text-navy-900">Lịch sử sự kiện</h4>
                 <div className="space-y-1 max-h-32 overflow-y-auto text-sm">
                   {history.map((evt) => (
                     <div key={evt.id} className="flex items-center justify-between border-b border-moon-100 pb-1">
