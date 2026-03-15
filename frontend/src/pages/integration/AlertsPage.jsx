@@ -35,31 +35,31 @@ export function AlertsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Integration Alerts</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Cảnh báo tích hợp</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'OPEN', label: 'OPEN' }, { value: 'ACKNOWLEDGED', label: 'ACKNOWLEDGED' }, { value: 'RESOLVED', label: 'RESOLVED' }]} placeholder="Status" />
-          <Select value={filters.severity} onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'HIGH', label: 'HIGH' }, { value: 'MEDIUM', label: 'MEDIUM' }, { value: 'LOW', label: 'LOW' }]} placeholder="Severity" />
-          <Select value={filters.alertSource} onChange={(e) => setFilters((prev) => ({ ...prev, alertSource: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'WEIGHBRIDGE', label: 'WEIGHBRIDGE' }, { value: 'ERP_SYNC', label: 'ERP_SYNC' }, { value: 'MOBILE_SYNC', label: 'MOBILE_SYNC' }, { value: 'OCR', label: 'OCR' }]} placeholder="Source" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'OPEN', label: 'Mở' }, { value: 'ACKNOWLEDGED', label: 'Đã ghi nhận' }, { value: 'RESOLVED', label: 'Đã xử lý' }]} placeholder="Trạng thái" />
+          <Select value={filters.severity} onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'HIGH', label: 'Cao' }, { value: 'MEDIUM', label: 'Trung bình' }, { value: 'LOW', label: 'Thấp' }]} placeholder="Mức độ" />
+          <Select value={filters.alertSource} onChange={(e) => setFilters((prev) => ({ ...prev, alertSource: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'WEIGHBRIDGE', label: 'WEIGHBRIDGE' }, { value: 'ERP_SYNC', label: 'ERP_SYNC' }, { value: 'MOBILE_SYNC', label: 'MOBILE_SYNC' }, { value: 'OCR', label: 'OCR' }]} placeholder="Nguồn" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Alert</TableHead>
-              <TableHead>Source / Severity</TableHead>
-              <TableHead>Message</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Cảnh báo</TableHead>
+              <TableHead>Nguồn / Mức độ</TableHead>
+              <TableHead>Nội dung</TableHead>
+              <TableHead>Thời gian tạo</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="No alerts" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Không có cảnh báo" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -79,10 +79,10 @@ export function AlertsPage() {
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
                     {row.status === 'OPEN' && (
-                      <Button variant="outline" size="sm" onClick={() => acknowledgeAlert.mutate({ id: row.id, data: {} })}>Acknowledge</Button>
+                      <Button variant="outline" size="sm" onClick={() => acknowledgeAlert.mutate({ id: row.id, data: {} })}>Ghi nhận</Button>
                     )}
                     {['OPEN', 'ACKNOWLEDGED'].includes(row.status) && (
-                      <Button variant="accent" size="sm" onClick={() => setResolvingId(row.id)}>Resolve</Button>
+                      <Button variant="accent" size="sm" onClick={() => setResolvingId(row.id)}>Xử lý</Button>
                     )}
                   </div>
                 </TableCell>
@@ -97,11 +97,11 @@ export function AlertsPage() {
       {resolvingId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="wrs-card p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-semibold text-navy-900">Resolve Alert</h3>
-            <Textarea label="Resolution Note" rows={3} value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} placeholder="Enter resolution details..." />
+            <h3 className="text-lg font-semibold text-navy-900">Xử lý cảnh báo</h3>
+            <Textarea label="Ghi chú xử lý" rows={3} value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} placeholder="Nhập chi tiết xử lý..." />
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setResolvingId('')}>Cancel</Button>
-              <Button variant="accent" onClick={() => handleResolve(resolvingId)} disabled={resolveAlert.isPending}>Resolve</Button>
+              <Button variant="outline" onClick={() => setResolvingId('')}>Hủy</Button>
+              <Button variant="accent" onClick={() => handleResolve(resolvingId)} disabled={resolveAlert.isPending}>Xử lý</Button>
             </div>
           </div>
         </div>

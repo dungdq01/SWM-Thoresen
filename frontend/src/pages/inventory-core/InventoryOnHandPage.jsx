@@ -51,7 +51,7 @@ export function InventoryOnHandPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Tồn kho hiện tại</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
           <Button size="sm" onClick={() => setShowPostingModal(true)}>
             <Plus className="w-4 h-4 mr-1" />
             Nhập tồn kho

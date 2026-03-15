@@ -211,7 +211,6 @@ export function PurchaseOrdersPage() {
     if (status === 'PARTIAL') return 'warning'
     return 'info'
   }
-
   // ── Render line editor (table format) ──
   const renderLineEditor = (lines, updateFn, addFn, removeFn, isEdit = false) => (
     <div className="space-y-3">
@@ -296,21 +295,21 @@ export function PurchaseOrdersPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Purchase Orders</h2>
+        <h2 className="section-title">Đơn đặt hàng (PO)</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(emptyDraft); setShowCreate(true) }}>
             <Plus className="h-4 w-4 mr-1" /> Tạo PO
           </Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Input placeholder="Tìm PO number, ghi chú..." value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={PO_STATUSES} placeholder="Status" />
-          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Owner' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Owner" />
-          <Select value={filters.vendorId} onChange={(e) => setFilters((prev) => ({ ...prev, vendorId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Vendor' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} placeholder="Vendor" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={PO_STATUSES} placeholder="Trạng thái" />
+          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả chủ hàng' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Chủ hàng" />
+          <Select value={filters.vendorId} onChange={(e) => setFilters((prev) => ({ ...prev, vendorId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả nhà cung cấp' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} placeholder="Nhà cung cấp" />
         </div>
 
         <Table>
@@ -395,7 +394,7 @@ export function PurchaseOrdersPage() {
                         </>
                       )}
                       {['CLOSED', 'CANCELLED'].includes(po.status) && (
-                        <span className="text-xs text-navy-400">Finalized</span>
+                        <span className="text-xs text-navy-400">Đã hoàn tất</span>
                       )}
                     </div>
                   </TableCell>

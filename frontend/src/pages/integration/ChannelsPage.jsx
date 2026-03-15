@@ -22,7 +22,7 @@ export function ChannelsPage() {
     <>
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Integration Channels</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">

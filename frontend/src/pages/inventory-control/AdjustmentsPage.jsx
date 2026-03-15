@@ -74,8 +74,8 @@ export function AdjustmentsPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'PENDING_APPROVAL', label: 'PENDING_APPROVAL' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'POSTED', label: 'POSTED' }]} placeholder="Status" />
-          <Select value={filters.sourceType} onChange={(e) => setFilters((prev) => ({ ...prev, sourceType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'MANUAL', label: 'MANUAL' }, { value: 'CYCLE_COUNT', label: 'CYCLE_COUNT' }, { value: 'RECONCILIATION', label: 'RECONCILIATION' }]} placeholder="Source type" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'PENDING_APPROVAL', label: 'PENDING_APPROVAL' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'POSTED', label: 'POSTED' }]} placeholder="Trạng thái" />
+          <Select value={filters.sourceType} onChange={(e) => setFilters((prev) => ({ ...prev, sourceType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'MANUAL', label: 'MANUAL' }, { value: 'CYCLE_COUNT', label: 'CYCLE_COUNT' }, { value: 'RECONCILIATION', label: 'RECONCILIATION' }]} placeholder="Loại nguồn" />
         </div>
 
         <Table>
@@ -108,9 +108,9 @@ export function AdjustmentsPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => submitAdjustment.mutate(row.id)}>Submit</Button>}
-                    {row.status === 'PENDING_APPROVAL' && <Button variant="accent" size="sm" onClick={() => approveAdjustment.mutate(row.id)}>Approve</Button>}
-                    {row.status === 'APPROVED' && <Button variant="accent" size="sm" onClick={() => postAdjustment.mutate(row.id)}>Post</Button>}
+                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => submitAdjustment.mutate(row.id)}>Gửi duyệt</Button>}
+                    {row.status === 'PENDING_APPROVAL' && <Button variant="accent" size="sm" onClick={() => approveAdjustment.mutate(row.id)}>Duyệt</Button>}
+                    {row.status === 'APPROVED' && <Button variant="accent" size="sm" onClick={() => postAdjustment.mutate(row.id)}>Đăng sổ</Button>}
                   </div>
                 </TableCell>
               </TableRow>

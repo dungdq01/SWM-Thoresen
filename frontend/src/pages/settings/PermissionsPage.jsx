@@ -19,7 +19,7 @@ export function PermissionsPage() {
   const [search, setSearch] = useState('')
   const [moduleFilter, setModuleFilter] = useState('')
 
-  const { data: permissions = [], isLoading } = usePermissions()
+  const { data: permissions = [], isĐang tải...= usePermissions()
 
   const modules = useMemo(() => {
     const set = new Set(permissions.map((p) => p.moduleCode).filter(Boolean))
@@ -49,8 +49,8 @@ export function PermissionsPage() {
 
   return (
     <SettingsLayout
-      title="Permissions Catalog"
-      description="Xem danh sách các quyền có trong hệ thống. Quyền được gán cho vai trò để kiểm soát truy cập. (Read-only — seed data)"
+      title="Danh mục quyền"
+      description="Xem danh sách các quyền có trong hệ thống. Quyền được gán cho vai trò để kiểm soát truy cập. (Chỉ xem — dữ liệu mặc định)"
     >
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -58,25 +58,25 @@ export function PermissionsPage() {
             value={search}
             onChange={setSearch}
             onClear={() => setSearch('')}
-            placeholder="Search by permission code or description..."
+            placeholder="Tìm theo mã quyền hoặc mô tả..."
             className="flex-1 max-w-md"
           />
           <Select
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
-            options={[{ value: '', label: 'All modules' }, ...modules]}
+            options={[{ value: '', label: 'Tất cả module' }, ...modules]}
             className="w-48"
           />
         </div>
 
         <div className="text-sm text-navy-600">
-          Total: <span className="font-semibold">{filteredPermissions.length}</span> permissions
+          Tổng: <span className="font-semibold">{filteredPermissions.length}</span> quyền
         </div>
 
-        {isLoading ? (
-          <div className="py-12 text-center text-navy-500">Loading...</div>
+        {isĐang tải...(
+          <div className="py-12 text-center text-navy-500">Đang tải...</div>
         ) : Object.keys(groupedPermissions).length === 0 ? (
-          <div className="py-12 text-center text-navy-500">No matching permissions found</div>
+          <div className="py-12 text-center text-navy-500">Không tìm thấy quyền phù hợp</div>
         ) : (
           <div className="space-y-4">
             {Object.entries(groupedPermissions).map(([module, perms]) => (
@@ -89,10 +89,10 @@ export function PermissionsPage() {
                 <Table className="border-0 rounded-none">
                   <TableHeader>
                     <TableRow hoverable={false}>
-                      <TableHead className="w-1/4">Permission Code</TableHead>
-                      <TableHead>Resource</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Description</TableHead>
+                      <TableHead className="w-1/4">Mã quyền</TableHead>
+                      <TableHead>Tài nguyên</TableHead>
+                      <TableHead>Hành động</TableHead>
+                      <TableHead>Mô tả</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
