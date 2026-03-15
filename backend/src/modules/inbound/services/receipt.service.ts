@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
-import { CreateReceiptDto, ConfirmReceiptDto, CancelReceiptDto, WeighInDto, WeighOutDto, ReceiptQueryDto } from '../dto/receipt.dto';
+import { CreateReceiptDto, UpdateReceiptDto, ConfirmReceiptDto, CancelReceiptDto, WeighInDto, WeighOutDto, ReceiptQueryDto } from '../dto/receipt.dto';
 
 // Import JS modules
 const { ReceiptService: LegacyReceiptService } = require('../application/receipt.service');
@@ -61,10 +61,10 @@ export class ReceiptService {
         ownerId: dto.ownerId,
         vendorId: dto.vendorId,
         warehouseId: dto.warehouseId,
-        receivingLocationId: dto.receivingLocationId,
         vehicleNumber: dto.vehicleNumber,
         blNumber: dto.blNumber || null,
         expectedQty: dto.expectedQty,
+        notes: dto.notes || null,
         sourceApp: dto.sourceApp || 'WEB',
         lines,
       };
@@ -312,6 +312,130 @@ export class ReceiptService {
       });
 
       return { data: updated };
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async updateReceipt(id: string, dto: UpdateReceiptDto, userId: string) {
+    try {
+      // Get current receipt
+      const receipt = await this.prisma.receiptHeader.findUnique({
+        where: { id },
+        include: { lines: true },
+      });
+
+      if (!receipt) {
+        throw new NotFoundException(`Receipt ${id} not found`);
+      }
+
+      // Only allow update for DRAFT status
+      if (receipt.status !== 'DRAFT') {
+        throw new BadRequestException('Chỉ có thể chỉnh sửa phiếu nhập ở trạng thái Tạo mới');
+      }
+
+      const resolvedUserId = this.resolveUserId(userId);
+
+      // Update receipt header
+      const updateData: any = {
+        updatedBy: resolvedUserId,
+      };
+
+      if (dto.warehouseId) {
+        updateData.warehouse = { connect: { id: dto.warehouseId } };
+      }
+      if (dto.vehicleNumber !== undefined) {
+        updateData.vehicleNumber = dto.vehicleNumber;
+      }
+      if (dto.expectedQty !== undefined) {
+        updateData.expectedQty = dto.expectedQty;
+      }
+      if (dto.notes !== undefined) {
+        updateData.notes = dto.notes;
+      }
+
+      // Update lines if provided
+      if (dto.lines && dto.lines.length > 0) {
+        // Delete existing lines and create new ones
+        await this.prisma.receiptLine.deleteMany({
+          where: { receiptHeaderId: id },
+        });
+
+        await this.prisma.receiptLine.createMany({
+          data: dto.lines.map((line, index) => ({
+            receiptHeaderId: id,
+            itemId: line.itemId,
+            uomId: line.uomId,
+            expectedQty: line.expectedQty,
+            cargoForm: line.cargoForm || 'BULK',
+            notes: line.notes || null,
+            lineNumber: index + 1,
+          })),
+        });
+      }
+
+      const updated = await this.prisma.receiptHeader.update({
+        where: { id },
+        data: updateData,
+        include: { lines: true },
+      });
+
+      return { data: updated };
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async deleteReceipt(id: string, userId: string) {
+    try {
+      // Get current receipt
+      const receipt = await this.prisma.receiptHeader.findUnique({
+        where: { id },
+      });
+
+      if (!receipt) {
+        throw new NotFoundException(`Receipt ${id} not found`);
+      }
+
+      // Only allow delete for DRAFT status
+      if (receipt.status !== 'DRAFT') {
+        throw new BadRequestException('Chỉ có thể xóa phiếu nhập ở trạng thái Tạo mới');
+      }
+
+      // Delete related records first
+      await this.prisma.$transaction(async (tx) => {
+        // Delete lines
+        await tx.receiptLine.deleteMany({
+          where: { receiptHeaderId: id },
+        });
+
+        // Delete status history
+        await tx.receiptStatusHistory.deleteMany({
+          where: { receiptHeaderId: id },
+        });
+
+        // Delete weighing logs if any
+        await tx.receiptWeighingLog.deleteMany({
+          where: { receiptHeaderId: id },
+        });
+
+        // Delete exception logs if any
+        await tx.receiptExceptionLog.deleteMany({
+          where: { receiptHeaderId: id },
+        });
+
+        // Delete integration states if any
+        await tx.receiptIntegrationState.deleteMany({
+          where: { receiptHeaderId: id },
+        });
+
+        // Delete receipt header
+        await tx.receiptHeader.delete({
+          where: { id },
+        });
+      });
+
+      return { message: 'Đã xóa phiếu nhập thành công' };
     } catch (error) {
       this.handleError(error);
     }

@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Delete,
   Param,
   Body,
   Query,
@@ -13,7 +15,8 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ReceiptService } from '../services/receipt.service';
 import { 
-  CreateReceiptDto, 
+  CreateReceiptDto,
+  UpdateReceiptDto,
   ConfirmReceiptDto, 
   CancelReceiptDto, 
   WeighInDto, 
@@ -175,5 +178,30 @@ export class ReceiptController {
   @Permission('inbound.dashboard.view')
   async getDashboardSummary(@Query('warehouseId') warehouseId?: string) {
     return this.receiptService.getDashboardSummary(warehouseId);
+  }
+
+  @Put('receipts/:id')
+  @ApiOperation({ summary: 'Update receipt (DRAFT status only)' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 200, description: 'Receipt updated' })
+  @ApiResponse({ status: 400, description: 'Cannot update receipt not in DRAFT status' })
+  @Permission('inbound.receipt.create')
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateReceiptDto,
+    @CurrentUser() user?: RequestUser,
+  ) {
+    return this.receiptService.updateReceipt(id, dto, user?.id || 'system');
+  }
+
+  @Delete('receipts/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete receipt (DRAFT status only)' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiResponse({ status: 200, description: 'Receipt deleted' })
+  @ApiResponse({ status: 400, description: 'Cannot delete receipt not in DRAFT status' })
+  @Permission('inbound.receipt.create')
+  async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: RequestUser) {
+    return this.receiptService.deleteReceipt(id, user?.id || 'system');
   }
 }

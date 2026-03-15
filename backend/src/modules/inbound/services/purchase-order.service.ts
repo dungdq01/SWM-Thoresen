@@ -11,7 +11,7 @@ enum PoStatus {
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   NEW: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['CLOSED', 'CANCELLED'],
+  CONFIRMED: ['NEW', 'CLOSED', 'CANCELLED'],
   CLOSED: [],
   CANCELLED: [],
 };
@@ -294,6 +294,27 @@ export class PurchaseOrderService {
         rowVersion: { increment: 1 },
         updatedBy: userId || null,
       },
+      include: this.includeDetail(),
+    });
+  }
+
+  async unconfirm(id: string, userId?: string) {
+    const po = await this.findById(id);
+    if (!VALID_TRANSITIONS[po.status]?.includes(PoStatus.NEW)) {
+      throw new BadRequestException(`Cannot unconfirm PO in status ${po.status}`);
+    }
+
+    // Check if any receipt has been created from this PO
+    const receiptsCount = await this.prisma.receiptHeader.count({
+      where: { poId: po.poNumber },
+    });
+    if (receiptsCount > 0) {
+      throw new BadRequestException('Cannot unconfirm PO that already has receipts');
+    }
+
+    return this.prisma.purchaseOrder.update({
+      where: { id },
+      data: { status: PoStatus.NEW, rowVersion: { increment: 1 }, updatedBy: userId || null },
       include: this.includeDetail(),
     });
   }

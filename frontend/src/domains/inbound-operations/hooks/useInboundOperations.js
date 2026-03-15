@@ -89,8 +89,27 @@ function useInvalidateInboundQueries(successMessage, errorMessage) {
 }
 
 export function useCreateInboundReceipt() {
-  const { onSuccess, onError } = useInvalidateInboundQueries('Đã tạo receipt inbound', 'Không thể tạo receipt inbound')
+  const { onSuccess, onError } = useInvalidateInboundQueries('Đã tạo phiếu nhập', 'Không thể tạo phiếu nhập')
   return useMutation({ mutationFn: (data) => inboundOperationsApi.createReceipt(data), onSuccess, onError })
+}
+
+export function useUpdateInboundReceipt() {
+  const { queryClient, onError } = useInvalidateInboundQueries('Đã cập nhật phiếu nhập', 'Không thể cập nhật phiếu nhập')
+  return useMutation({
+    mutationFn: ({ id, data }) => inboundOperationsApi.updateReceipt(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.summary })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.receipts })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.receiptDetail(id) })
+      toast.success('Đã cập nhật phiếu nhập')
+    },
+    onError,
+  })
+}
+
+export function useDeleteInboundReceipt() {
+  const { onSuccess, onError } = useInvalidateInboundQueries('Đã xóa phiếu nhập', 'Không thể xóa phiếu nhập')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.deleteReceipt(id), onSuccess, onError })
 }
 
 export function useConfirmInboundReceipt() {

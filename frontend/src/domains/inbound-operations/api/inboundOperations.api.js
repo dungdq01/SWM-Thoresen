@@ -25,6 +25,14 @@ export const inboundOperationsApi = {
     (data) => inboundOperationsMockApi.createReceipt(data),
     (data) => httpClient.post(`${BASE_URL}/receipts`, data)
   ),
+  updateReceipt: withDataSource(
+    (id, data) => inboundOperationsMockApi.updateReceipt?.(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/receipts/${id}`, data)
+  ),
+  deleteReceipt: withDataSource(
+    (id) => inboundOperationsMockApi.deleteReceipt?.(id),
+    (id) => httpClient.delete(`${BASE_URL}/receipts/${id}`)
+  ),
   confirmReceipt: withDataSource(
     (id) => inboundOperationsMockApi.confirmReceipt(id),
     (id) => httpClient.post(`${BASE_URL}/receipts/${id}/confirm`)

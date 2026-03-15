@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-15 (PO Status NEW, UOM Conversion)
+> **Last Updated:** 2026-03-16 (Receipt Notes, Remove receivingLocationId)
 
 ---
 
@@ -34,11 +34,17 @@ LAND  - Nhập đường bộ
 
 ### 2.0.1 PurchaseOrderStatus
 ```
-NEW        - Tạo mới, chưa confirm
-CONFIRMED  - Đã xác nhận
+NEW        - Tạo mới, chưa confirm (có thể unconfirm từ CONFIRMED về đây)
+CONFIRMED  - Đã xác nhận, có thể tạo Receipt
 CLOSED     - Đã đóng (terminal)
 CANCELLED  - Đã hủy (terminal)
 ```
+
+**PO Transitions:**
+- `NEW` → `CONFIRMED` (confirm)
+- `CONFIRMED` → `NEW` (unconfirm - chỉ khi chưa có receipt)
+- `CONFIRMED` → `CLOSED` (close)
+- `NEW` / `CONFIRMED` → `CANCELLED` (cancel)
 
 ### 2.0.2 PurchaseOrderLineStatus
 ```
@@ -185,13 +191,13 @@ DEAD_LETTER - Đã hết retry
 | `owner_id` | UUID | NO | FK → md_owner |
 | `vendor_id` | UUID | NO | FK → md_vendor |
 | `warehouse_id` | UUID | NO | FK → md_warehouse |
-| `receiving_location_id` | UUID | NO | FK → md_location |
 | `vehicle_number` | VARCHAR(30) | NO | Biển số xe |
 | `bl_number` | VARCHAR(50) | YES | Số B/L (vessel) |
 | `expected_qty` | DECIMAL(18,3) | NO | Số lượng kỳ vọng |
 | `gross_weight_kg` | DECIMAL(18,3) | YES | Trọng lượng gross |
 | `tare_weight_kg` | DECIMAL(18,3) | YES | Trọng lượng tare |
 | `net_weight_kg` | DECIMAL(18,3) | YES | Trọng lượng net |
+| `notes` | VARCHAR(500) | YES | Ghi chú phiếu nhập |
 | `status` | ENUM | NO | Trạng thái hiện tại |
 | `attempt_number` | INT | NO | Số lần cân (default 1) |
 | `tolerance_pct_applied` | DECIMAL(8,4) | YES | Tolerance đã áp dụng |
@@ -226,7 +232,6 @@ DEAD_LETTER - Đã hết retry
 - `owner` → `md_owner`
 - `vendor` → `md_vendor`
 - `warehouse` → `md_warehouse`
-- `receiving_location` → `md_location`
 
 ---
 
@@ -246,6 +251,7 @@ DEAD_LETTER - Đã hết retry
 | `bag_count` | INT | YES | Số bao (bagged) |
 | `nominal_weight_per_bag` | DECIMAL(18,3) | YES | Trọng lượng/bao |
 | `cargo_form` | ENUM | NO | BULK/BAGGED_XX/... |
+| `notes` | VARCHAR(500) | YES | Ghi chú dòng hàng |
 | `status` | ENUM | NO | OPEN/RECEIVED/CANCELLED |
 | `created_at` | TIMESTAMP | NO | Thời gian tạo |
 | `created_by` | UUID | YES | Người tạo |
@@ -404,7 +410,6 @@ receipt_header 1───N receipt_integration_state
 receipt_header N───1 md_owner
 receipt_header N───1 md_vendor
 receipt_header N───1 md_warehouse
-receipt_header N───1 md_location
 receipt_line   N───1 md_item
 receipt_line   N───1 md_uom
 ```

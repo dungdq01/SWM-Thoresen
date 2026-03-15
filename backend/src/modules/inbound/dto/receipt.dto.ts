@@ -57,6 +57,11 @@ export class CreateReceiptLineDto {
   @ApiProperty({ enum: CargoForm })
   @IsEnum(CargoForm)
   cargoForm!: CargoForm;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class CreateReceiptDto {
@@ -108,10 +113,6 @@ export class CreateReceiptDto {
   warehouseId!: string;
 
   @ApiProperty()
-  @IsUUID()
-  receivingLocationId!: string;
-
-  @ApiProperty()
   @IsString()
   vehicleNumber!: string;
 
@@ -143,6 +144,11 @@ export class CreateReceiptDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   correlationId?: string;
 
   @ApiPropertyOptional()
@@ -156,6 +162,61 @@ export class CreateReceiptDto {
   @ValidateNested({ each: true })
   @Type(() => CreateReceiptLineDto)
   lines?: CreateReceiptLineDto[];
+}
+
+export class UpdateReceiptLineDto {
+  @ApiProperty()
+  @IsUUID()
+  itemId!: string;
+
+  @ApiProperty()
+  @IsUUID()
+  uomId!: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsPositive()
+  expectedQty!: number;
+
+  @ApiPropertyOptional({ enum: CargoForm, default: CargoForm.BULK })
+  @IsOptional()
+  @IsEnum(CargoForm)
+  cargoForm?: CargoForm = CargoForm.BULK;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdateReceiptDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  vehicleNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  expectedQty?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional({ type: [UpdateReceiptLineDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateReceiptLineDto)
+  lines?: UpdateReceiptLineDto[];
 }
 
 export class ConfirmReceiptDto {

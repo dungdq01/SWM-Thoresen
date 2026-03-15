@@ -43,7 +43,7 @@ class ReceiptService {
    * CR-2 FIX: Wrapped trong $transaction để tránh race condition
    */
   async createReceipt(data, context = {}) {
-    const { externalId, ownerId, vendorId, warehouseId, receivingLocationId, lines } = data;
+    const { externalId, ownerId, vendorId, warehouseId, lines } = data;
 
     return this.prisma.$transaction(async (tx) => {
       // Check idempotency (trong transaction để tránh race condition)
@@ -56,16 +56,7 @@ class ReceiptService {
       }
 
       // Validate master data references
-      await this.validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }, tx);
-
-      // Validate receiving location type - temporarily disabled for testing
-      // const location = await tx.mdLocation.findUnique({
-      //   where: { id: receivingLocationId },
-      //   select: { locationType: true },
-      // });
-      // if (location.locationType !== 'RECEIVING') {
-      //   throw createLocationTypeError(location.locationType);
-      // }
+      await this.validateMasterReferences({ ownerId, vendorId, warehouseId }, tx);
 
       // Validate lines
       if (!lines || lines.length === 0) {
@@ -81,16 +72,30 @@ class ReceiptService {
         await this.validateLineItem(line, tx);
       }
 
-      // Create receipt
+      // Create receipt - use connect for relations
       const receipt = await tx.receiptHeader.create({
         data: {
-          ...data,
+          externalId: data.externalId,
+          receiptType: data.receiptType || 'STANDARD',
+          poId: data.poId || null,
+          asnId: data.asnId || null,
+          vehicleNumber: data.vehicleNumber,
+          blNumber: data.blNumber || null,
+          expectedQty: data.expectedQty,
+          notes: data.notes || null,
           status: RECEIPT_STATUS.DRAFT,
           correlationId: context.correlationId || `corr-${Date.now()}`,
           sourceApp: data.sourceApp || 'WEB',
+          owner: { connect: { id: data.ownerId } },
+          vendor: { connect: { id: data.vendorId } },
+          warehouse: { connect: { id: data.warehouseId } },
           lines: {
             create: lines.map((line, index) => ({
-              ...line,
+              itemId: line.itemId,
+              uomId: line.uomId,
+              expectedQty: line.expectedQty,
+              cargoForm: line.cargoForm || 'BULK',
+              notes: line.notes || null,
               lineNumber: index + 1,
             })),
           },
@@ -676,19 +681,17 @@ class ReceiptService {
 
   // === Helper Methods ===
 
-  async validateMasterReferences({ ownerId, vendorId, warehouseId, receivingLocationId }, tx = null) {
+  async validateMasterReferences({ ownerId, vendorId, warehouseId }, tx = null) {
     const db = tx || this.prisma;
-    const [owner, vendor, warehouse, location] = await Promise.all([
+    const [owner, vendor, warehouse] = await Promise.all([
       db.mdOwner.findUnique({ where: { id: ownerId }, select: { isActive: true } }),
       db.mdVendor.findUnique({ where: { id: vendorId }, select: { isActive: true } }),
       db.mdWarehouse.findUnique({ where: { id: warehouseId }, select: { isActive: true } }),
-      db.mdLocation.findUnique({ where: { id: receivingLocationId }, select: { isActive: true } }),
     ]);
 
     if (!owner?.isActive) throw createMasterReferenceError('Owner', ownerId);
     if (!vendor?.isActive) throw createMasterReferenceError('Vendor', vendorId);
     if (!warehouse?.isActive) throw createMasterReferenceError('Warehouse', warehouseId);
-    if (!location?.isActive) throw createMasterReferenceError('Location', receivingLocationId);
   }
 
   async validateLineItem(line, tx = null) {

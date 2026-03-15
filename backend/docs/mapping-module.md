@@ -6,20 +6,20 @@
 
 ## Tổng quan
 
-| Module | Status | Code Path | DB Tables | API Endpoints |
-|--------|--------|-----------|-----------|---------------|
-| Module Auth | ✅ Completed | `src/modules/auth` | 7 tables | 13 endpoints |
-| Module 1 - Foundation | ✅ Completed | `src/modules/foundation` | 14 tables | ~25 endpoints |
-| Module 2 - Master Data | ✅ Completed | `src/modules/master-data` | 17 tables | ~55 endpoints |
-| Module 3 - Inventory Core | ✅ Completed | `src/modules/inventory-core` | 10 tables | ~13 endpoints |
-| Module 4 - Inbound | ✅ Completed | `src/modules/inbound` | 8 tables | ~22 endpoints |
-| Module 5 - Outbound | ✅ Completed | `src/modules/outbound` | 10 tables | ~18 endpoints |
-| Module 6 - Inventory Control | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
-| Module 7 - Work Execution | ✅ Completed | `src/modules/work-execution` | 10 tables | ~20 endpoints |
-| Module 8 - Integration Platform | ✅ Completed | `src/modules/integration` | 12 tables | ~20 endpoints |
-| Module 9 - VAS / Bagging | ✅ Completed | `src/modules/vas` | 5 tables | ~11 endpoints |
-| Module 10 - Billing | ✅ Completed | `src/modules/billing` | 12 tables | ~22 endpoints |
-| Module 11 - Reporting | ✅ Completed | `src/modules/reporting` | 12 tables | ~26 endpoints |
+| Module                          | Status      | Code Path                       | DB Tables | API Endpoints |
+| ---------------------------------| -------------| ---------------------------------| -----------| ---------------|
+| Module Auth                     | ✅ Completed | `src/modules/auth`              | 7 tables  | 13 endpoints  |
+| Module 1 - Foundation           | ✅ Completed | `src/modules/foundation`        | 14 tables | ~25 endpoints |
+| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 17 tables | ~55 endpoints |
+| Module 3 - Inventory Core       | ✅ Completed | `src/modules/inventory-core`    | 10 tables | ~13 endpoints |
+| Module 4 - Inbound              | ✅ Completed | `src/modules/inbound`           | 8 tables  | ~22 endpoints |
+| Module 5 - Outbound             | ✅ Completed | `src/modules/outbound`          | 10 tables | ~18 endpoints |
+| Module 6 - Inventory Control    | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
+| Module 7 - Work Execution       | ✅ Completed | `src/modules/work-execution`    | 10 tables | ~20 endpoints |
+| Module 8 - Integration Platform | ✅ Completed | `src/modules/integration`       | 12 tables | ~20 endpoints |
+| Module 9 - VAS / Bagging        | ✅ Completed | `src/modules/vas`               | 5 tables  | ~11 endpoints |
+| Module 10 - Billing             | ✅ Completed | `src/modules/billing`           | 12 tables | ~22 endpoints |
+| Module 11 - Reporting           | ✅ Completed | `src/modules/reporting`         | 12 tables | ~26 endpoints |
 
 ---
 

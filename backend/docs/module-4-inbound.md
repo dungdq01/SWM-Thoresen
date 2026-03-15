@@ -73,6 +73,7 @@ src/modules/inbound/
 | POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO | `INBOUND.PO.CONFIRM` |
 | POST | `/api/v1/inbound/purchase-orders/:id/close` | Close PO | `INBOUND.PO.CLOSE` |
 | POST | `/api/v1/inbound/purchase-orders/:id/cancel` | Cancel PO | `INBOUND.PO.CANCEL` |
+| POST | `/api/v1/inbound/purchase-orders/:id/unconfirm` | Hủy xác nhận PO (về NEW) | `INBOUND.PO.CONFIRM` |
 
 ### 3.2 Receipt Management
 
@@ -82,6 +83,8 @@ src/modules/inbound/
 | GET | `/api/v1/inbound/receipts` | List receipts (filter, paginate) | `INBOUND.RECEIPT.READ` |
 | GET | `/api/v1/inbound/receipts/:id` | Get receipt detail | `INBOUND.RECEIPT.READ` |
 | GET | `/api/v1/inbound/receipts/:id/history` | Get status history | `INBOUND.RECEIPT.READ` |
+| PUT | `/api/v1/inbound/receipts/:id` | Cập nhật receipt (chỉ DRAFT) | `INBOUND.RECEIPT.CREATE` |
+| DELETE | `/api/v1/inbound/receipts/:id` | Xóa receipt (chỉ DRAFT) | `INBOUND.RECEIPT.CREATE` |
 | POST | `/api/v1/inbound/receipts/:id/confirm` | Confirm receipt | `INBOUND.RECEIPT.CONFIRM` |
 | POST | `/api/v1/inbound/receipts/:id/cancel` | Cancel receipt | `INBOUND.RECEIPT.CANCEL` |
 | POST | `/api/v1/inbound/receipts/:id/reweigh` | Reweigh receipt | `INBOUND.RECEIPT.REWEIGH` |
@@ -213,17 +216,18 @@ src/modules/inbound/
   "ownerId": "uuid-owner",
   "vendorId": "uuid-vendor",
   "warehouseId": "uuid-warehouse",
-  "receivingLocationId": "uuid-location",
   "vehicleNumber": "51D-12345",
   "blNumber": "BL-2026-001",
   "expectedQty": 30000,
+  "notes": "Ghi chú phiếu nhập",
   "sourceApp": "WEB",
   "lines": [
     {
       "itemId": "uuid-item",
       "uomId": "uuid-uom",
       "expectedQty": 30000,
-      "cargoForm": "BULK"
+      "cargoForm": "BULK",
+      "notes": "Ghi chú dòng hàng"
     }
   ]
 }
@@ -247,13 +251,72 @@ src/modules/inbound/
 
 **Validation:**
 - `externalId` phải unique (idempotency key)
-- `ownerId`, `vendorId`, `warehouseId`, `receivingLocationId` phải active
-- `receivingLocationId` phải có `locationType = RECEIVING`
+- `ownerId`, `vendorId`, `warehouseId` phải active
 - `lines` phải có ít nhất 1 item
 
 ---
 
-### 4.2 POST `/api/v1/inbound/receipts/:id/confirm` - Confirm Receipt
+### 4.2.1 PUT `/api/v1/inbound/receipts/:id` - Cập nhật Receipt
+
+**Mục đích:** Cập nhật thông tin receipt (chỉ cho phép khi status = DRAFT)
+
+**Request Body:**
+```json
+{
+  "warehouseId": "uuid-warehouse",
+  "vehicleNumber": "51D-99999",
+  "expectedQty": 35000,
+  "notes": "Ghi chú phiếu nhập (cập nhật)",
+  "lines": [
+    {
+      "itemId": "uuid-item",
+      "uomId": "uuid-uom",
+      "expectedQty": 35000,
+      "cargoForm": "BULK",
+      "notes": "Ghi chú dòng hàng (cập nhật)"
+    }
+  ]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "data": {
+    "id": "uuid-receipt",
+    "status": "DRAFT",
+    "vehicleNumber": "51D-99999",
+    "expectedQty": 35000,
+    "lines": [...]
+  }
+}
+```
+
+**Validation:**
+- Chỉ cho phép cập nhật khi `status = DRAFT`
+- Nếu status khác DRAFT, trả về lỗi 400
+
+---
+
+### 4.2.2 DELETE `/api/v1/inbound/receipts/:id` - Xóa Receipt
+
+**Mục đích:** Xóa hoàn toàn receipt khỏi database (chỉ cho phép khi status = DRAFT)
+
+**Response (200 OK):**
+```json
+{
+  "message": "Đã xóa phiếu nhập thành công"
+}
+```
+
+**Validation:**
+- Chỉ cho phép xóa khi `status = DRAFT`
+- Nếu status khác DRAFT, trả về lỗi 400
+- Xóa cascade: lines, status_history, weighing_logs, exception_logs, integration_states
+
+---
+
+### 4.2.3 POST `/api/v1/inbound/receipts/:id/confirm` - Confirm Receipt
 
 **Mục đích:** Chuyển receipt từ DRAFT → AWAITING_WEIGHING, sinh receipt_number
 
@@ -424,16 +487,41 @@ src/modules/inbound/
 ```
 NEW ──confirm──> CONFIRMED ──close──> CLOSED
  │                    │
- └──cancel───────────>│
+ │              unconfirm
+ │                    │
+ └──cancel──────<─────┘
                       └──cancel──> CANCELLED
 ```
 
 **Business Rules:**
 - Chỉ có thể **edit PO** khi `status = NEW`
 - Chỉ có thể **tạo Receipt từ PO** khi `status = CONFIRMED`
+- Chỉ có thể **unconfirm PO** khi chưa có Receipt nào được tạo từ PO đó
 - `totalExpectedQty` được tính bằng cách convert tất cả lines về KG (sử dụng `md_uom_conversion`)
 
-### 5.1 Receipt States
+### 5.1 Receipt Data Model
+
+**ReceiptHeader Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `notes` | `String?` | Ghi chú phiếu nhập (tối đa 500 ký tự) |
+| `vehicleNumber` | `String` | Biển số xe |
+| `expectedQty` | `Decimal` | Tổng số lượng dự kiến |
+| `status` | `ReceiptStatus` | Trạng thái phiếu (DRAFT, AWAITING_WEIGHING, ...) |
+
+**ReceiptLine Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `itemId` | `UUID` | ID mặt hàng |
+| `uomId` | `UUID` | ID đơn vị tính |
+| `expectedQty` | `Decimal` | Số lượng dự kiến |
+| `receivedQty` | `Decimal?` | Số lượng đã nhận |
+| `cargoForm` | `CargoForm` | Hình thức hàng hóa (BULK, BAGGED_25KG, ...) |
+| `notes` | `String?` | Ghi chú dòng hàng (tối đa 500 ký tự) |
+
+### 5.2 Receipt States
 
 | State | Description |
 |-------|-------------|
@@ -448,7 +536,7 @@ NEW ──confirm──> CONFIRMED ──close──> CLOSED
 | `REJECTED` | Tolerance fail |
 | `CANCELLED` | Đã hủy (terminal) |
 
-### 5.2 Receipt Transitions
+### 5.3 Receipt Transitions
 
 ```
 DRAFT ──confirm──> AWAITING_WEIGHING ──weighIn──> WEIGHED_IN
@@ -603,13 +691,13 @@ Any cancellable state ──cancel──> CANCELLED
 
 ### 10.2 Receipt Permissions
 
-| Permission Code | Description |
-|-----------------|-------------|
-| `INBOUND.RECEIPT.CREATE` | Tạo receipt |
-| `INBOUND.RECEIPT.READ` | Xem receipt |
-| `INBOUND.RECEIPT.CONFIRM` | Confirm receipt |
-| `INBOUND.RECEIPT.CANCEL` | Cancel receipt |
-| `INBOUND.RECEIPT.REWEIGH` | Reweigh receipt |
-| `INBOUND.RECEIPT.CLOSE` | Close receipt |
-| `INBOUND.WEIGH.RECEIVE` | Nhận weigh events |
-| `INBOUND.DASHBOARD.READ` | Xem dashboard |
+| Permission Code           | Description       |
+| ---------------------------| -------------------|
+| `INBOUND.RECEIPT.CREATE`  | Tạo receipt       |
+| `INBOUND.RECEIPT.READ`    | Xem receipt       |
+| `INBOUND.RECEIPT.CONFIRM` | Confirm receipt   |
+| `INBOUND.RECEIPT.CANCEL`  | Cancel receipt    |
+| `INBOUND.RECEIPT.REWEIGH` | Reweigh receipt   |
+| `INBOUND.RECEIPT.CLOSE`   | Close receipt     |
+| `INBOUND.WEIGH.RECEIVE`   | Nhận weigh events |
+| `INBOUND.DASHBOARD.READ`  | Xem dashboard     |
