@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 import { reportingApi } from '../api/reporting.api'
 
 const QUERY_KEYS = {
@@ -81,7 +82,7 @@ export function useUpdateGoLiveGate() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.goLiveGates })
       toast.success('Đã cập nhật trạng thái gate')
     },
-    onError: (error) => toast.error(error?.error?.message || 'Không thể cập nhật gate'),
+    onError: (error) => toast.error(parseApiError(error)),
   })
 }
 

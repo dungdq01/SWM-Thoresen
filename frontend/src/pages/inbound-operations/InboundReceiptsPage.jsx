@@ -68,7 +68,6 @@ export function InboundReceiptsPage() {
     ownerId: filters.ownerId || undefined,
   })
 
-  // Fetch confirmed POs for dropdown
   const { data: poResponse } = usePurchaseOrders({ status: 'CONFIRMED', pageSize: 100 })
   const confirmedPos = poResponse?.data || []
 
@@ -125,6 +124,8 @@ export function InboundReceiptsPage() {
       // Error handled by mutation
     }
   }
+
+  const canSubmit = !createReceipt.isPending && selectedPo && receiptDraft.vehicleNumber && receiptDraft.warehouseId && receiptDraft.lines.some((l) => l.itemId)
 
   return (
     <>

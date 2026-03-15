@@ -175,7 +175,7 @@ export function ItemsPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã hàng</TableHead>
             <TableHead>Tên hàng</TableHead>
-            <TableHead>Dạng hàng</TableHead>
+            <TableHead align="center">Dạng hàng</TableHead>
             <TableHead>Trọng lượng chuẩn</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -187,7 +187,7 @@ export function ItemsPage() {
               <TableRow key={item.id} onClick={() => handleEdit(item)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice-dark">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice dark:text-ice-light">
                       <Package className="h-4 w-4" />
                     </div>
                     <span className="font-semibold text-navy-900">{item.itemCode}</span>
@@ -201,7 +201,7 @@ export function ItemsPage() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell align="center">
                   <CargoFormBadge cargoForm={item.cargoForm} />
                 </TableCell>
                 <TableCell>

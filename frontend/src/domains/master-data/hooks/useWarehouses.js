@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { warehouseApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useWarehouseList(filters = {}) {
   return useQuery({
@@ -30,7 +31,7 @@ export function useCreateWarehouse() {
       toast.success('Tạo kho thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo kho')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -47,11 +48,7 @@ export function useUpdateWarehouse() {
       toast.success('Cập nhật kho thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật kho')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -68,7 +65,7 @@ export function useDeactivateWarehouse() {
       toast.success('Đã ngừng hoạt động kho')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động kho')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -85,7 +82,7 @@ export function useReactivateWarehouse() {
       toast.success('Đã kích hoạt lại kho')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại kho')
+      toast.error(parseApiError(error))
     },
   })
 }

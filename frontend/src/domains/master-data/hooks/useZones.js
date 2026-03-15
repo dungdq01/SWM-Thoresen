@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { zoneApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useZoneList(filters = {}) {
   return useQuery({
@@ -29,7 +30,7 @@ export function useCreateZone() {
       toast.success('Tạo zone thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo zone')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -45,11 +46,7 @@ export function useUpdateZone() {
       toast.success('Cập nhật zone thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật zone')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -65,7 +62,7 @@ export function useDeactivateZone() {
       toast.success('Đã ngừng hoạt động zone')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động zone')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -81,7 +78,7 @@ export function useReactivateZone() {
       toast.success('Đã kích hoạt lại zone')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại zone')
+      toast.error(parseApiError(error))
     },
   })
 }

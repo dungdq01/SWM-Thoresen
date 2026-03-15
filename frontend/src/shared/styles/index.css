@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design Token System — Dark Mode (UX Principles Section 6) ─────────────── */
+:root {
+  --color-bg:          #f8fafc;
+  --color-bg-card:     #ffffff;
+  --color-bg-subtle:   #f1f5f9;
+  --color-bg-hover:    #f1f5f9;
+  --color-border:      #e2e8f0;
+  --color-border-subtle: #f1f5f9;
+  --color-text:        #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted:  #94a3b8;
+  /* Workflow status — light */
+  --status-draft-bg:     #f1f5f9;   --status-draft-text:   #475569;
+  --status-planned-bg:   #eff6ff;   --status-planned-text: #1d4ed8;
+  --status-transit-bg:   #fff7ed;   --status-transit-text: #c2410c;
+  --status-done-bg:      #f0fdf4;   --status-done-text:    #047857;
+  --status-delayed-bg:   #fef2f2;   --status-delayed-text: #b91c1c;
+}
+
+.dark {
+  --color-bg:          #0b1628;
+  --color-bg-card:     #112136;
+  --color-bg-subtle:   #192d47;
+  --color-bg-hover:    rgba(96,165,250,0.06);
+  --color-border:      rgba(148,163,184,0.12);
+  --color-border-subtle: rgba(148,163,184,0.07);
+  --color-text:        #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted:  #64748b;
+  /* Workflow status — dark, WCAG AA 4.5:1 */
+  --status-draft-bg:   rgba(100,116,139,0.18);  --status-draft-text:   #94a3b8;
+  --status-planned-bg: rgba(59,130,246,0.15);   --status-planned-text: #93c5fd;
+  --status-transit-bg: rgba(249,115,22,0.15);   --status-transit-text: #fdba74;
+  --status-done-bg:    rgba(16,185,129,0.15);   --status-done-text:    #6ee7b7;
+  --status-delayed-bg: rgba(239,68,68,0.15);    --status-delayed-text: #fca5a5;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -10,311 +47,339 @@
   }
 
   body {
-    @apply bg-background font-sans text-sm text-foreground;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    @apply font-sans text-sm;
     letter-spacing: -0.01em;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  ::selection {
-    @apply bg-ice text-white;
+  ::selection { @apply bg-ice text-white; }
+
+  /* ── Global Scrollbar — Light mode ── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+    transition: background 0.2s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  /* Firefox — light */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
   }
 }
 
-@layer components {
-  .container-custom {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-  }
+/* ── Global Scrollbar — Dark mode ── */
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.18);
+  border-radius: 999px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.38);
+}
+.dark ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Firefox — dark */
+.dark * {
+  scrollbar-color: rgba(96, 165, 250, 0.22) transparent;
+}
 
-  .section-padding {
-    @apply py-16 md:py-24 lg:py-32;
-  }
+@layer components {
+
+  /* ── Layout ── */
+  .container-custom { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+  .section-padding   { @apply py-16 md:py-24 lg:py-32; }
 
   .page-shell {
-    @apply h-screen overflow-hidden bg-background flex;
+    @apply h-screen overflow-hidden flex;
+    background-color: var(--color-bg);
   }
 
   .app-main {
     @apply flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-4;
+    background-color: var(--color-bg);
   }
 
-  .page-section {
-    @apply space-y-3 animate-fade-in;
-  }
-
-  .page-header {
-    @apply flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between;
-  }
+  .page-section  { @apply space-y-3 animate-fade-in; }
+  .page-header   { @apply flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between; }
 
   .page-title {
-    @apply text-lg font-bold tracking-tight text-navy-900;
+    @apply text-lg font-bold tracking-tight;
+    color: var(--color-text);
   }
 
   .page-description {
-    @apply mt-1 text-sm text-navy-400;
+    @apply mt-1 text-sm;
+    color: var(--color-text-muted);
   }
 
   .info-banner {
-    @apply flex items-start gap-3 rounded-xl border border-ice/20 bg-ice/10 px-4 py-3 text-sm text-navy-700;
+    @apply flex items-start gap-3 rounded-xl border px-4 py-3 text-sm;
+    border-color: rgba(96,165,250,0.25);
+    background-color: rgba(96,165,250,0.08);
+    color: var(--color-text);
   }
 
   .section-title {
-    @apply flex items-center gap-2 text-lg font-bold tracking-tight text-navy-900;
+    @apply flex items-center gap-2 text-lg font-bold tracking-tight;
+    color: var(--color-text);
   }
 
   .section-description {
-    @apply text-sm text-navy-400;
+    @apply text-sm;
+    color: var(--color-text-muted);
   }
 
-  .kpi-value {
-    @apply text-[26px] font-bold leading-none tracking-tight text-navy-900;
-  }
+  /* ── KPI ── */
+  .kpi-value    { @apply text-[26px] font-bold leading-none tracking-tight; color: var(--color-text); }
+  .kpi-value-sm { @apply text-xl font-bold leading-none tracking-tight;     color: var(--color-text); }
+  .kpi-label    { @apply text-xs font-semibold uppercase tracking-[0.14em]; color: var(--color-text-muted); }
 
-  .kpi-value-sm {
-    @apply text-xl font-bold leading-none tracking-tight text-navy-900;
-  }
-
-  .kpi-label {
-    @apply text-xs font-semibold uppercase tracking-[0.14em] text-navy-400;
-  }
-
+  /* ── Cards ── */
   .wrs-card {
-    @apply rounded-2xl border border-moon-200 bg-white shadow-card transition-all duration-300 hover:shadow-card-hover;
+    @apply rounded-2xl shadow-card transition-all duration-300;
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
   }
+  .wrs-card:hover {
+    border-color: rgba(96,165,250,0.25);
+  }
+  .dark .wrs-card { box-shadow: none; }
 
   .wrs-card-navy {
     @apply rounded-2xl border border-navy-600 bg-navy-800 text-moon-50 shadow-card;
   }
 
-  .content-section {
-    @apply wrs-card p-6;
-  }
-
+  .content-section        { @apply wrs-card p-6; }
   .content-section-header {
-    @apply flex items-start justify-between gap-4 border-b-2 border-moon-200 pb-4;
+    @apply flex items-start justify-between gap-4 pb-4 border-b-2;
+    border-color: var(--color-border);
   }
 
-  /* Module nav — single unified strip */
-  .module-nav-shell {
-    @apply wrs-card px-4 py-0 overflow-hidden;
-  }
-
-  .module-nav-header {
-    @apply flex items-center gap-3 py-3;
-  }
-
-  .module-nav-icon {
-    @apply flex h-8 w-8 items-center justify-center rounded-lg bg-navy-800 text-ice flex-shrink-0;
-  }
-
-  .module-nav-title {
-    @apply text-sm font-bold text-navy-900;
-  }
-
-  .module-nav-description {
-    @apply hidden;
-  }
+  /* ── Module nav ── */
+  .module-nav-shell       { @apply wrs-card px-4 py-0 overflow-hidden; }
+  .module-nav-header      { @apply flex items-center gap-3 py-3; }
+  .module-nav-icon        { @apply flex h-8 w-8 items-center justify-center rounded-lg bg-navy-800 text-ice flex-shrink-0; }
+  .module-nav-title       { @apply text-sm font-bold; color: var(--color-text); }
+  .module-nav-description { @apply hidden; }
 
   .module-nav-list {
-    @apply flex items-center gap-0.5 overflow-x-auto whitespace-nowrap border-t border-moon-100 px-1 py-1.5;
+    @apply flex items-center gap-0.5 overflow-x-auto whitespace-nowrap px-1 py-1.5;
+    border-top: 1px solid var(--color-border-subtle);
     scrollbar-width: none;
   }
-
-  .module-nav-list::-webkit-scrollbar {
-    display: none;
-  }
+  .module-nav-list::-webkit-scrollbar { display: none; }
 
   .module-nav-item {
-    @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-navy-500 transition-all duration-150 hover:bg-moon-50 hover:text-navy-900 flex-shrink-0;
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150 flex-shrink-0;
+    color: var(--color-text-secondary);
   }
-
-  .module-nav-item-active {
-    @apply bg-navy-800 text-ice-light shadow-sm;
+  .module-nav-item:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text);
   }
+  .module-nav-item-active { @apply bg-navy-800 text-ice-light shadow-sm; }
 
-  .stats-grid {
-    @apply grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4;
-  }
+  /* ── Stat cards ── */
+  .stats-grid    { @apply grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4; }
+  .stat-card     { @apply wrs-card p-5; }
+  .stat-card-row { @apply flex items-center gap-4; }
+  .stat-card-icon { @apply flex h-12 w-12 items-center justify-center rounded-xl; }
 
-  .stat-card {
-    @apply wrs-card p-5;
-  }
+  /* ── Visual cards ── */
+  .page-visual-dashboard { @apply grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4; }
+  .visual-card           { @apply wrs-card space-y-3 p-4; }
+  .visual-card-label     { @apply text-[10px] font-bold uppercase tracking-[0.18em]; color: var(--color-text-muted); }
+  .visual-card-title     { @apply text-sm font-semibold;  color: var(--color-text); }
+  .visual-card-value     { @apply mt-0.5 text-base font-bold; color: var(--color-text); }
+  .visual-card-badge     { @apply inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]; }
+  .visual-card-rail      { @apply h-2 overflow-hidden rounded-full; background-color: var(--color-bg-subtle); }
+  .visual-card-fill      { @apply h-full rounded-full transition-all duration-300; }
+  .visual-card-note      { @apply text-xs; color: var(--color-text-secondary); }
+  .visual-card-helper    { @apply text-[11px] font-semibold; color: var(--color-text); }
 
-  .stat-card-row {
-    @apply flex items-center gap-4;
-  }
-
-  .stat-card-icon {
-    @apply flex h-12 w-12 items-center justify-center rounded-xl;
-  }
-
-  .page-visual-dashboard {
-    @apply grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4;
-  }
-
-  .visual-card {
-    @apply wrs-card space-y-3 p-4;
-  }
-
-  .visual-card-label {
-    @apply text-[10px] font-bold uppercase tracking-[0.18em] text-navy-400;
-  }
-
-  .visual-card-title {
-    @apply text-sm font-semibold text-navy-800;
-  }
-
-  .visual-card-value {
-    @apply mt-0.5 text-base font-bold text-navy-900;
-  }
-
-  .visual-card-badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em];
-  }
-
-  .visual-card-rail {
-    @apply h-2 overflow-hidden rounded-full;
-  }
-
-  .visual-card-fill {
-    @apply h-full rounded-full transition-all duration-300;
-  }
-
-  .visual-card-note {
-    @apply text-xs text-navy-500;
-  }
-
-  .visual-card-helper {
-    @apply text-[11px] font-semibold text-navy-700;
-  }
-
+  /* ── Button base ── */
   .btn-base {
     @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ice/30 disabled:pointer-events-none disabled:opacity-60;
   }
 
+  /* ── Input ── */
   .wrs-input {
-    @apply h-10 w-full rounded-xl border-2 border-moon-200 bg-white px-4 text-sm text-navy-800 placeholder:text-navy-300 transition-all duration-200 focus:border-ice focus:outline-none focus:ring-2 focus:ring-ice/20;
+    @apply h-10 w-full rounded-xl border-2 px-4 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ice/20;
+    background-color: var(--color-bg-card);
+    border-color: var(--color-border);
+    color: var(--color-text);
   }
+  .wrs-input::placeholder { color: var(--color-text-muted); }
+  .wrs-input:focus         { border-color: #60a5fa; }
+  .wrs-input:hover         { border-color: var(--color-text-muted); }
 
-  .form-hint {
-    @apply mt-2 text-xs text-navy-400;
-  }
+  .form-hint  { @apply mt-2 text-xs; color: var(--color-text-muted); }
+  .form-error { @apply mt-2 flex items-center gap-1 text-xs text-danger; }
 
-  .form-error {
-    @apply mt-2 flex items-center gap-1 text-xs text-danger;
-  }
+  /* ── Table ── */
+  .wrs-table { @apply w-full text-sm; }
 
-  .wrs-table {
-    @apply w-full text-sm;
-  }
-
-  .wrs-table thead {
-    @apply bg-moon-50;
-  }
+  .wrs-table thead { background-color: var(--color-bg-subtle); }
 
   .wrs-table th {
-    @apply border-b-2 border-moon-200 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-navy-400;
+    @apply px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-muted);
   }
 
   .wrs-table td {
-    @apply px-4 py-4 text-sm text-navy-700;
+    @apply px-4 py-4 text-sm;
+    color: var(--color-text-secondary);
   }
 
   .wrs-table tbody tr {
-    @apply border-b border-moon-100 transition-colors duration-200;
+    @apply transition-colors duration-200;
+    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .wrs-table tbody tr:hover {
-    @apply bg-moon-50/70;
+    background-color: var(--color-bg-hover);
   }
 
-  .form-section {
-    @apply wrs-card p-6;
-  }
+  /* ── Forms ── */
+  .form-section       { @apply wrs-card p-6; }
+  .form-section-title { @apply mb-4 flex items-center gap-2 text-base font-bold; color: var(--color-text); }
+  .form-grid          { @apply grid grid-cols-1 gap-4 md:grid-cols-2; }
+  .form-field         { @apply space-y-1.5; }
+  .form-label         { @apply text-sm font-semibold; color: var(--color-text-secondary); }
+  .form-footer        { @apply flex items-center justify-end gap-3; }
 
-  .form-section-title {
-    @apply mb-4 flex items-center gap-2 text-base font-bold text-navy-900;
-  }
+  /* ── Sidebar — selalu dark, no dark: variants needed ── */
+  .sidebar-section-label { @apply px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-moon-100/35; }
+  .sidebar-item          { @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-moon-100/70 transition-all duration-150 min-h-[40px]; }
+  .sidebar-item-active   { @apply bg-sidebar-active text-ice-light shadow-inner-glow; }
+  .sidebar-item-hover    { @apply hover:bg-sidebar-hover hover:text-moon-50; }
+  .sidebar-child-item    { @apply block rounded-md px-3 py-2 text-[12.5px] text-moon-100/55 transition-colors duration-150 hover:text-moon-50 hover:bg-white/[0.04] min-h-[36px] flex items-center; }
+  .sidebar-child-active  { @apply text-ice-light font-medium bg-white/[0.06]; }
 
-  .form-grid {
-    @apply grid grid-cols-1 gap-4 md:grid-cols-2;
-  }
-
-  .form-field {
-    @apply space-y-1.5;
-  }
-
-  .form-label {
-    @apply text-sm font-semibold text-navy-700;
-  }
-
-  .form-footer {
-    @apply flex items-center justify-end gap-3;
-  }
-
-  .sidebar-section-label {
-    @apply px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-moon-100/35;
-  }
-
-  .sidebar-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-moon-100/70 transition-all duration-150 min-h-[40px];
-  }
-
-  .sidebar-item-active {
-    @apply bg-sidebar-active text-ice-light shadow-inner-glow;
-  }
-
-  .sidebar-item-hover {
-    @apply hover:bg-sidebar-hover hover:text-moon-50;
-  }
-
-  .sidebar-child-item {
-    @apply block rounded-md px-3 py-2 text-[12.5px] text-moon-100/55 transition-colors duration-150 hover:text-moon-50 hover:bg-white/[0.04] min-h-[36px] flex items-center;
-  }
-
-  .sidebar-child-active {
-    @apply text-ice-light font-medium bg-white/[0.06];
-  }
-
-  .sidebar-nav {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.08) transparent;
-  }
-  .sidebar-nav::-webkit-scrollbar {
-    width: 4px;
-  }
-  .sidebar-nav::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .sidebar-nav::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.08);
-    border-radius: 4px;
-  }
-  .sidebar-nav:hover::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.15);
-  }
+  .sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+  .sidebar-nav::-webkit-scrollbar       { width: 4px; }
+  .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+  .sidebar-nav:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .stagger-1 {
-    animation-delay: 50ms;
-  }
-
-  .stagger-2 {
-    animation-delay: 100ms;
-  }
-
-  .stagger-3 {
-    animation-delay: 150ms;
-  }
-
-  .stagger-4 {
-    animation-delay: 200ms;
-  }
-
-  .stagger-5 {
-    animation-delay: 250ms;
-  }
+  .text-balance { text-wrap: balance; }
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE GLOBAL OVERRIDES
+   Converts hardcoded light-palette classes to dark-friendly values.
+   Applied at root level so every component benefits automatically.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Navy text → readable in dark ── */
+.dark .text-navy-900 { color: #e2e8f0; }
+.dark .text-navy-800 { color: #e2e8f0; }
+.dark .text-navy-700 { color: #94a3b8; }
+.dark .text-navy-600 { color: #94a3b8; }
+.dark .text-navy-500 { color: #64748b; }
+.dark .text-navy-400 { color: #64748b; }
+.dark .text-navy-300 { color: #475569; }
+.dark .hover\:text-navy-900:hover { color: #e2e8f0; }
+.dark .hover\:text-navy-700:hover { color: #cbd5e1; }
+.dark .hover\:text-navy-600:hover { color: #93c5fd; }
+
+/* ── Navy backgrounds → dark surfaces ── */
+.dark .bg-navy-50  { background-color: var(--color-bg-subtle); }
+.dark .bg-navy-100 { background-color: rgba(148,163,184,0.12); }
+
+/* ── Moon backgrounds → dark card surfaces ── */
+.dark .bg-moon-50  { background-color: var(--color-bg-subtle); }
+.dark .bg-moon-100 { background-color: var(--color-bg-subtle); }
+.dark .bg-moon-200 { background-color: rgba(148,163,184,0.15); }
+
+/* ── White backgrounds → dark card surfaces ── */
+.dark .bg-white { background-color: var(--color-bg-card); }
+
+/* ── Moon border colors ── */
+.dark .border-moon-200 { border-color: var(--color-border); }
+.dark .border-moon-300 { border-color: var(--color-border); }
+
+/* ── Moon text (used as muted labels) ── */
+.dark .text-moon-400 { color: #64748b; }
+.dark .text-moon-500 { color: #475569; }
+
+/* ── Hover states ── */
+.dark .hover\:bg-moon-50:hover  { background-color: var(--color-bg-hover); }
+.dark .hover\:bg-moon-100:hover { background-color: var(--color-bg-hover); }
+.dark .hover\:bg-white:hover    { background-color: var(--color-bg-card); }
+.dark .hover\:border-moon-300:hover { border-color: rgba(148,163,184,0.25); }
+
+/* ── Slate text (guided tour, misc) ── */
+.dark .text-slate-400 { color: #64748b; }
+.dark .text-slate-500 { color: #475569; }
+
+/* ── Disabled select ── */
+.dark .bg-moon-50.text-navy-300 { color: #475569; }
+
+/* ── Light-tinted icon backgrounds (sky, amber) ── */
+.dark .bg-sky-50   { background-color: rgba(14,165,233,0.12); }
+.dark .text-sky-600 { color: #38bdf8; }
+.dark .bg-amber-50  { background-color: rgba(245,158,11,0.12); }
+.dark .text-amber-600 { color: #fbbf24; }
+
+/* ── Border moon-100 (dividers inside CommandPalette) ── */
+.dark .border-moon-100 { border-color: var(--color-border-subtle); }
+
+/* ── Border colors ── */
+.dark .border-moon-100 { border-color: var(--color-border-subtle); }
+.dark .border-moon-200 { border-color: var(--color-border); }
+.dark .border-moon-300 { border-color: var(--color-border); }
+.dark .border-navy-100 { border-color: var(--color-border-subtle); }
+.dark .border-navy-200 { border-color: var(--color-border); }
+.dark .hover\:border-moon-300:hover   { border-color: rgba(148,163,184,0.25); }
+.dark .hover\:border-navy-300:hover   { border-color: rgba(148,163,184,0.25); }
+
+/* ── Opacity bg variants ── */
+.dark .bg-moon-50\/50,
+.dark .bg-moon-50\/60,
+.dark .bg-moon-50\/70,
+.dark .bg-moon-50\/80,
+.dark .bg-moon-50\/90 { background-color: rgba(25,45,71,0.5); }
+.dark .bg-moon-100\/50,
+.dark .bg-moon-100\/60 { background-color: rgba(25,45,71,0.4); }
+.dark .bg-white\/70,
+.dark .bg-white\/80,
+.dark .bg-white\/90 { background-color: rgba(17,33,54,0.85); }
+.dark .bg-navy-50\/50 { background-color: rgba(25,45,71,0.4); }
+
+/* ── Emerald tints ── */
+.dark .bg-emerald-100 { background-color: rgba(16,185,129,0.15); }
+.dark .text-emerald-600 { color: #34d399; }
+
+/* ── Native <select> option list in dark ── */
+.dark .wrs-input option {
+  background-color: #112136;
+  color: #e2e8f0;
+}
+

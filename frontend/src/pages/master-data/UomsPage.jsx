@@ -27,9 +27,17 @@ const STATUS_OPTIONS = [
   { value: 'false', label: 'Ngừng hoạt động' },
 ]
 
-const getUomClassLabel = (uomClass) => {
-  const found = UOM_CLASSES.find((c) => c.value === uomClass)
-  return found?.label || uomClass
+const UOM_CLASS_CONFIG = {
+  WEIGHT:   { label: 'Khối lượng', variant: 'warning' },
+  VOLUME:   { label: 'Thể tích',   variant: 'info' },
+  QUANTITY: { label: 'Số lượng',   variant: 'success' },
+  LENGTH:   { label: 'Chiều dài',  variant: 'primary' },
+  AREA:     { label: 'Diện tích',  variant: 'foreign' },
+}
+
+const UomClassBadge = ({ uomClass }) => {
+  const { label, variant } = UOM_CLASS_CONFIG[uomClass] || { label: uomClass, variant: 'neutral' }
+  return <Badge variant={variant}>{label}</Badge>
 }
 
 export function UomsPage() {
@@ -154,7 +162,7 @@ export function UomsPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã ĐVT</TableHead>
             <TableHead>Mô tả</TableHead>
-            <TableHead>Nhóm</TableHead>
+            <TableHead align="center">Nhóm</TableHead>
             <TableHead align="center">ĐVT gốc</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -166,8 +174,8 @@ export function UomsPage() {
               <TableRow key={uom.id} onClick={() => handleEdit(uom)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <Scale className="w-4 h-4 text-indigo-600" />
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                      <Scale className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <span className="font-medium text-navy-900">{uom.uomCode}</span>
                   </div>
@@ -175,8 +183,8 @@ export function UomsPage() {
                 <TableCell>
                   <span className="text-navy-700">{uom.description || '—'}</span>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="info">{getUomClassLabel(uom.uomClass)}</Badge>
+                <TableCell align="center">
+                  <UomClassBadge uomClass={uom.uomClass} />
                 </TableCell>
                 <TableCell align="center">
                   {uom.isBaseUom ? (

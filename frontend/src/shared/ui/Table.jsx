@@ -1,5 +1,5 @@
 import { cn } from '@shared/lib/cn'
-import { ChevronLeft, ChevronRight, Inbox, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Inbox, Loader2 } from 'lucide-react'
 
 export function Table({ children, className }) {
   return (
@@ -98,40 +98,103 @@ export function TableLoading({ colSpan = 1 }) {
   )
 }
 
-export function Pagination({ page, totalPages, onPageChange, className }) {
+function getPageNumbers(page, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1)
+  }
+  const pages = []
+  if (page <= 4) {
+    pages.push(1, 2, 3, 4, 5, '...', totalPages)
+  } else if (page >= totalPages - 3) {
+    pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages)
+  } else {
+    pages.push(1, '...', page - 1, page, page + 1, '...', totalPages)
+  }
+  return pages
+}
+
+export function Pagination({ page, totalPages, onPageChange, total, pageSize, className }) {
   const canGoPrev = page > 1
   const canGoNext = page < totalPages
+  const pages = getPageNumbers(page, totalPages)
+
+  const navBtn = (onClick, disabled, icon) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors',
+        disabled
+          ? 'cursor-not-allowed opacity-40'
+          : 'hover:bg-muted cursor-pointer'
+      )}
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-card)',
+        color: disabled ? 'var(--color-text-muted)' : 'var(--color-text)',
+      }}
+    >
+      {icon}
+    </button>
+  )
 
   return (
-    <div className={cn('flex items-center justify-between border-t border-border px-3 py-3 sm:px-4 sm:py-4', className)}>
-      <p className="text-xs text-muted-foreground sm:text-sm">
-        Trang <span className="font-medium">{page}</span> / {totalPages}
+    <div className={cn('flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3', className)}
+      style={{ borderColor: 'var(--color-border)' }}
+    >
+      {/* Left: record info */}
+      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+        {total != null && pageSize != null ? (
+          <>
+            Hiển thị{' '}
+            <span className="font-medium" style={{ color: 'var(--color-text)' }}>
+              {Math.min((page - 1) * pageSize + 1, total)}–{Math.min(page * pageSize, total)}
+            </span>
+            {' '}/ {total} bản ghi
+          </>
+        ) : (
+          <>
+            Trang <span className="font-medium" style={{ color: 'var(--color-text)' }}>{page}</span> / {totalPages}
+          </>
+        )}
       </p>
-      <div className="flex gap-2">
-        <button
-          onClick={() => canGoPrev && onPageChange(page - 1)}
-          disabled={!canGoPrev}
-          className={cn(
-            'inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background transition-colors',
-            canGoPrev
-              ? 'text-foreground hover:bg-muted'
-              : 'cursor-not-allowed text-muted-foreground opacity-50'
-          )}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => canGoNext && onPageChange(page + 1)}
-          disabled={!canGoNext}
-          className={cn(
-            'inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background transition-colors',
-            canGoNext
-              ? 'text-foreground hover:bg-muted'
-              : 'cursor-not-allowed text-muted-foreground opacity-50'
-          )}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+
+      {/* Right: navigation */}
+      <div className="flex items-center gap-1">
+        {navBtn(() => onPageChange(1), !canGoPrev, <ChevronsLeft className="w-4 h-4" />)}
+        {navBtn(() => onPageChange(page - 1), !canGoPrev, <ChevronLeft className="w-4 h-4" />)}
+
+        {pages.map((p, i) =>
+          p === '...' ? (
+            <span key={`ellipsis-${i}`} className="flex h-8 w-8 items-center justify-center text-xs select-none"
+              style={{ color: 'var(--color-text-muted)' }}>
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              className={cn(
+                'inline-flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium border transition-colors',
+                p === page ? '' : 'hover:bg-muted cursor-pointer'
+              )}
+              style={p === page ? {
+                backgroundColor: 'var(--color-ice, #60a5fa)',
+                borderColor: 'var(--color-ice, #60a5fa)',
+                color: '#fff',
+              } : {
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-bg-card)',
+                color: 'var(--color-text)',
+              }}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        {navBtn(() => onPageChange(page + 1), !canGoNext, <ChevronRight className="w-4 h-4" />)}
+        {navBtn(() => onPageChange(totalPages), !canGoNext, <ChevronsRight className="w-4 h-4" />)}
       </div>
     </div>
   )

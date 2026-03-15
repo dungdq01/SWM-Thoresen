@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 import { outboundOperationsApi } from '../api/outboundOperations.api'
 
 const QUERY_KEYS = {
@@ -108,7 +109,7 @@ function useInvalidateOutboundQueries(successMessage, errorMessage) {
       toast.success(successMessage)
     },
     onError: (error) => {
-      toast.error(error?.error?.message || errorMessage)
+      toast.error(parseApiError(error))
     },
   }
 }
@@ -244,7 +245,7 @@ function useInvalidateSOQueries(successMessage, errorMessage) {
       toast.success(successMessage)
     },
     onError: (error) => {
-      toast.error(error?.error?.message || errorMessage)
+      toast.error(parseApiError(error))
     },
   }
 }

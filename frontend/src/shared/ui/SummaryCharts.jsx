@@ -161,7 +161,8 @@ export function TrendMiniChart({ data, color1 = '#10b981', color2 = '#3b82f6', l
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={45} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
           <Tooltip
-            contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12 }}
+            contentStyle={{ borderRadius: 8, border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text)', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+            itemStyle={{ color: 'var(--color-text-secondary)' }}
             formatter={(value) => value.toLocaleString()}
           />
           <Bar dataKey="value1" fill={color1} radius={[4, 4, 0, 0]} name={legend1 || 'Series 1'} />

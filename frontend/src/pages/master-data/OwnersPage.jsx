@@ -175,7 +175,7 @@ export function OwnersPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã chủ hàng</TableHead>
             <TableHead>Tên chủ hàng</TableHead>
-            <TableHead>Nhóm</TableHead>
+            <TableHead align="center">Nhóm</TableHead>
             <TableHead>Mã số thuế</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -201,7 +201,7 @@ export function OwnersPage() {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell align="center">
                   <OwnerGroupBadge group={owner.ownerGroup} />
                 </TableCell>
                 <TableCell>

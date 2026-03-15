@@ -157,7 +157,7 @@ export function ZonesPage() {
             <TableHead>Mã zone</TableHead>
             <TableHead>Tên zone</TableHead>
             <TableHead>Kho</TableHead>
-            <TableHead>Loại</TableHead>
+            <TableHead align="center">Loại</TableHead>
             <TableHead>Sức chứa</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -169,8 +169,8 @@ export function ZonesPage() {
               <TableRow key={zone.id} onClick={() => setDrawerState({ isOpen: true, data: zone })}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                      <Grid3X3 className="w-4 h-4 text-violet-600" />
+                    <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                      <Grid3X3 className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                     </div>
                     <span className="font-medium text-navy-900">{zone.zoneCode}</span>
                   </div>
@@ -186,7 +186,7 @@ export function ZonesPage() {
                 <TableCell>
                   <span className="text-navy-600">{zone.warehouse?.warehouseCode || '—'}</span>
                 </TableCell>
-                <TableCell>
+                <TableCell align="center">
                   <ZoneTypeBadge type={zone.zoneType} />
                 </TableCell>
                 <TableCell>

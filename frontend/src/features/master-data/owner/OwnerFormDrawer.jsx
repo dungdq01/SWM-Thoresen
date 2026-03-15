@@ -251,7 +251,7 @@ export function OwnerFormDrawer({
 
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-navy-100 bg-navy-50/50 sm:gap-3 sm:px-6 sm:py-4">
               <Button variant="outline" onClick={onClose} disabled={isLoading}>
-                Hủy bỏ
+                Hủy
               </Button>
               <Button
                 onClick={handleSubmit(handleFormSubmit)}

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customerApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useCustomerNextCode(enabled = false) {
   return useQuery({
@@ -39,7 +40,7 @@ export function useCreateCustomer() {
       toast.success('Thêm khách hàng thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể thêm khách hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -55,7 +56,7 @@ export function useUpdateCustomer() {
       toast.success('Cập nhật khách hàng thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể cập nhật khách hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -70,7 +71,7 @@ export function useDeactivateCustomer() {
       toast.success('Đã ngừng hoạt động khách hàng')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động khách hàng')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -85,7 +86,7 @@ export function useReactivateCustomer() {
       toast.success('Đã kích hoạt lại khách hàng')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại khách hàng')
+      toast.error(parseApiError(error))
     },
   })
 }

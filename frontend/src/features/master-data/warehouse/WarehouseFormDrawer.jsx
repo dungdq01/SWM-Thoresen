@@ -301,7 +301,7 @@ export function WarehouseFormDrawer({
 
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-navy-100 bg-navy-50/50">
               <Button variant="outline" onClick={onClose} disabled={isLoading}>
-                Hủy bỏ
+                Hủy
               </Button>
               <Button onClick={handleSubmit(handleFormSubmit)} isLoading={isLoading}>
                 {isEdit ? 'Cập nhật' : 'Tạo mới'}

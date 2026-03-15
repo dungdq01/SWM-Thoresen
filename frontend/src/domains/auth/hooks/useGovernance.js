@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/api/queryClient'
 import { authApi } from '../api/auth.api'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useRules(filters = {}) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreateRule() {
       toast.success('Tạo business rule mới thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể tạo rule')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -36,7 +37,7 @@ export function useUpdateRule() {
       toast.success('Cập nhật rule thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể cập nhật rule')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -59,7 +60,7 @@ export function useCreateDecisionLog() {
       toast.success('Ghi nhận decision log thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể ghi decision log')
+      toast.error(parseApiError(error))
     },
   })
 }

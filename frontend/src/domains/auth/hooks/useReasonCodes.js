@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@shared/api/queryClient'
 import { authApi } from '../api/auth.api'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useReasonCodes(filters = {}) {
   return useQuery({
@@ -21,7 +22,7 @@ export function useCreateReasonCode() {
       toast.success('Tạo mã lý do mới thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể tạo mã lý do')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -36,7 +37,7 @@ export function useUpdateReasonCode() {
       toast.success('Cập nhật mã lý do thành công')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể cập nhật mã lý do')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -51,7 +52,7 @@ export function useDeactivateReasonCode() {
       toast.success('Đã vô hiệu hóa mã lý do')
     },
     onError: (error) => {
-      toast.error(error.error?.message || 'Không thể vô hiệu hóa mã lý do')
+      toast.error(parseApiError(error))
     },
   })
 }

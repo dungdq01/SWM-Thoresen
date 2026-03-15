@@ -31,7 +31,7 @@ export function DeactivateModal({
       footer={
         <>
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-            Hủy bỏ
+            Hủy
           </Button>
           <Button variant="danger" onClick={handleConfirm} isLoading={isLoading}>
             Xác nhận ngừng
@@ -84,7 +84,7 @@ export function ReactivateModal({
       footer={
         <>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Hủy bỏ
+            Hủy
           </Button>
           <Button onClick={onConfirm} isLoading={isLoading}>
             Xác nhận kích hoạt

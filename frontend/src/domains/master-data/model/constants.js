@@ -110,6 +110,9 @@ export const VEHICLE_CATEGORIES = [
   { value: 'CONTAINER_TRUCK', label: 'Xe container' },
   { value: 'FORKLIFT', label: 'Xe nâng' },
   { value: 'CRANE', label: 'Cẩu' },
+  { value: 'VESSEL', label: 'Tàu biển' },
+  { value: 'BARGE', label: 'Sà lan' },
+  { value: 'CONTAINER', label: 'Container' },
 ]
 
 // Status helper

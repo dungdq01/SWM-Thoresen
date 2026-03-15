@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { vendorApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 import toast from 'react-hot-toast'
+import { parseApiError } from '@shared/api/parseApiError'
 
 export function useVendorNextCode(enabled = false) {
   return useQuery({
@@ -39,7 +40,7 @@ export function useCreateVendor() {
       toast.success('Tạo nhà cung cấp thành công')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể tạo nhà cung cấp')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -56,11 +57,7 @@ export function useUpdateVendor() {
       toast.success('Cập nhật nhà cung cấp thành công')
     },
     onError: (error) => {
-      if (error?.error?.statusCode === 409) {
-        toast.error('Dữ liệu đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')
-      } else {
-        toast.error(error?.error?.message || 'Không thể cập nhật nhà cung cấp')
-      }
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -77,7 +74,7 @@ export function useDeactivateVendor() {
       toast.success('Đã ngừng hoạt động nhà cung cấp')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể ngừng hoạt động nhà cung cấp')
+      toast.error(parseApiError(error))
     },
   })
 }
@@ -94,7 +91,7 @@ export function useReactivateVendor() {
       toast.success('Đã kích hoạt lại nhà cung cấp')
     },
     onError: (error) => {
-      toast.error(error?.error?.message || 'Không thể kích hoạt lại nhà cung cấp')
+      toast.error(parseApiError(error))
     },
   })
 }

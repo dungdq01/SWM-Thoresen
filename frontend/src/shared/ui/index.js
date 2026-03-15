@@ -24,3 +24,4 @@ export {
 } from './Table'
 export { LanguageSwitcher } from './LanguageSwitcher'
 export { SummaryDonut, MiniBarList, ProgressRing, StatHighlight, TrendMiniChart } from './SummaryCharts'
+export { AiSuggestionCard } from './AiSuggestionCard'

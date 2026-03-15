@@ -76,9 +76,9 @@ export function InventoryStatusesPage() {
         />
       </div>
 
-      <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-        <p className="text-sm text-blue-800">
-          <strong>Lưu ý:</strong> Trạng thái tồn kho là dữ liệu hệ thống, không thể tạo mới. 
+      <div className="mb-4 p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-bg-subtle)', borderColor: 'var(--color-border)' }}>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Lưu ý:</span> Trạng thái tồn kho là dữ liệu hệ thống, không thể tạo mới.
           Chỉ có thể cập nhật mô tả cho các trạng thái chưa bị khóa hệ thống.
         </p>
       </div>
@@ -108,8 +108,8 @@ export function InventoryStatusesPage() {
               <TableRow key={status.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-                      <Tags className="w-4 h-4 text-teal-600" />
+                    <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">
+                      <Tags className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                     </div>
                     <span className="font-medium text-navy-900">{status.statusCode}</span>
                   </div>
@@ -141,7 +141,8 @@ export function InventoryStatusesPage() {
                   {!status.isSystemLocked && (
                     <button
                       onClick={() => openEdit(status)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-navy-400 transition-colors duration-200 hover:bg-moon-50 hover:text-navy-900"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl transition-colors duration-200 hover:bg-muted"
+                      style={{ color: 'var(--color-text-muted)' }}
                       title="Chỉnh sửa mô tả"
                     >
                       <Edit2 className="w-4 h-4" />

@@ -62,15 +62,10 @@ export function FilterBar({
               <Select
                 value={filterValues[filter.key] || ''}
                 onChange={(e) => onFilterChange(filter.key, e.target.value)}
+                options={filter.options}
+                placeholder={filter.placeholder}
                 className="w-full"
-              >
-                <option value="">{filter.placeholder}</option>
-                {filter.options.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </Select>
+              />
             </div>
           ))}
         </div>
@@ -81,10 +76,15 @@ export function FilterBar({
 
 export function StatusFilter({ value, onChange }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value)} className="w-40">
-      <option value="">Tất cả trạng thái</option>
-      <option value="true">Hoạt động</option>
-      <option value="false">Ngừng hoạt động</option>
-    </Select>
+    <Select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-40"
+      placeholder="Tất cả trạng thái"
+      options={[
+        { value: 'true', label: 'Hoạt động' },
+        { value: 'false', label: 'Ngừng hoạt động' },
+      ]}
+    />
   )
 }
