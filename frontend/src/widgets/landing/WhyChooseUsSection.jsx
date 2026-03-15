@@ -1,30 +1,30 @@
 import { motion } from 'framer-motion'
 import { useScrollAnimation } from '@shared/hooks/useScrollAnimation'
-import { ArrowRight, Building2, Users, Globe2, Leaf } from 'lucide-react'
+import { ArrowRight, Plug, Activity, ShieldCheck, Headphones } from 'lucide-react'
 
 const capabilities = [
   {
-    icon: Building2,
-    title: 'Vận hành Bất động sản',
-    description: 'Tại hiện trường và mọi nơi bạn cần, chúng tôi là đội ngũ đáng tin cậy, mang đến giải pháp tùy chỉnh và hỗ trợ 24/7.',
+    icon: Plug,
+    title: 'Tích hợp Đa nền tảng',
+    description: 'Kết nối liền mạch với SAP, Oracle, Odoo và các sàn TMĐT lớn (Shopee, Lazada, Tiki), đơn vị vận chuyển (GHN, GHTK, J&T) qua API chuẩn hóa.',
     link: '#',
   },
   {
-    icon: Users,
-    title: 'Phát triển Nhân lực',
-    description: 'Đào tạo lực lượng logistics tương lai và nâng cao kỹ năng nhân viên hiện tại với các chương trình chuyên biệt.',
+    icon: Activity,
+    title: 'Vận hành Thời gian thực',
+    description: 'Dashboard trực tiếp cập nhật tồn kho, vị trí hàng hóa và trạng thái đơn hàng theo từng giây — không độ trễ, không sai lệch dữ liệu.',
     link: '#',
   },
   {
-    icon: Globe2,
-    title: 'Chiến lược Toàn cầu',
-    description: 'Với thành tích đã được chứng minh và vị thế dẫn đầu ngành, chúng tôi mang lại giá trị vượt trội cho khách hàng.',
+    icon: ShieldCheck,
+    title: 'Bảo mật Doanh nghiệp',
+    description: 'Phân quyền theo vai trò (RBAC), nhật ký kiểm toán đầy đủ, mã hóa AES-256 và tuân thủ tiêu chuẩn ISO 27001 cho mọi dữ liệu kho.',
     link: '#',
   },
   {
-    icon: Leaf,
-    title: 'Bền vững & Môi trường',
-    description: 'Chúng tôi hành động có ý nghĩa để hỗ trợ mục tiêu của khách hàng và bảo vệ hành tinh cho thế hệ tương lai.',
+    icon: Headphones,
+    title: 'Hỗ trợ 24/7',
+    description: 'Đội ngũ chuyên gia logistics túc trực, SLA 99.9% uptime, thời gian phản hồi dưới 2 giờ và onboarding tận tâm cho mỗi khách hàng.',
     link: '#',
   },
 ]
