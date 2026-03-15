@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { ClipboardCheck, FileText, Truck } from 'lucide-react'
+import { ClipboardCheck, FileText, FileCheck, Truck } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
   { to: '/app/inbound-operations/purchase-orders', label: 'Đơn mua hàng', icon: FileText },
   { to: '/app/inbound-operations/receipts', label: 'Phiếu nhập', icon: ClipboardCheck },
+  { to: '/app/inbound-operations/documents', label: 'Chứng từ nhập', icon: FileCheck },
 ]
 
 export function InboundOperationsLayout() {

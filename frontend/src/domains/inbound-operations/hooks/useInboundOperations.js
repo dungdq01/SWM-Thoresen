@@ -244,4 +244,41 @@ export function useCancelPurchaseOrder() {
   return useMutation({ mutationFn: (id) => inboundOperationsApi.cancelPurchaseOrder(id), onSuccess, onError })
 }
 
+// ── Inbound Documents hooks ──
+export function useInboundDocuments(filters = {}) {
+  return useQuery({
+    queryKey: ['inbound-documents', filters],
+    queryFn: () => inboundOperationsApi.getDocuments(filters),
+    staleTime: 15000,
+  })
+}
+
+export function useUploadInboundDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (formData) => inboundOperationsApi.uploadDocument(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-documents'] })
+      toast.success('Đã tải lên chứng từ')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể tải lên chứng từ')
+    },
+  })
+}
+
+export function useDeleteInboundDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => inboundOperationsApi.deleteDocument(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-documents'] })
+      toast.success('Đã xóa chứng từ')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể xóa chứng từ')
+    },
+  })
+}
+
 export { QUERY_KEYS as INBOUND_OPERATIONS_QUERY_KEYS }

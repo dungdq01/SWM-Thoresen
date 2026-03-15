@@ -72,6 +72,31 @@ class ReceiptService {
         await this.validateLineItem(line, tx);
       }
 
+      // Calculate totalExpectedQty in KG (convert from source UOM to KG)
+      const kgUom = await tx.mdUom.findFirst({ where: { uomCode: 'KG' } });
+      let totalExpectedQtyKg = 0;
+      const linesWithConversion = [];
+
+      for (const line of lines) {
+        const qty = Number(line.expectedQty) || 0;
+        let expectedQtyKg = qty;
+
+        if (line.uomId && kgUom && line.uomId !== kgUom.id) {
+          const conversion = await tx.mdUomConversion.findFirst({
+            where: { fromUomId: line.uomId, toUomId: kgUom.id },
+          });
+          if (conversion) {
+            expectedQtyKg = qty * Number(conversion.conversionFactor);
+          }
+        }
+
+        totalExpectedQtyKg += expectedQtyKg;
+        linesWithConversion.push({
+          ...line,
+          expectedQtyKg,
+        });
+      }
+
       // Create receipt - use connect for relations
       const receipt = await tx.receiptHeader.create({
         data: {
@@ -81,7 +106,7 @@ class ReceiptService {
           asnId: data.asnId || null,
           vehicleNumber: data.vehicleNumber,
           blNumber: data.blNumber || null,
-          expectedQty: data.expectedQty,
+          expectedQty: totalExpectedQtyKg,
           notes: data.notes || null,
           status: RECEIPT_STATUS.DRAFT,
           correlationId: context.correlationId || `corr-${Date.now()}`,
@@ -90,17 +115,28 @@ class ReceiptService {
           vendor: { connect: { id: data.vendorId } },
           warehouse: { connect: { id: data.warehouseId } },
           lines: {
-            create: lines.map((line, index) => ({
-              itemId: line.itemId,
-              uomId: line.uomId,
-              expectedQty: line.expectedQty,
+            create: linesWithConversion.map((line, index) => ({
+              item: { connect: { id: line.itemId } },
+              uom: { connect: { id: line.uomId } },
+              expectedQty: line.expectedQtyKg,
               cargoForm: line.cargoForm || 'BULK',
               notes: line.notes || null,
               lineNumber: index + 1,
             })),
           },
         },
-        include: { lines: true },
+        include: {
+          lines: {
+            include: {
+              item: { select: { id: true, itemCode: true, itemName: true, cargoForm: true } },
+              uom: { select: { id: true, uomCode: true, description: true } },
+            },
+            orderBy: { lineNumber: 'asc' },
+          },
+          owner: { select: { id: true, ownerCode: true, ownerName: true } },
+          vendor: { select: { id: true, vendorCode: true, vendorName: true } },
+          warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } },
+        },
       });
 
       // Log initial status

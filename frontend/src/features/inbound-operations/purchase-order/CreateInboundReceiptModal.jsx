@@ -98,8 +98,16 @@ export function CreateInboundReceiptModal({
       return poLine?.item?.cargoForm || 'BULK'
     }
 
+    const generateAsnId = () => {
+      const now = new Date()
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+      return `ASN-${dateStr}-${random}`
+    }
+
     const payload = {
       poId: activePo.poNumber || activePo.id,
+      asnId: generateAsnId(),
       ownerId: activePo.ownerId,
       vendorId: activePo.vendorId,
       warehouseId: draft.warehouseId,

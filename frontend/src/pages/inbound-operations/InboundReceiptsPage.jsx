@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import React, { useState, useCallback } from 'react'
+import { Eye, Pencil, Trash2, ChevronDown, ChevronUp, Package } from 'lucide-react'
 import { usePurchaseOrders, useCreateInboundReceipt, useInboundReceipts, useUpdateInboundReceipt, useDeleteInboundReceipt } from '@domains/inbound-operations'
 import { useLookupWarehouses, useLookupItems, useLookupUoms, useLookupOwners } from '@domains/master-data'
 import {
@@ -57,6 +57,8 @@ export function InboundReceiptsPage() {
   const [viewModalState, setViewModalState] = useState({ isOpen: false, receipt: null })
   const [editModalState, setEditModalState] = useState({ isOpen: false, receipt: null })
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, receipt: null })
+  const [expandedId, setExpandedId] = useState(null)
+  const toggleExpand = useCallback((id) => setExpandedId((prev) => (prev === id ? null : id)), [])
 
   // Fetch receipts
   const { data: response, isLoading, refetch } = useInboundReceipts({
@@ -158,8 +160,9 @@ export function InboundReceiptsPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
+              <TableHead className="w-8"></TableHead>
+              <TableHead>Mã ASN</TableHead>
               <TableHead>Số B/L</TableHead>
-              <TableHead>Phiếu nhập kho</TableHead>
               <TableHead>Chủ hàng</TableHead>
               <TableHead>Số xe</TableHead>
               <TableHead align="right">SL dự kiến</TableHead>
@@ -169,70 +172,146 @@ export function InboundReceiptsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableLoading colSpan={8} />}
-            {!isLoading && rows.length === 0 && <TableEmpty colSpan={8} message="Chưa có phiếu nhập nào" />}
-            {!isLoading && rows.map((receipt) => (
-              <TableRow key={receipt.id}>
-                <TableCell>
-                  <span className="font-mono text-sm text-navy-600">{receipt.blNumber || '—'}</span>
-                </TableCell>
-                <TableCell>
-                  <p className="font-semibold text-navy-900">{receipt.receiptNumber}</p>
-                  <p className="text-xs text-navy-400">{receipt.lines?.length || 0} dòng</p>
-                </TableCell>
-                <TableCell>
-                  <p className="font-medium text-navy-800">{receipt.owner?.ownerCode || receipt.ownerId}</p>
-                  <p className="text-xs text-navy-400">{receipt.owner?.ownerName}</p>
-                </TableCell>
-                <TableCell>
-                  <span className="font-mono text-sm text-navy-700">{receipt.vehiclePlate || receipt.vehicleNumber || '—'}</span>
-                </TableCell>
-                <TableCell align="right" className="font-medium text-navy-900">
-                  {(receipt.totalExpectedQty || 0).toLocaleString()} kg
-                </TableCell>
-                <TableCell align="right">
-                  <span className={receipt.totalReceivedQty > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
-                    {(receipt.totalReceivedQty || 0).toLocaleString()} kg
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusTone(receipt.status)}>{STATUS_LABELS[receipt.status] || receipt.status}</Badge>
-                </TableCell>
-                <TableCell align="center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      title="Xem phiếu"
-                      onClick={() => handleOpenViewModal(receipt)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {receipt.status === 'DRAFT' && (
-                      <>
+            {isLoading && <TableLoading colSpan={9} />}
+            {!isLoading && rows.length === 0 && <TableEmpty colSpan={9} message="Chưa có phiếu nhập nào" />}
+            {!isLoading && rows.map((receipt) => {
+              const isExpanded = expandedId === receipt.id
+              const totalExpectedFromLines = (receipt.lines || []).reduce((sum, l) => sum + Number(l.expectedQty || 0), 0)
+              const totalReceivedFromLines = (receipt.lines || []).reduce((sum, l) => sum + Number(l.receivedQty || 0), 0)
+              return (
+                <React.Fragment key={receipt.id}>
+                  <TableRow>
+                    <TableCell>
+                      <button
+                        onClick={() => toggleExpand(receipt.id)}
+                        className="p-1 text-navy-400 hover:text-ice transition-colors"
+                      >
+                        {isExpanded
+                          ? <ChevronUp className="h-4 w-4" />
+                          : <ChevronDown className="h-4 w-4" />}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-semibold text-navy-900">{receipt.asnId || receipt.receiptNumber || receipt.id?.slice(0, 8) || '—'}</p>
+                      <p className="text-xs text-navy-400">{receipt.lines?.length || 0} dòng</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-navy-600">{receipt.blNumber || '—'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium text-navy-800">{receipt.owner?.ownerCode || receipt.ownerId}</p>
+                      <p className="text-xs text-navy-400">{receipt.owner?.ownerName}</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-navy-700">{receipt.vehiclePlate || receipt.vehicleNumber || '—'}</span>
+                    </TableCell>
+                    <TableCell align="right" className="font-medium text-navy-900">
+                      {totalExpectedFromLines.toLocaleString()} kg
+                    </TableCell>
+                    <TableCell align="right">
+                      <span className={totalReceivedFromLines > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                        {totalReceivedFromLines.toLocaleString()} kg
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusTone(receipt.status)}>{STATUS_LABELS[receipt.status] || receipt.status}</Badge>
+                    </TableCell>
+                    <TableCell align="center">
+                      <div className="flex items-center justify-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          title="Chỉnh sửa"
-                          onClick={() => handleOpenEditModal(receipt)}
+                          title="Xem phiếu"
+                          onClick={() => handleOpenViewModal(receipt)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title="Xóa"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => handleOpenDeleteConfirm(receipt)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                        {receipt.status === 'DRAFT' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Chỉnh sửa"
+                              onClick={() => handleOpenEditModal(receipt)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Xóa"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => handleOpenDeleteConfirm(receipt)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {/* Expand: line details */}
+                  {isExpanded && (
+                    <tr key={`${receipt.id}-lines`}>
+                      <td colSpan={9} className="p-0">
+                        <div className="border-t border-b border-moon-200 bg-moon-50/70 px-6 py-4">
+                          <div className="mb-3 flex items-center gap-2">
+                            <Package className="h-4 w-4 text-ice" />
+                            <h4 className="text-sm font-semibold text-navy-900">Chi tiết dòng hàng — {receipt.asnId || receipt.receiptNumber || receipt.id?.slice(0, 8)}</h4>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-moon-200 text-left text-xs text-navy-400">
+                                <th className="pb-2 pr-3">#</th>
+                                <th className="pb-2 pr-3">Mặt hàng</th>
+                                <th className="pb-2 pr-3">ĐVT</th>
+                                <th className="pb-2 pr-3 text-right">SL dự kiến</th>
+                                <th className="pb-2 pr-3 text-right">SL đã nhận</th>
+                                <th className="pb-2 text-center">Trạng thái</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(receipt.lines || []).map((line, idx) => (
+                                <tr key={line.id || idx} className="border-b border-moon-100 last:border-b-0">
+                                  <td className="py-2 pr-3 text-navy-400">{idx + 1}</td>
+                                  <td className="py-2 pr-3">
+                                    <p className="font-medium text-navy-800">{line.item?.itemName || line.item?.itemCode || '(Mặt hàng không tồn tại)'}</p>
+                                    <p className="text-xs text-navy-400">{line.item?.itemCode || line.itemId?.slice(0, 8)}</p>
+                                  </td>
+                                  <td className="py-2 pr-3 text-navy-600">{line.uom?.uomCode || 'kg'}</td>
+                                  <td className="py-2 pr-3 text-right font-medium text-navy-900">{Number(line.expectedQtyKg || line.expectedQty || 0).toLocaleString()}</td>
+                                  <td className="py-2 pr-3 text-right">
+                                    <span className={Number(line.receivedQty || 0) > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                                      {Number(line.receivedQty || 0).toLocaleString()}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 text-center">
+                                    <Badge
+                                      variant={line.status === 'RECEIVED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'}
+                                      className="text-xs"
+                                    >
+                                      {line.status === 'OPEN' ? 'Mới' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t border-moon-300 font-semibold text-navy-900">
+                                <td colSpan={3} className="pt-2 pr-3">Tổng</td>
+                                <td className="pt-2 pr-3 text-right">{totalExpectedFromLines.toLocaleString()}</td>
+                                <td className="pt-2 pr-3 text-right text-emerald-600">{totalReceivedFromLines.toLocaleString()}</td>
+                                <td></td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              )
+            })}
           </TableBody>
         </Table>
 

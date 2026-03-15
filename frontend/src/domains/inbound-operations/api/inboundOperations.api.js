@@ -123,4 +123,13 @@ export const inboundOperationsApi = {
     (id) => inboundOperationsMockApi.cancelPurchaseOrder(id),
     (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/cancel`)
   ),
+
+  // ── Inbound Documents ──
+  getDocuments: (params) => httpClient.get(`${BASE_URL}/documents`, { params }),
+  getDocumentById: (id) => httpClient.get(`${BASE_URL}/documents/${id}`),
+  uploadDocument: (formData) => httpClient.post(`${BASE_URL}/documents/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateDocument: (id, data) => httpClient.put(`${BASE_URL}/documents/${id}`, data),
+  deleteDocument: (id) => httpClient.delete(`${BASE_URL}/documents/${id}`),
 }

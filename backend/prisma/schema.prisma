@@ -711,6 +711,7 @@ model MdOwner {
   bilDebitNoteLines  BilDebitNoteLine[]
   bilExceptions      BilException[]
   salesOrders        SalesOrder[]
+  inboundDocuments   InboundDocument[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -1521,6 +1522,23 @@ enum IntegrationDeliveryStatus {
   DEAD_LETTER
 }
 
+enum InboundDocumentType {
+  BILL_OF_LADING
+  PACKING_LIST
+  COMMERCIAL_INVOICE
+  CERTIFICATE_OF_ORIGIN
+  QUALITY_CERTIFICATE
+  WEIGHT_CERTIFICATE
+  OTHER
+}
+
+enum InboundDocumentStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
 // ========== Module 4: Inbound Operations Models ==========
 
 model ReceiptHeader {
@@ -1568,6 +1586,7 @@ model ReceiptHeader {
   statusHistory     ReceiptStatusHistory[]
   exceptionLogs     ReceiptExceptionLog[]
   integrationStates ReceiptIntegrationState[]
+  documents         InboundDocument[]
 
   @@index([vehicleNumber, status, createdAt(sort: Desc)])
   @@index([blNumber, status, createdAt(sort: Desc)])
@@ -1604,6 +1623,33 @@ model ReceiptLine {
   @@index([itemId, cargoForm])
   @@index([receiptHeaderId, status])
   @@map("receipt_line")
+}
+
+model InboundDocument {
+  id              String                 @id @default(uuid()) @db.Uuid
+  documentCode    String                 @unique @map("document_code") @db.VarChar(50)
+  receiptHeaderId String?                @map("receipt_header_id") @db.Uuid
+  docType         InboundDocumentType    @map("doc_type")
+  ownerId         String?                @map("owner_id") @db.Uuid
+  vehicleNumber   String?                @map("vehicle_number") @db.VarChar(30)
+  fileName        String                 @map("file_name") @db.VarChar(255)
+  filePath        String                 @map("file_path") @db.VarChar(500)
+  fileSize        Int                    @map("file_size")
+  mimeType        String                 @map("mime_type") @db.VarChar(100)
+  notes           String?                @db.VarChar(500)
+  status          InboundDocumentStatus  @default(DRAFT)
+  uploadedAt      DateTime               @default(now()) @map("uploaded_at")
+  uploadedBy      String?                @map("uploaded_by") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  receiptHeader ReceiptHeader? @relation(fields: [receiptHeaderId], references: [id])
+  owner         MdOwner?       @relation(fields: [ownerId], references: [id])
+
+  @@index([receiptHeaderId])
+  @@index([ownerId, docType])
+  @@index([status, uploadedAt(sort: Desc)])
+  @@map("inbound_document")
 }
 
 model ReceiptWeighingLog {

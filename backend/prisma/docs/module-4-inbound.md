@@ -3,13 +3,13 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-16 (Receipt Notes, Remove receivingLocationId)
+> **Last Updated:** 2026-03-16 (Inbound Documents, Receipt Notes, Remove receivingLocationId)
 
 ---
 
 ## 1. Tổng quan
 
-Module 4 sử dụng 8 bảng chính để quản lý lifecycle của Purchase Order và Receipt:
+Module 4 sử dụng 9 bảng chính để quản lý lifecycle của Purchase Order, Receipt và Inbound Documents:
 
 | Table | Mục đích | Record Type |
 |-------|----------|-------------|
@@ -17,6 +17,7 @@ Module 4 sử dụng 8 bảng chính để quản lý lifecycle của Purchase O
 | `purchase_order_lines` | Dòng hàng trong PO | Runtime |
 | `receipt_header` | Header phiếu nhận hàng | Runtime |
 | `receipt_line` | Dòng hàng trong receipt | Runtime |
+| `inbound_document` | Chứng từ nhập kho | Runtime |
 | `receipt_weighing_log` | Log cân weigh-in/weigh-out | Audit/Log |
 | `receipt_status_history` | Lịch sử chuyển trạng thái | Audit/Log |
 | `receipt_exception_log` | Log exception nghiệp vụ | Audit/Log |
@@ -94,6 +95,25 @@ PROCESSING  - Đang gửi
 SUCCEEDED   - Thành công
 FAILED      - Thất bại
 DEAD_LETTER - Đã hết retry
+```
+
+### 2.6 InboundDocumentType (NEW - 2026-03-16)
+```
+BILL_OF_LADING       - Vận đơn (B/L)
+PACKING_LIST         - Phiếu đóng gói
+COMMERCIAL_INVOICE   - Hóa đơn thương mại
+CERTIFICATE_OF_ORIGIN - Giấy chứng nhận xuất xứ
+QUALITY_CERTIFICATE  - Chứng nhận chất lượng
+WEIGHT_CERTIFICATE   - Phiếu cân
+OTHER                - Khác
+```
+
+### 2.7 InboundDocumentStatus (NEW - 2026-03-16)
+```
+DRAFT     - Nháp, chưa nộp
+SUBMITTED - Đã nộp
+APPROVED  - Đã duyệt
+REJECTED  - Từ chối
 ```
 
 ---
@@ -265,7 +285,46 @@ DEAD_LETTER - Đã hết retry
 
 ---
 
-### 3.3 `receipt_weighing_log`
+### 3.3 `inbound_document` (NEW - 2026-03-16)
+
+**Mục đích:** Lưu thông tin chứng từ nhập kho (B/L, phiếu đóng gói, hóa đơn, ...)
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Primary key |
+| `document_code` | VARCHAR(50) | NO | Mã chứng từ tự sinh (DOCyyyyMMddxxxx) |
+| `receipt_header_id` | UUID | YES | FK → receipt_header (liên kết ASN) |
+| `doc_type` | ENUM | NO | Loại chứng từ (InboundDocumentType) |
+| `owner_id` | UUID | YES | FK → md_owner |
+| `vehicle_number` | VARCHAR(30) | YES | Biển số xe |
+| `file_name` | VARCHAR(255) | NO | Tên file gốc |
+| `file_path` | VARCHAR(500) | NO | Đường dẫn lưu file |
+| `file_size` | INT | NO | Kích thước file (bytes) |
+| `mime_type` | VARCHAR(100) | NO | MIME type của file |
+| `notes` | VARCHAR(500) | YES | Ghi chú |
+| `status` | ENUM | NO | Trạng thái (InboundDocumentStatus) |
+| `uploaded_at` | TIMESTAMP | NO | Thời gian upload |
+| `uploaded_by` | UUID | YES | Người upload |
+| `created_at` | TIMESTAMP | NO | Thời gian tạo |
+| `updated_at` | TIMESTAMP | NO | Thời gian cập nhật |
+
+**Indexes:**
+- `UNIQUE(document_code)`
+- `INDEX(receipt_header_id)`
+- `INDEX(owner_id, doc_type)`
+- `INDEX(status, uploaded_at DESC)`
+
+**Relations:**
+- `receiptHeader` → `receipt_header` (optional)
+- `owner` → `md_owner` (optional)
+
+**Storage Path:** `backend/uploads/inbound-documents/`
+
+**Allowed File Types:** PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max 10MB)
+
+---
+
+### 3.4 `receipt_weighing_log`
 
 **Mục đích:** Lưu lịch sử cân (weigh-in/weigh-out), hỗ trợ audit và dispute
 
@@ -407,11 +466,16 @@ receipt_header 1───N receipt_weighing_log
 receipt_header 1───N receipt_status_history
 receipt_header 1───N receipt_exception_log
 receipt_header 1───N receipt_integration_state
+receipt_header 1───N inbound_document
 receipt_header N───1 md_owner
 receipt_header N───1 md_vendor
 receipt_header N───1 md_warehouse
 receipt_line   N───1 md_item
 receipt_line   N───1 md_uom
+
+# Inbound Document Relations
+inbound_document N───1 receipt_header (optional)
+inbound_document N───1 md_owner (optional)
 ```
 
 ---
@@ -431,6 +495,8 @@ receipt_line   N───1 md_uom
 - `ReceiptLineStatus`
 - `WeighPhase`
 - `IntegrationDeliveryStatus`
+- `InboundDocumentType` (NEW - 2026-03-16)
+- `InboundDocumentStatus` (NEW - 2026-03-16)
 
 ### 5.4 Migration: PO Schema Update (2026-03-15)
 

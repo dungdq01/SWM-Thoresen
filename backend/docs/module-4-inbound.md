@@ -91,6 +91,16 @@ src/modules/inbound/
 | POST | `/api/v1/inbound/receipts/:id/close` | Close receipt | `INBOUND.RECEIPT.CLOSE` |
 | POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing | `INBOUND.WEIGH.RECEIVE` |
 
+### 3.3 Inbound Documents
+
+| Method | Path | Description | Permission |
+|--------|------|-------------|------------|
+| POST | `/api/v1/inbound/documents/upload` | Upload chứng từ nhập | `INBOUND.DOCUMENT.CREATE` |
+| GET | `/api/v1/inbound/documents` | List documents (filter, paginate) | `INBOUND.DOCUMENT.READ` |
+| GET | `/api/v1/inbound/documents/:id` | Get document detail | `INBOUND.DOCUMENT.READ` |
+| PUT | `/api/v1/inbound/documents/:id` | Update document | `INBOUND.DOCUMENT.UPDATE` |
+| DELETE | `/api/v1/inbound/documents/:id` | Delete document (chỉ DRAFT) | `INBOUND.DOCUMENT.DELETE` |
+
 ### 3.4 Weighing Events
 
 | Method | Path | Description | Permission |
@@ -499,7 +509,83 @@ NEW ──confirm──> CONFIRMED ──close──> CLOSED
 - Chỉ có thể **unconfirm PO** khi chưa có Receipt nào được tạo từ PO đó
 - `totalExpectedQty` được tính bằng cách convert tất cả lines về KG (sử dụng `md_uom_conversion`)
 
-### 5.1 Receipt Data Model
+### 5.1 Inbound Document Data Model
+
+**InboundDocument Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `documentCode` | `String` | Mã chứng từ tự sinh (DOCyyyyMMddxxxx) |
+| `receiptHeaderId` | `UUID?` | FK → receipt_header (liên kết ASN) |
+| `docType` | `InboundDocumentType` | Loại chứng từ |
+| `ownerId` | `UUID?` | FK → md_owner |
+| `vehicleNumber` | `String?` | Biển số xe |
+| `fileName` | `String` | Tên file gốc |
+| `filePath` | `String` | Đường dẫn lưu file |
+| `fileSize` | `Int` | Kích thước file (bytes) |
+| `mimeType` | `String` | MIME type của file |
+| `notes` | `String?` | Ghi chú |
+| `status` | `InboundDocumentStatus` | Trạng thái (DRAFT, SUBMITTED, APPROVED, REJECTED) |
+
+**InboundDocumentType Enum:**
+- `BILL_OF_LADING` - Vận đơn (B/L)
+- `PACKING_LIST` - Phiếu đóng gói
+- `COMMERCIAL_INVOICE` - Hóa đơn thương mại
+- `CERTIFICATE_OF_ORIGIN` - Giấy chứng nhận xuất xứ
+- `QUALITY_CERTIFICATE` - Chứng nhận chất lượng
+- `WEIGHT_CERTIFICATE` - Phiếu cân
+- `OTHER` - Khác
+
+**Storage Path:** `backend/uploads/inbound-documents/`
+
+**Allowed File Types:** PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max 10MB)
+
+---
+
+#### POST `/api/v1/inbound/documents/upload`
+
+Upload chứng từ nhập kho.
+
+**Request (multipart/form-data):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | File | ✅ | File chứng từ |
+| `docType` | String | ✅ | Loại chứng từ (enum) |
+| `receiptHeaderId` | UUID | | ID phiếu nhập (ASN) để liên kết |
+| `ownerId` | UUID | | ID chủ hàng |
+| `vehicleNumber` | String | | Biển số xe |
+| `notes` | String | | Ghi chú |
+
+**Response (201):**
+
+```json
+{
+  "id": "uuid",
+  "documentCode": "DOC20260316001",
+  "docType": "BILL_OF_LADING",
+  "fileName": "bl-001.pdf",
+  "fileSize": 102400,
+  "status": "DRAFT",
+  "receiptHeader": {
+    "id": "uuid",
+    "receiptNumber": "RCV-001"
+  },
+  "owner": {
+    "id": "uuid",
+    "ownerCode": "OWN001",
+    "ownerName": "Công ty ABC"
+  },
+  "uploadedAt": "2026-03-16T10:00:00Z"
+}
+```
+
+**Auto-fill Logic:**
+- Khi chọn `receiptHeaderId` (ASN), các trường `ownerId` và `vehicleNumber` được tự động điền từ thông tin phiếu nhập
+
+---
+
+### 5.2 Receipt Data Model
 
 **ReceiptHeader Fields:**
 
