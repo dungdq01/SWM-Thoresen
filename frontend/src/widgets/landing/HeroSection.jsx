@@ -77,12 +77,12 @@ export function HeroSection() {
                 >
                   Khám phá giải pháp
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline-light"
                   size="lg"
                   icon={<Play className="w-5 h-5" />}
                   onClick={() => navigate('/app')}
-                  className="px-8 py-4 text-base border-white/30 text-white hover:bg-white/10 hover:border-white/50"
+                  className="px-8 py-4 text-base"
                 >
                   Xem video giới thiệu
                 </Button>

@@ -3,11 +3,11 @@ import { CheckSquare, ClipboardList, FileText, Package, Scale, Truck } from 'luc
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/outbound-operations/sales-orders', label: 'Sales Orders', icon: FileText },
-  { to: '/app/outbound-operations/shipments', label: 'Shipments', icon: ClipboardList },
-  { to: '/app/outbound-operations/allocation', label: 'Allocation', icon: Package },
-  { to: '/app/outbound-operations/weighing', label: 'Weighing', icon: Scale },
-  { to: '/app/outbound-operations/approvals', label: 'Approvals', icon: CheckSquare },
+  { to: '/app/outbound-operations/sales-orders', label: 'Đơn bán hàng', icon: FileText },
+  { to: '/app/outbound-operations/shipments', label: 'Lô hàng xuất', icon: ClipboardList },
+  { to: '/app/outbound-operations/allocation', label: 'Phân bổ', icon: Package },
+  { to: '/app/outbound-operations/weighing', label: 'Cân hàng', icon: Scale },
+  { to: '/app/outbound-operations/approvals', label: 'Phê duyệt', icon: CheckSquare },
 ]
 
 export function OutboundOperationsLayout() {
@@ -15,7 +15,7 @@ export function OutboundOperationsLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Outbound Operations</h1>
+          <h1 className="page-title">Vận hành xuất kho</h1>
         </div>
       </div>
 
@@ -25,8 +25,8 @@ export function OutboundOperationsLayout() {
             <Truck className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Outbound Gatekeeper Navigation</h2>
-            <p className="module-nav-description">Manage shipments from SO intake, allocation, multi-trip weighing to shipped and closing.</p>
+            <h2 className="module-nav-title">Điều hướng xuất kho</h2>
+            <p className="module-nav-description">Quản lý chuyến hàng từ tiếp nhận SO, phân bổ, cân nhiều lần đến xuất hàng và đóng lệnh.</p>
           </div>
         </div>
 

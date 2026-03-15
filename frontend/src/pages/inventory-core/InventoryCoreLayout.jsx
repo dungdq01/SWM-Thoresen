@@ -3,10 +3,10 @@ import { Boxes, Camera, Layers3, ScrollText, ShieldCheck, ScanSearch, Workflow }
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/inventory-core/on-hand', label: 'On-hand', icon: Layers3 },
-  { to: '/app/inventory-core/transactions', label: 'Transactions', icon: ScrollText },
-  { to: '/app/inventory-core/holds', label: 'Holds', icon: ShieldCheck },
-  { to: '/app/inventory-core/workbench', label: 'Posting workbench', icon: Workflow },
+  { to: '/app/inventory-core/on-hand', label: 'Tồn kho hiện tại', icon: Layers3 },
+  { to: '/app/inventory-core/transactions', label: 'Giao dịch', icon: ScrollText },
+  { to: '/app/inventory-core/holds', label: 'Giữ hàng', icon: ShieldCheck },
+  { to: '/app/inventory-core/workbench', label: 'Bàn làm việc đăng sổ', icon: Workflow },
   { to: '/app/inventory-core/reconciliation', label: 'Đối soát', icon: ScanSearch },
   { to: '/app/inventory-core/snapshots', label: 'Snapshot & Billing', icon: Camera },
 ]
@@ -16,7 +16,7 @@ export function InventoryCoreLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Inventory Core Engine</h1>
+          <h1 className="page-title">Tồn kho lõi</h1>
         </div>
       </div>
 
@@ -26,8 +26,8 @@ export function InventoryCoreLayout() {
             <Boxes className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Inventory Truth Navigation</h2>
-            <p className="module-nav-description">Track current stock, transaction history, allocation holds, and posting/reversal operations within the same module.</p>
+            <h2 className="module-nav-title">Điều hướng tồn kho</h2>
+            <p className="module-nav-description">Theo dõi tồn kho hiện tại, lịch sử giao dịch, giữ hàng và các thao tác đăng sổ/đảo ngược.</p>
           </div>
         </div>
 

@@ -3,9 +3,9 @@ import { Box, ClipboardList, Play, BarChart3 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/vas/work-orders', label: 'Work Orders', icon: ClipboardList },
-  { to: '/app/vas/execution', label: 'Execution', icon: Play },
-  { to: '/app/vas/dashboard', label: 'Dashboard', icon: BarChart3 },
+  { to: '/app/vas/work-orders', label: 'Lệnh công việc', icon: ClipboardList },
+  { to: '/app/vas/execution', label: 'Thực hiện', icon: Play },
+  { to: '/app/vas/dashboard', label: 'Bảng điều khiển', icon: BarChart3 },
 ]
 
 export function VasLayout() {
@@ -13,7 +13,7 @@ export function VasLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">VAS / Bagging</h1>
+          <h1 className="page-title">VAS / Đóng gói</h1>
         </div>
       </div>
 
@@ -23,8 +23,8 @@ export function VasLayout() {
             <Box className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Value-Added Services</h2>
-            <p className="module-nav-description">Manage bagging, repacking, and value-added services.</p>
+            <h2 className="module-nav-title">Dịch vụ gia tăng (VAS)</h2>
+            <p className="module-nav-description">Quản lý đóng bao, đóng gói lại và các dịch vụ gia tăng.</p>
           </div>
         </div>
 

@@ -19,7 +19,7 @@ export function PermissionsPage() {
   const [search, setSearch] = useState('')
   const [moduleFilter, setModuleFilter] = useState('')
 
-  const { data: permissions = [], isĐang tải...= usePermissions()
+  const { data: permissions = [], isLoading } = usePermissions()
 
   const modules = useMemo(() => {
     const set = new Set(permissions.map((p) => p.moduleCode).filter(Boolean))
@@ -73,7 +73,7 @@ export function PermissionsPage() {
           Tổng: <span className="font-semibold">{filteredPermissions.length}</span> quyền
         </div>
 
-        {isĐang tải...(
+        {isLoading ? (
           <div className="py-12 text-center text-navy-500">Đang tải...</div>
         ) : Object.keys(groupedPermissions).length === 0 ? (
           <div className="py-12 text-center text-navy-500">Không tìm thấy quyền phù hợp</div>

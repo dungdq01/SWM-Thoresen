@@ -3,12 +3,12 @@ import { ArrowLeftRight, ClipboardCheck, FileText, Package, RefreshCcw, Scale, S
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/inventory-control/move-orders', label: 'Move Orders', icon: ArrowLeftRight },
-  { to: '/app/inventory-control/transfers', label: 'Transfers', icon: Package },
-  { to: '/app/inventory-control/status-change', label: 'Status Change', icon: RefreshCcw },
-  { to: '/app/inventory-control/cycle-count', label: 'Cycle Count', icon: ClipboardCheck },
-  { to: '/app/inventory-control/adjustments', label: 'Adjustments', icon: Scale },
-  { to: '/app/inventory-control/history', label: 'Movement History', icon: FileText },
+  { to: '/app/inventory-control/move-orders', label: 'Lệnh di chuyển', icon: ArrowLeftRight },
+  { to: '/app/inventory-control/transfers', label: 'Chuyển kho', icon: Package },
+  { to: '/app/inventory-control/status-change', label: 'Đổi trạng thái', icon: RefreshCcw },
+  { to: '/app/inventory-control/cycle-count', label: 'Kiểm kê', icon: ClipboardCheck },
+  { to: '/app/inventory-control/adjustments', label: 'Điều chỉnh', icon: Scale },
+  { to: '/app/inventory-control/history', label: 'Lịch sử di chuyển', icon: FileText },
 ]
 
 export function InventoryControlLayout() {
@@ -16,7 +16,7 @@ export function InventoryControlLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Inventory Control</h1>
+          <h1 className="page-title">Kiểm soát kho</h1>
         </div>
       </div>
 
@@ -26,8 +26,8 @@ export function InventoryControlLayout() {
             <Settings2 className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Inventory Control Navigation</h2>
-            <p className="module-nav-description">Move orders, transfers, status changes, cycle counts, and inventory adjustments.</p>
+            <h2 className="module-nav-title">Điều hướng kiểm soát kho</h2>
+            <p className="module-nav-description">Lệnh di chuyển, chuyển kho, đổi trạng thái, kiểm kê và điều chỉnh tồn kho.</p>
           </div>
         </div>
 

@@ -3,10 +3,10 @@ import { FileText, CreditCard, Receipt, BarChart3 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/billing/invoices', label: 'Invoices', icon: FileText },
-  { to: '/app/billing/rate-cards', label: 'Rate Cards', icon: CreditCard },
-  { to: '/app/billing/events', label: 'Billable Events', icon: Receipt },
-  { to: '/app/billing/dashboard', label: 'Dashboard', icon: BarChart3 },
+  { to: '/app/billing/invoices', label: 'Hóa đơn', icon: FileText },
+  { to: '/app/billing/rate-cards', label: 'Bảng giá', icon: CreditCard },
+  { to: '/app/billing/events', label: 'Sự kiện thanh toán', icon: Receipt },
+  { to: '/app/billing/dashboard', label: 'Bảng điều khiển', icon: BarChart3 },
 ]
 
 export function BillingLayout() {
@@ -14,7 +14,7 @@ export function BillingLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Billing</h1>
+          <h1 className="page-title">Thanh toán & Hóa đơn</h1>
         </div>
       </div>
 
@@ -24,8 +24,8 @@ export function BillingLayout() {
             <CreditCard className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Billing & Invoicing</h2>
-            <p className="module-nav-description">Manage rate cards, billable events, and generate invoices.</p>
+            <h2 className="module-nav-title">Quản lý thanh toán</h2>
+            <p className="module-nav-description">Quản lý bảng giá, sự kiện thanh toán và xuất hóa đơn.</p>
           </div>
         </div>
 

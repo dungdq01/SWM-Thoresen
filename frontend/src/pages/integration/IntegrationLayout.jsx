@@ -3,10 +3,10 @@ import { Activity, AlertTriangle, Radio, Scale } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/integration/monitoring', label: 'Monitoring', icon: Activity },
-  { to: '/app/integration/alerts', label: 'Alerts', icon: AlertTriangle },
-  { to: '/app/integration/weighbridge', label: 'Weighbridge', icon: Scale },
-  { to: '/app/integration/channels', label: 'Channels', icon: Radio },
+  { to: '/app/integration/monitoring', label: 'Giám sát', icon: Activity },
+  { to: '/app/integration/alerts', label: 'Cảnh báo', icon: AlertTriangle },
+  { to: '/app/integration/weighbridge', label: 'Cân xe tải', icon: Scale },
+  { to: '/app/integration/channels', label: 'Kênh kết nối', icon: Radio },
 ]
 
 export function IntegrationLayout() {
@@ -14,7 +14,7 @@ export function IntegrationLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Integration Hub</h1>
+          <h1 className="page-title">Trung tâm tích hợp</h1>
         </div>
       </div>
 
@@ -24,8 +24,8 @@ export function IntegrationLayout() {
             <Radio className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">System Integration</h2>
-            <p className="module-nav-description">Monitor weighbridge, ERP sync, mobile sync, and OCR integration.</p>
+            <h2 className="module-nav-title">Tích hợp hệ thống</h2>
+            <p className="module-nav-description">Giám sát cân xe tải, đồng bộ ERP, đồng bộ di động và tích hợp OCR.</p>
           </div>
         </div>
 

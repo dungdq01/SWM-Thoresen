@@ -3,12 +3,12 @@ import { BarChart3, Package, CreditCard, Shield, RefreshCw, CheckSquare } from '
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/reporting/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { to: '/app/reporting/inventory', label: 'Inventory Report', icon: Package },
-  { to: '/app/reporting/billing', label: 'Billing Report', icon: CreditCard },
-  { to: '/app/reporting/audit', label: 'Audit Trail', icon: Shield },
-  { to: '/app/reporting/reconciliation', label: 'Reconciliation', icon: RefreshCw },
-  { to: '/app/reporting/go-live', label: 'Go-Live Checklist', icon: CheckSquare },
+  { to: '/app/reporting/dashboard', label: 'Bảng điều khiển', icon: BarChart3 },
+  { to: '/app/reporting/inventory', label: 'Báo cáo tồn kho', icon: Package },
+  { to: '/app/reporting/billing', label: 'Báo cáo thanh toán', icon: CreditCard },
+  { to: '/app/reporting/audit', label: 'Nhật ký kiểm tra', icon: Shield },
+  { to: '/app/reporting/reconciliation', label: 'Đối soát', icon: RefreshCw },
+  { to: '/app/reporting/go-live', label: 'Checklist Go-Live', icon: CheckSquare },
 ]
 
 export function ReportingLayout() {
@@ -16,7 +16,7 @@ export function ReportingLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Reporting & Audit</h1>
+          <h1 className="page-title">Báo cáo & Kiểm toán</h1>
         </div>
       </div>
 
@@ -26,8 +26,8 @@ export function ReportingLayout() {
             <BarChart3 className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Reporting, Audit & Go-Live</h2>
-            <p className="module-nav-description">KPI dashboard, báo cáo inventory/billing, audit trail, reconciliation, và go-live checklist.</p>
+            <h2 className="module-nav-title">Báo cáo, Kiểm toán & Go-Live</h2>
+            <p className="module-nav-description">KPI dashboard, báo cáo tồn kho/thanh toán, nhật ký kiểm tra, đối soát và checklist go-live.</p>
           </div>
         </div>
 

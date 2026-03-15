@@ -3,10 +3,10 @@ import { Clipboard, ClipboardCheck, ListTodo, Smartphone, Users } from 'lucide-r
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
-  { to: '/app/work-execution/queue', label: 'Work Queue', icon: ListTodo },
-  { to: '/app/work-execution/my-work', label: 'My Work', icon: Clipboard },
-  { to: '/app/work-execution/execute', label: 'Execute', icon: ClipboardCheck },
-  { to: '/app/work-execution/monitor', label: 'Monitor', icon: Users },
+  { to: '/app/work-execution/queue', label: 'Hàng đợi công việc', icon: ListTodo },
+  { to: '/app/work-execution/my-work', label: 'Công việc của tôi', icon: Clipboard },
+  { to: '/app/work-execution/execute', label: 'Thực thi', icon: ClipboardCheck },
+  { to: '/app/work-execution/monitor', label: 'Giám sát', icon: Users },
 ]
 
 export function WorkExecutionLayout() {
@@ -14,7 +14,7 @@ export function WorkExecutionLayout() {
     <div className="page-section">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Work Execution</h1>
+          <h1 className="page-title">Thực thi công việc</h1>
         </div>
       </div>
 
@@ -24,8 +24,8 @@ export function WorkExecutionLayout() {
             <Smartphone className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="module-nav-title">Mobile & Task Execution</h2>
-            <p className="module-nav-description">Claim, execute, and monitor warehouse tasks: Putaway, Pick, Move, Transfer.</p>
+            <h2 className="module-nav-title">Thực thi tác vụ kho</h2>
+            <p className="module-nav-description">Nhận, thực hiện và giám sát các tác vụ kho: Cất hàng, Lấy hàng, Di chuyển, Chuyển kho.</p>
           </div>
         </div>
 

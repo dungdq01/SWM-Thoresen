@@ -65,7 +65,7 @@ export function OutboundWeighingPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Multi-trip weighing execution</h2>
+        <h2 className="section-title">Thực hiện cân nhiều chuyến</h2>
         <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
@@ -77,16 +77,16 @@ export function OutboundWeighingPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Shipment</TableHead>
-              <TableHead>Vehicle</TableHead>
-              <TableHead align="right">Tare / Gross / Net</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Action</TableHead>
+              <TableHead>Chuyến hàng</TableHead>
+              <TableHead>Xe</TableHead>
+              <TableHead align="right">Bì / Gross / Net</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={5} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="No shipments in weighing queue" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={5} message="Không có chuyến hàng trong hàng đợi cân" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id} onClick={() => openDetail(row.id)}>
                 <TableCell>
@@ -109,9 +109,9 @@ export function OutboundWeighingPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   {row.status === 'ALL_WEIGHED' ? (
-                    <Button variant="accent" size="sm" onClick={(e) => { e.stopPropagation(); shipShipment.mutate(row.id) }}>Ship</Button>
+                    <Button variant="accent" size="sm" onClick={(e) => { e.stopPropagation(); shipShipment.mutate(row.id) }}>Xuất hàng</Button>
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={() => openDetail(row.id)}>Detail</Button>
+                    <Button variant="ghost" size="sm" onClick={() => openDetail(row.id)}>Chi tiết</Button>
                   )}
                 </TableCell>
               </TableRow>

@@ -6,6 +6,7 @@ const variants = {
   primary: 'bg-navy-800 text-moon-100 shadow-sm hover:bg-navy-700',
   secondary: 'border-2 border-moon-300 bg-white text-navy-800 shadow-sm hover:bg-moon-50',
   outline: 'border-2 border-moon-300 bg-background text-navy-700 shadow-sm hover:bg-moon-50 hover:text-navy-900',
+  'outline-light': 'border-2 border-white/30 bg-transparent text-white shadow-sm hover:bg-white/10 hover:border-white/50',
   ghost: 'bg-transparent text-navy-600 hover:bg-moon-100 hover:text-navy-900',
   accent: 'bg-ice text-white shadow-glow-ice hover:bg-ice-dark',
   danger: 'bg-danger text-white shadow-sm hover:bg-danger/90',

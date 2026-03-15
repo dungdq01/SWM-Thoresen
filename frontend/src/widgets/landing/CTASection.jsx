@@ -56,11 +56,11 @@ export function CTASection() {
                   Khám phá SmartLog
                 </Button>
                 <a href="tel:1900123456">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline-light"
                     size="lg"
                     icon={<Phone className="w-5 h-5" />}
-                    className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 px-8"
+                    className="px-8"
                   >
                     Liên hệ tư vấn
                   </Button>
