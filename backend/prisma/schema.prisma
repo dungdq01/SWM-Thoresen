@@ -1420,7 +1420,7 @@ enum PurchaseOrderType {
 }
 
 enum PurchaseOrderStatus {
-  DRAFT
+  NEW
   CONFIRMED
   CLOSED
   CANCELLED
@@ -1437,7 +1437,7 @@ model PurchaseOrder {
   id                   String                @id @default(uuid()) @db.Uuid
   poNumber             String                @unique @map("po_number") @db.VarChar(40)
   poType               PurchaseOrderType     @default(SEA) @map("po_type")
-  status               PurchaseOrderStatus   @default(DRAFT)
+  status               PurchaseOrderStatus   @default(NEW)
   ownerId              String                @map("owner_id") @db.Uuid
   vendorId             String                @map("vendor_id") @db.Uuid
   warehouseId          String                @map("warehouse_id") @db.Uuid

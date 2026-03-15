@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-15 (PO Schema Update)
+> **Last Updated:** 2026-03-15 (PO Status NEW, UOM Conversion)
 
 ---
 
@@ -34,7 +34,7 @@ LAND  - Nhập đường bộ
 
 ### 2.0.1 PurchaseOrderStatus
 ```
-DRAFT      - Vừa tạo, chưa confirm
+NEW        - Tạo mới, chưa confirm
 CONFIRMED  - Đã xác nhận
 CLOSED     - Đã đóng (terminal)
 CANCELLED  - Đã hủy (terminal)
@@ -103,7 +103,7 @@ DEAD_LETTER - Đã hết retry
 | `id` | UUID | NO | Primary key |
 | `po_number` | VARCHAR(40) | NO | Số PO (unique, auto-gen) |
 | `po_type` | ENUM | NO | `SEA` (đường thủy) / `LAND` (đường bộ). Default: `SEA` |
-| `status` | ENUM | NO | DRAFT / CONFIRMED / CLOSED / CANCELLED |
+| `status` | ENUM | NO | NEW / CONFIRMED / CLOSED / CANCELLED |
 | `owner_id` | UUID | NO | FK → md_owner (Chủ hàng) |
 | `vendor_id` | UUID | NO | FK → md_vendor (Nhà vận tải) |
 | `warehouse_id` | UUID | NO | FK → md_warehouse (Kho phân phối) |
@@ -111,7 +111,7 @@ DEAD_LETTER - Đã hết retry
 | `origin` | VARCHAR(200) | YES | Nguồn gốc hàng hóa (chỉ dùng khi `po_type=SEA`) |
 | `bl_number` | VARCHAR(100) | YES | Số Bill of Lading (chỉ dùng khi `po_type=SEA`) |
 | `notes` | TEXT | YES | Ghi chú |
-| `total_expected_qty` | DECIMAL(18,3) | NO | Tổng số lượng dự kiến |
+| `total_expected_qty` | DECIMAL(18,3) | NO | Tổng số lượng dự kiến (quy đổi sang KG) |
 | `total_received_qty` | DECIMAL(18,3) | NO | Tổng số lượng đã nhận |
 | `cancel_reason_code` | VARCHAR(50) | YES | Reason code khi cancel |
 | `row_version` | BIGINT | NO | Optimistic lock |
@@ -136,6 +136,7 @@ DEAD_LETTER - Đã hết retry
 **Ghi chú:**
 - Khi `po_type = SEA`: Các trường `vessel_name`, `origin`, `bl_number` được sử dụng
 - Khi `po_type = LAND`: Các trường trên có thể để trống
+- `total_expected_qty` được tự động quy đổi sang KG dựa trên `md_uom_conversion`
 
 ---
 
@@ -166,6 +167,7 @@ DEAD_LETTER - Đã hết retry
 **Ghi chú:**
 - `uom_id` là optional, cho phép không chọn đơn vị tính khi tạo line
 - `status` tự động cập nhật dựa trên `received_qty` so với `expected_qty`
+- Khi tạo/cập nhật PO, `expected_qty` của mỗi line sẽ được quy đổi sang KG để tính `total_expected_qty`
 
 ---
 
@@ -430,6 +432,21 @@ receipt_line   N───1 md_uom
 **New Tables:**
 - `purchase_orders` - Header PO với `po_type` (SEA/LAND)
 - `purchase_order_lines` - Dòng hàng PO
+
+**Status Change:**
+- `DRAFT` → `NEW` (Tạo mới)
+
+**UOM Conversion Logic:**
+- Khi tạo/cập nhật PO, hệ thống tự động quy đổi số lượng từ các ĐVT bao (BAG25, BAG40, BAG50, JUMBO) sang KG
+- Sử dụng bảng `md_uom_conversion` để lấy hệ số quy đổi
+- `total_expected_qty` luôn được tính theo KG
+
+**Ví dụ quy đổi:**
+| Line | ĐVT | SL dự kiến | Hệ số | Quy đổi KG |
+|------|-----|------------|-------|------------|
+| 1 | BAG50 | 100 | 50 | 5,000 kg |
+| 2 | KG | 2,000 | 1 | 2,000 kg |
+| **Tổng** | | | | **7,000 kg** |
 
 **Schema Changes:**
 ```sql

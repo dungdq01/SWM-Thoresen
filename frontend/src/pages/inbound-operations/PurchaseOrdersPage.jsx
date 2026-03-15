@@ -18,20 +18,31 @@ import {
 
 const PO_STATUSES = [
   { value: '', label: 'Tất cả' },
-  { value: 'DRAFT', label: 'Draft' },
-  { value: 'CONFIRMED', label: 'Confirmed' },
-  { value: 'CLOSED', label: 'Closed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'NEW', label: 'Tạo mới' },
+  { value: 'CONFIRMED', label: 'Xác nhận' },
+  { value: 'CLOSED', label: 'Đã đóng' },
+  { value: 'CANCELLED', label: 'Đã hủy' },
 ]
 
 const statusTone = (status) => {
+  if (status === 'NEW') return 'info'
   if (status === 'CONFIRMED') return 'success'
   if (status === 'CLOSED') return 'default'
   if (status === 'CANCELLED') return 'danger'
   return 'warning'
 }
 
-const emptyLine = { itemId: '', expectedQty: '', receivedQty: 0, uomId: '', status: 'NEW', notes: '' }
+const getStatusLabel = (status) => {
+  const statusMap = {
+    'NEW': 'Tạo mới',
+    'CONFIRMED': 'Xác nhận',
+    'CLOSED': 'Đã đóng',
+    'CANCELLED': 'Đã hủy'
+  }
+  return statusMap[status] || status
+}
+
+const emptyLine = { itemId: '', expectedQty: '', receivedQty: 0, uomId: '', status: 'OPEN', notes: '' }
 
 const PO_TYPES = [
   { value: 'SEA', label: 'Nhập đường thủy' },
@@ -257,7 +268,7 @@ export function PurchaseOrdersPage() {
                 </td>
                 <td className="px-3 py-2 text-center">
                   <Badge variant={lineStatusTone(line.status)} className="text-xs">
-                    {line.status === 'NEW' ? 'Mới' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status}
+                    {line.status === 'OPEN' ? 'Chờ nhận' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
                   </Badge>
                 </td>
                 <td className="px-3 py-2">
@@ -357,10 +368,10 @@ export function PurchaseOrdersPage() {
                       {(po.totalReceivedQty || 0).toLocaleString()} kg
                     </span>
                   </TableCell>
-                  <TableCell><Badge variant={statusTone(po.status)}>{po.status}</Badge></TableCell>
+                  <TableCell><Badge variant={statusTone(po.status)}>{getStatusLabel(po.status)}</Badge></TableCell>
                   <TableCell align="center">
                     <div className="flex items-center justify-center gap-1">
-                      {po.status === 'DRAFT' && (
+                      {po.status === 'NEW' && (
                         <>
                           <Button variant="outline" size="sm" onClick={() => handleOpenEdit(po)} title="Chỉnh sửa">
                             <Pencil className="h-3.5 w-3.5" />
@@ -396,21 +407,20 @@ export function PurchaseOrdersPage() {
                       <div className="bg-moon-50/70 border-t border-b border-moon-200 px-6 py-4">
                         <div className="flex items-center gap-2 mb-3">
                           <Package className="h-4 w-4 text-ice" />
-                          <h4 className="text-sm font-semibold text-navy-900">PO Lines — {po.poNumber}</h4>
+                          <h4 className="text-sm font-semibold text-navy-900">Chi tiết dòng hàng — {po.poNumber}</h4>
                           {po.externalPoNumber && <span className="text-xs text-navy-400 ml-2">(B/L: {po.externalPoNumber})</span>}
                         </div>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left text-xs text-navy-400 border-b border-moon-200">
                               <th className="pb-2 pr-3">#</th>
-                              <th className="pb-2 pr-3">Item</th>
-                              <th className="pb-2 pr-3">UoM</th>
-                              <th className="pb-2 pr-3 text-right">Expected</th>
-                              <th className="pb-2 pr-3 text-right">Received</th>
-                              <th className="pb-2 pr-3 text-right">Unit Price</th>
-                              <th className="pb-2 pr-3 text-right">Amount</th>
-                              <th className="pb-2 pr-3">Notes</th>
-                              <th className="pb-2 text-center">Status</th>
+                              <th className="pb-2 pr-3">Mặt hàng</th>
+                              <th className="pb-2 pr-3">ĐVT</th>
+                              <th className="pb-2 pr-3 text-right">SL dự kiến</th>
+                              <th className="pb-2 pr-3 text-right">SL đã nhận</th>
+                              <th className="pb-2 pr-3 text-right">Đơn giá</th>
+                              <th className="pb-2 pr-3 text-right">Thành tiền</th>
+                              <th className="pb-2 text-center">Trạng thái</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -432,9 +442,10 @@ export function PurchaseOrdersPage() {
                                 <td className="py-2 pr-3 text-right font-medium text-navy-800">
                                   {((line.expectedQty || 0) * (line.unitPrice || 0)).toLocaleString()}
                                 </td>
-                                <td className="py-2 pr-3 text-navy-500 text-xs">{line.notes || '—'}</td>
                                 <td className="py-2 text-center">
-                                  <Badge variant={line.status === 'RECEIVED' ? 'success' : 'default'} className="text-xs">{line.status}</Badge>
+                                  <Badge variant={line.status === 'RECEIVED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'} className="text-xs">
+                                    {line.status === 'OPEN' ? 'Chờ nhận' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
+                                  </Badge>
                                 </td>
                               </tr>
                             ))}
@@ -448,7 +459,7 @@ export function PurchaseOrdersPage() {
                               <td className="pt-2 pr-3 text-right">
                                 {(po.lines || []).reduce((s, l) => s + (l.expectedQty || 0) * (l.unitPrice || 0), 0).toLocaleString()}
                               </td>
-                              <td colSpan={2}></td>
+                              <td></td>
                             </tr>
                           </tfoot>
                         </table>

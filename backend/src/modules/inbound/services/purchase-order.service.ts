@@ -3,14 +3,14 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CancelPurchaseOrderDto, PurchaseOrderQueryDto } from '../dto/purchase-order.dto';
 
 enum PoStatus {
-  DRAFT = 'DRAFT',
+  NEW = 'NEW',
   CONFIRMED = 'CONFIRMED',
   CLOSED = 'CLOSED',
   CANCELLED = 'CANCELLED',
 }
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  DRAFT: ['CONFIRMED', 'CANCELLED'],
+  NEW: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['CLOSED', 'CANCELLED'],
   CLOSED: [],
   CANCELLED: [],
@@ -107,7 +107,7 @@ export class PurchaseOrderService {
     const createData = {
       poNumber,
       poType: dto.poType || 'SEA',
-      status: PoStatus.DRAFT,
+      status: PoStatus.NEW,
       ownerId: dto.ownerId,
       vendorId: dto.vendorId,
       warehouseId: dto.warehouseId,
@@ -186,8 +186,8 @@ export class PurchaseOrderService {
 
   async update(id: string, dto: UpdatePurchaseOrderDto, userId?: string) {
     const po = await this.findById(id);
-    if (po.status !== PoStatus.DRAFT) {
-      throw new BadRequestException('Only DRAFT purchase orders can be updated');
+    if (po.status !== 'NEW') {
+      throw new BadRequestException('Only NEW purchase orders can be updated');
     }
 
     const updateData: any = {
