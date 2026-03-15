@@ -36,7 +36,8 @@ export function HeroSection() {
         </div>
         
         <div className="container-custom relative z-20 pt-24">
-          <div className="max-w-4xl">
+          <div className="grid lg:grid-cols-[7fr_5fr] gap-16 items-center">
+            {/* Left — text content */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -53,22 +54,27 @@ export function HeroSection() {
               </motion.p>
 
               {/* Main Headline */}
-              <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-8">
-                Nâng tầm <span className="text-ice">Logistics</span>,
-                <br />
-                Kiến tạo <span className="text-ice-light">Chuỗi Cung Ứng</span> Bền Vững
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-[1.2] mb-6">
+                <span className="block">
+                  Nâng tầm <span className="text-ice">Logistics</span>,
+                </span>
+                <span className="block">
+                  Kiến tạo{' '}
+                  <span className="text-ice-light whitespace-nowrap">Chuỗi Cung Ứng</span>
+                  {' '}Bền Vững
+                </span>
               </h1>
 
               {/* Subtitle */}
-              <p className="text-xl md:text-2xl text-moon-200 mb-10 leading-relaxed max-w-2xl font-light">
-                Chúng tôi đưa logistics đi xa hơn, vận hành một chuỗi cung ứng toàn cầu 
+              <p className="text-base md:text-lg text-moon-200 mb-8 leading-relaxed font-light">
+                Chúng tôi đưa logistics đi xa hơn, vận hành một chuỗi cung ứng toàn cầu
                 mạnh mẽ, thông minh và linh hoạt hơn bao giờ hết.
               </p>
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap gap-4 mb-16">
-                <Button 
-                  variant="accent" 
+                <Button
+                  variant="accent"
                   size="lg"
                   icon={<ArrowRight className="w-5 h-5" />}
                   iconPosition="right"
@@ -88,7 +94,73 @@ export function HeroSection() {
                 </Button>
               </div>
             </motion.div>
-          </div>
+
+          {/* Right — Live Activity Feed */}
+          <motion.div
+            className="hidden lg:flex items-center justify-end"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.7 }}
+          >
+            <div
+              className="rounded-2xl p-5"
+              style={{
+                background: 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">
+                  Hoạt động gần đây
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <motion.span
+                    className="w-2 h-2 bg-green-400 rounded-full block"
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  />
+                  <span className="text-green-400 text-[10px] font-semibold">LIVE</span>
+                </span>
+              </div>
+
+              {/* Activity items */}
+              <div className="space-y-3">
+                {[
+                  { color: '#22c55e', text: 'Kho HCM đã xuất 1,240 sp', time: '2 phút trước' },
+                  { color: '#60a5fa', text: 'Nhập kho Hà Nội: 380 sp',  time: '8 phút trước' },
+                  { color: '#f59e0b', text: 'Cảnh báo: Tồn kho SKU-091 thấp', time: '15 phút trước' },
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    className="flex items-start gap-3"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.9 + i * 0.15 }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
+                      style={{ background: item.color }}
+                    />
+                    <div>
+                      <p className="text-white/85 text-xs leading-snug">{item.text}</p>
+                      <p className="text-white/35 text-[10px] mt-0.5">{item.time}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Divider + mini stat */}
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/40 text-[10px]">Hôm nay</span>
+                  <span className="text-ice text-[11px] font-semibold">+2,847 sp nhập kho</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          </div>{/* end grid */}
         </div>
 
         {/* Scroll Indicator */}
