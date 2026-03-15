@@ -103,6 +103,10 @@ export const inboundOperationsApi = {
     (id) => inboundOperationsMockApi.confirmPurchaseOrder(id),
     (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/confirm`)
   ),
+  unconfirmPurchaseOrder: withDataSource(
+    (id) => inboundOperationsMockApi.unconfirmPurchaseOrder(id),
+    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/unconfirm`)
+  ),
   closePurchaseOrder: withDataSource(
     (id) => inboundOperationsMockApi.closePurchaseOrder(id),
     (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/close`)

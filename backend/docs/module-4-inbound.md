@@ -4,7 +4,7 @@
 > **Status:** ✅ Implemented (Feedback Fixed v3 - CR-1 DONE)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-15 (PO Schema Update)
+> **Last Updated:** 2026-03-15 (Sync with actual backend code)
 
 ---
 
@@ -35,20 +35,26 @@ Module 4 quản lý toàn bộ **lifecycle của Receipt** (phiếu nhận hàng
 
 ```
 src/modules/inbound/
+├── controllers/
+│   └── purchase-order.controller.ts    # PO NestJS controller
+├── services/
+│   └── purchase-order.service.ts       # PO business logic
+├── dto/
+│   └── purchase-order.dto.ts           # PO DTOs & validation
 ├── application/
-│   └── receipt.service.js          # Core business logic
+│   └── receipt.service.js              # Receipt business logic
 ├── domain/
-│   ├── inbound.errors.js           # Error definitions
-│   ├── inbound.policy.js           # Business policies
-│   └── inbound.state-machine.js    # State machine rules
+│   ├── inbound.errors.js               # Error definitions
+│   ├── inbound.policy.js               # Business policies
+│   └── inbound.state-machine.js        # State machine rules
 ├── infra/
-│   ├── receipt.repository.js               # Receipt CRUD
-│   ├── receipt-weighing.repository.js      # Weighing logs
+│   ├── receipt.repository.js           # Receipt CRUD
+│   ├── receipt-weighing.repository.js  # Weighing logs
 │   └── receipt-status-history.repository.js # Status history
-├── inbound.controller.js           # HTTP handlers
-├── inbound.routes.js               # Route definitions
-├── inbound.schema.js               # Validation schemas
-└── index.js                        # Module exports
+├── inbound.controller.js               # Receipt HTTP handlers (Express)
+├── inbound.routes.js                   # Route definitions (Express)
+├── inbound.schema.js                   # Validation schemas
+└── index.js                            # Module exports
 ```
 
 ---
@@ -158,7 +164,7 @@ src/modules/inbound/
     "id": "uuid-po",
     "poNumber": "PO-20260315-001",
     "poType": "SEA",
-    "status": "DRAFT",
+    "status": "NEW",
     "ownerId": "uuid-owner",
     "vendorId": "uuid-vendor",
     "warehouseId": "uuid-warehouse",
@@ -189,7 +195,7 @@ src/modules/inbound/
 
 **Validation:**
 - `rowVersion` bắt buộc để kiểm tra optimistic locking
-- Chỉ update được khi `status = DRAFT`
+- Chỉ update được khi `status = NEW`
 
 ---
 
@@ -402,7 +408,32 @@ src/modules/inbound/
 
 ## 5. State Machine
 
-### 5.1 States
+### 5.0 PO State Machine
+
+**PO Statuses:**
+
+| State | Description |
+|-------|-------------|
+| `NEW` | PO vừa tạo, có thể edit |
+| `CONFIRMED` | PO đã xác nhận, có thể tạo Receipt |
+| `CLOSED` | PO đã đóng (terminal) |
+| `CANCELLED` | PO đã hủy (terminal) |
+
+**PO Transitions:**
+
+```
+NEW ──confirm──> CONFIRMED ──close──> CLOSED
+ │                    │
+ └──cancel───────────>│
+                      └──cancel──> CANCELLED
+```
+
+**Business Rules:**
+- Chỉ có thể **edit PO** khi `status = NEW`
+- Chỉ có thể **tạo Receipt từ PO** khi `status = CONFIRMED`
+- `totalExpectedQty` được tính bằng cách convert tất cả lines về KG (sử dụng `md_uom_conversion`)
+
+### 5.1 Receipt States
 
 | State | Description |
 |-------|-------------|
@@ -417,7 +448,7 @@ src/modules/inbound/
 | `REJECTED` | Tolerance fail |
 | `CANCELLED` | Đã hủy (terminal) |
 
-### 5.2 Transitions
+### 5.2 Receipt Transitions
 
 ```
 DRAFT ──confirm──> AWAITING_WEIGHING ──weighIn──> WEIGHED_IN
@@ -558,6 +589,19 @@ Any cancellable state ──cancel──> CANCELLED
 ---
 
 ## 10. RBAC Permissions
+
+### 10.1 Purchase Order Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INBOUND.PO.CREATE` | Tạo Purchase Order |
+| `INBOUND.PO.READ` | Xem Purchase Order |
+| `INBOUND.PO.UPDATE` | Cập nhật Purchase Order |
+| `INBOUND.PO.CONFIRM` | Xác nhận PO |
+| `INBOUND.PO.CLOSE` | Đóng Purchase Order |
+| `INBOUND.PO.CANCEL` | Hủy Purchase Order |
+
+### 10.2 Receipt Permissions
 
 | Permission Code | Description |
 |-----------------|-------------|

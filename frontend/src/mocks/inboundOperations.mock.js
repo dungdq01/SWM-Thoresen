@@ -774,6 +774,13 @@ export const inboundOperationsMockApi = {
     return delay({ data: enrichPo(poDb.purchaseOrders[index]) })
   },
 
+  unconfirmPurchaseOrder: async (id) => {
+    const index = poDb.purchaseOrders.findIndex((item) => item.id === id)
+    if (index === -1) return delay(null, { statusCode: 404, message: 'PO not found' })
+    poDb.purchaseOrders[index] = { ...poDb.purchaseOrders[index], status: 'NEW', updatedAt: new Date().toISOString() }
+    return delay({ data: enrichPo(poDb.purchaseOrders[index]) })
+  },
+
   closePurchaseOrder: async (id) => {
     const index = poDb.purchaseOrders.findIndex((item) => item.id === id)
     if (index === -1) return delay(null, { statusCode: 404, message: 'PO not found' })

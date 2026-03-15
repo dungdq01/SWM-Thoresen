@@ -210,6 +210,11 @@ export function useConfirmPurchaseOrder() {
   return useMutation({ mutationFn: (id) => inboundOperationsApi.confirmPurchaseOrder(id), onSuccess, onError })
 }
 
+export function useUnconfirmPurchaseOrder() {
+  const { onSuccess, onError } = useInvalidatePOQueries('Đã hủy xác nhận Purchase Order', 'Không thể hủy xác nhận Purchase Order')
+  return useMutation({ mutationFn: (id) => inboundOperationsApi.unconfirmPurchaseOrder(id), onSuccess, onError })
+}
+
 export function useClosePurchaseOrder() {
   const { onSuccess, onError } = useInvalidatePOQueries('Đã đóng Purchase Order', 'Không thể đóng Purchase Order')
   return useMutation({ mutationFn: (id) => inboundOperationsApi.closePurchaseOrder(id), onSuccess, onError })

@@ -12,7 +12,7 @@
 | Module 1 - Foundation | ✅ Completed | `src/modules/foundation` | 14 tables | ~25 endpoints |
 | Module 2 - Master Data | ✅ Completed | `src/modules/master-data` | 17 tables | ~55 endpoints |
 | Module 3 - Inventory Core | ✅ Completed | `src/modules/inventory-core` | 10 tables | ~13 endpoints |
-| Module 4 - Inbound | ✅ Completed | `src/modules/inbound` | 6 tables | ~14 endpoints |
+| Module 4 - Inbound | ✅ Completed | `src/modules/inbound` | 8 tables | ~22 endpoints |
 | Module 5 - Outbound | ✅ Completed | `src/modules/outbound` | 10 tables | ~18 endpoints |
 | Module 6 - Inventory Control | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
 | Module 7 - Work Execution | ✅ Completed | `src/modules/work-execution` | 10 tables | ~20 endpoints |
@@ -419,7 +419,7 @@
 **Code Path:** `src/modules/inbound`  
 **Documentation:** [`docs/module-4-inbound.md`](./module-4-inbound.md)  
 **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-**Last Updated:** 2026-03-08 (FB-v3)
+**Last Updated:** 2026-03-15 (PO Management added)
 
 ### Feedback Fixes Applied
 
@@ -435,10 +435,12 @@
 | MD-4 | Use validated value instead of req.body | ✅ Fixed |
 | HI-2 | Putaway workflow | 🔜 Pending M7 ready |
 
-## Database Tables (6 tables)
+## Database Tables (8 tables)
 
 | Table | Description | Group |
 |-------|-------------|-------|
+| `purchase_order` | Header đơn mua hàng | Runtime |
+| `purchase_order_line` | Dòng hàng trong PO | Runtime |
 | `receipt_header` | Header phiếu nhận hàng | Runtime |
 | `receipt_line` | Dòng hàng trong receipt | Runtime |
 | `receipt_weighing_log` | Log cân weigh-in/weigh-out | Audit |
@@ -447,6 +449,18 @@
 | `receipt_integration_state` | Trạng thái sync với M3/M7/M10 | Control |
 
 ## API Endpoints
+
+### Purchase Order Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inbound/purchase-orders` | Tạo PO mới |
+| GET | `/api/v1/inbound/purchase-orders` | List POs (paginated) |
+| GET | `/api/v1/inbound/purchase-orders/:id` | Get PO by ID |
+| GET | `/api/v1/inbound/purchase-orders/next-number` | Get next PO number |
+| PUT | `/api/v1/inbound/purchase-orders/:id` | Update PO |
+| POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO |
+| POST | `/api/v1/inbound/purchase-orders/:id/close` | Close PO |
+| POST | `/api/v1/inbound/purchase-orders/:id/cancel` | Cancel PO |
 
 ### Receipt Management
 | Method | Path | Description |
@@ -495,6 +509,17 @@
 
 ## RBAC Permissions
 
+### PO Permissions
+| Permission Code | Description |
+|-----------------|-------------|
+| `INBOUND.PO.CREATE` | Tạo Purchase Order |
+| `INBOUND.PO.READ` | Xem Purchase Order |
+| `INBOUND.PO.UPDATE` | Cập nhật Purchase Order |
+| `INBOUND.PO.CONFIRM` | Xác nhận PO |
+| `INBOUND.PO.CLOSE` | Đóng Purchase Order |
+| `INBOUND.PO.CANCEL` | Hủy Purchase Order |
+
+### Receipt Permissions
 | Permission Code | Description |
 |-----------------|-------------|
 | `INBOUND.RECEIPT.CREATE` | Tạo receipt |

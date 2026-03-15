@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from 'react'
-import { FileText, Plus, Trash2, Check, X as XIcon, Lock, Ban, ChevronDown, ChevronUp, Package, Sparkles, Pencil } from 'lucide-react'
+import { FileText, Plus, Trash2, Check, X as XIcon, Ban, ChevronDown, ChevronUp, Package, Sparkles, Pencil, Undo2, ClipboardPlus } from 'lucide-react'
 import {
   usePurchaseOrders,
   useCreatePurchaseOrder,
   useUpdatePurchaseOrder,
   useConfirmPurchaseOrder,
+  useUnconfirmPurchaseOrder,
   useClosePurchaseOrder,
   useCancelPurchaseOrder,
   useNextPoNumber,
+  useCreateInboundReceipt,
 } from '@domains/inbound-operations'
 import { useLookupOwners, useLookupVendors, useLookupWarehouses, useLookupItems, useLookupUoms } from '@domains/master-data'
 import {
@@ -43,6 +45,7 @@ const getStatusLabel = (status) => {
 }
 
 const emptyLine = { itemId: '', expectedQty: '', receivedQty: 0, uomId: '', status: 'OPEN', notes: '' }
+const emptyReceiptLine = { itemId: '', expectedQty: '', receivedQty: 0, uomId: '', status: 'NEW', notes: '' }
 
 const PO_TYPES = [
   { value: 'SEA', label: 'Nhập đường thủy' },
@@ -65,9 +68,17 @@ export function PurchaseOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '', vendorId: '' })
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [showCreateReceipt, setShowCreateReceipt] = useState(false)
+  const [selectedPoForReceipt, setSelectedPoForReceipt] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
   const [draft, setDraft] = useState(emptyDraft)
   const [editDraft, setEditDraft] = useState(null)
+  const [receiptDraft, setReceiptDraft] = useState({
+    vehicleNumber: '',
+    warehouseId: '',
+    notes: '',
+    lines: [{ ...emptyReceiptLine }],
+  })
 
   const { data: nextPoResponse } = useNextPoNumber(showCreate)
   const nextPoNumber = nextPoResponse?.data?.code || ''
@@ -83,8 +94,10 @@ export function PurchaseOrdersPage() {
   const createPo = useCreatePurchaseOrder()
   const updatePo = useUpdatePurchaseOrder()
   const confirmPo = useConfirmPurchaseOrder()
+  const unconfirmPo = useUnconfirmPurchaseOrder()
   const closePo = useClosePurchaseOrder()
   const cancelPo = useCancelPurchaseOrder()
+  const createReceipt = useCreateInboundReceipt()
 
   const { data: owners = [] } = useLookupOwners()
   const { data: vendors = [] } = useLookupVendors()
@@ -202,6 +215,56 @@ export function PurchaseOrdersPage() {
   }
 
   const toggleExpand = (id) => setExpandedId((prev) => (prev === id ? null : id))
+
+  // ── Receipt from PO handlers ──
+  const handleOpenCreateReceipt = (po) => {
+    setSelectedPoForReceipt(po)
+    setReceiptDraft({
+      vehicleNumber: '',
+      warehouseId: '',
+      notes: '',
+      lines: [{ ...emptyReceiptLine }],
+    })
+    setShowCreateReceipt(true)
+  }
+
+  const updateReceiptLine = useCallback((idx, field, value) => {
+    setReceiptDraft((prev) => ({
+      ...prev,
+      lines: prev.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
+    }))
+  }, [])
+
+  const addReceiptLine = useCallback(() => {
+    setReceiptDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyReceiptLine }] }))
+  }, [])
+
+  const removeReceiptLine = useCallback((idx) => {
+    setReceiptDraft((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== idx) }))
+  }, [])
+
+  const handleCreateReceipt = async () => {
+    if (!selectedPoForReceipt) return
+    const payload = {
+      poId: selectedPoForReceipt.id,
+      ownerId: selectedPoForReceipt.ownerId,
+      vendorId: selectedPoForReceipt.vendorId,
+      warehouseId: receiptDraft.warehouseId,
+      vehicleNumber: receiptDraft.vehicleNumber,
+      blNumber: selectedPoForReceipt.blNumber || '',
+      notes: receiptDraft.notes || '',
+      sourceApp: 'WEB',
+      lines: receiptDraft.lines.filter((l) => l.itemId).map((l) => ({
+        itemId: l.itemId,
+        expectedQty: Number(l.expectedQty || 0),
+        uomId: l.uomId || '',
+        notes: l.notes || '',
+      })),
+    }
+    await createReceipt.mutateAsync(payload)
+    setShowCreateReceipt(false)
+    setSelectedPoForReceipt(null)
+  }
 
   const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = uoms.map((u) => ({ value: u.id, label: u.code }))
@@ -385,10 +448,13 @@ export function PurchaseOrdersPage() {
                       )}
                       {po.status === 'CONFIRMED' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => closePo.mutate(po.id)} title="Đóng PO">
-                            <Lock className="h-3.5 w-3.5" />
+                          <Button variant="outline" size="sm" onClick={() => unconfirmPo.mutate(po.id)} title="Hủy xác nhận">
+                            <Undo2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy">
+                          <Button variant="accent" size="sm" onClick={() => handleOpenCreateReceipt(po)} title="Tạo phiếu nhập">
+                            <ClipboardPlus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy PO">
                             <Ban className="h-3.5 w-3.5" />
                           </Button>
                         </>
@@ -640,6 +706,170 @@ export function PurchaseOrdersPage() {
               <Button variant="outline" onClick={() => setShowEdit(false)}>Hủy</Button>
               <Button variant="accent" onClick={handleUpdate} disabled={updatePo.isPending || !editDraft.ownerId || !editDraft.vendorId || !editDraft.warehouseId}>
                 {updatePo.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Create Receipt from PO Modal ── */}
+      <Modal
+        isOpen={showCreateReceipt}
+        onClose={() => { setShowCreateReceipt(false); setSelectedPoForReceipt(null) }}
+        title="Tạo phiếu nhập kho"
+        size="xl"
+      >
+        {selectedPoForReceipt && (
+          <div className="space-y-5">
+            {/* Section 1: Thông tin chung */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-navy-800 border-b border-moon-200 pb-2">1. Thông tin chung</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1.5">Số PO</label>
+                  <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2.5">
+                    <FileText className="h-4 w-4 text-ice shrink-0" />
+                    <span className="font-mono font-semibold text-navy-900">{selectedPoForReceipt.poNumber}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1.5">Loại phiếu</label>
+                  <div className="rounded-lg border border-navy-200 bg-navy-50 px-3 py-2.5">
+                    <Badge variant={selectedPoForReceipt.poType === 'SEA' ? 'info' : 'warning'}>
+                      {selectedPoForReceipt.poType === 'SEA' ? 'Đường biển' : 'Đường bộ'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1.5">Chủ hàng</label>
+                  <div className="rounded-lg border border-navy-200 bg-navy-50 px-3 py-2.5 text-navy-800">
+                    {selectedPoForReceipt.owner?.ownerCode} - {selectedPoForReceipt.owner?.ownerName}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1.5">Số B/L</label>
+                  <div className="rounded-lg border border-navy-200 bg-navy-50 px-3 py-2.5 text-navy-800 font-mono">
+                    {selectedPoForReceipt.blNumber || 'N/A'}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Biển số xe *"
+                  value={receiptDraft.vehicleNumber}
+                  onChange={(e) => setReceiptDraft((p) => ({ ...p, vehicleNumber: e.target.value }))}
+                  placeholder="VD: 51D-12345"
+                />
+                <div>
+                  <label className="block text-sm font-medium text-navy-700 mb-1.5">Số phiếu nhập</label>
+                  <div className="flex items-center gap-2 rounded-lg border border-navy-200 bg-navy-50 px-3 py-2.5">
+                    <Sparkles className="h-4 w-4 text-ice shrink-0" />
+                    <span className="font-mono text-navy-500 italic">Tự động tạo khi lưu</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  label="Kho *"
+                  value={receiptDraft.warehouseId}
+                  onChange={(e) => setReceiptDraft((p) => ({ ...p, warehouseId: e.target.value }))}
+                  options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
+                />
+                <Textarea
+                  label="Ghi chú"
+                  rows={1}
+                  value={receiptDraft.notes}
+                  onChange={(e) => setReceiptDraft((p) => ({ ...p, notes: e.target.value }))}
+                  placeholder="Nhập ghi chú..."
+                />
+              </div>
+            </div>
+
+            {/* Section 2: Chi tiết phiếu */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-navy-800 border-b border-moon-200 pb-2">2. Chi tiết phiếu</h3>
+                <Button variant="outline" size="sm" onClick={addReceiptLine}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Thêm dòng
+                </Button>
+              </div>
+              <div className="overflow-x-auto rounded-lg border border-moon-200">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-moon-50 text-left text-xs font-semibold text-navy-600 uppercase tracking-wide">
+                      <th className="px-3 py-2.5 w-12 text-center">STT</th>
+                      <th className="px-3 py-2.5 min-w-[180px]">Mã hàng hóa *</th>
+                      <th className="px-3 py-2.5 w-28 text-center">SL dự kiến *</th>
+                      <th className="px-3 py-2.5 w-24 text-center">SL đã nhận</th>
+                      <th className="px-3 py-2.5 w-24 text-center">ĐVT</th>
+                      <th className="px-3 py-2.5 w-20 text-center">Trạng thái</th>
+                      <th className="px-3 py-2.5 min-w-[120px]">Ghi chú</th>
+                      <th className="px-3 py-2.5 w-12">Xóa</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-moon-100">
+                    {receiptDraft.lines.map((line, idx) => (
+                      <tr key={idx} className="bg-white hover:bg-moon-50/50">
+                        <td className="px-3 py-2 text-center text-navy-500 font-medium">{idx + 1}</td>
+                        <td className="px-3 py-2">
+                          <Select
+                            value={line.itemId}
+                            onChange={(e) => updateReceiptLine(idx, 'itemId', e.target.value)}
+                            options={itemOptions}
+                            className="min-w-[160px]"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            type="number"
+                            value={line.expectedQty}
+                            onChange={(e) => updateReceiptLine(idx, 'expectedQty', e.target.value)}
+                            className="text-center"
+                            min={0}
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center text-navy-400">0</td>
+                        <td className="px-3 py-2">
+                          <Select
+                            value={line.uomId}
+                            onChange={(e) => updateReceiptLine(idx, 'uomId', e.target.value)}
+                            options={[{ value: '', label: '--' }, ...uomOptions]}
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge variant="info" className="text-xs">Mới</Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            value={line.notes}
+                            onChange={(e) => updateReceiptLine(idx, 'notes', e.target.value)}
+                            placeholder="Ghi chú..."
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {receiptDraft.lines.length > 1 && (
+                            <button onClick={() => removeReceiptLine(idx)} className="text-red-400 hover:text-red-600 p-1">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-moon-200">
+              <Button variant="outline" onClick={() => { setShowCreateReceipt(false); setSelectedPoForReceipt(null) }}>Hủy</Button>
+              <Button
+                variant="accent"
+                onClick={handleCreateReceipt}
+                disabled={createReceipt.isPending || !receiptDraft.vehicleNumber || !receiptDraft.warehouseId || receiptDraft.lines.every((l) => !l.itemId)}
+              >
+                {createReceipt.isPending ? 'Đang tạo...' : 'Tạo phiếu nhập'}
               </Button>
             </div>
           </div>
