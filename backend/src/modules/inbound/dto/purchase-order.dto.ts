@@ -1,15 +1,21 @@
-import { IsString, IsUUID, IsNumber, IsOptional, IsArray, ValidateNested, IsDateString, IsPositive, Min, Max, IsInt } from 'class-validator';
+import { IsString, IsUUID, IsNumber, IsOptional, IsArray, ValidateNested, IsPositive, Min, Max, IsInt, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export enum PurchaseOrderType {
+  SEA = 'SEA',
+  LAND = 'LAND',
+}
 
 export class CreatePurchaseOrderLineDto {
   @ApiProperty()
   @IsUUID()
   itemId!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsUUID()
-  uomId!: string;
+  uomId?: string;
 
   @ApiProperty()
   @IsNumber()
@@ -18,9 +24,29 @@ export class CreatePurchaseOrderLineDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdatePurchaseOrderLineDto {
+  @ApiPropertyOptional({ description: 'Line ID (required for existing lines)' })
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @ApiProperty()
+  @IsUUID()
+  itemId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  uomId?: string;
+
+  @ApiProperty()
   @IsNumber()
   @Min(0)
-  unitPrice?: number;
+  expectedQty!: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -29,6 +55,11 @@ export class CreatePurchaseOrderLineDto {
 }
 
 export class CreatePurchaseOrderDto {
+  @ApiPropertyOptional({ enum: PurchaseOrderType, default: PurchaseOrderType.SEA })
+  @IsOptional()
+  @IsEnum(PurchaseOrderType)
+  poType?: PurchaseOrderType = PurchaseOrderType.SEA;
+
   @ApiProperty()
   @IsUUID()
   ownerId!: string;
@@ -41,25 +72,25 @@ export class CreatePurchaseOrderDto {
   @IsUUID()
   warehouseId!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Tên tàu / Nguồn gốc (chỉ dùng khi poType=SEA)' })
   @IsOptional()
   @IsString()
-  externalPoNumber?: string;
+  vesselName?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Nguồn gốc hàng hóa (chỉ dùng khi poType=SEA)' })
   @IsOptional()
-  @IsDateString()
-  expectedDeliveryDate?: string;
+  @IsString()
+  origin?: string;
+
+  @ApiPropertyOptional({ description: 'Số Bill of Lading (chỉ dùng khi poType=SEA)' })
+  @IsOptional()
+  @IsString()
+  blNumber?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @ApiPropertyOptional({ default: 'VND' })
-  @IsOptional()
-  @IsString()
-  currency?: string;
 
   @ApiProperty({ type: [CreatePurchaseOrderLineDto] })
   @IsArray()
@@ -69,25 +100,52 @@ export class CreatePurchaseOrderDto {
 }
 
 export class UpdatePurchaseOrderDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: PurchaseOrderType })
   @IsOptional()
-  @IsString()
-  externalPoNumber?: string;
+  @IsEnum(PurchaseOrderType)
+  poType?: PurchaseOrderType;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsDateString()
-  expectedDeliveryDate?: string;
+  @IsUUID()
+  ownerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  vendorId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Tên tàu / Nguồn gốc (chỉ dùng khi poType=SEA)' })
+  @IsOptional()
+  @IsString()
+  vesselName?: string;
+
+  @ApiPropertyOptional({ description: 'Nguồn gốc hàng hóa (chỉ dùng khi poType=SEA)' })
+  @IsOptional()
+  @IsString()
+  origin?: string;
+
+  @ApiPropertyOptional({ description: 'Số Bill of Lading (chỉ dùng khi poType=SEA)' })
+  @IsOptional()
+  @IsString()
+  blNumber?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: [UpdatePurchaseOrderLineDto], description: 'PO Lines to update' })
   @IsOptional()
-  @IsString()
-  currency?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdatePurchaseOrderLineDto)
+  lines?: UpdatePurchaseOrderLineDto[];
 
   @ApiProperty({ description: 'Optimistic locking version' })
   @IsInt()

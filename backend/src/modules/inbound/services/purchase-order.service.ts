@@ -3,14 +3,14 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CancelPurchaseOrderDto, PurchaseOrderQueryDto } from '../dto/purchase-order.dto';
 
 enum PoStatus {
-  DRAFT = 'DRAFT',
+  NEW = 'NEW',
   CONFIRMED = 'CONFIRMED',
   CLOSED = 'CLOSED',
   CANCELLED = 'CANCELLED',
 }
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  DRAFT: ['CONFIRMED', 'CANCELLED'],
+  NEW: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['CLOSED', 'CANCELLED'],
   CLOSED: [],
   CANCELLED: [],
@@ -64,35 +64,66 @@ export class PurchaseOrderService {
 
     const { code: poNumber } = await this.getNextPoNumber();
 
-    const lines = (dto.lines || []).map((line, idx) => ({
+    // Get KG UOM for conversion target
+    const kgUom = await this.prisma.mdUom.findUnique({ where: { uomCode: 'KG' } });
+
+    const lineData = (dto.lines || []).map((line, idx) => ({
       lineNumber: idx + 1,
-      item: { connect: { id: line.itemId } },
-      uom: { connect: { id: line.uomId } },
+      itemId: line.itemId,
+      uomId: line.uomId || null,
       expectedQty: line.expectedQty,
-      unitPrice: line.unitPrice || null,
       notes: line.notes || null,
-      status: 'OPEN' as const,
+      status: 'OPEN',
     }));
 
-    const totalExpectedQty = lines.reduce((sum, l) => sum + Number(l.expectedQty), 0);
+    // Calculate totalExpectedQty in KG (convert from bag UOMs to KG)
+    let totalExpectedQty = 0;
+    for (const line of dto.lines || []) {
+      const qty = Number(line.expectedQty) || 0;
+      if (!line.uomId || !kgUom) {
+        totalExpectedQty += qty;
+        continue;
+      }
+
+      // Check if UOM is KG
+      if (line.uomId === kgUom.id) {
+        totalExpectedQty += qty;
+        continue;
+      }
+
+      // Find conversion factor from line.uomId to KG
+      const conversion = await this.prisma.mdUomConversion.findFirst({
+        where: { fromUomId: line.uomId, toUomId: kgUom.id },
+      });
+
+      if (conversion) {
+        totalExpectedQty += qty * Number(conversion.conversionFactor);
+      } else {
+        // No conversion found, use raw qty
+        totalExpectedQty += qty;
+      }
+    }
+
+    const createData = {
+      poNumber,
+      poType: dto.poType || 'SEA',
+      status: PoStatus.NEW,
+      ownerId: dto.ownerId,
+      vendorId: dto.vendorId,
+      warehouseId: dto.warehouseId,
+      vesselName: dto.poType === 'SEA' ? (dto.vesselName || null) : null,
+      origin: dto.poType === 'SEA' ? (dto.origin || null) : null,
+      blNumber: dto.poType === 'SEA' ? (dto.blNumber || null) : null,
+      notes: dto.notes || null,
+      totalExpectedQty,
+      totalReceivedQty: 0,
+      createdBy: userId || null,
+      updatedBy: userId || null,
+      lines: { create: lineData },
+    };
 
     const po = await this.prisma.purchaseOrder.create({
-      data: {
-        poNumber,
-        externalPoNumber: dto.externalPoNumber || null,
-        status: PoStatus.DRAFT,
-        ownerId: dto.ownerId,
-        vendorId: dto.vendorId,
-        warehouseId: dto.warehouseId,
-        expectedDeliveryDate: dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null,
-        notes: dto.notes || null,
-        currency: dto.currency || 'VND',
-        totalExpectedQty,
-        totalReceivedQty: 0,
-        createdBy: userId || null,
-        updatedBy: userId || null,
-        lines: { create: lines },
-      },
+      data: createData as any,
       include: this.includeDetail(),
     });
 
@@ -155,18 +186,66 @@ export class PurchaseOrderService {
 
   async update(id: string, dto: UpdatePurchaseOrderDto, userId?: string) {
     const po = await this.findById(id);
-    if (po.status !== PoStatus.DRAFT) {
-      throw new BadRequestException('Only DRAFT purchase orders can be updated');
+    if (po.status !== 'NEW') {
+      throw new BadRequestException('Only NEW purchase orders can be updated');
     }
 
     const updateData: any = {
       updatedBy: userId || null,
     };
 
-    if (dto.externalPoNumber !== undefined) updateData.externalPoNumber = dto.externalPoNumber;
-    if (dto.expectedDeliveryDate !== undefined) updateData.expectedDeliveryDate = dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null;
+    if (dto.poType !== undefined) updateData.poType = dto.poType;
+    if (dto.ownerId !== undefined) updateData.ownerId = dto.ownerId;
+    if (dto.vendorId !== undefined) updateData.vendorId = dto.vendorId;
+    if (dto.warehouseId !== undefined) updateData.warehouseId = dto.warehouseId;
+    if (dto.vesselName !== undefined) updateData.vesselName = dto.vesselName || null;
+    if (dto.origin !== undefined) updateData.origin = dto.origin || null;
+    if (dto.blNumber !== undefined) updateData.blNumber = dto.blNumber || null;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
-    if (dto.currency !== undefined) updateData.currency = dto.currency;
+
+    // Handle lines update if provided
+    if (dto.lines && dto.lines.length > 0) {
+      // Get KG UOM for conversion
+      const kgUom = await this.prisma.mdUom.findUnique({ where: { uomCode: 'KG' } });
+
+      // Delete existing lines and recreate
+      await this.prisma.purchaseOrderLine.deleteMany({ where: { poId: id } });
+
+      // Calculate totalExpectedQty in KG
+      let totalExpectedQty = 0;
+      for (const line of dto.lines) {
+        const qty = Number(line.expectedQty) || 0;
+        if (!line.uomId || !kgUom) {
+          totalExpectedQty += qty;
+          continue;
+        }
+        if (line.uomId === kgUom.id) {
+          totalExpectedQty += qty;
+          continue;
+        }
+        const conversion = await this.prisma.mdUomConversion.findFirst({
+          where: { fromUomId: line.uomId, toUomId: kgUom.id },
+        });
+        if (conversion) {
+          totalExpectedQty += qty * Number(conversion.conversionFactor);
+        } else {
+          totalExpectedQty += qty;
+        }
+      }
+
+      const lineData = dto.lines.map((line, idx) => ({
+        poId: id,
+        lineNumber: idx + 1,
+        itemId: line.itemId,
+        uomId: line.uomId || null,
+        expectedQty: line.expectedQty,
+        notes: line.notes || null,
+        status: 'OPEN',
+      }));
+
+      await this.prisma.purchaseOrderLine.createMany({ data: lineData as any });
+      updateData.totalExpectedQty = totalExpectedQty;
+    }
 
     return this.prisma.purchaseOrder.update({
       where: { id, rowVersion: BigInt(dto.rowVersion) },
