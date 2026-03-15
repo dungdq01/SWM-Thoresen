@@ -32,9 +32,9 @@ export function MovementHistoryPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Warehouse" />
-          <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} placeholder="Item" />
-          <Select value={filters.transType} onChange={(e) => setFilters((prev) => ({ ...prev, transType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'RECEIVE', label: 'RECEIVE' }, { value: 'ISSUE', label: 'ISSUE' }, { value: 'MOVE', label: 'MOVE' }, { value: 'TRANSFER_SHIP', label: 'TRANSFER_SHIP' }, { value: 'TRANSFER_RECEIVE', label: 'TRANSFER_RECEIVE' }, { value: 'ADJUSTMENT', label: 'ADJUSTMENT' }]} placeholder="Trans Type" />
+          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Kho" />
+          <Select value={filters.itemId} onChange={(e) => setFilters((prev) => ({ ...prev, itemId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} placeholder="Mặt hàng" />
+          <Select value={filters.transType} onChange={(e) => setFilters((prev) => ({ ...prev, transType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'RECEIVE', label: 'RECEIVE' }, { value: 'ISSUE', label: 'ISSUE' }, { value: 'MOVE', label: 'MOVE' }, { value: 'TRANSFER_SHIP', label: 'TRANSFER_SHIP' }, { value: 'TRANSFER_RECEIVE', label: 'TRANSFER_RECEIVE' }, { value: 'ADJUSTMENT', label: 'ADJUSTMENT' }]} placeholder="Loại giao dịch" />
         </div>
 
         <Table>

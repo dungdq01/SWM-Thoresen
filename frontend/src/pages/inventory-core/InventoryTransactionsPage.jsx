@@ -64,7 +64,7 @@ export function InventoryTransactionsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Lịch sử giao dịch</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
           <Button size="sm" onClick={() => setShowModal(true)}>
             <Plus className="w-4 h-4 mr-1" />
             Tạo giao dịch
@@ -85,7 +85,7 @@ export function InventoryTransactionsPage() {
           <Input placeholder="Mã tham chiếu hoặc Correlation ID" value={filters.refId} onChange={(e) => handleChange('refId', e.target.value)} />
           <Input placeholder="Loại tham chiếu (RECEIPT, SHIPMENT...)" value={filters.refType} onChange={(e) => handleChange('refType', e.target.value)} />
           <Input placeholder="Loại giao dịch" value={filters.transType} onChange={(e) => handleChange('transType', e.target.value)} />
-          <Input placeholder="Correlation ID" value={filters.correlationId} onChange={(e) => handleChange('correlationId', e.target.value)} />
+          <Input placeholder="Mã tương quan" value={filters.correlationId} onChange={(e) => handleChange('correlationId', e.target.value)} />
         </div>
 
         <Table>

@@ -81,14 +81,14 @@ export function ReportingDashboardPage() {
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="wrs-card p-5 flex items-center gap-4">
-          <ProgressRing value={dashboard.warehouseUtilPct || 0} max={100} color="#00b4d8" label="Utilization" />
+          <ProgressRing value={dashboard.warehouseUtilPct || 0} max={100} color="#00b4d8" label="Sử dụng" />
           <div>
             <p className="text-sm font-semibold text-navy-900">Tỷ lệ sử dụng kho</p>
             <p className="text-xs text-navy-400">Công suất hiện tại</p>
           </div>
         </div>
         <div className="wrs-card p-5 flex items-center gap-4">
-          <ProgressRing value={dashboard.reconPassRate || 0} max={100} color="#059669" label="Pass Rate" />
+          <ProgressRing value={dashboard.reconPassRate || 0} max={100} color="#059669" label="Tỷ lệ đạt" />
           <div>
             <p className="text-sm font-semibold text-navy-900">Tỷ lệ đối soát RECON-001</p>
             <p className="text-xs text-navy-400">Độ chính xác đối soát</p>

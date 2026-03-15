@@ -34,25 +34,25 @@ export function MyWorkPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">My Work (Claimed Tasks)</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Công việc của tôi</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Work ID</TableHead>
-              <TableHead>Type / Priority</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead align="right">Lines / Qty</TableHead>
-              <TableHead align="center">Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Mã công việc</TableHead>
+              <TableHead>Loại / Ưu tiên</TableHead>
+              <TableHead>Nguồn</TableHead>
+              <TableHead align="right">Dòng / SL</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={6} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="You have not claimed any work" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={6} message="Bạn chưa nhận công việc nào" /> : null}
             {!isLoading ? rows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>
@@ -61,14 +61,14 @@ export function MyWorkPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={workTypeTone(row.workType)}>{row.workType}</Badge>
-                  <p className="text-xs text-navy-400 mt-1">Priority: {row.priority}</p>
+                  <p className="text-xs text-navy-400 mt-1">Ưu tiên: {row.priority}</p>
                 </TableCell>
                 <TableCell>
                   <p className="font-medium text-navy-800">{row.sourceType}</p>
                   <p className="text-xs text-navy-400">{row.sourceId}</p>
                 </TableCell>
                 <TableCell align="right">
-                  <p className="font-semibold text-navy-900">{row.lines?.length || 0} line(s)</p>
+                  <p className="font-semibold text-navy-900">{row.lines?.length || 0} dòng</p>
                   <p className="text-xs text-navy-400">{row.lines?.reduce((sum, l) => sum + (l.expectedQty || 0), 0).toLocaleString()} kg</p>
                 </TableCell>
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
@@ -76,12 +76,12 @@ export function MyWorkPage() {
                   <div className="flex justify-center gap-2">
                     {row.status === 'OPEN' && (
                       <>
-                        <Button variant="accent" size="sm" onClick={() => startWork.mutate({ id: row.id, data: {} })}>Start</Button>
-                        <Button variant="ghost" size="sm" onClick={() => releaseWork.mutate({ id: row.id, data: {} })}>Release</Button>
+                        <Button variant="accent" size="sm" onClick={() => startWork.mutate({ id: row.id, data: {} })}>Bắt đầu</Button>
+                        <Button variant="ghost" size="sm" onClick={() => releaseWork.mutate({ id: row.id, data: {} })}>Trả lại</Button>
                       </>
                     )}
                     {row.status === 'IN_PROGRESS' && (
-                      <Button variant="accent" size="sm" onClick={() => handleExecute(row.id)}>Execute</Button>
+                      <Button variant="accent" size="sm" onClick={() => handleExecute(row.id)}>Thực hiện</Button>
                     )}
                   </div>
                 </TableCell>

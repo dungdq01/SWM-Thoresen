@@ -190,7 +190,7 @@ export function OutboundShipmentsPage() {
           <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setSelectedSoId(null); setShowCreate(true) }}>
             <Plus className="h-4 w-4 mr-1" /> Tạo Shipment
           </Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
@@ -198,7 +198,7 @@ export function OutboundShipmentsPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Input placeholder="Tìm mã shipment..." value={filters.shipmentNumber} onChange={(e) => setFilters((prev) => ({ ...prev, shipmentNumber: e.target.value, page: 1 }))} />
           <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={SHIPMENT_STATUSES} placeholder="Trạng thái" />
-          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Owner' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Owner" />
+          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả chủ hàng' }, ...owners.map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]} placeholder="Chủ hàng" />
         </div>
 
         <Table>

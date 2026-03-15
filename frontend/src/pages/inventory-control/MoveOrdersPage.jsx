@@ -76,8 +76,8 @@ export function MoveOrdersPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'CONFIRMED', label: 'CONFIRMED' }, { value: 'IN_PROGRESS', label: 'IN_PROGRESS' }, { value: 'COMPLETED', label: 'COMPLETED' }, { value: 'CANCELLED', label: 'CANCELLED' }]} placeholder="Status" />
-          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Warehouse" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'CONFIRMED', label: 'CONFIRMED' }, { value: 'IN_PROGRESS', label: 'IN_PROGRESS' }, { value: 'COMPLETED', label: 'COMPLETED' }, { value: 'CANCELLED', label: 'CANCELLED' }]} placeholder="Trạng thái" />
+          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Kho" />
         </div>
 
         <Table>
@@ -110,9 +110,9 @@ export function MoveOrdersPage() {
                 <TableCell align="center"><Badge variant={statusTone(row.status)}>{row.status}</Badge></TableCell>
                 <TableCell align="center">
                   <div className="flex justify-center gap-2">
-                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => confirmMoveOrder.mutate(row.id)}>Confirm</Button>}
-                    {row.status === 'CONFIRMED' && <Button variant="accent" size="sm" onClick={() => executeMoveOrder.mutate(row.id)}>Execute</Button>}
-                    {['DRAFT', 'CONFIRMED'].includes(row.status) && <Button variant="ghost" size="sm" onClick={() => cancelMoveOrder.mutate({ id: row.id, data: { reasonCode: 'CANCELLED' } })}>Cancel</Button>}
+                    {row.status === 'DRAFT' && <Button variant="outline" size="sm" onClick={() => confirmMoveOrder.mutate(row.id)}>Xác nhận</Button>}
+                    {row.status === 'CONFIRMED' && <Button variant="accent" size="sm" onClick={() => executeMoveOrder.mutate(row.id)}>Thực hiện</Button>}
+                    {['DRAFT', 'CONFIRMED'].includes(row.status) && <Button variant="ghost" size="sm" onClick={() => cancelMoveOrder.mutate({ id: row.id, data: { reasonCode: 'CANCELLED' } })}>Hủy</Button>}
                   </div>
                 </TableCell>
               </TableRow>

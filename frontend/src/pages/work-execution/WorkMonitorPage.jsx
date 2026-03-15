@@ -41,30 +41,30 @@ export function WorkMonitorPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Work Monitor (supervisor view)</h2>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>Refresh</Button>
+        <h2 className="section-title">Giám sát công việc (người quản lý)</h2>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>Làm mới</Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Work Status Overview</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Tổng quan trạng thái công việc</h3>
           <SummaryDonut
-            centerLabel="Total"
+            centerLabel="Tổng"
             data={[
-              { name: 'Open', value: summary.totalOpen || 0, color: '#1e3a5f' },
-              { name: 'In Progress', value: summary.totalInProgress || 0, color: '#d97706' },
-              { name: 'Completed Today', value: summary.totalCompleted || 0, color: '#059669' },
-              { name: 'Exceptions', value: summary.exceptionsOpen || 0, color: '#e11d48' },
+              { name: 'Mở', value: summary.totalOpen || 0, color: '#1e3a5f' },
+              { name: 'Đang thực hiện', value: summary.totalInProgress || 0, color: '#d97706' },
+              { name: 'Hoàn thành hôm nay', value: summary.totalCompleted || 0, color: '#059669' },
+              { name: 'Ngoại lệ', value: summary.exceptionsOpen || 0, color: '#e11d48' },
             ]}
           />
         </div>
         <div className="wrs-card p-5">
-          <h3 className="text-sm font-semibold text-navy-900 mb-3">Open by Work Type</h3>
+          <h3 className="text-sm font-semibold text-navy-900 mb-3">Mở theo loại công việc</h3>
           <MiniBarList
             data={[
-              { name: 'Pick', value: summary.pickOpen || 0, color: '#e11d48' },
-              { name: 'Putaway', value: summary.putawayOpen || 0, color: '#059669' },
-              { name: 'Move', value: summary.moveOpen || 0, color: '#3b82f6' },
+              { name: 'Lấy hàng', value: summary.pickOpen || 0, color: '#e11d48' },
+              { name: 'Cất hàng', value: summary.putawayOpen || 0, color: '#059669' },
+              { name: 'Di chuyển', value: summary.moveOpen || 0, color: '#3b82f6' },
             ]}
           />
         </div>
@@ -72,24 +72,24 @@ export function WorkMonitorPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Filter by warehouse" className="max-w-xs" />
+          <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Lọc theo kho" className="max-w-xs" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Work ID</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Assigned To</TableHead>
-              <TableHead>Started At</TableHead>
-              <TableHead align="right">Progress</TableHead>
-              <TableHead align="center">Status</TableHead>
+              <TableHead>Mã công việc</TableHead>
+              <TableHead>Loại</TableHead>
+              <TableHead>Nguồn</TableHead>
+              <TableHead>Được giao cho</TableHead>
+              <TableHead>Bắt đầu lúc</TableHead>
+              <TableHead align="right">Tiến độ</TableHead>
+              <TableHead align="center">Trạng thái</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={7} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={7} message="No work available" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={7} message="Không có công việc nào" /> : null}
             {!isLoading ? rows.map((row) => {
               const completedLines = row.lines?.filter((l) => ['COMPLETED', 'SKIPPED'].includes(l.status)).length || 0
               const totalLines = row.lines?.length || 0

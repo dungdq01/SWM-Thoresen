@@ -46,23 +46,23 @@ export function OutboundApprovalsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Pending approvals & exception governance</h2>
-        <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+        <h2 className="section-title">Phê duyệt & xử lý ngoại lệ</h2>
+        <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
-              <TableHead>Shipment</TableHead>
-              <TableHead>Owner / Vehicle</TableHead>
-              <TableHead>Exception</TableHead>
-              <TableHead align="center">Action</TableHead>
+              <TableHead>Chuyến hàng</TableHead>
+              <TableHead>Chủ hàng / Xe</TableHead>
+              <TableHead>Ngoại lệ</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? <TableLoading colSpan={4} /> : null}
-            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={4} message="No shipments pending approval" /> : null}
+            {!isLoading && rows.length === 0 ? <TableEmpty colSpan={4} message="Không có chuyến hàng chờ phê duyệt" /> : null}
             {!isLoading ? rows.map((row) => {
               const linesPending = row.lines?.filter((l) => l.lineStatus === 'PENDING_APPROVAL') || []
               return (

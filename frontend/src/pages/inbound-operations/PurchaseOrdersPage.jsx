@@ -18,10 +18,10 @@ import {
 
 const PO_STATUSES = [
   { value: '', label: 'Tất cả' },
-  { value: 'DRAFT', label: 'Draft' },
-  { value: 'CONFIRMED', label: 'Confirmed' },
-  { value: 'CLOSED', label: 'Closed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'DRAFT', label: 'Nháp' },
+  { value: 'CONFIRMED', label: 'Đã xác nhận' },
+  { value: 'CLOSED', label: 'Đã đóng' },
+  { value: 'CANCELLED', label: 'Đã hủy' },
 ]
 
 const statusTone = (status) => {
@@ -168,14 +168,14 @@ export function PurchaseOrdersPage() {
 
   const toggleExpand = (id) => setExpandedId((prev) => (prev === id ? null : id))
 
-  const itemOptions = [{ value: '', label: '-- Chọn Item --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
-  const uomOptions = [{ value: '', label: '-- UoM --' }, ...uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))]
+  const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
+  const uomOptions = [{ value: '', label: '-- ĐVT --' }, ...uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))]
 
   // ── Render line editor ──
   const renderLineEditor = (lines, updateFn, addFn, removeFn) => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-navy-900">PO Lines</h4>
+        <h4 className="text-sm font-semibold text-navy-900">Dòng PO</h4>
         <Button variant="outline" size="sm" onClick={addFn}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Thêm dòng
         </Button>
@@ -183,7 +183,7 @@ export function PurchaseOrdersPage() {
       {lines.map((line, idx) => (
         <div key={idx} className="rounded-xl border border-moon-200 p-3 space-y-2 bg-moon-50/50">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-navy-400">Line {idx + 1}</span>
+            <span className="text-xs font-semibold text-navy-400">Dòng {idx + 1}</span>
             {lines.length > 1 && (
               <button onClick={() => removeFn(idx)} className="text-red-400 hover:text-red-600 p-1">
                 <Trash2 className="h-3.5 w-3.5" />
@@ -207,35 +207,35 @@ export function PurchaseOrdersPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Purchase Orders</h2>
+        <h2 className="section-title">Đơn đặt hàng (PO)</h2>
         <div className="flex items-center gap-2">
           <Button variant="accent" size="sm" onClick={() => { setDraft(emptyDraft); setShowCreate(true) }}>
             <Plus className="h-4 w-4 mr-1" /> Tạo PO
           </Button>
-          <Button variant="outline" size="sm" onClick={refetch}>Refresh</Button>
+          <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
         </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Input placeholder="Tìm PO number, ghi chú..." value={filters.keyword} onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))} />
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={PO_STATUSES} placeholder="Status" />
-          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Owner' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Owner" />
-          <Select value={filters.vendorId} onChange={(e) => setFilters((prev) => ({ ...prev, vendorId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả Vendor' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} placeholder="Vendor" />
+          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={PO_STATUSES} placeholder="Trạng thái" />
+          <Select value={filters.ownerId} onChange={(e) => setFilters((prev) => ({ ...prev, ownerId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả chủ hàng' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} placeholder="Chủ hàng" />
+          <Select value={filters.vendorId} onChange={(e) => setFilters((prev) => ({ ...prev, vendorId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả nhà cung cấp' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} placeholder="Nhà cung cấp" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
               <TableHead className="w-8"></TableHead>
-              <TableHead>PO Number</TableHead>
+              <TableHead>Số PO</TableHead>
               <TableHead>B/L</TableHead>
-              <TableHead>Owner / Vendor</TableHead>
-              <TableHead>Delivery Date</TableHead>
-              <TableHead align="right">Expected Qty</TableHead>
-              <TableHead align="right">Received Qty</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead align="center">Actions</TableHead>
+              <TableHead>Chủ hàng / NCC</TableHead>
+              <TableHead>Ngày giao hàng</TableHead>
+              <TableHead align="right">SL dự kiến</TableHead>
+              <TableHead align="right">SL đã nhận</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead align="center">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -252,7 +252,7 @@ export function PurchaseOrdersPage() {
                   <TableCell>
                     <div>
                       <p className="font-semibold text-navy-900">{po.poNumber}</p>
-                      <p className="text-xs text-navy-400">{po.lines?.length || 0} lines</p>
+                      <p className="text-xs text-navy-400">{po.lines?.length || 0} dòng</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -298,7 +298,7 @@ export function PurchaseOrdersPage() {
                         </>
                       )}
                       {['CLOSED', 'CANCELLED'].includes(po.status) && (
-                        <span className="text-xs text-navy-400">Finalized</span>
+                        <span className="text-xs text-navy-400">Đã hoàn tất</span>
                       )}
                     </div>
                   </TableCell>
@@ -310,21 +310,21 @@ export function PurchaseOrdersPage() {
                       <div className="bg-moon-50/70 border-t border-b border-moon-200 px-6 py-4">
                         <div className="flex items-center gap-2 mb-3">
                           <Package className="h-4 w-4 text-ice" />
-                          <h4 className="text-sm font-semibold text-navy-900">PO Lines — {po.poNumber}</h4>
+                          <h4 className="text-sm font-semibold text-navy-900">Dòng PO — {po.poNumber}</h4>
                           {po.externalPoNumber && <span className="text-xs text-navy-400 ml-2">(B/L: {po.externalPoNumber})</span>}
                         </div>
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left text-xs text-navy-400 border-b border-moon-200">
                               <th className="pb-2 pr-3">#</th>
-                              <th className="pb-2 pr-3">Item</th>
-                              <th className="pb-2 pr-3">UoM</th>
-                              <th className="pb-2 pr-3 text-right">Expected</th>
-                              <th className="pb-2 pr-3 text-right">Received</th>
-                              <th className="pb-2 pr-3 text-right">Unit Price</th>
-                              <th className="pb-2 pr-3 text-right">Amount</th>
-                              <th className="pb-2 pr-3">Notes</th>
-                              <th className="pb-2 text-center">Status</th>
+                              <th className="pb-2 pr-3">Mặt hàng</th>
+                              <th className="pb-2 pr-3">ĐVT</th>
+                              <th className="pb-2 pr-3 text-right">Dự kiến</th>
+                              <th className="pb-2 pr-3 text-right">Đã nhận</th>
+                              <th className="pb-2 pr-3 text-right">Đơn giá</th>
+                              <th className="pb-2 pr-3 text-right">Thành tiền</th>
+                              <th className="pb-2 pr-3">Ghi chú</th>
+                              <th className="pb-2 text-center">Trạng thái</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -392,11 +392,11 @@ export function PurchaseOrdersPage() {
             <Input label="B/L (Số chứng từ KH)" value={draft.externalPoNumber} onChange={(e) => setDraft((p) => ({ ...p, externalPoNumber: e.target.value }))} placeholder="VD: BL-2026-RICE-001" />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Select label="Owner *" value={draft.ownerId} onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-            <Select label="Vendor *" value={draft.vendorId} onChange={(e) => setDraft((p) => ({ ...p, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn Vendor --' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} />
+            <Select label="Chủ hàng *" value={draft.ownerId} onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+            <Select label="Nhà cung cấp *" value={draft.vendorId} onChange={(e) => setDraft((p) => ({ ...p, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn nhà cung cấp --' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Select label="Warehouse *" value={draft.warehouseId} onChange={(e) => setDraft((p) => ({ ...p, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+            <Select label="Kho *" value={draft.warehouseId} onChange={(e) => setDraft((p) => ({ ...p, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
             <Input label="Ngày giao hàng dự kiến" type="date" value={draft.expectedDeliveryDate} onChange={(e) => setDraft((p) => ({ ...p, expectedDeliveryDate: e.target.value }))} />
           </div>
           <Textarea label="Ghi chú" rows={2} value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))} />
@@ -426,11 +426,11 @@ export function PurchaseOrdersPage() {
               <Input label="B/L (Số chứng từ KH)" value={editDraft.externalPoNumber} onChange={(e) => setEditDraft((p) => ({ ...p, externalPoNumber: e.target.value }))} placeholder="VD: BL-2026-RICE-001" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Select label="Owner *" value={editDraft.ownerId} onChange={(e) => setEditDraft((p) => ({ ...p, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-              <Select label="Vendor *" value={editDraft.vendorId} onChange={(e) => setEditDraft((p) => ({ ...p, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn Vendor --' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} />
+              <Select label="Chủ hàng *" value={editDraft.ownerId} onChange={(e) => setEditDraft((p) => ({ ...p, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
+              <Select label="Nhà cung cấp *" value={editDraft.vendorId} onChange={(e) => setEditDraft((p) => ({ ...p, vendorId: e.target.value }))} options={[{ value: '', label: '-- Chọn nhà cung cấp --' }, ...vendors.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))]} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Select label="Warehouse *" value={editDraft.warehouseId} onChange={(e) => setEditDraft((p) => ({ ...p, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
+              <Select label="Kho *" value={editDraft.warehouseId} onChange={(e) => setEditDraft((p) => ({ ...p, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
               <Input label="Ngày giao hàng dự kiến" type="date" value={editDraft.expectedDeliveryDate} onChange={(e) => setEditDraft((p) => ({ ...p, expectedDeliveryDate: e.target.value }))} />
             </div>
             <Textarea label="Ghi chú" rows={2} value={editDraft.notes} onChange={(e) => setEditDraft((p) => ({ ...p, notes: e.target.value }))} />
