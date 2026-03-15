@@ -5,7 +5,10 @@ import { OcrError, IntegrationErrorCodes } from '../domain/integration.errors';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface OcrUploadParams {
-  imagePath: string;
+  filePath: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSize: number;
   providerName: string;
   warehouseId?: string;
   correlationId: string;
@@ -22,25 +25,19 @@ export class OcrUploadService {
     const ocrRequestId = `OCR-${Date.now()}-${uuidv4().slice(0, 8)}`;
     const externalId = uuidv4();
 
-    // Check file type
-    const allowedTypes = ['.jpg', '.jpeg', '.png', '.pdf'];
-    const fileExt = params.imagePath.toLowerCase().slice(params.imagePath.lastIndexOf('.'));
-    if (!allowedTypes.includes(fileExt)) {
-      throw new OcrError(
-        IntegrationErrorCodes.OCR_INVALID_FILE_TYPE,
-        `File type ${fileExt} is not allowed. Allowed: ${allowedTypes.join(', ')}`,
-      );
-    }
+    this.logger.log(
+      `OCR file received: ${params.originalFileName} (${params.mimeType}, ${params.fileSize} bytes)`,
+    );
 
     const result = await this.ocrResultRepo.create({
       ocrRequestId,
-      imagePath: params.imagePath,
+      imagePath: params.filePath,
       providerName: params.providerName,
       status: OcrStatus.UPLOADED,
       externalId,
       correlationId: params.correlationId,
       sourceChannel: 'OCR',
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId || undefined,
       createdBy: params.createdBy,
       operatorConfirmed: false,
     });

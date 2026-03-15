@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Activity, AlertTriangle, Radio, Scale } from 'lucide-react'
+import { Activity, AlertTriangle, Radio, Scale, ScanLine } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/app/integration/alerts', label: 'Cảnh báo', icon: AlertTriangle },
   { to: '/app/integration/weighbridge', label: 'Cân xe tải', icon: Scale },
   { to: '/app/integration/channels', label: 'Kênh kết nối', icon: Radio },
+  { to: '/app/integration/ocr', label: 'OCR Scanner', icon: ScanLine },
 ]
 
 export function IntegrationLayout() {

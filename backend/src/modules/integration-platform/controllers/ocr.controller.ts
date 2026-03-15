@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { IsString, IsOptional, IsUUID, IsNumber } from 'class-validator';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
@@ -8,6 +8,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { OcrUploadService } from '../services/ocr-upload.service';
 import { OcrExtractService } from '../services/ocr-extract.service';
 import { OcrConfirmationService, ConfirmOcrParams, LinkOcrParams } from '../services/ocr-confirmation.service';
+import { OcrFileUploadInterceptor } from '../interceptors/ocr-file-upload.interceptor';
 import { v4 as uuidv4 } from 'uuid';
 
 class UploadOcrDto {
@@ -84,14 +85,22 @@ export class OcrController {
 
   @Post('uploads')
   @Permission('INTEGRATION.OCR.UPLOAD')
-  async uploadForOcr(@Body() dto: UploadOcrDto, @CurrentUser() user: RequestUser) {
+  @UseInterceptors(OcrFileUploadInterceptor)
+  async uploadForOcr(
+    @UploadedFile() file: any,
+    @Body('warehouseId') warehouseId: string,
+    @CurrentUser() user: RequestUser,
+  ) {
     const correlationId = uuidv4();
     const createdBy = user.id;
 
     const result = await this.uploadService.uploadForOcr({
-      imagePath: dto.imagePath,
-      providerName: dto.providerName || 'default',
-      warehouseId: dto.warehouseId,
+      filePath: file.path,
+      originalFileName: file.originalname,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      providerName: 'google-vision',
+      warehouseId,
       correlationId,
       createdBy,
     });

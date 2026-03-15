@@ -24,6 +24,13 @@ const integrationDb = {
     { id: 'scale-002', deviceCode: 'SCALE-002', name: 'Secondary Weighbridge', warehouseId: 'wh-001', isActive: true, lastHeartbeatAt: '2026-03-08T15:50:00Z', healthStatus: 'HEALTHY', agentVersion: '2.1.0' },
     { id: 'scale-003', deviceCode: 'SCALE-003', name: 'Backup Weighbridge', warehouseId: 'wh-002', isActive: false, lastHeartbeatAt: '2026-03-07T10:00:00Z', healthStatus: 'OFFLINE', agentVersion: '2.0.5' },
   ],
+  ocrResults: [
+    { id: 'ocr-001', ocrRequestId: 'OCR-1710500000-abc12345', status: 'EXTRACTED', imagePath: '/uploads/ocr/OCR-sample-1.jpg', originalFileName: 'BL-March-2026.jpg', mimeType: 'image/jpeg', fileSize: 2450000, blNumber: 'BL-20260315-001', blConfidence: 95.5, vehicleNumber: '51A-12345', vehicleConfidence: 92.3, productName: 'Thép cuộn Grade A', productConfidence: 88.0, vesselName: 'MV Ocean Star', vesselConfidence: 90.0, qtyExtracted: 25000, qtyUom: 'KG', qtyConfidence: 85.0, overallConfidence: 90.2, operatorConfirmed: false, createdAt: '2026-03-15T08:30:00Z', createdBy: 'ops.user' },
+    { id: 'ocr-002', ocrRequestId: 'OCR-1710500100-def67890', status: 'REVIEW_REQUIRED', imagePath: '/uploads/ocr/OCR-sample-2.jpg', originalFileName: 'VanDon-HP-002.jpg', mimeType: 'image/jpeg', fileSize: 1800000, blNumber: 'BL-20260315-002', blConfidence: 72.1, vehicleNumber: '51B-56789', vehicleConfidence: 68.5, productName: 'Xi măng PCB40', productConfidence: 78.0, vesselName: 'MV Hai Phong Express', vesselConfidence: 65.0, qtyExtracted: 50000, qtyUom: 'KG', qtyConfidence: 82.0, overallConfidence: 73.1, operatorConfirmed: false, createdAt: '2026-03-15T09:15:00Z', createdBy: 'ops.user' },
+    { id: 'ocr-003', ocrRequestId: 'OCR-1710500200-ghi11111', status: 'CONFIRMED', imagePath: '/uploads/ocr/OCR-sample-3.png', originalFileName: 'BL-SaiGon-003.png', mimeType: 'image/png', fileSize: 3100000, blNumber: 'BL-20260314-003', blConfidence: 96.0, vehicleNumber: '60H-98765', vehicleConfidence: 94.5, productName: 'Gạo Jasmine 5%', productConfidence: 91.0, vesselName: 'MV Mekong River', vesselConfidence: 93.0, qtyExtracted: 100000, qtyUom: 'KG', qtyConfidence: 90.0, overallConfidence: 92.9, operatorConfirmed: true, createdAt: '2026-03-14T14:00:00Z', createdBy: 'ops.user' },
+    { id: 'ocr-004', ocrRequestId: 'OCR-1710500300-jkl22222', status: 'REJECTED', imagePath: '/uploads/ocr/OCR-sample-4.jpg', originalFileName: 'blurry-doc.jpg', mimeType: 'image/jpeg', fileSize: 890000, blNumber: null, blConfidence: 0, vehicleNumber: null, vehicleConfidence: 0, productName: null, productConfidence: 0, vesselName: null, vesselConfidence: 0, qtyExtracted: null, qtyUom: null, qtyConfidence: 0, overallConfidence: 0, operatorConfirmed: false, createdAt: '2026-03-14T10:00:00Z', createdBy: 'ops.user' },
+    { id: 'ocr-005', ocrRequestId: 'OCR-1710500400-mno33333', status: 'LINKED', imagePath: '/uploads/ocr/OCR-sample-5.jpg', originalFileName: 'BL-DaNang-005.jpg', mimeType: 'image/jpeg', fileSize: 2750000, blNumber: 'BL-20260313-005', blConfidence: 97.0, vehicleNumber: '43A-55555', vehicleConfidence: 96.0, productName: 'Phân bón NPK 16-16-8', productConfidence: 89.0, vesselName: 'MV Da Nang Bay', vesselConfidence: 91.0, qtyExtracted: 30000, qtyUom: 'KG', qtyConfidence: 88.0, overallConfidence: 92.2, operatorConfirmed: true, linkedReceiptId: 'RCV-20260313-0005', createdAt: '2026-03-13T07:30:00Z', createdBy: 'ops.user' },
+  ],
 }
 
 export const integrationMockApi = {
@@ -102,5 +109,92 @@ export const integrationMockApi = {
 
   reprocessWeighEvent: async (id) => {
     return delay({ success: true, message: 'Weigh event reprocessed' })
+  },
+
+  // OCR mock APIs
+  uploadOcrImage: async (formData) => {
+    const newId = `ocr-${String(integrationDb.ocrResults.length + 1).padStart(3, '0')}`
+    const newResult = {
+      id: newId,
+      ocrRequestId: `OCR-${Date.now()}-mock`,
+      status: 'UPLOADED',
+      imagePath: `/uploads/ocr/OCR-mock-${Date.now()}.jpg`,
+      originalFileName: formData.get?.('file')?.name || 'uploaded-file.jpg',
+      mimeType: 'image/jpeg',
+      fileSize: 2000000,
+      blNumber: null, blConfidence: 0,
+      vehicleNumber: null, vehicleConfidence: 0,
+      productName: null, productConfidence: 0,
+      vesselName: null, vesselConfidence: 0,
+      qtyExtracted: null, qtyUom: null, qtyConfidence: 0,
+      overallConfidence: 0,
+      operatorConfirmed: false,
+      createdAt: new Date().toISOString(),
+      createdBy: 'frontend.user',
+    }
+    integrationDb.ocrResults.unshift(newResult)
+
+    // Simulate async extraction after 1.5s
+    setTimeout(() => {
+      const idx = integrationDb.ocrResults.findIndex((r) => r.id === newId)
+      if (idx !== -1) {
+        integrationDb.ocrResults[idx] = {
+          ...integrationDb.ocrResults[idx],
+          status: 'EXTRACTED',
+          blNumber: `BL-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-MOCK`,
+          blConfidence: 94.2,
+          vehicleNumber: '51A-99999',
+          vehicleConfidence: 91.0,
+          productName: 'Thép cuộn HRC Q235',
+          productConfidence: 87.5,
+          vesselName: 'MV Saigon Express',
+          vesselConfidence: 89.0,
+          qtyExtracted: 35000,
+          qtyUom: 'KG',
+          qtyConfidence: 86.0,
+          overallConfidence: 89.5,
+        }
+      }
+    }, 1500)
+
+    return delay({ data: newResult })
+  },
+
+  getOcrResults: async (params = {}) => {
+    const rows = integrationDb.ocrResults.filter((row) => {
+      return (!params.status || row.status === params.status)
+    })
+    return delay({ ...paginate(rows, params.page, params.limit) })
+  },
+
+  getOcrResultById: async (id) => {
+    const result = integrationDb.ocrResults.find((r) => r.id === id)
+    return delay({ data: result })
+  },
+
+  confirmOcrResult: async (id, data = {}) => {
+    const index = integrationDb.ocrResults.findIndex((r) => r.id === id)
+    if (index !== -1) {
+      integrationDb.ocrResults[index] = {
+        ...integrationDb.ocrResults[index],
+        status: 'CONFIRMED',
+        operatorConfirmed: true,
+        blNumber: data.confirmedBlNumber || integrationDb.ocrResults[index].blNumber,
+        vehicleNumber: data.confirmedVehicleNumber || integrationDb.ocrResults[index].vehicleNumber,
+        productName: data.confirmedProductName || integrationDb.ocrResults[index].productName,
+        vesselName: data.confirmedVesselName || integrationDb.ocrResults[index].vesselName,
+        qtyExtracted: data.confirmedQty || integrationDb.ocrResults[index].qtyExtracted,
+        qtyUom: data.confirmedQtyUom || integrationDb.ocrResults[index].qtyUom,
+      }
+    }
+    return delay({ data: integrationDb.ocrResults[index] })
+  },
+
+  rejectOcrResult: async (id, data = {}) => {
+    const index = integrationDb.ocrResults.findIndex((r) => r.id === id)
+    if (index !== -1) {
+      integrationDb.ocrResults[index] = { ...integrationDb.ocrResults[index], status: 'REJECTED' }
+    }
+    return delay({ data: integrationDb.ocrResults[index] })
   },
 }

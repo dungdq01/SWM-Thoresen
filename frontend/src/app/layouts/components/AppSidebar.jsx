@@ -169,6 +169,7 @@ const getMenuConfig = (t) => [
       { to: '/app/integration/alerts', label: t('sidebar.items.alerts') },
       { to: '/app/integration/weighbridge', label: t('sidebar.items.weighbridge') },
       { to: '/app/integration/channels', label: t('sidebar.items.channels') },
+      { to: '/app/integration/ocr', label: t('sidebar.items.ocrScanner') },
     ],
   },
   {

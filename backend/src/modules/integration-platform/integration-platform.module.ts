@@ -16,6 +16,8 @@ import { WeighbridgeDeviceService } from './services/weighbridge-device.service'
 import { OcrUploadService } from './services/ocr-upload.service';
 import { OcrExtractService } from './services/ocr-extract.service';
 import { OcrConfirmationService } from './services/ocr-confirmation.service';
+import { OcrProviderService } from './services/ocr-provider.service';
+import { OcrFieldParserService } from './services/ocr-field-parser.service';
 import { MobileSyncBatchService } from './services/mobile-sync-batch.service';
 import { MobileSyncDispatchService } from './services/mobile-sync-dispatch.service';
 import { ErpPushService } from './services/erp-push.service';
@@ -54,6 +56,8 @@ import { DeviceHeartbeatRepository } from './repositories/device-heartbeat.repos
     OcrUploadService,
     OcrExtractService,
     OcrConfirmationService,
+    OcrProviderService,
+    OcrFieldParserService,
     MobileSyncBatchService,
     MobileSyncDispatchService,
     ErpPushService,

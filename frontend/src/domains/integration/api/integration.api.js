@@ -49,4 +49,28 @@ export const integrationApi = {
     (id, data) => integrationMockApi.reprocessWeighEvent(id, data),
     (id, data) => httpClient.post(`${BASE_URL}/weighbridge/events/${id}/reprocess`, data)
   ),
+
+  // OCR APIs
+  uploadOcrImage: withDataSource(
+    (formData) => integrationMockApi.uploadOcrImage(formData),
+    (formData) => httpClient.post(`${BASE_URL}/ocr/uploads`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  ),
+  getOcrResults: withDataSource(
+    (params) => integrationMockApi.getOcrResults(params),
+    (params) => httpClient.get(`${BASE_URL}/ocr/results`, { params })
+  ),
+  getOcrResultById: withDataSource(
+    (id) => integrationMockApi.getOcrResultById(id),
+    (id) => httpClient.get(`${BASE_URL}/ocr/results/${id}`)
+  ),
+  confirmOcrResult: withDataSource(
+    (id, data) => integrationMockApi.confirmOcrResult(id, data),
+    (id, data) => httpClient.post(`${BASE_URL}/ocr/results/${id}/confirm`, data)
+  ),
+  rejectOcrResult: withDataSource(
+    (id, data) => integrationMockApi.rejectOcrResult(id, data),
+    (id, data) => httpClient.post(`${BASE_URL}/ocr/results/${id}/reject`, data)
+  ),
 }
