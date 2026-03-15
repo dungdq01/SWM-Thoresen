@@ -11,46 +11,21 @@ const navItems = [
 export function VasLayout() {
   return (
     <div className="page-section">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">VAS / Đóng gói</h1>
-        </div>
-      </div>
-
       <div className="module-nav-shell">
         <div className="module-nav-header">
-          <div className="module-nav-icon">
-            <Box className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="module-nav-title">Dịch vụ gia tăng (VAS)</h2>
-            <p className="module-nav-description">Quản lý đóng bao, đóng gói lại và các dịch vụ gia tăng.</p>
-          </div>
+          <div className="module-nav-icon"><Box className="h-4 w-4" /></div>
+          <h1 className="module-nav-title">VAS / Đóng gói</h1>
         </div>
-
-        <div className="overflow-x-auto">
-          <nav className="module-nav-list">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'module-nav-item',
-                    isActive
-                      ? 'module-nav-item-active'
-                      : ''
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
+        <nav className="module-nav-list">
+          {navItems.map((item) => (
+            <NavLink key={item.to} to={item.to}
+              className={({ isActive }) => cn('module-nav-item', isActive ? 'module-nav-item-active' : '')}
+            >
+              <item.icon className="h-4 w-4" />{item.label}
+            </NavLink>
+          ))}
+        </nav>
       </div>
-
       <Outlet />
     </div>
   )

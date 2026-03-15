@@ -163,7 +163,7 @@ export function UomsPage() {
         {!isLoading && uoms.length > 0 && (
           <TableBody>
             {uoms.map((uom) => (
-              <TableRow key={uom.id}>
+              <TableRow key={uom.id} onClick={() => handleEdit(uom)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">

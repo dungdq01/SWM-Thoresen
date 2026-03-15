@@ -186,7 +186,7 @@ export function WarehousesPage() {
         {!isLoading && warehouses.length > 0 && (
           <TableBody>
             {warehouses.map((wh) => (
-              <TableRow key={wh.id}>
+              <TableRow key={wh.id} onClick={() => handleEdit(wh)}>
                 <TableCell>
                   <button
                     onClick={() => navigate(`/app/master-data/warehouses/${wh.id}`)}

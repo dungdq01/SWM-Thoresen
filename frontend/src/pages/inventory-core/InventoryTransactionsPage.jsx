@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
-import { ArrowRightLeft, Plus, ReceiptText, RotateCcw, ScrollText } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { useTransactionList } from '@domains/inventory-core'
 import { useLookupItems, useLookupOwners } from '@domains/master-data'
-import { Badge, Button, Input, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
-import { InventoryTransactionModal } from '@features/inventory-core'
+import { Badge, Button, Input, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
+import { InventoryTransactionDrawer } from '@features/inventory-core'
 
 const transTypeTone = (type) => {
   if (['RECEIPT_IN', 'COUNT_GAIN', 'VAS_PRODUCE', 'TRANSFER_IN'].includes(type)) return 'success'
@@ -37,7 +37,7 @@ export function InventoryTransactionsPage() {
     transType: '',
     correlationId: '',
   })
-  const [showModal, setShowModal] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const { data: response, isLoading, refetch } = useTransactionList({
     ...filters,
@@ -65,7 +65,7 @@ export function InventoryTransactionsPage() {
         <h2 className="section-title">Lịch sử giao dịch</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
-          <Button size="sm" onClick={() => setShowModal(true)}>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>
             <Plus className="w-4 h-4 mr-1" />
             Tạo giao dịch
           </Button>
@@ -74,14 +74,10 @@ export function InventoryTransactionsPage() {
 
       <div className="wrs-card p-5 space-y-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <select className="wrs-input" value={filters.itemId} onChange={(e) => handleChange('itemId', e.target.value)}>
-            <option value="">Tất cả mặt hàng</option>
-            {itemOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
-          </select>
-          <select className="wrs-input" value={filters.ownerId} onChange={(e) => handleChange('ownerId', e.target.value)}>
-            <option value="">Tất cả chủ hàng</option>
-            {ownerOptions.map((option) => <option key={option.id} value={option.id}>{option.code} - {option.name}</option>)}
-          </select>
+          <Select value={filters.itemId} onChange={(e) => handleChange('itemId', e.target.value)} placeholder="Tất cả mặt hàng"
+            options={itemOptions.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))} />
+          <Select value={filters.ownerId} onChange={(e) => handleChange('ownerId', e.target.value)} placeholder="Tất cả chủ hàng"
+            options={ownerOptions.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))} />
           <Input placeholder="Mã tham chiếu hoặc Correlation ID" value={filters.refId} onChange={(e) => handleChange('refId', e.target.value)} />
           <Input placeholder="Loại tham chiếu (RECEIPT, SHIPMENT...)" value={filters.refType} onChange={(e) => handleChange('refType', e.target.value)} />
           <Input placeholder="Loại giao dịch" value={filters.transType} onChange={(e) => handleChange('transType', e.target.value)} />
@@ -143,9 +139,9 @@ export function InventoryTransactionsPage() {
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
       </div>
 
-      <InventoryTransactionModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
+      <InventoryTransactionDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       />
     </>
   )

@@ -170,7 +170,7 @@ export function CustomersPage() {
   ]
 
   return (
-    <div className="page-section">
+    <div className="p-6">
       <PageHeader
         icon={Users}
         title="Khách hàng"
@@ -212,7 +212,7 @@ export function CustomersPage() {
         </TableHeader>
         <TableBody>
           {customers.map((customer) => (
-            <TableRow key={customer.id}>
+            <TableRow key={customer.id} onClick={() => handleEdit(customer)}>
               <TableCell>
                 <span className="font-mono font-semibold text-navy-900">{customer.customerCode}</span>
               </TableCell>

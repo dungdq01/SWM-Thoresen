@@ -136,7 +136,7 @@ export function OwnersPage() {
   ]
 
   return (
-    <>
+    <div className="p-6">
       <PageHeader
         title="Quản lý chủ hàng"
         description="Danh sách tất cả chủ hàng trong hệ thống"
@@ -184,7 +184,7 @@ export function OwnersPage() {
         {!isLoading && owners.length > 0 && (
           <TableBody>
             {owners.map((owner) => (
-              <TableRow key={owner.id}>
+              <TableRow key={owner.id} onClick={() => handleEdit(owner)}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice-dark">
@@ -247,6 +247,6 @@ export function OwnersPage() {
         entityName={reactivateState.data?.ownerName}
         isLoading={reactivateMutation.isPending}
       />
-    </>
+    </div>
   )
 }

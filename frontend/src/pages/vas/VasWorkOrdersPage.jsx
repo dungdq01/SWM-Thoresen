@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useVasWorkOrders, useCreateVasWorkOrder, useConfirmVasWorkOrder, useCancelVasWorkOrder } from '@domains/vas'
 import { useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
-import { Badge, Button, Input, Modal, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
+import { VasWorkOrderFormDrawer } from '@features/vas'
 
 const statusTone = (status) => {
   if (status === 'COMPLETED') return 'success'
@@ -11,21 +12,9 @@ const statusTone = (status) => {
   return 'default'
 }
 
-const initialDraft = {
-  vasType: 'BAGGING',
-  warehouseId: '',
-  ownerId: '',
-  sourceItemId: '',
-  sourceQty: '',
-  targetQty: '',
-  bagWeightKg: '50',
-}
-
 export function VasWorkOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, limit: 20, status: '', vasType: '' })
-  const [showCreate, setShowCreate] = useState(false)
-  const [draft, setDraft] = useState(initialDraft)
-  const [errors, setErrors] = useState({})
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const { data: response, isLoading, refetch } = useVasWorkOrders(filters)
   const createWorkOrder = useCreateVasWorkOrder()
@@ -39,24 +28,9 @@ export function VasWorkOrdersPage() {
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
-  const validate = () => {
-    const e = {}
-    if (!draft.warehouseId) e.warehouseId = 'Kho là bắt buộc'
-    if (!draft.ownerId) e.ownerId = 'Chủ hàng là bắt buộc'
-    if (!draft.sourceItemId) e.sourceItemId = 'Mặt hàng nguồn là bắt buộc'
-    if (!draft.sourceQty || Number(draft.sourceQty) <= 0) e.sourceQty = 'Khối lượng nguồn phải lớn hơn 0'
-    if (!draft.targetQty || Number(draft.targetQty) <= 0) e.targetQty = 'Số lượng bao phải lớn hơn 0'
-    if (!draft.bagWeightKg || Number(draft.bagWeightKg) <= 0) e.bagWeightKg = 'Trọng lượng bao phải lớn hơn 0'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
-
-  const handleCreate = async () => {
-    if (!validate()) return
-    await createWorkOrder.mutateAsync(draft)
-    setDraft(initialDraft)
-    setErrors({})
-    setShowCreate(false)
+  const handleSubmit = async (payload) => {
+    await createWorkOrder.mutateAsync(payload)
+    setDrawerOpen(false)
   }
 
   return (
@@ -64,7 +38,7 @@ export function VasWorkOrdersPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="section-title">Đơn Hàng VAS</h2>
         <div className="flex items-center gap-2">
-          <Button variant="accent" size="sm" onClick={() => { setDraft(initialDraft); setErrors({}); setShowCreate(true) }}>Tạo Đơn Hàng</Button>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>Tạo Đơn Hàng</Button>
           <Button variant="outline" size="sm" onClick={refetch}>Làm Mới</Button>
         </div>
       </div>
@@ -121,49 +95,15 @@ export function VasWorkOrdersPage() {
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))} />
       </div>
 
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Tạo Đơn Hàng VAS"
-        description="Tạo đơn hàng đóng bao hoặc đóng gói lại."
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleCreate} disabled={createWorkOrder.isPending}>
-              {createWorkOrder.isPending ? 'Đang xử lý...' : 'Tạo Đơn Hàng'}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Select label="Loại VAS" value={draft.vasType} onChange={(e) => setDraft((prev) => ({ ...prev, vasType: e.target.value }))} options={[{ value: 'BAGGING', label: 'Đóng Bao' }, { value: 'REPACKING', label: 'Đóng Gói Lại' }]} />
-          <div>
-            <Select label="Kho" value={draft.warehouseId} onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))} options={[{ value: '', label: '-- Chọn Kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} />
-            {errors.warehouseId && <p className="text-xs text-danger mt-1">{errors.warehouseId}</p>}
-          </div>
-          <div>
-            <Select label="Chủ Hàng" value={draft.ownerId} onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))} options={[{ value: '', label: '-- Chọn Chủ Hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]} />
-            {errors.ownerId && <p className="text-xs text-danger mt-1">{errors.ownerId}</p>}
-          </div>
-          <div>
-            <Select label="Mặt Hàng Nguồn" value={draft.sourceItemId} onChange={(e) => setDraft((prev) => ({ ...prev, sourceItemId: e.target.value }))} options={[{ value: '', label: '-- Chọn Mặt Hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]} />
-            {errors.sourceItemId && <p className="text-xs text-danger mt-1">{errors.sourceItemId}</p>}
-          </div>
-          <div>
-            <Input label="Khối Lượng Nguồn (kg)" type="number" value={draft.sourceQty} onChange={(e) => setDraft((prev) => ({ ...prev, sourceQty: e.target.value }))} />
-            {errors.sourceQty && <p className="text-xs text-danger mt-1">{errors.sourceQty}</p>}
-          </div>
-          <div>
-            <Input label="Số Lượng Bao (bao)" type="number" value={draft.targetQty} onChange={(e) => setDraft((prev) => ({ ...prev, targetQty: e.target.value }))} />
-            {errors.targetQty && <p className="text-xs text-danger mt-1">{errors.targetQty}</p>}
-          </div>
-          <div>
-            <Input label="Trọng Lượng Bao (kg)" type="number" value={draft.bagWeightKg} onChange={(e) => setDraft((prev) => ({ ...prev, bagWeightKg: e.target.value }))} />
-            {errors.bagWeightKg && <p className="text-xs text-danger mt-1">{errors.bagWeightKg}</p>}
-          </div>
-        </div>
-      </Modal>
+      <VasWorkOrderFormDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSubmit={handleSubmit}
+        isLoading={createWorkOrder.isPending}
+        warehouses={warehouses}
+        owners={owners}
+        items={items}
+      />
     </>
   )
 }

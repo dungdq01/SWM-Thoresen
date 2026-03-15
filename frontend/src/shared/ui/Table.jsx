@@ -28,7 +28,7 @@ export function TableRow({ children, className, onClick, hoverable = true }) {
     <tr
       onClick={onClick}
       className={cn(
-        'border-b transition-colors',
+        'group border-b transition-colors',
         hoverable && 'hover:bg-muted/50',
         onClick && 'cursor-pointer',
         className

@@ -161,7 +161,7 @@ export function LocationsPage() {
         {!isLoading && locations.length > 0 && (
           <TableBody>
             {locations.map((loc) => (
-              <TableRow key={loc.id}>
+              <TableRow key={loc.id} onClick={() => setDrawerState({ isOpen: true, data: loc })}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">

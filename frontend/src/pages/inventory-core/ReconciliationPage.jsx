@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Eye, Play, RefreshCcw, Search } from 'lucide-react'
+import { ReconciliationFormDrawer } from '@features/inventory-core'
 import {
   useReconciliationRuns,
   useReconciliationRunDetail,
@@ -77,9 +78,8 @@ function formatDateTime(value) {
 
 export function ReconciliationPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, status: '', warehouseId: '' })
-  const [showCreate, setShowCreate] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedRunId, setSelectedRunId] = useState(null)
-  const [createForm, setCreateForm] = useState({ scopeType: 'FULL', warehouseId: '' })
 
   const { data: response, isLoading, refetch } = useReconciliationRuns({
     ...filters,
@@ -99,15 +99,9 @@ export function ReconciliationPage() {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }))
   }, [])
 
-  const handleCreate = async () => {
-    await createRun.mutateAsync({
-      runType: 'ON_DEMAND',
-      scopeType: createForm.scopeType,
-      warehouseId: createForm.warehouseId || undefined,
-      correlationId: `corr-recon-${Date.now()}`,
-    })
-    setShowCreate(false)
-    setCreateForm({ scopeType: 'FULL', warehouseId: '' })
+  const handleSubmit = async (payload) => {
+    await createRun.mutateAsync(payload)
+    setDrawerOpen(false)
     refetch()
   }
 
@@ -122,7 +116,7 @@ export function ReconciliationPage() {
             <RefreshCcw className="w-4 h-4 mr-1" />
             Làm mới
           </Button>
-          <Button variant="accent" size="sm" onClick={() => setShowCreate(true)}>
+          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>
             <Play className="w-4 h-4 mr-1" />
             Chạy đối soát
           </Button>
@@ -217,50 +211,13 @@ export function ReconciliationPage() {
         />
       </div>
 
-      {/* Create Reconciliation Run Modal */}
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Chạy đối soát tồn kho"
-        description="So sánh tổng giao dịch (ledger) với tồn kho thực tế (on-hand) để phát hiện chênh lệch."
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Hủy</Button>
-            <Button variant="accent" onClick={handleCreate} disabled={createRun.isPending}>
-              {createRun.isPending ? 'Đang chạy...' : 'Bắt đầu đối soát'}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-navy-700 mb-1">Phạm vi đối soát</label>
-            <select
-              className="wrs-input"
-              value={createForm.scopeType}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, scopeType: e.target.value }))}
-            >
-              <option value="FULL">Toàn bộ hệ thống</option>
-              <option value="WAREHOUSE">Theo kho</option>
-            </select>
-          </div>
-          {createForm.scopeType === 'WAREHOUSE' && (
-            <div>
-              <label className="block text-sm font-medium text-navy-700 mb-1">Chọn kho</label>
-              <select
-                className="wrs-input"
-                value={createForm.warehouseId}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, warehouseId: e.target.value }))}
-              >
-                <option value="">Chọn kho</option>
-                {warehouseOptions.map((o) => (
-                  <option key={o.id} value={o.id}>{o.code} - {o.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </Modal>
+      <ReconciliationFormDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSubmit={handleSubmit}
+        isLoading={createRun.isPending}
+        warehouses={warehouseOptions}
+      />
 
       {/* Run Detail Modal */}
       <Modal
