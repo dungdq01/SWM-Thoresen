@@ -8,7 +8,7 @@ const STATUS_LABELS = {
   AWAITING_WEIGHING: 'Chờ cân',
   WEIGHED_IN: 'Đã cân vào',
   PROCESSING: 'Đang xử lý',
-  WEIGHED_OUT: 'Đã cân ra',
+  WEIGHED_OUT: 'Đã hoàn thành',
   COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy',
 }

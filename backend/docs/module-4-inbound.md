@@ -1,10 +1,10 @@
 # Module 4: Inbound Operations — Backend Documentation
 
 > **Module:** M4 - Inbound Operations  
-> **Status:** ✅ Implemented (Feedback Fixed v3 - CR-1 DONE)  
+> **Status:** ✅ Implemented (Feedback Fixed v4 - Multi-line ASN + Multi-warehouse PO)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-16 (Added report-error API + ERROR status for receipts)
+> **Last Updated:** 2026-03-17 (Multi-line ASN, Multi-warehouse PO, Sequential ASN numbers)
 
 ---
 
@@ -65,9 +65,9 @@ src/modules/inbound/
 
 | Method | Path | Description | Permission |
 |--------|------|-------------|------------|
-| POST | `/api/v1/inbound/purchase-orders` | Tạo PO mới | `INBOUND.PO.CREATE` |
+| POST | `/api/v1/inbound/purchase-orders` | Tạo PO mới (hỗ trợ multi-warehouse) | `INBOUND.PO.CREATE` |
 | GET | `/api/v1/inbound/purchase-orders` | List POs (filter, paginate) | `INBOUND.PO.READ` |
-| GET | `/api/v1/inbound/purchase-orders/:id` | Get PO detail | `INBOUND.PO.READ` |
+| GET | `/api/v1/inbound/purchase-orders/:id` | Get PO detail (bao gồm warehouses) | `INBOUND.PO.READ` |
 | GET | `/api/v1/inbound/purchase-orders/next-number` | Get next PO number | `INBOUND.PO.READ` |
 | PUT | `/api/v1/inbound/purchase-orders/:id` | Update PO | `INBOUND.PO.UPDATE` |
 | POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO | `INBOUND.PO.CONFIRM` |
@@ -79,10 +79,11 @@ src/modules/inbound/
 
 | Method | Path | Description | Permission |
 |--------|------|-------------|------------|
-| POST | `/api/v1/inbound/receipts` | Tạo receipt mới | `INBOUND.RECEIPT.CREATE` |
+| POST | `/api/v1/inbound/receipts` | Tạo receipt mới (hỗ trợ multi-line) | `INBOUND.RECEIPT.CREATE` |
 | GET | `/api/v1/inbound/receipts` | List receipts (filter, paginate) | `INBOUND.RECEIPT.READ` |
 | GET | `/api/v1/inbound/receipts/:id` | Get receipt detail | `INBOUND.RECEIPT.READ` |
 | GET | `/api/v1/inbound/receipts/:id/history` | Get status history | `INBOUND.RECEIPT.READ` |
+| GET | `/api/v1/inbound/receipts/next-number` | Get next ASN number (sequential) | `INBOUND.RECEIPT.READ` |
 | PUT | `/api/v1/inbound/receipts/:id` | Cập nhật receipt (chỉ DRAFT) | `INBOUND.RECEIPT.CREATE` |
 | DELETE | `/api/v1/inbound/receipts/:id` | Xóa receipt (chỉ DRAFT) | `INBOUND.RECEIPT.CREATE` |
 | POST | `/api/v1/inbound/receipts/:id/confirm` | Confirm receipt | `INBOUND.RECEIPT.CONFIRM` |
@@ -824,11 +825,13 @@ Any cancellable state ──cancel──> CANCELLED
 | HI-4: Concurrent updates | Gọi `lockForUpdate()` (SELECT FOR UPDATE) | Tất cả command methods |
 | HI-3: Receipt number race | Dùng `pg_advisory_xact_lock` | `generateReceiptNumberAtomic()` |
 
-### 9.2 Single-Line Constraint (Phase 1)
+### 9.2 Multi-Line ASN Support (✅ Updated 2026-03-17)
 
-- **Guard:** `if (lines.length > 1) throw Error`
-- **Location:** `createReceipt()` và `receiveWeighOut()`
-- **Reason:** Multi-line receipt chưa được support trong Phase 1
+- **Status:** Multi-line ASN đã được hỗ trợ
+- **UOM Conversion:** Mỗi line được quy đổi sang KG theo `md_uom_conversion`
+- **Tolerance Check:** Dựa trên tổng `expectedQty` của header
+- **Inventory Posting:** Post cho từng line với `receivedQty` phân bổ theo tỷ lệ `expectedQty`
+- **Location:** `createReceipt()` và `receiveWeighOut()` trong `receipt.service.js`
 
 ### 9.3 Bagged Over-Receipt Check (✅ Fixed v3)
 

@@ -27,7 +27,7 @@ const RECEIPT_STATUSES = [
   { value: 'AWAITING_WEIGHING', label: 'Chờ cân' },
   { value: 'WEIGHED_IN', label: 'Đã cân vào' },
   { value: 'PROCESSING', label: 'Đang xử lý' },
-  { value: 'WEIGHED_OUT', label: 'Đã cân ra' },
+  { value: 'WEIGHED_OUT', label: 'Đã hoàn thành' },
   { value: 'COMPLETED', label: 'Hoàn thành' },
   { value: 'CANCELLED', label: 'Đã hủy' },
 ]
@@ -39,7 +39,7 @@ const STATUS_LABELS = {
   AWAITING_WEIGHING: 'Chờ cân',
   WEIGHED_IN: 'Đã cân vào',
   PROCESSING: 'Đang xử lý',
-  WEIGHED_OUT: 'Đã cân ra',
+  WEIGHED_OUT: 'Đã hoàn thành',
   COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy',
 }

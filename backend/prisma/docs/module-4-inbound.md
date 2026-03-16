@@ -3,18 +3,19 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-16 (Inbound Documents, Receipt Notes, Remove receivingLocationId)
+> **Last Updated:** 2026-03-17 (Multi-warehouse PO, Multi-line ASN, Sequential ASN numbers)
 
 ---
 
 ## 1. Tổng quan
 
-Module 4 sử dụng 9 bảng chính để quản lý lifecycle của Purchase Order, Receipt và Inbound Documents:
+Module 4 sử dụng 10 bảng chính để quản lý lifecycle của Purchase Order, Receipt và Inbound Documents:
 
 | Table | Mục đích | Record Type |
 |-------|----------|-------------|
 | `purchase_orders` | Header Purchase Order | Runtime |
 | `purchase_order_lines` | Dòng hàng trong PO | Runtime |
+| `purchase_order_warehouses` | Many-to-many PO ↔ Warehouse (NEW 2026-03-17) | Runtime |
 | `receipt_header` | Header phiếu nhận hàng | Runtime |
 | `receipt_line` | Dòng hàng trong receipt | Runtime |
 | `inbound_document` | Chứng từ nhập kho | Runtime |
@@ -169,10 +170,36 @@ DRAFT ──xóa──> (deleted)
 - Khi `po_type = SEA`: Các trường `vessel_name`, `origin`, `bl_number` được sử dụng
 - Khi `po_type = LAND`: Các trường trên có thể để trống
 - `total_expected_qty` được tự động quy đổi sang KG dựa trên `md_uom_conversion`
+- `warehouse_id` giữ lại cho backward compatibility, nhưng khuyến khích dùng `purchase_order_warehouses`
 
 ---
 
-### 3.0.1 `purchase_order_lines` (NEW - 2026-03-15)
+### 3.0.1 `purchase_order_warehouses` (NEW - 2026-03-17)
+
+**Mục đích:** Junction table cho quan hệ many-to-many giữa PO và Warehouse
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Primary key |
+| `po_id` | UUID | NO | FK → purchase_orders |
+| `warehouse_id` | UUID | NO | FK → md_warehouse |
+| `created_at` | TIMESTAMP | NO | Thời gian tạo |
+
+**Indexes:**
+- `UNIQUE(po_id, warehouse_id)` - Tránh duplicate
+- `INDEX(warehouse_id)` - Query PO theo warehouse
+
+**Relations:**
+- `purchaseOrder` → `purchase_orders`
+- `warehouse` → `md_warehouse`
+
+**Ghi chú:**
+- Cho phép 1 PO gắn với nhiều kho (multi-warehouse support)
+- Khi tạo Receipt từ PO, dropdown kho chỉ hiển thị các kho đã chọn trong PO
+
+---
+
+### 3.0.2 `purchase_order_lines` (NEW - 2026-03-15)
 
 **Mục đích:** Lưu các dòng hàng trong Purchase Order
 

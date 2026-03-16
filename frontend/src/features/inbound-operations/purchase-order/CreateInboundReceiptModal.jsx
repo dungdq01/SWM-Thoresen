@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, Trash2, FileText, Sparkles, X } from 'lucide-react'
+import { Plus, Trash2, FileText, Sparkles, X, AlertCircle, Truck } from 'lucide-react'
 import { Button, Input, Select, Textarea, Badge } from '@shared/ui'
 
 const emptyLine = {
@@ -70,9 +70,23 @@ export function CreateInboundReceiptModal({
   const updateLine = useCallback((idx, field, value) => {
     setDraft((prev) => ({
       ...prev,
-      lines: prev.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
+      lines: prev.lines.map((l, i) => {
+        if (i !== idx) return l
+        
+        // When item changes, auto-set UOM from PO line
+        if (field === 'itemId' && value) {
+          const poLine = activePo?.lines?.find((pl) => pl.itemId === value)
+          return { 
+            ...l, 
+            [field]: value,
+            uomId: poLine?.uomId || l.uomId 
+          }
+        }
+        
+        return { ...l, [field]: value }
+      }),
     }))
-  }, [])
+  }, [activePo])
 
   const addLine = useCallback(() => {
     setDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyLine }] }))
@@ -85,7 +99,19 @@ export function CreateInboundReceiptModal({
     }))
   }, [])
 
-  const handleSubmit = () => {
+  // Parse vehicle plates from input (split by , | ;)
+  const parseVehiclePlates = (input) => {
+    if (!input) return []
+    return input
+      .split(/[,|;]+/)
+      .map((plate) => plate.trim())
+      .filter((plate) => plate.length > 0)
+  }
+
+  const vehiclePlates = parseVehiclePlates(draft.vehiclePlate)
+  const hasMultipleVehicles = vehiclePlates.length > 1
+
+  const handleSubmit = async () => {
     if (!activePo) return
 
     // Tính tổng expectedQty từ lines
@@ -98,34 +124,53 @@ export function CreateInboundReceiptModal({
       return poLine?.item?.cargoForm || 'BULK'
     }
 
-    const generateAsnId = () => {
-      const now = new Date()
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-      return `ASN-${dateStr}-${random}`
+    const fetchNextAsnNumber = async () => {
+      try {
+        const res = await fetch('/api/v1/inbound/receipts/next-number')
+        const data = await res.json()
+        return data.code
+      } catch (err) {
+        // Fallback to timestamp-based if API fails
+        const now = new Date()
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
+        return `ASN-${dateStr}-${Date.now().toString().slice(-3)}`
+      }
     }
 
-    const payload = {
-      poId: activePo.poNumber || activePo.id,
-      asnId: generateAsnId(),
-      ownerId: activePo.ownerId,
-      vendorId: activePo.vendorId,
-      warehouseId: draft.warehouseId,
-      vehicleNumber: draft.vehiclePlate || '',
-      blNumber: activePo.blNumber || '',
-      expectedQty: totalExpectedQty,
-      notes: draft.notes || '',
-      sourceApp: 'WEB',
-      lines: validLines.map((l) => ({
-        itemId: l.itemId,
-        uomId: l.uomId,
-        expectedQty: Number(l.expectedQty || 0),
-        cargoForm: getCargoForm(l.itemId),
-        notes: l.notes || '',
-      })),
+    const plates = vehiclePlates.length > 0 ? vehiclePlates : [draft.vehiclePlate || '']
+
+    // Submit each payload sequentially (each creates a separate ASN with unique number)
+    for (const plate of plates) {
+      const asnId = await fetchNextAsnNumber()
+      const payload = {
+        poId: activePo.poNumber || activePo.id,
+        asnId,
+        ownerId: activePo.ownerId,
+        vendorId: activePo.vendorId,
+        warehouseId: draft.warehouseId,
+        vehicleNumber: plate,
+        blNumber: activePo.blNumber || '',
+        expectedQty: totalExpectedQty,
+        notes: draft.notes || '',
+        sourceApp: 'WEB',
+        lines: validLines.map((l) => ({
+          itemId: l.itemId,
+          uomId: l.uomId,
+          expectedQty: Number(l.expectedQty || 0),
+          cargoForm: getCargoForm(l.itemId),
+          notes: l.notes || '',
+        })),
+      }
+      await onSubmit(payload)
     }
-    onSubmit(payload)
   }
+
+  // Filter warehouses based on PO's selected warehouses
+  const poWarehouseIds = activePo?.warehouses?.map((w) => w.warehouse?.id || w.warehouseId) || 
+    (activePo?.warehouseId ? [activePo.warehouseId] : [])
+  const filteredWarehouses = poWarehouseIds.length > 0
+    ? warehouses.filter((w) => poWarehouseIds.includes(w.id))
+    : warehouses
 
   const isValid = !!(
     activePo &&
@@ -150,7 +195,7 @@ export function CreateInboundReceiptModal({
 
   const warehouseOptions = [
     { value: '', label: '-- Chọn kho --' },
-    ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` })),
+    ...filteredWarehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` })),
   ]
 
   const poOptions = [
@@ -297,14 +342,33 @@ export function CreateInboundReceiptModal({
                   </div>
 
                   {/* Biển số xe */}
-                  <Input
-                    label="Biển số xe"
-                    value={draft.vehiclePlate}
-                    onChange={(e) =>
-                      setDraft((prev) => ({ ...prev, vehiclePlate: e.target.value }))
-                    }
-                    placeholder="VD: 51C-12345"
-                  />
+                  <div>
+                    <Input
+                      label="Biển số xe"
+                      value={draft.vehiclePlate}
+                      onChange={(e) =>
+                        setDraft((prev) => ({ ...prev, vehiclePlate: e.target.value }))
+                      }
+                      placeholder="VD: 29A-11111; 29A-12345"
+                      hint={hasMultipleVehicles ? '' : 'Dùng dấu , hoặc ; để tách nhiều xe'}
+                    />
+                    {hasMultipleVehicles && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {vehiclePlates.map((plate, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-1 text-xs font-medium text-ice"
+                          >
+                            <Truck className="h-3 w-3" />
+                            {plate}
+                          </span>
+                        ))}
+                        <span className="text-xs text-navy-400 self-center ml-1">
+                          → Sẽ tạo {vehiclePlates.length} phiếu nhập
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <Select
@@ -373,6 +437,7 @@ export function CreateInboundReceiptModal({
                           value={line.uomId}
                           onChange={(e) => updateLine(idx, 'uomId', e.target.value)}
                           options={uomOptions}
+                          disabled={!!line.itemId}
                         />
                         <div className="flex items-end pb-0.5">
                           {draft.lines.length > 1 ? (
@@ -413,8 +478,8 @@ export function CreateInboundReceiptModal({
                 <p className="text-xs text-navy-400">
                   {isValid ? (
                     <span className="font-medium text-emerald-600">
-                      ✓ {draft.lines.filter((l) => l.itemId && l.expectedQty > 0).length} dòng
-                      hàng sẵn sàng
+                      ✓ {draft.lines.filter((l) => l.itemId && l.expectedQty > 0).length} dòng hàng sẵn sàng
+                      {hasMultipleVehicles && ` • ${vehiclePlates.length} xe → ${vehiclePlates.length} phiếu`}
                     </span>
                   ) : (
                     '* Kho, biển số xe và ít nhất 1 dòng hàng hóa với ĐVT và số lượng > 0 là bắt buộc'
@@ -430,7 +495,7 @@ export function CreateInboundReceiptModal({
                     isLoading={isLoading}
                     disabled={!isValid}
                   >
-                    Tạo phiếu nhập
+                    {hasMultipleVehicles ? `Tạo ${vehiclePlates.length} phiếu nhập` : 'Tạo phiếu nhập'}
                   </Button>
                 </div>
               </div>

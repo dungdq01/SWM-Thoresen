@@ -25,6 +25,11 @@ export class PurchaseOrderService {
       owner: { select: { ownerCode: true, ownerName: true } },
       vendor: { select: { vendorCode: true, vendorName: true } },
       warehouse: { select: { warehouseCode: true, warehouseName: true } },
+      warehouses: {
+        include: {
+          warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } },
+        },
+      },
       lines: {
         include: {
           item: { select: { itemCode: true, itemName: true, cargoForm: true } },
@@ -59,8 +64,17 @@ export class PurchaseOrderService {
     const vendor = await this.prisma.mdVendor.findUnique({ where: { id: dto.vendorId } });
     if (!vendor) throw new BadRequestException('Vendor not found');
 
-    const warehouse = await this.prisma.mdWarehouse.findUnique({ where: { id: dto.warehouseId } });
-    if (!warehouse) throw new BadRequestException('Warehouse not found');
+    // Support both warehouseIds (new) and warehouseId (legacy)
+    const warehouseIds = dto.warehouseIds?.length ? dto.warehouseIds : (dto.warehouseId ? [dto.warehouseId] : []);
+    if (warehouseIds.length === 0) throw new BadRequestException('At least one warehouse is required');
+
+    // Validate all warehouses exist
+    const warehouses = await this.prisma.mdWarehouse.findMany({
+      where: { id: { in: warehouseIds } },
+    });
+    if (warehouses.length !== warehouseIds.length) {
+      throw new BadRequestException('One or more warehouses not found');
+    }
 
     const { code: poNumber } = await this.getNextPoNumber();
 
@@ -110,7 +124,7 @@ export class PurchaseOrderService {
       status: PoStatus.NEW,
       ownerId: dto.ownerId,
       vendorId: dto.vendorId,
-      warehouseId: dto.warehouseId,
+      warehouseId: warehouseIds[0] || null,
       vesselName: dto.vesselName || null,
       origin: dto.origin || null,
       blNumber: dto.blNumber || null,
@@ -120,6 +134,9 @@ export class PurchaseOrderService {
       createdBy: userId || null,
       updatedBy: userId || null,
       lines: { create: lineData },
+      warehouses: {
+        create: warehouseIds.map((whId) => ({ warehouseId: whId })),
+      },
     };
 
     const po = await this.prisma.purchaseOrder.create({
@@ -197,7 +214,25 @@ export class PurchaseOrderService {
     if (dto.poType !== undefined) updateData.poType = dto.poType;
     if (dto.ownerId !== undefined) updateData.ownerId = dto.ownerId;
     if (dto.vendorId !== undefined) updateData.vendorId = dto.vendorId;
-    if (dto.warehouseId !== undefined) updateData.warehouseId = dto.warehouseId;
+
+    // Handle warehouseIds update
+    const warehouseIds = dto.warehouseIds?.length ? dto.warehouseIds : (dto.warehouseId ? [dto.warehouseId] : null);
+    if (warehouseIds) {
+      // Validate all warehouses exist
+      const warehouses = await this.prisma.mdWarehouse.findMany({
+        where: { id: { in: warehouseIds } },
+      });
+      if (warehouses.length !== warehouseIds.length) {
+        throw new BadRequestException('One or more warehouses not found');
+      }
+      updateData.warehouseId = warehouseIds[0] || null;
+
+      // Delete existing warehouse relations and recreate
+      await this.prisma.purchaseOrderWarehouse.deleteMany({ where: { poId: id } });
+      await this.prisma.purchaseOrderWarehouse.createMany({
+        data: warehouseIds.map((whId) => ({ poId: id, warehouseId: whId })),
+      });
+    }
     if (dto.vesselName !== undefined) updateData.vesselName = dto.vesselName || null;
     if (dto.origin !== undefined) updateData.origin = dto.origin || null;
     if (dto.blNumber !== undefined) updateData.blNumber = dto.blNumber || null;
