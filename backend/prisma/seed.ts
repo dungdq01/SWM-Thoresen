@@ -220,8 +220,12 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['INTEGRATION.ALERT.ACKNOWLEDGE', 'INTEGRATION', 'ALERT', 'ACKNOWLEDGE', true],
   ['INTEGRATION.ALERT.RESOLVE', 'INTEGRATION', 'ALERT', 'RESOLVE', true],
   ['INTEGRATION.WEIGHBRIDGE.READ', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'READ', false],
-  ['INTEGRATION.WEIGHBRIDGE.DEVICE.READ', 'INTEGRATION', 'WEIGHBRIDGE_DEVICE', 'READ', false],
+  ['INTEGRATION.WEIGHBRIDGE.INGEST', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'INGEST', true],
+  ['INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'MANUAL_CREATE', true],
+  ['INTEGRATION.WEIGHBRIDGE.REPROCESS', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'REPROCESS', true],
   ['INTEGRATION.WEIGHBRIDGE.MANAGE', 'INTEGRATION', 'WEIGHBRIDGE_LOG', 'MANAGE', true],
+  ['INTEGRATION.WEIGHBRIDGE_DEVICE.READ', 'INTEGRATION', 'WB_DEVICE', 'READ', false],
+  ['INTEGRATION.WEIGHBRIDGE_DEVICE.HEARTBEAT', 'INTEGRATION', 'WB_DEVICE', 'HEARTBEAT', true],
   // Module 8: OCR
   ['INTEGRATION.OCR.UPLOAD', 'INTEGRATION', 'OCR', 'UPLOAD', true],
   ['INTEGRATION.OCR.READ', 'INTEGRATION', 'OCR', 'READ', false],
@@ -1587,99 +1591,8 @@ async function main() {
     await prisma.m8WeighbridgeDevice.create({ data: device });
   }
 
-  // Create weighbridge logs
-  const weighLogSeeds = [
-    {
-      weighbridgeEventId: `WB-EVT-${Date.now()}-001`,
-      vehicleNumber: '51C-12345',
-      weighingType: 'WEIGH_IN' as const,
-      weighingSequence: 1,
-      grossWeightKg: 45200,
-      tareWeightKg: 15800,
-      netWeightKg: 29400,
-      isStableWeight: true,
-      scaleDeviceId: 'WB-01',
-      latencyMs: 180,
-      externalId: `EXT-WB-${Date.now()}-001`,
-      correlationId: crypto.randomUUID(),
-      sourceChannel: 'SCALE_DIRECT',
-      weighingTimestamp: new Date(Date.now() - 1800000),
-      createdBy: 'system',
-    },
-    {
-      weighbridgeEventId: `WB-EVT-${Date.now()}-002`,
-      vehicleNumber: '51C-67890',
-      weighingType: 'WEIGH_IN' as const,
-      weighingSequence: 1,
-      grossWeightKg: 38500,
-      tareWeightKg: 14200,
-      netWeightKg: 24300,
-      isStableWeight: true,
-      scaleDeviceId: 'WB-02',
-      latencyMs: 220,
-      externalId: `EXT-WB-${Date.now()}-002`,
-      correlationId: crypto.randomUUID(),
-      sourceChannel: 'SCALE_DIRECT',
-      weighingTimestamp: new Date(Date.now() - 3600000),
-      createdBy: 'system',
-    },
-    {
-      weighbridgeEventId: `WB-EVT-${Date.now()}-003`,
-      vehicleNumber: '51C-11111',
-      weighingType: 'WEIGH_OUT' as const,
-      weighingSequence: 2,
-      grossWeightKg: 52000,
-      tareWeightKg: 16500,
-      netWeightKg: 35500,
-      isStableWeight: true,
-      scaleDeviceId: 'WB-01',
-      latencyMs: 195,
-      externalId: `EXT-WB-${Date.now()}-003`,
-      correlationId: crypto.randomUUID(),
-      sourceChannel: 'SCALE_DIRECT',
-      weighingTimestamp: new Date(Date.now() - 5400000),
-      createdBy: 'system',
-    },
-    {
-      weighbridgeEventId: `WB-EVT-${Date.now()}-004`,
-      vehicleNumber: '51C-22222',
-      weighingType: 'WEIGH_IN' as const,
-      weighingSequence: 1,
-      grossWeightKg: 41000,
-      tareWeightKg: 15000,
-      netWeightKg: 26000,
-      isStableWeight: true,
-      scaleDeviceId: 'WB-01',
-      latencyMs: 210,
-      externalId: `EXT-WB-${Date.now()}-004`,
-      correlationId: crypto.randomUUID(),
-      sourceChannel: 'SCALE_DIRECT',
-      weighingTimestamp: new Date(Date.now() - 7200000),
-      createdBy: 'system',
-    },
-    {
-      weighbridgeEventId: `WB-EVT-${Date.now()}-005`,
-      vehicleNumber: '51C-33333',
-      weighingType: 'WEIGH_IN' as const,
-      weighingSequence: 1,
-      grossWeightKg: 48500,
-      tareWeightKg: 16000,
-      netWeightKg: 32500,
-      isStableWeight: true,
-      scaleDeviceId: 'WB-02',
-      latencyMs: 185,
-      externalId: `EXT-WB-${Date.now()}-005`,
-      correlationId: crypto.randomUUID(),
-      sourceChannel: 'SCALE_DIRECT',
-      weighingTimestamp: new Date(Date.now() - 10800000),
-      createdBy: 'system',
-    },
-  ];
-
-  for (const log of weighLogSeeds) {
-    await prisma.m8WeighbridgeLog.create({ data: log });
-  }
-  console.log('✅ Module 8 Weighbridge Devices & Logs sample data seeded successfully');
+  // Skip weighbridge logs seed - will be created via UI
+  console.log('✅ Module 8 Weighbridge Devices seeded successfully (no sample logs)');
 
   // Seed billing sample data
   await seedBillingSample(prisma);

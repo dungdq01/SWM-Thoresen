@@ -98,7 +98,7 @@ src/modules/inbound/
 | POST | `/api/v1/inbound/documents/upload` | Upload chứng từ nhập | `INBOUND.DOCUMENT.CREATE` |
 | GET | `/api/v1/inbound/documents` | List documents (filter, paginate) | `INBOUND.DOCUMENT.READ` |
 | GET | `/api/v1/inbound/documents/:id` | Get document detail | `INBOUND.DOCUMENT.READ` |
-| PUT | `/api/v1/inbound/documents/:id` | Update document | `INBOUND.DOCUMENT.UPDATE` |
+| PUT | `/api/v1/inbound/documents/:id` | Update document (status, notes) | `INBOUND.DOCUMENT.UPDATE` |
 | DELETE | `/api/v1/inbound/documents/:id` | Delete document (chỉ DRAFT) | `INBOUND.DOCUMENT.DELETE` |
 
 ### 3.4 Weighing Events
@@ -525,7 +525,12 @@ NEW ──confirm──> CONFIRMED ──close──> CLOSED
 | `fileSize` | `Int` | Kích thước file (bytes) |
 | `mimeType` | `String` | MIME type của file |
 | `notes` | `String?` | Ghi chú |
-| `status` | `InboundDocumentStatus` | Trạng thái (DRAFT, SUBMITTED, APPROVED, REJECTED) |
+| `status` | `InboundDocumentStatus` | Trạng thái (DRAFT, SCANNED, ERROR) |
+
+**InboundDocumentStatus Enum:**
+- `DRAFT` - Chờ scan (mặc định khi upload)
+- `SCANNED` - Đã scan (xác nhận OK)
+- `ERROR` - Lỗi (có vấn đề cần xử lý)
 
 **InboundDocumentType Enum:**
 - `BILL_OF_LADING` - Vận đơn (B/L)

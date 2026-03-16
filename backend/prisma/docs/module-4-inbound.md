@@ -110,10 +110,16 @@ OTHER                - Khác
 
 ### 2.7 InboundDocumentStatus (NEW - 2026-03-16)
 ```
-DRAFT     - Nháp, chưa nộp
-SUBMITTED - Đã nộp
-APPROVED  - Đã duyệt
-REJECTED  - Từ chối
+DRAFT   - Chờ scan (mặc định khi upload)
+SCANNED - Đã scan (xác nhận OK)
+ERROR   - Lỗi (có vấn đề cần xử lý)
+```
+
+**State Transitions:**
+```
+DRAFT ──xác nhận──> SCANNED
+DRAFT ──báo lỗi──> ERROR
+DRAFT ──xóa──> (deleted)
 ```
 
 ---
@@ -302,7 +308,7 @@ REJECTED  - Từ chối
 | `file_size` | INT | NO | Kích thước file (bytes) |
 | `mime_type` | VARCHAR(100) | NO | MIME type của file |
 | `notes` | VARCHAR(500) | YES | Ghi chú |
-| `status` | ENUM | NO | Trạng thái (InboundDocumentStatus) |
+| `status` | ENUM | NO | Trạng thái: DRAFT, SCANNED, ERROR |
 | `uploaded_at` | TIMESTAMP | NO | Thời gian upload |
 | `uploaded_by` | UUID | YES | Người upload |
 | `created_at` | TIMESTAMP | NO | Thời gian tạo |
@@ -496,7 +502,7 @@ inbound_document N───1 md_owner (optional)
 - `WeighPhase`
 - `IntegrationDeliveryStatus`
 - `InboundDocumentType` (NEW - 2026-03-16)
-- `InboundDocumentStatus` (NEW - 2026-03-16)
+- `InboundDocumentStatus` (NEW - 2026-03-16): DRAFT, SCANNED, ERROR
 
 ### 5.4 Migration: PO Schema Update (2026-03-15)
 

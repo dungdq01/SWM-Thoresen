@@ -6,8 +6,9 @@ export class CreateWeighEventDto {
   @IsString()
   weighbridgeEventId!: string;
 
+  @IsOptional()
   @IsString()
-  scaleDeviceId!: string;
+  scaleDeviceId?: string;
 
   @IsString()
   vehicleNumber!: string;
@@ -54,6 +55,22 @@ export class CreateWeighEventDto {
   @IsUUID()
   referenceId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string;
+
+  @IsOptional()
+  @IsString()
+  itemCode?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
   @IsUUID()
   correlationId!: string;
 
@@ -87,6 +104,12 @@ export class HeartbeatDto {
   @IsOptional()
   @IsString()
   healthStatus?: string;
+}
+
+export class UpdateWeighLogDto {
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class ReprocessWeighEventDto {

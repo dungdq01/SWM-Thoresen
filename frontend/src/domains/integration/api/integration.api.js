@@ -49,6 +49,8 @@ export const integrationApi = {
     (id, data) => integrationMockApi.reprocessWeighEvent(id, data),
     (id, data) => httpClient.post(`${BASE_URL}/weighbridge/events/${id}/reprocess`, data)
   ),
+  createWeighEvent: (data) => httpClient.post(`${BASE_URL}/weighbridge/events/manual`, data),
+  updateWeighLog: (id, data) => httpClient.patch(`${BASE_URL}/weighbridge/logs/${id}`, data),
 
   // OCR APIs
   uploadOcrImage: withDataSource(

@@ -131,5 +131,7 @@ export const inboundOperationsApi = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   updateDocument: (id, data) => httpClient.put(`${BASE_URL}/documents/${id}`, data),
+  confirmDocument: (id) => httpClient.put(`${BASE_URL}/documents/${id}`, { status: 'SCANNED' }),
+  reportErrorDocument: (id, notes) => httpClient.put(`${BASE_URL}/documents/${id}`, { status: 'ERROR', notes }),
   deleteDocument: (id) => httpClient.delete(`${BASE_URL}/documents/${id}`),
 }

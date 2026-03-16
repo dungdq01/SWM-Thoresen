@@ -182,7 +182,7 @@ Module 8 quản lý các bảng dữ liệu cho:
 | `is_manual_entry` | BOOLEAN | No | false | Nhập tay |
 | `manual_reason_code` | VARCHAR(50) | Yes | - | Reason code cho manual |
 | `approved_by` | UUID | Yes | - | Người approve manual |
-| `scale_device_id` | VARCHAR(50) | No | - | FK to device |
+| `scale_device_id` | VARCHAR(50) | **Yes** | - | FK to device (optional cho manual entry) |
 | `photo_alpr_path` | VARCHAR(500) | Yes | - | Path ảnh biển số |
 | `photo_cargo_path` | VARCHAR(500) | Yes | - | Path ảnh hàng |
 | `latency_ms` | INT | Yes | - | Latency từ agent đến server |
@@ -518,3 +518,21 @@ m8_mobile_sync_batch ──< m8_mobile_sync_event
    - `ocr-confirmation`: snapshot + result status
 
 5. **Decimal Precision:** Weight calculations sử dụng `decimal.js` để đảm bảo độ chính xác.
+
+---
+
+## Changelog
+
+### 2026-03-16: Manual Weigh Event Support
+
+| Change | Mô tả |
+|--------|-------|
+| `scale_device_id` nullable | Đổi từ required sang optional để hỗ trợ manual entry từ Web UI không cần device |
+| `device` relation optional | Relation với `M8WeighbridgeDevice` giờ là optional |
+
+**Migration cần thiết:**
+```sql
+ALTER TABLE m8_weighbridge_log ALTER COLUMN scale_device_id DROP NOT NULL;
+```
+
+**Lý do:** Cho phép tạo phiếu cân thủ công từ Web UI mà không cần kết nối với weighbridge device vật lý.

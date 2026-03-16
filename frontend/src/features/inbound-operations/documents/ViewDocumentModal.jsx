@@ -1,21 +1,30 @@
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, FileText, Truck, User, Calendar, Download, File } from 'lucide-react'
-import { Badge, Button } from '@shared/ui'
+import { X, FileText, Truck, User, Calendar, Download, File, Check, AlertTriangle } from 'lucide-react'
+import { Badge, Button, ConfirmModal } from '@shared/ui'
+import { useInboundDocumentDetail, useConfirmInboundDocument, useReportErrorInboundDocument } from '@domains/inbound-operations'
 
 const STATUS_LABELS = {
-  DRAFT: 'Nháp',
-  SUBMITTED: 'Đã nộp',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
+  DRAFT: 'Chờ scan',
+  SCANNED: 'Đã scan',
+  ERROR: 'Lỗi',
 }
 
 const statusTone = (status) => {
-  if (status === 'DRAFT') return 'default'
-  if (status === 'SUBMITTED') return 'info'
-  if (status === 'APPROVED') return 'success'
-  if (status === 'REJECTED') return 'danger'
+  if (status === 'DRAFT') return 'warning'
+  if (status === 'SCANNED') return 'success'
+  if (status === 'ERROR') return 'danger'
   return 'default'
+}
+
+function getFileUrl(doc) {
+  if (!doc?.filePath) return null
+  const normalized = doc.filePath.replace(/\\/g, '/')
+  const idx = normalized.indexOf('uploads/')
+  if (idx !== -1) return `/${normalized.slice(idx)}`
+  if (normalized.startsWith('http')) return normalized
+  return `/${normalized}`
 }
 
 const DOC_TYPE_LABELS = {
@@ -28,13 +37,53 @@ const DOC_TYPE_LABELS = {
   OTHER: 'Khác',
 }
 
-export function ViewDocumentModal({ isOpen, onClose, document: doc }) {
-  if (!isOpen || !doc) return null
+export function ViewDocumentModal({ isOpen, onClose, document: docProp }) {
+  const { data: docDetail } = useInboundDocumentDetail(docProp?.id)
+  const confirmMutation = useConfirmInboundDocument()
+  const reportErrorMutation = useReportErrorInboundDocument()
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null })
+
+  const doc = docDetail || docProp
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—'
     return new Date(dateStr).toLocaleString('vi-VN')
   }
+
+  const handleDownload = () => {
+    const fileUrl = getFileUrl(doc)
+    if (!fileUrl) return
+    const link = document.createElement('a')
+    link.href = fileUrl
+    link.download = doc.fileName || 'document'
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const openConfirmModal = (type) => {
+    setConfirmModal({ isOpen: true, type })
+  }
+
+  const closeConfirmModal = () => {
+    setConfirmModal({ isOpen: false, type: null })
+  }
+
+  const handleConfirmAction = async (notes) => {
+    try {
+      if (confirmModal.type === 'confirm') {
+        await confirmMutation.mutateAsync(doc.id)
+      } else if (confirmModal.type === 'error') {
+        await reportErrorMutation.mutateAsync({ id: doc.id, notes })
+      }
+      closeConfirmModal()
+    } catch (error) {
+      // Error handled by mutation
+    }
+  }
+
+  if (!isOpen || !docProp) return null
 
   return createPortal(
     <AnimatePresence>
@@ -61,7 +110,7 @@ export function ViewDocumentModal({ isOpen, onClose, document: doc }) {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-navy-900">Chi tiết chứng từ</h2>
-                  <p className="text-sm text-navy-500">{doc.docCode || doc.receiptNumber || 'Chưa có mã'}</p>
+                  <p className="text-sm text-navy-500">{doc.documentCode || doc.docCode || 'Chưa có mã'}</p>
                 </div>
               </div>
               <button
@@ -89,15 +138,15 @@ export function ViewDocumentModal({ isOpen, onClose, document: doc }) {
                     <FileText className="h-4 w-4" />
                     <span>Mã chứng từ</span>
                   </div>
-                  <p className="font-medium text-navy-900">{doc.docCode || doc.receiptNumber || '—'}</p>
+                  <p className="font-medium text-navy-900">{doc.documentCode || doc.docCode || '—'}</p>
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-navy-500">
                     <FileText className="h-4 w-4" />
-                    <span>Số ASN</span>
+                    <span>Số phiếu nhập</span>
                   </div>
-                  <p className="font-medium text-navy-900">{doc.receiptNumber || doc.asnId || '—'}</p>
+                  <p className="font-medium text-navy-900">{doc.receiptHeader?.asnId || doc.receiptHeader?.receiptNumber || doc.receiptNumber || '—'}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -178,9 +227,31 @@ export function ViewDocumentModal({ isOpen, onClose, document: doc }) {
             {/* Footer */}
             <div className="border-t border-moon-200 bg-moon-50 px-6 py-4">
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => {}}>
-                  <Download className="mr-1.5 h-4 w-4" /> Tải xuống
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={handleDownload}>
+                    <Download className="mr-1.5 h-4 w-4" /> Tải xuống
+                  </Button>
+                  {doc.status === 'DRAFT' && (
+                    <>
+                      <Button
+                        variant="accent"
+                        onClick={() => openConfirmModal('confirm')}
+                        disabled={confirmMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Check className="mr-1.5 h-4 w-4" /> Xác nhận
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => openConfirmModal('error')}
+                        disabled={reportErrorMutation.isPending}
+                        className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                      >
+                        <AlertTriangle className="mr-1.5 h-4 w-4" /> Báo lỗi
+                      </Button>
+                    </>
+                  )}
+                </div>
                 <Button variant="outline" onClick={onClose}>
                   Đóng
                 </Button>
@@ -189,6 +260,26 @@ export function ViewDocumentModal({ isOpen, onClose, document: doc }) {
           </motion.div>
         </motion.div>
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={handleConfirmAction}
+        title={confirmModal.type === 'confirm' ? 'Xác nhận chứng từ' : 'Báo lỗi chứng từ'}
+        message={
+          confirmModal.type === 'confirm'
+            ? `Xác nhận chứng từ "${doc?.documentCode || doc?.fileName}" đã scan?`
+            : `Báo lỗi chứng từ "${doc?.documentCode || doc?.fileName}"?`
+        }
+        confirmText={confirmModal.type === 'confirm' ? 'Xác nhận' : 'Báo lỗi'}
+        type={confirmModal.type === 'confirm' ? 'confirm' : 'warning'}
+        isLoading={confirmMutation.isPending || reportErrorMutation.isPending}
+        showNotes={confirmModal.type === 'error'}
+        notesLabel="Lý do báo lỗi"
+        notesPlaceholder="Nhập lý do báo lỗi..."
+        notesRequired={confirmModal.type === 'error'}
+      />
     </AnimatePresence>,
     document.body
   )

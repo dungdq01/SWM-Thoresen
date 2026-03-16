@@ -117,6 +117,7 @@ export class InboundDocumentService {
             select: {
               id: true,
               receiptNumber: true,
+              asnId: true,
               vehicleNumber: true,
             },
           },
@@ -151,6 +152,7 @@ export class InboundDocumentService {
           select: {
             id: true,
             receiptNumber: true,
+            asnId: true,
             vehicleNumber: true,
             ownerId: true,
             owner: {
@@ -198,6 +200,7 @@ export class InboundDocumentService {
           select: {
             id: true,
             receiptNumber: true,
+            asnId: true,
           },
         },
         owner: {

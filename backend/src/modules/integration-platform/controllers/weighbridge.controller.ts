@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { Permission } from '../../../common/decorators/permission.decorator';
@@ -7,7 +7,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { WeighbridgeIngestService } from '../services/weighbridge-ingest.service';
 import { WeighbridgeLogService } from '../services/weighbridge-log.service';
 import { WeighbridgeDeviceService } from '../services/weighbridge-device.service';
-import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto } from '../dto/weighbridge/create-weigh-event.dto';
+import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto, UpdateWeighLogDto } from '../dto/weighbridge/create-weigh-event.dto';
 import { WeighLogQueryDto } from '../dto/weighbridge/weigh-log-query.dto';
 
 @Controller('integration/weighbridge')
@@ -24,6 +24,13 @@ export class WeighbridgeController {
   @Permission('INTEGRATION.WEIGHBRIDGE.INGEST')
   async ingestWeighEvent(@Body() dto: CreateWeighEventDto, @CurrentUser() user: RequestUser) {
     return this.ingestService.ingestWeighEvent(dto, user.id);
+  }
+
+  @Post('events/manual')
+  @HttpCode(HttpStatus.CREATED)
+  @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
+  async createManualWeighEvent(@Body() dto: CreateWeighEventDto, @CurrentUser() user: RequestUser) {
+    return this.ingestService.createManualWeighEvent(dto, user.id);
   }
 
   @Post('heartbeat')
@@ -73,6 +80,12 @@ export class WeighbridgeController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.ingestService.reprocessCallback(id, user.id, dto.reasonCode);
+  }
+
+  @Patch('logs/:id')
+  @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
+  async updateLog(@Param('id') id: string, @Body() dto: UpdateWeighLogDto) {
+    return this.logService.updateLog(id, { notes: dto.notes });
   }
 
   @Get('devices')

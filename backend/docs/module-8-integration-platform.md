@@ -78,6 +78,7 @@ src/modules/integration-platform/
 | Method | Endpoint | Mô tả | Response |
 |--------|----------|-------|----------|
 | **POST** | `/api/v1/integration/weighbridge/events` | Ingest weigh event từ local agent | `{ id, weighbridgeEventId, isDuplicate, processingStatus, message }` |
+| **POST** | `/api/v1/integration/weighbridge/events/manual` | Tạo phiếu cân thủ công từ Web UI | `{ id, weighbridgeEventId, isDuplicate, processingStatus, message }` |
 | **POST** | `/api/v1/integration/weighbridge/heartbeat` | Device heartbeat | `{ success, deviceCode, status }` |
 | **GET** | `/api/v1/integration/weighbridge/logs` | Query danh sách weigh logs | `{ data: [], pagination }` |
 | **GET** | `/api/v1/integration/weighbridge/logs/:id` | Chi tiết weigh log | Weigh log detail object |
@@ -119,6 +120,42 @@ src/modules/integration-platform/
 ```
 
 **Idempotency:** Dựa vào `weighbridgeEventId` - nếu đã tồn tại sẽ trả về record cũ với `isDuplicate: true`
+
+#### POST /api/v1/integration/weighbridge/events/manual
+
+**Mô tả:** Tạo phiếu cân thủ công từ Web UI. Endpoint này:
+- Không yêu cầu device validation
+- Tự động set `approvedBy` = current user
+- Tự động set `isManualEntry = true`
+- `scaleDeviceId` là optional
+
+**Permission:** `INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE`
+
+**Request Body:**
+```json
+{
+  "weighbridgeEventId": "WB-EVT-1710547200-001",
+  "vehicleNumber": "51A-12345",
+  "weighingType": "WEIGH_IN",
+  "weighingSequence": 1,
+  "referenceType": "RECEIPT",
+  "referenceId": "uuid-of-receipt",
+  "correlationId": "uuid",
+  "sourceChannel": "WEB_MANUAL",
+  "eventTime": "2026-03-16T07:00:00+07:00"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "weighbridgeEventId": "WB-EVT-1710547200-001",
+  "isDuplicate": false,
+  "processingStatus": "RECEIVED",
+  "message": "Manual weigh event created successfully"
+}
+```
 
 ---
 
@@ -310,8 +347,12 @@ src/modules/integration-platform/
 
 ### 4.1 Weighbridge
 - `weighbridgeEventId` must be unique (idempotency key)
-- `scaleDeviceId` phải active
-- Manual entry yêu cầu `manualReasonCode` + `approvedBy`
+- `scaleDeviceId` phải active (chỉ với `/events` endpoint từ local agent)
+- **Manual entry từ Web UI** (`/events/manual`):
+  - Không yêu cầu device validation
+  - `scaleDeviceId` là optional
+  - Tự động set `approvedBy` = current user
+  - Tự động set `manualReasonCode` = 'WEB_MANUAL_CREATE'
 - Callback to M4/M5 phải async (không block response)
 - Log immutable, corrections qua event_state
 
@@ -500,7 +541,8 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 
 | Resource | Permission Code | Mô tả |
 |----------|-----------------|-------|
-| **Weighbridge** | `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events |
+| **Weighbridge** | `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events (local agent) |
+| | `INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE` | Tạo phiếu cân thủ công (Web UI) |
 | | `INTEGRATION.WEIGHBRIDGE.READ` | Query weigh logs |
 | | `INTEGRATION.WEIGHBRIDGE.REPROCESS` | Reprocess callbacks |
 | **Weighbridge Device** | `INTEGRATION.WEIGHBRIDGE_DEVICE.READ` | List devices |
@@ -578,7 +620,18 @@ Các items này sẽ được implement trong Sprint 5.
 
 ---
 
-## Changelog — FE-BE Alignment Fixes (2026-03-11)
+## Changelog
+
+### 2026-03-16: Manual Weigh Event từ Web UI
+
+| Change | Mô tả |
+|--------|-------|
+| Endpoint mới | `POST /events/manual` - Tạo phiếu cân thủ công từ Web UI |
+| Permission mới | `INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE` |
+| Schema change | `scaleDeviceId` giờ là optional (nullable) |
+| Auto-approval | Manual entries tự động set `approvedBy` = current user |
+
+### 2026-03-11: FE-BE Alignment Fixes
 
 | Fix | Mô tả |
 |-----|-------|

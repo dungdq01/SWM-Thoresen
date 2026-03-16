@@ -13,9 +13,8 @@ export enum InboundDocumentType {
 
 export enum InboundDocumentStatus {
   DRAFT = 'DRAFT',
-  SUBMITTED = 'SUBMITTED',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
+  SCANNED = 'SCANNED',
+  ERROR = 'ERROR',
 }
 
 export class UploadInboundDocumentDto {

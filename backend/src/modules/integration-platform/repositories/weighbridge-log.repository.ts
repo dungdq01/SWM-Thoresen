@@ -68,7 +68,10 @@ export class WeighbridgeLogRepository {
     const [data, total] = await Promise.all([
       this.prisma.m8WeighbridgeLog.findMany({
         where,
-        include: { eventState: true },
+        include: {
+          eventState: true,
+          device: true,
+        },
         skip,
         take,
         orderBy: { createdAt: 'desc' },
@@ -81,6 +84,14 @@ export class WeighbridgeLogRepository {
 
   async create(data: Prisma.M8WeighbridgeLogCreateInput) {
     return this.prisma.m8WeighbridgeLog.create({
+      data,
+      include: { eventState: true },
+    });
+  }
+
+  async update(id: string, data: Prisma.M8WeighbridgeLogUncheckedUpdateInput) {
+    return this.prisma.m8WeighbridgeLog.update({
+      where: { id },
       data,
       include: { eventState: true },
     });

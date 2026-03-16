@@ -98,6 +98,16 @@ export function useReprocessWeighEvent() {
   return useMutation({ mutationFn: ({ id, data }) => integrationApi.reprocessWeighEvent(id, data), onSuccess, onError })
 }
 
+export function useCreateWeighEvent() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.weighbridgeLogs], 'Đã tạo phiếu cân thành công', 'Không thể tạo phiếu cân')
+  return useMutation({ mutationFn: (data) => integrationApi.createWeighEvent(data), onSuccess, onError })
+}
+
+export function useUpdateWeighLog() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.weighbridgeLogs], 'Đã cập nhật phiếu cân', 'Không thể cập nhật phiếu cân')
+  return useMutation({ mutationFn: ({ id, data }) => integrationApi.updateWeighLog(id, data), onSuccess, onError })
+}
+
 // OCR Hooks
 export function useOcrResults(filters = {}) {
   return useQuery({

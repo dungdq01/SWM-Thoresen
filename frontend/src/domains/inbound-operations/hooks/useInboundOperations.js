@@ -282,4 +282,40 @@ export function useDeleteInboundDocument() {
   })
 }
 
+export function useConfirmInboundDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => inboundOperationsApi.confirmDocument(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-documents'] })
+      toast.success('Đã xác nhận chứng từ')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể xác nhận chứng từ')
+    },
+  })
+}
+
+export function useReportErrorInboundDocument() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, notes }) => inboundOperationsApi.reportErrorDocument(id, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbound-documents'] })
+      toast.success('Đã báo lỗi chứng từ')
+    },
+    onError: (error) => {
+      toast.error(error?.error?.message || 'Không thể báo lỗi chứng từ')
+    },
+  })
+}
+
+export function useInboundDocumentDetail(id) {
+  return useQuery({
+    queryKey: ['inbound-documents', id],
+    queryFn: () => inboundOperationsApi.getDocumentById(id),
+    enabled: Boolean(id),
+  })
+}
+
 export { QUERY_KEYS as INBOUND_OPERATIONS_QUERY_KEYS }

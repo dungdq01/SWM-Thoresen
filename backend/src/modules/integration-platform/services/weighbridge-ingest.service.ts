@@ -42,7 +42,13 @@ export class WeighbridgeIngestService {
       };
     }
 
-    // 2. Validate device is active
+    // 2. Validate device is active (required for local agent)
+    if (!dto.scaleDeviceId) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.DEVICE_NOT_FOUND,
+        'scaleDeviceId is required for device-based weigh events',
+      );
+    }
     await this.deviceService.validateDeviceActive(dto.scaleDeviceId);
 
     // 3. Validate manual entry requirements
@@ -136,6 +142,99 @@ export class WeighbridgeIngestService {
     // In production, this would enqueue to BullMQ/Redis
     // For now, just update state to indicate callback is pending
     this.logger.log(`Callback queued for log ${logId}, ref: ${referenceType}/${referenceId}`);
+  }
+
+  /**
+   * Create manual weigh event from web UI
+   * - Does not require device validation
+   * - Auto-approves with current user
+   */
+  async createManualWeighEvent(dto: CreateWeighEventDto, createdBy: string): Promise<WeighEventResult> {
+    // 1. Check idempotency
+    const existing = await this.logRepo.findByEventId(dto.weighbridgeEventId);
+    if (existing) {
+      return {
+        id: existing.id,
+        weighbridgeEventId: existing.weighbridgeEventId,
+        isDuplicate: true,
+        processingStatus: existing.eventState?.processingStatus || 'RECEIVED',
+        message: 'Duplicate event - returning existing record',
+      };
+    }
+
+    // 2. Calculate net weight if provided
+    let netWeightKg = dto.netWeightKg;
+    if (!netWeightKg && dto.grossWeightKg && dto.tareWeightKg) {
+      netWeightKg = new Decimal(dto.grossWeightKg).minus(dto.tareWeightKg).toNumber();
+    }
+
+    // 3. Determine reference fields
+    const receiptId = dto.referenceType === 'RECEIPT' ? dto.referenceId : undefined;
+    const shipmentId = dto.referenceType === 'SHIPMENT' ? dto.referenceId : undefined;
+
+    // 4. Calculate latency
+    const eventTime = new Date(dto.eventTime);
+    const latencyMs = Date.now() - eventTime.getTime();
+
+    // 5. Create log entry without device connection
+    const externalId = uuidv4();
+    const log = await this.prisma.$transaction(async (tx) => {
+      const createdLog = await tx.m8WeighbridgeLog.create({
+        data: {
+          weighbridgeEventId: dto.weighbridgeEventId,
+          receiptId,
+          shipmentId,
+          vehicleNumber: dto.vehicleNumber,
+          weighingType: dto.weighingType as any,
+          weighingSequence: dto.weighingSequence || 1,
+          grossWeightKg: dto.grossWeightKg,
+          tareWeightKg: dto.tareWeightKg,
+          netWeightKg,
+          rawPayload: dto.rawPayload as any,
+          isStableWeight: true,
+          isDuplicateSignal: false,
+          isManualEntry: true,
+          manualReasonCode: dto.manualReasonCode || 'WEB_MANUAL_CREATE',
+          approvedBy: createdBy,
+          latencyMs,
+          externalId,
+          correlationId: dto.correlationId,
+          sourceChannel: dto.sourceChannel || 'WEB_MANUAL',
+          weighingTimestamp: eventTime,
+          createdBy,
+          scaleDeviceId: dto.scaleDeviceId || undefined,
+          warehouseId: dto.warehouseId,
+          ownerId: dto.ownerId,
+          itemCode: dto.itemCode,
+          notes: dto.notes,
+        },
+        include: { eventState: true },
+      });
+
+      // Create event state
+      await tx.m8WeighbridgeEventState.create({
+        data: {
+          weighbridgeLogId: createdLog.id,
+          processingStatus: WeighEventProcessingStatus.RECEIVED,
+          callbackStatus: CallbackStatus.PENDING,
+        },
+      });
+
+      return createdLog;
+    });
+
+    this.logger.log(`Manual weigh event created: ${dto.weighbridgeEventId}, log ID: ${log.id}`);
+
+    // Dispatch callback
+    this.dispatchCallbackAsync(log.id, dto.referenceType, dto.referenceId);
+
+    return {
+      id: log.id,
+      weighbridgeEventId: dto.weighbridgeEventId,
+      isDuplicate: false,
+      processingStatus: WeighEventProcessingStatus.RECEIVED,
+      message: 'Manual weigh event created successfully',
+    };
   }
 
   async reprocessCallback(logId: string, userId: string, reason?: string) {

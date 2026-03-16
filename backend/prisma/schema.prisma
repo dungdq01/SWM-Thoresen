@@ -1534,9 +1534,8 @@ enum InboundDocumentType {
 
 enum InboundDocumentStatus {
   DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
+  SCANNED
+  ERROR
 }
 
 // ========== Module 4: Inbound Operations Models ==========
@@ -3239,7 +3238,11 @@ model M8WeighbridgeLog {
   isManualEntry       Boolean        @default(false) @map("is_manual_entry")
   manualReasonCode    String?        @map("manual_reason_code") @db.VarChar(50)
   approvedBy          String?        @map("approved_by") @db.Uuid
-  scaleDeviceId       String         @map("scale_device_id") @db.VarChar(50)
+  scaleDeviceId       String?        @map("scale_device_id") @db.VarChar(50)
+  warehouseId         String?        @map("warehouse_id") @db.Uuid
+  ownerId             String?        @map("owner_id") @db.Uuid
+  itemCode            String?        @map("item_code") @db.VarChar(50)
+  notes               String?        @map("notes") @db.Text
   photoAlprPath       String?        @map("photo_alpr_path") @db.VarChar(500)
   photoCargoPath      String?        @map("photo_cargo_path") @db.VarChar(500)
   latencyMs           Int?           @map("latency_ms")
@@ -3250,7 +3253,7 @@ model M8WeighbridgeLog {
   createdBy           String         @map("created_by") @db.VarChar(100)
   createdAt           DateTime       @default(now()) @map("created_at")
 
-  device     M8WeighbridgeDevice    @relation(fields: [scaleDeviceId], references: [deviceCode])
+  device     M8WeighbridgeDevice?   @relation(fields: [scaleDeviceId], references: [deviceCode])
   eventState M8WeighbridgeEventState?
 
   @@index([receiptId])
