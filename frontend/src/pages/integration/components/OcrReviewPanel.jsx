@@ -131,234 +131,232 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
   const isReviewRequired = result.status === 'REVIEW_REQUIRED'
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Left: Image preview */}
-      <div className="lg:w-1/2">
-        <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
-          <div className="p-3 border-b border-border bg-muted/30">
-            <p className="text-xs font-medium text-muted-foreground truncate">{result.originalFileName}</p>
+    <div className="space-y-4">
+      {/* Image preview — compact on mobile */}
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg-subtle)', minHeight: '160px', maxHeight: '220px' }}>
+          {result.imagePath ? (
+            <img
+              src={result.imagePath}
+              alt={result.originalFileName}
+              className="w-full h-full object-contain"
+              style={{ maxHeight: '220px' }}
+              onError={(e) => {
+                e.target.style.display = 'none'
+                e.target.nextSibling.style.display = 'flex'
+              }}
+            />
+          ) : null}
+          <div className="flex-col items-center justify-center gap-2" style={{ display: result.imagePath ? 'none' : 'flex', color: 'var(--color-text-muted)' }}>
+            <FileImage className="h-10 w-10" />
+            <p className="text-xs">Không thể tải ảnh</p>
           </div>
-          <div className="flex items-center justify-center min-h-[300px] p-4">
-            {result.imagePath ? (
-              <img
-                src={result.imagePath}
-                alt={result.originalFileName}
-                className="max-w-full max-h-[400px] object-contain rounded"
-                onError={(e) => {
-                  e.target.style.display = 'none'
-                  e.target.nextSibling.style.display = 'flex'
-                }}
+        </div>
+        <div className="px-3 py-2" style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}>
+          <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{result.originalFileName}</p>
+        </div>
+      </div>
+
+      {/* Status + ID */}
+      <div className="flex items-center justify-between">
+        <OcrStatusBadge status={result.status} />
+        <p className="text-[10px] font-mono truncate max-w-[50%]" style={{ color: 'var(--color-text-muted)' }}>{result.ocrRequestId}</p>
+      </div>
+
+      {isReviewRequired && (
+        <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
+            <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>Cần xem xét thủ công</p>
+          </div>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Một số trường có độ tin cậy thấp. Kiểm tra và chỉnh sửa trước khi xác nhận.</p>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 text-sky-400 animate-spin" />
+            <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
+              {result.status === 'UPLOADED' ? 'Đang chuẩn bị xử lý...' : 'Đang trích xuất dữ liệu...'}
+            </p>
+          </div>
+          <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>Tự động cập nhật mỗi 2 giây</p>
+        </div>
+      )}
+
+      {!isProcessing && (
+        <>
+          {/* Overall confidence */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Tổng độ tin cậy</span>
+            <ConfidenceBar value={result.overallConfidence || 0} threshold={85} />
+          </div>
+
+          {/* Fields */}
+          <div className="rounded-xl border divide-y" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="px-3">
+              <FieldRow
+                label="Số phiếu"
+                value={result.blNumber}
+                confidence={result.blConfidence || 0}
+                threshold={CONFIDENCE_THRESHOLD.bl}
+                editValue={edits.blNumber}
+                onEditChange={updateEdit('blNumber')}
+                isLow={Number(result.blConfidence || 0) > 0 && Number(result.blConfidence || 0) < CONFIDENCE_THRESHOLD.bl}
               />
-            ) : null}
-            <div className="flex-col items-center justify-center gap-2 text-muted-foreground" style={{ display: result.imagePath ? 'none' : 'flex' }}>
-              <FileImage className="h-12 w-12" />
-              <p className="text-sm">Không thể tải ảnh xem trước</p>
+              <FieldRow
+                label="Tên tàu"
+                value={result.vesselName}
+                confidence={result.vesselConfidence || 0}
+                threshold={CONFIDENCE_THRESHOLD.vessel}
+                editValue={edits.vesselName}
+                onEditChange={updateEdit('vesselName')}
+                isLow={Number(result.vesselConfidence || 0) > 0 && Number(result.vesselConfidence || 0) < CONFIDENCE_THRESHOLD.vessel}
+              />
+              <FieldRow
+                label="Khách hàng"
+                value={result.customerName}
+                confidence={result.customerConfidence || 0}
+                threshold={CONFIDENCE_THRESHOLD.customer}
+                editValue={edits.customerName}
+                onEditChange={updateEdit('customerName')}
+                isLow={Number(result.customerConfidence || 0) > 0 && Number(result.customerConfidence || 0) < CONFIDENCE_THRESHOLD.customer}
+              />
+              <FieldRow
+                label="Hàng hóa"
+                value={result.productName}
+                confidence={result.productConfidence || 0}
+                threshold={CONFIDENCE_THRESHOLD.product}
+                editValue={edits.productName}
+                onEditChange={updateEdit('productName')}
+                isLow={Number(result.productConfidence || 0) > 0 && Number(result.productConfidence || 0) < CONFIDENCE_THRESHOLD.product}
+              />
+              <FieldRow
+                label="Biển số xe"
+                value={result.vehicleNumber}
+                confidence={result.vehicleConfidence || 0}
+                threshold={CONFIDENCE_THRESHOLD.vehicle}
+                editValue={edits.vehicleNumber}
+                onEditChange={updateEdit('vehicleNumber')}
+                isLow={Number(result.vehicleConfidence || 0) > 0 && Number(result.vehicleConfidence || 0) < CONFIDENCE_THRESHOLD.vehicle}
+              />
+              <FieldRow
+                label="Nơi giao"
+                value={result.deliveryLocation}
+                confidence={result.deliveryConfidence || 0}
+                threshold={CONFIDENCE_THRESHOLD.delivery}
+                editValue={edits.deliveryLocation}
+                onEditChange={updateEdit('deliveryLocation')}
+                isLow={Number(result.deliveryConfidence || 0) > 0 && Number(result.deliveryConfidence || 0) < CONFIDENCE_THRESHOLD.delivery}
+              />
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right: OCR results */}
-      <div className="lg:w-1/2 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">Kết quả OCR</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{result.ocrRequestId}</p>
-          </div>
-          <OcrStatusBadge status={result.status} />
-        </div>
-
-        {isReviewRequired && (
-          <div className="rounded-md bg-warning/10 border border-warning/20 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
-              <p className="text-sm font-medium text-warning">Cần xem xét thủ công</p>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Một số trường có độ tin cậy thấp. Vui lòng kiểm tra và chỉnh sửa trước khi xác nhận.</p>
-          </div>
-        )}
-
-        {isProcessing && (
-          <div className="rounded-md bg-info/10 border border-info/20 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 text-info animate-spin" />
-              <p className="text-sm font-medium text-info">
-                {result.status === 'UPLOADED' ? 'Đang chuẩn bị xử lý...' : 'Đang trích xuất dữ liệu...'}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Tự động cập nhật mỗi 2 giây</p>
-          </div>
-        )}
-
-        {!isProcessing && (
-          <>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">Tổng độ tin cậy</span>
-              <ConfidenceBar value={result.overallConfidence || 0} threshold={85} />
-            </div>
-
-            <div className="rounded-lg border border-border divide-y divide-border">
-              <div className="px-4">
-                <FieldRow
-                  label="Số phiếu"
-                  value={result.blNumber}
-                  confidence={result.blConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.bl}
-                  editValue={edits.blNumber}
-                  onEditChange={updateEdit('blNumber')}
-                  isLow={Number(result.blConfidence || 0) > 0 && Number(result.blConfidence || 0) < CONFIDENCE_THRESHOLD.bl}
-                />
-                <FieldRow
-                  label="Tên tàu"
-                  value={result.vesselName}
-                  confidence={result.vesselConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.vessel}
-                  editValue={edits.vesselName}
-                  onEditChange={updateEdit('vesselName')}
-                  isLow={Number(result.vesselConfidence || 0) > 0 && Number(result.vesselConfidence || 0) < CONFIDENCE_THRESHOLD.vessel}
-                />
-                <FieldRow
-                  label="Khách hàng"
-                  value={result.customerName}
-                  confidence={result.customerConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.customer}
-                  editValue={edits.customerName}
-                  onEditChange={updateEdit('customerName')}
-                  isLow={Number(result.customerConfidence || 0) > 0 && Number(result.customerConfidence || 0) < CONFIDENCE_THRESHOLD.customer}
-                />
-                <FieldRow
-                  label="Hàng hóa"
-                  value={result.productName}
-                  confidence={result.productConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.product}
-                  editValue={edits.productName}
-                  onEditChange={updateEdit('productName')}
-                  isLow={Number(result.productConfidence || 0) > 0 && Number(result.productConfidence || 0) < CONFIDENCE_THRESHOLD.product}
-                />
-                <FieldRow
-                  label="Biển số xe"
-                  value={result.vehicleNumber}
-                  confidence={result.vehicleConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.vehicle}
-                  editValue={edits.vehicleNumber}
-                  onEditChange={updateEdit('vehicleNumber')}
-                  isLow={Number(result.vehicleConfidence || 0) > 0 && Number(result.vehicleConfidence || 0) < CONFIDENCE_THRESHOLD.vehicle}
-                />
-                <FieldRow
-                  label="Nơi giao"
-                  value={result.deliveryLocation}
-                  confidence={result.deliveryConfidence || 0}
-                  threshold={CONFIDENCE_THRESHOLD.delivery}
-                  editValue={edits.deliveryLocation}
-                  onEditChange={updateEdit('deliveryLocation')}
-                  isLow={Number(result.deliveryConfidence || 0) > 0 && Number(result.deliveryConfidence || 0) < CONFIDENCE_THRESHOLD.delivery}
-                />
+            <div className="px-3 py-3 space-y-3">
+              <div>
+                <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>TL xe hàng</span>
+                <div className="flex gap-2 mt-1.5">
+                  <Input
+                    value={edits.grossWeight}
+                    onChange={(e) => updateEdit('grossWeight')(e.target.value)}
+                    placeholder="Trọng lượng"
+                    type="number"
+                    className="flex-1"
+                    disabled={!canEdit}
+                  />
+                  <Input
+                    value={edits.grossWeightUom}
+                    onChange={(e) => updateEdit('grossWeightUom')(e.target.value)}
+                    placeholder="ĐVT"
+                    className="w-16"
+                    disabled={!canEdit}
+                  />
+                </div>
+                {Number(result.grossWeightConfidence || 0) > 0 && (
+                  <div className="mt-1.5">
+                    <ConfidenceBar value={result.grossWeightConfidence} threshold={CONFIDENCE_THRESHOLD.grossWeight} />
+                  </div>
+                )}
               </div>
-              <div className="px-4 py-3 space-y-3">
-                <div>
-                  <span className="text-xs font-medium text-muted-foreground">Trọng lượng xe hàng</span>
-                  <div className="flex gap-2 mt-1.5">
-                    <Input
-                      value={edits.grossWeight}
-                      onChange={(e) => updateEdit('grossWeight')(e.target.value)}
-                      placeholder="TL xe hàng"
-                      type="number"
-                      className="flex-1"
-                      disabled={!canEdit}
-                    />
-                    <Input
-                      value={edits.grossWeightUom}
-                      onChange={(e) => updateEdit('grossWeightUom')(e.target.value)}
-                      placeholder="ĐVT"
-                      className="w-20"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  {Number(result.grossWeightConfidence || 0) > 0 && (
-                    <div className="mt-1.5">
-                      <ConfidenceBar value={result.grossWeightConfidence} threshold={CONFIDENCE_THRESHOLD.grossWeight} />
-                    </div>
-                  )}
+              <div>
+                <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>TL xe rỗng</span>
+                <div className="flex gap-2 mt-1.5">
+                  <Input
+                    value={edits.tareWeight}
+                    onChange={(e) => updateEdit('tareWeight')(e.target.value)}
+                    placeholder="Trọng lượng"
+                    type="number"
+                    className="flex-1"
+                    disabled={!canEdit}
+                  />
+                  <Input
+                    value={edits.tareWeightUom}
+                    onChange={(e) => updateEdit('tareWeightUom')(e.target.value)}
+                    placeholder="ĐVT"
+                    className="w-16"
+                    disabled={!canEdit}
+                  />
                 </div>
-                <div>
-                  <span className="text-xs font-medium text-muted-foreground">Trọng lượng xe rỗng</span>
-                  <div className="flex gap-2 mt-1.5">
-                    <Input
-                      value={edits.tareWeight}
-                      onChange={(e) => updateEdit('tareWeight')(e.target.value)}
-                      placeholder="TL xe rỗng"
-                      type="number"
-                      className="flex-1"
-                      disabled={!canEdit}
-                    />
-                    <Input
-                      value={edits.tareWeightUom}
-                      onChange={(e) => updateEdit('tareWeightUom')(e.target.value)}
-                      placeholder="ĐVT"
-                      className="w-20"
-                      disabled={!canEdit}
-                    />
+                {Number(result.tareWeightConfidence || 0) > 0 && (
+                  <div className="mt-1.5">
+                    <ConfidenceBar value={result.tareWeightConfidence} threshold={CONFIDENCE_THRESHOLD.tareWeight} />
                   </div>
-                  {Number(result.tareWeightConfidence || 0) > 0 && (
-                    <div className="mt-1.5">
-                      <ConfidenceBar value={result.tareWeightConfidence} threshold={CONFIDENCE_THRESHOLD.tareWeight} />
-                    </div>
-                  )}
+                )}
+              </div>
+              <div>
+                <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>TL hàng</span>
+                <div className="flex gap-2 mt-1.5">
+                  <Input
+                    value={edits.qtyExtracted}
+                    onChange={(e) => updateEdit('qtyExtracted')(e.target.value)}
+                    placeholder="Trọng lượng"
+                    type="number"
+                    className="flex-1"
+                    disabled={!canEdit}
+                  />
+                  <Input
+                    value={edits.qtyUom}
+                    onChange={(e) => updateEdit('qtyUom')(e.target.value)}
+                    placeholder="ĐVT"
+                    className="w-16"
+                    disabled={!canEdit}
+                  />
                 </div>
-                <div>
-                  <span className="text-xs font-medium text-muted-foreground">Trọng lượng hàng</span>
-                  <div className="flex gap-2 mt-1.5">
-                    <Input
-                      value={edits.qtyExtracted}
-                      onChange={(e) => updateEdit('qtyExtracted')(e.target.value)}
-                      placeholder="TL hàng"
-                      type="number"
-                      className="flex-1"
-                      disabled={!canEdit}
-                    />
-                    <Input
-                      value={edits.qtyUom}
-                      onChange={(e) => updateEdit('qtyUom')(e.target.value)}
-                      placeholder="ĐVT"
-                      className="w-20"
-                      disabled={!canEdit}
-                    />
+                {Number(result.qtyConfidence || 0) > 0 && (
+                  <div className="mt-1.5">
+                    <ConfidenceBar value={result.qtyConfidence} threshold={CONFIDENCE_THRESHOLD.qty} />
                   </div>
-                  {Number(result.qtyConfidence || 0) > 0 && (
-                    <div className="mt-1.5">
-                      <ConfidenceBar value={result.qtyConfidence} threshold={CONFIDENCE_THRESHOLD.qty} />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {canEdit && (
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={rejectMutation.isPending}
-                >
-                  <X className="h-4 w-4 mr-1.5" />Từ chối
-                </Button>
-                <Button
-                  variant="accent"
-                  onClick={handleConfirm}
-                  disabled={confirmMutation.isPending}
-                >
-                  {confirmMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-1.5" />
-                  )}
-                  Xác nhận
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          {/* Action buttons — full width on mobile */}
+          {canEdit && (
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setShowRejectModal(true)}
+                disabled={rejectMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-medium transition-colors active:scale-[0.98]"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-card)' }}
+              >
+                <X className="h-4 w-4" />Từ chối
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={confirmMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-ice py-2.5 text-sm font-bold text-navy-950 transition-colors active:scale-[0.98]"
+              >
+                {confirmMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                Xác nhận
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
       <Modal
         isOpen={showRejectModal}
