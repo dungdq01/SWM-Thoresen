@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useOnHandList } from '@domains/inventory-core'
 import { useLookupInventoryStatuses, useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
-import { Badge, Button, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
+import { InventoryStatusBadge } from '@domains/master-data/components/StatusBadge'
+import { Button, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
 import { InventoryPostingDrawer } from '@features/inventory-core'
 
 const TOTAL_COLS = 11
@@ -128,9 +129,7 @@ export function InventoryOnHandPage() {
                       </TableCell>
                       <TableCell className="text-navy-700">{row.item?.itemName || '—'}</TableCell>
                       <TableCell>
-                        <Badge variant={row.inventDim?.inventoryStatus?.isAllocatable ? 'success' : 'warning'}>
-                          {row.inventDim?.inventoryStatus?.statusCode || 'N/A'}
-                        </Badge>
+                        <InventoryStatusBadge statusCode={row.inventDim?.inventoryStatus?.statusCode} />
                       </TableCell>
                       <TableCell>
                         <span className="font-mono text-sm text-navy-600">{row.inventDim?.location?.locationCode || '—'}</span>
