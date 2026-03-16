@@ -95,7 +95,7 @@ const getMenuConfig = (t) => [
     basePath: '/app/outbound-operations',
     children: [
       { to: '/app/outbound-operations/sales-orders', label: 'Đơn bán hàng' },
-      { to: '/app/outbound-operations/shipments', label: t('sidebar.items.shipments') },
+      { to: '/app/outbound-operations/shipments', label: 'Phiếu xuất kho' },
     ],
   },
   {

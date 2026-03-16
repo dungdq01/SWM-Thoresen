@@ -238,6 +238,22 @@ export class SalesOrderService {
     return this.transformSalesOrder(updated);
   }
 
+  async unconfirm(id: string, userId?: string) {
+    const existing = await this.prisma.salesOrder.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Sales Order ${id} not found`);
+    if (existing.status !== 'CONFIRMED') {
+      throw new BadRequestException('Can only unconfirm Sales Orders in CONFIRMED status');
+    }
+
+    const updated = await this.prisma.salesOrder.update({
+      where: { id },
+      data: { status: 'DRAFT', updatedBy: userId },
+      include: { owner: true, lines: { include: { item: true, uom: true } } },
+    });
+
+    return this.transformSalesOrder(updated);
+  }
+
   async getNextSoNumber() {
     const code = await this.generateSoNumber();
     return { code };

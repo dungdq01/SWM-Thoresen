@@ -1891,6 +1891,7 @@ model ShipmentHeader {
   warehouseId          String             @map("warehouse_id") @db.Uuid
   vehicleNumber        String             @map("vehicle_number") @db.VarChar(30)
   vehicleTypeId        String?            @map("vehicle_type_id") @db.Uuid
+  notes                String?            @db.Text
   status               ShipmentStatus     @default(DRAFT)
   tareWeightKg         Decimal?           @map("tare_weight_kg") @db.Decimal(18, 3)
   totalGrossKg         Decimal?           @map("total_gross_kg") @db.Decimal(18, 3)
@@ -1957,6 +1958,7 @@ model ShipmentLine {
   netWeightKg         Decimal?           @map("net_weight_kg") @db.Decimal(18, 3)
   weighSequenceNo     Int?               @map("weigh_sequence_no")
   lineStatus          ShipmentLineStatus @default(PENDING) @map("line_status")
+  notes               String?            @db.Text
   postedTransId       String?            @map("posted_trans_id") @db.VarChar(40)
   isDpmLine           Boolean            @default(false) @map("is_dpm_line")
   dpmNominalQtyKg     Decimal?           @map("dpm_nominal_qty_kg") @db.Decimal(18, 3)

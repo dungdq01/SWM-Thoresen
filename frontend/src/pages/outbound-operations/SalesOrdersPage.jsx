@@ -1,20 +1,21 @@
 import { useState } from 'react'
-import { Plus, Check, Trash2, Pencil, Mail } from 'lucide-react'
+import { Plus, Check, Trash2, Pencil, RotateCcw, FileOutput } from 'lucide-react'
 import {
   useSalesOrders,
   useCreateSalesOrder,
   useUpdateSalesOrder,
   useConfirmSalesOrder,
   useCancelSalesOrder,
+  useUnconfirmSalesOrder,
   useNextSoNumber,
 } from '@domains/outbound-operations'
-import { useLookupOwners, useLookupItems, useLookupUoms } from '@domains/master-data'
+import { useLookupOwners, useLookupItems, useLookupUoms, useLookupWarehouses } from '@domains/master-data'
 import {
   Badge, Button, Input, Pagination, Select,
   Table, TableBody, TableCell, TableEmpty, TableHead,
   TableHeader, TableLoading, TableRow,
 } from '@shared/ui'
-import { SOFormDrawer } from '@features/outbound-operations'
+import { SOFormDrawer, CreateShipmentModal } from '@features/outbound-operations'
 
 const SO_STATUSES = [
   { value: '', label: 'Tất cả' },
@@ -56,10 +57,17 @@ export function SalesOrdersPage() {
   const updateSo = useUpdateSalesOrder()
   const confirmSo = useConfirmSalesOrder()
   const cancelSo = useCancelSalesOrder()
+  const unconfirmSo = useUnconfirmSalesOrder()
+
+  // State for Shipment modal
+  const [shipmentModalState, setShipmentModalState] = useState({ isOpen: false, so: null })
+  const handleOpenShipmentModal = (so) => setShipmentModalState({ isOpen: true, so })
+  const handleCloseShipmentModal = () => setShipmentModalState({ isOpen: false, so: null })
 
   const { data: owners = [] } = useLookupOwners()
   const { data: items = [] } = useLookupItems()
   const { data: uoms = [] } = useLookupUoms()
+  const { data: warehouses = [] } = useLookupWarehouses()
 
   const rows = response?.data || response?.items || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -201,7 +209,17 @@ export function SalesOrdersPage() {
                         </Button>
                       </>
                     )}
-                    {['CONFIRMED', 'PARTIAL', 'SHIPPED'].includes(so.status) && (
+                    {so.status === 'CONFIRMED' && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => unconfirmSo.mutate(so.id)} title="Hủy xác nhận">
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="accent" size="sm" onClick={() => handleOpenShipmentModal(so)} title="Tạo phiếu xuất">
+                          <FileOutput className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                    {['PARTIAL', 'SHIPPED'].includes(so.status) && (
                       <span className="text-xs text-navy-400">Đang xử lý</span>
                     )}
                     {['CLOSED', 'CANCELLED'].includes(so.status) && (
@@ -231,6 +249,21 @@ export function SalesOrdersPage() {
         isLoading={createSo.isPending || updateSo.isPending}
         nextSoNumber={nextSoNumber || ''}
         owners={owners}
+        items={items}
+        uoms={uoms}
+      />
+
+      {/* Modal — Create Shipment */}
+      <CreateShipmentModal
+        isOpen={shipmentModalState.isOpen}
+        onClose={handleCloseShipmentModal}
+        onSubmit={async (payload) => {
+          // TODO: Implement createShipment API call
+          console.log('Create shipment payload:', payload)
+          handleCloseShipmentModal()
+        }}
+        salesOrder={shipmentModalState.so}
+        warehouses={warehouses}
         items={items}
         uoms={uoms}
       />

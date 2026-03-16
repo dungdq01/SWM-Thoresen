@@ -12,6 +12,8 @@ export const OUTBOUND_QUERY_KEYS = {
   salesOrders: ['outbound', 'sales-orders'],
   salesOrder: (id) => ['outbound', 'sales-orders', id],
   nextSoNumber: ['outbound', 'sales-orders', 'next-number'],
+  shipments: ['outbound', 'shipments'],
+  shipment: (id) => ['outbound', 'shipments', id],
 }
 
 // ─── Sales Orders ─────────────────────────────────────────────────────────────
@@ -110,6 +112,110 @@ export function useCloseSalesOrder() {
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || 'Lỗi đóng đơn xuất hàng')
+    },
+  })
+}
+
+export function useUnconfirmSalesOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => outboundOperationsApi.unconfirmSalesOrder(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.salesOrders })
+      toast.success('Hủy xác nhận thành công')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi hủy xác nhận')
+    },
+  })
+}
+
+// ─── Shipments ────────────────────────────────────────────────────────────────
+
+export function useShipments(params = {}) {
+  return useQuery({
+    queryKey: [...OUTBOUND_QUERY_KEYS.shipments, params],
+    queryFn: () => outboundOperationsApi.getShipments(params),
+    staleTime: 15000,
+  })
+}
+
+export function useShipmentById(id) {
+  return useQuery({
+    queryKey: OUTBOUND_QUERY_KEYS.shipment(id),
+    queryFn: () => outboundOperationsApi.getShipmentById(id),
+    enabled: !!id,
+  })
+}
+
+export function useCreateShipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => outboundOperationsApi.createShipment(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.salesOrders })
+      toast.success('Tạo phiếu xuất thành công')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi tạo phiếu xuất')
+    },
+  })
+}
+
+export function useUpdateShipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }) => outboundOperationsApi.updateShipment(id, data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipment(id) })
+      toast.success('Cập nhật phiếu xuất thành công')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi cập nhật phiếu xuất')
+    },
+  })
+}
+
+export function useConfirmShipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => outboundOperationsApi.confirmShipment(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      toast.success('Xác nhận phiếu xuất thành công')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi xác nhận phiếu xuất')
+    },
+  })
+}
+
+export function useDeleteShipment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => outboundOperationsApi.deleteShipment(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      toast.success('Xóa phiếu xuất thành công')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi xóa phiếu xuất')
+    },
+  })
+}
+
+export function useReportShipmentError() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reasonCode }) => outboundOperationsApi.reportShipmentError(id, reasonCode),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      toast.success('Báo lỗi phiếu xuất thành công')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi báo lỗi phiếu xuất')
     },
   })
 }

@@ -71,4 +71,12 @@ export class SalesOrderController {
   ) {
     return this.salesOrderService.close(id, userId);
   }
+
+  @Post(':id/unconfirm')
+  async unconfirm(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.salesOrderService.unconfirm(id, userId);
+  }
 }

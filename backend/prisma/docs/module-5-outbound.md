@@ -2,8 +2,9 @@
 
 **Schema Location:** `prisma/schema.prisma`  
 **Module:** Outbound Operations  
-**Status:** ✅ Active (Sales Order Management)  
+**Status:** ✅ Active (Sales Order + Shipment Management)  
 **Tables:** 13 (Sales Order + Shipment tables)  
+**Version:** 2.4.0  
 **Last Updated:** 2026-03-17  
 
 ---
@@ -14,6 +15,7 @@ Module 5 sử dụng các bảng database để quản lý **luồng xuất hàn
 
 ### Chức năng hiện tại
 - **Sales Order Management**: Tạo và quản lý đơn xuất hàng
+- **Shipment Management**: Tạo và quản lý phiếu xuất kho từ SO
 - **Chi tiết hàng hóa**: Theo dõi SL dự kiến và SL đã xuất theo dòng
 
 ---
@@ -28,14 +30,15 @@ Module 5 sử dụng các bảng database để quản lý **luồng xuất hàn
 | `sales_order_lines` | SalesOrderLine | Chi tiết dòng hàng |
 | `sales_order_status_history` | SalesOrderStatusHistory | Lịch sử thay đổi trạng thái |
 
-### 2.2 Shipment Tables (Sẵn sàng cho phase tiếp theo)
+### 2.2 Shipment Tables (Đang sử dụng)
 
-| Group | Tables | Mục đích |
-|-------|--------|----------|
-| **Runtime** | `shipment_header`, `shipment_line`, `shipment_allocation_record` | Dữ liệu nghiệp vụ chính |
-| **Weighing** | `shipment_weighing_attempt` | Log cân nặng |
-| **Audit** | `shipment_status_history`, `shipment_exception_log`, `shipment_approval_decision` | Lịch sử và exceptions |
-| **Control** | `shipment_pick_work_link`, `shipment_posting_link`, `shipment_so_link` | Liên kết với modules khác |
+| Group | Tables | Mục đích | Status |
+|-------|--------|----------|--------|
+| **Runtime** | `shipment_header`, `shipment_line` | Dữ liệu nghiệp vụ chính | ✅ Active |
+| **Allocation** | `shipment_allocation_record` | Phân bổ tồn kho | 🟡 Pending |
+| **Weighing** | `shipment_weighing_attempt` | Log cân nặng | 🟡 Pending |
+| **Audit** | `shipment_status_history`, `shipment_exception_log`, `shipment_approval_decision` | Lịch sử và exceptions | 🟡 Pending |
+| **Control** | `shipment_pick_work_link`, `shipment_posting_link`, `shipment_so_link` | Liên kết với modules khác | 🟡 Pending |
 
 ---
 
@@ -114,8 +117,38 @@ enum SalesOrderLineStatus {
 }
 ```
 
-### Shipment Enums (Sẵn sàng cho phase tiếp theo)
-- `ShipmentStatus`, `ShipmentLineStatus`, `ShipmentSourceType`
+### Shipment Enums (Đang sử dụng)
+
+```prisma
+enum ShipmentStatus {
+  DRAFT              // Frontend: NEW
+  CONFIRMED          // Frontend: CONFIRMED
+  ALLOCATED          // Frontend: ALLOCATED (🟡 Pending)
+  PICKING            // Frontend: PICKING (🟡 Pending)
+  LOADING            // Frontend: LOADING (🟡 Pending)
+  SHIPPED            // Frontend: SHIPPED
+  CLOSED             // Frontend: CLOSED
+  CANCELLED          // Frontend: CANCELLED
+}
+
+enum ShipmentLineStatus {
+  PENDING            // Chờ xử lý
+  ALLOCATED          // Đã phân bổ
+  PICKING            // Đang lấy hàng
+  PICKED             // Đã lấy
+  LOADING            // Đang xếp hàng
+  SHIPPED            // Đã xuất
+  CANCELLED          // Đã hủy
+}
+
+enum ShipmentSourceType {
+  SO                 // Từ Sales Order (✅ Active)
+  DELIVERY_REQUEST   // Từ yêu cầu giao hàng
+  STANDALONE         // Độc lập
+}
+```
+
+### Shipment Enums (Pending)
 - `AllocationStatus`, `WeighType`, `WeighSourceMode`
 - `ShipmentExceptionType`, `ShipmentExceptionStatus`
 - `ApprovalDecisionType`, `ApprovalScope`
@@ -136,7 +169,53 @@ enum SalesOrderLineStatus {
 
 ---
 
-## 6. Changelog
+## 6. Shipment Schema Detail
+
+### 6.1 ShipmentHeader (shipment_header)
+
+```prisma
+model ShipmentHeader {
+  id                   String             @id @default(uuid())
+  shipmentNumber       String?            @unique          // Số phiếu xuất (auto-gen)
+  soId                 String?                             // Số SO (reference)
+  salesOrderId         String?                             // FK -> SalesOrder
+  sourceType           ShipmentSourceType                  // SO, DELIVERY_REQUEST, STANDALONE
+  ownerId              String                              // FK -> MdOwner
+  customerId           String?                             // FK -> MdCustomer
+  warehouseId          String                              // FK -> MdWarehouse
+  vehicleNumber        String                              // Biển số xe
+  notes                String?            @db.Text         // Ghi chú header (v2.4.0)
+  status               ShipmentStatus     @default(DRAFT)  // DRAFT=NEW
+  cancelReasonCode     String?                             // Lý do báo lỗi/hủy
+  totalGrossKg         Decimal?                            // Tổng KL thực
+  totalNetKg           Decimal?                            // Tổng KL net
+  ...
+}
+```
+
+### 6.2 ShipmentLine (shipment_line)
+
+```prisma
+model ShipmentLine {
+  id                  String             @id @default(uuid())
+  shipmentHeaderId    String                               // FK -> ShipmentHeader
+  lineNumber          Int
+  soLineId            String?                              // FK -> SalesOrderLine (reference)
+  itemId              String                               // FK -> MdItem
+  cargoForm           CargoForm                            // BULK, BAGGED, CONTAINER
+  uomId               String                               // FK -> MdUom
+  expectedQty         Decimal                              // SL dự kiến
+  expectedQtyKg       Decimal
+  shippedQty          Decimal?                             // SL đã xuất
+  lineStatus          ShipmentLineStatus @default(PENDING)
+  notes               String?            @db.Text         // Ghi chú dòng (v2.4.0)
+  ...
+}
+```
+
+---
+
+## 7. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
@@ -144,3 +223,5 @@ enum SalesOrderLineStatus {
 | 2.0.0 | 2026-03-17 | RESET: Logic xóa để định nghĩa lại |
 | 2.1.0 | 2026-03-17 | Implement Sales Order: sử dụng bảng sales_orders, sales_order_lines với data mapping cho soType và blNumber |
 | 2.2.0 | 2026-03-17 | **REMOVED FE Features:** Phân bổ, Cân hàng, Phê duyệt (chưa implement backend). Module 5 FE chỉ còn: Sales Order, Shipments |
+| 2.3.0 | 2026-03-17 | **Shipment Management:** Sử dụng `shipment_header`, `shipment_line` để lưu phiếu xuất từ SO |
+| 2.4.0 | 2026-03-17 | **Shipment Notes:** Thêm field `notes` cho `shipment_header` và `shipment_line` |

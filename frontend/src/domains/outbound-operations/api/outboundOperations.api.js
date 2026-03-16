@@ -29,6 +29,31 @@ export const outboundOperationsApi = {
   closeSalesOrder: (id) =>
     httpClient.post(`/outbound/sales-orders/${id}/close`),
 
+  unconfirmSalesOrder: (id) =>
+    httpClient.post(`/outbound/sales-orders/${id}/unconfirm`),
+
   getNextSoNumber: () =>
     httpClient.get('/outbound/sales-orders/next-number'),
+
+  // ─── Shipments ────────────────────────────────────────────────────────────
+  getShipments: (params = {}) =>
+    httpClient.get('/outbound/shipments', { params }),
+
+  getShipmentById: (id) =>
+    httpClient.get(`/outbound/shipments/${id}`),
+
+  createShipment: (data) =>
+    httpClient.post('/outbound/shipments', data),
+
+  updateShipment: (id, data) =>
+    httpClient.patch(`/outbound/shipments/${id}`, data),
+
+  confirmShipment: (id) =>
+    httpClient.post(`/outbound/shipments/${id}/confirm`),
+
+  deleteShipment: (id) =>
+    httpClient.delete(`/outbound/shipments/${id}`),
+
+  reportShipmentError: (id, reasonCode) =>
+    httpClient.post(`/outbound/shipments/${id}/report-error`, { reasonCode }),
 }
