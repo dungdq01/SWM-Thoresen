@@ -68,9 +68,15 @@ export class CreatePurchaseOrderDto {
   @IsUUID()
   vendorId!: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Single warehouse ID (deprecated, use warehouseIds)' })
+  @IsOptional()
   @IsUUID()
-  warehouseId!: string;
+  warehouseId?: string;
+
+  @ApiProperty({ type: [String], description: 'Array of warehouse IDs' })
+  @IsArray()
+  @IsUUID('4', { each: true })
+  warehouseIds!: string[];
 
   @ApiPropertyOptional({ description: 'Tên tàu / Nguồn gốc (chỉ dùng khi poType=SEA)' })
   @IsOptional()
@@ -115,10 +121,16 @@ export class UpdatePurchaseOrderDto {
   @IsUUID()
   vendorId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Single warehouse ID (deprecated, use warehouseIds)' })
   @IsOptional()
   @IsUUID()
   warehouseId?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Array of warehouse IDs' })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  warehouseIds?: string[];
 
   @ApiPropertyOptional({ description: 'Tên tàu / Nguồn gốc (chỉ dùng khi poType=SEA)' })
   @IsOptional()

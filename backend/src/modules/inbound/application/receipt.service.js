@@ -63,17 +63,14 @@ class ReceiptService {
         throw new InboundError(ERROR_CODES.LINE_REQUIRED, 'Receipt phải có ít nhất 1 line');
       }
 
-      // HI-6 FIX: Guard single-line assumption in Phase 1
-      if (lines.length > 1) {
-        throw new InboundError(ERROR_CODES.INVALID_STATE, 'Phase 1 chỉ hỗ trợ single-line receipt', { lineCount: lines.length });
-      }
-
+      // Multi-line receipts are now supported
       for (const line of lines) {
         await this.validateLineItem(line, tx);
       }
 
       // Calculate totalExpectedQty in KG (convert from source UOM to KG)
       const kgUom = await tx.mdUom.findFirst({ where: { uomCode: 'KG' } });
+      console.log('[Receipt] KG UOM found:', kgUom?.id, kgUom?.uomCode);
       let totalExpectedQtyKg = 0;
       const linesWithConversion = [];
 
@@ -82,13 +79,24 @@ class ReceiptService {
         let expectedQtyKg = qty;
 
         if (line.uomId && kgUom && line.uomId !== kgUom.id) {
-          const conversion = await tx.mdUomConversion.findFirst({
-            where: { fromUomId: line.uomId, toUomId: kgUom.id },
+          // Try to find item-specific conversion first, then global conversion
+          let conversion = await tx.mdUomConversion.findFirst({
+            where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: line.itemId },
           });
+          if (!conversion) {
+            conversion = await tx.mdUomConversion.findFirst({
+              where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: null },
+            });
+          }
+          console.log(`[Receipt] Line UOM conversion: uomId=${line.uomId}, qty=${qty}, conversion=${conversion?.conversionFactor}`);
           if (conversion) {
             expectedQtyKg = qty * Number(conversion.conversionFactor);
+          } else {
+            // Log warning for missing conversion
+            console.warn(`[Receipt] No UOM conversion found: ${line.uomId} -> KG for item ${line.itemId}`);
           }
         }
+        console.log(`[Receipt] Line: itemId=${line.itemId}, qty=${qty}, expectedQtyKg=${expectedQtyKg}`);
 
         totalExpectedQtyKg += expectedQtyKg;
         linesWithConversion.push({
@@ -398,29 +406,26 @@ class ReceiptService {
         },
       });
 
-      // HI-6: Guard single-line assumption
-      if (receipt.lines.length > 1) {
-        throw new InboundError(ERROR_CODES.INVALID_STATE, 'Phase 1 chỉ hỗ trợ single-line receipt', { lineCount: receipt.lines.length });
-      }
-
-      // Lookup tolerance và check
-      const line = receipt.lines[0]; // Phase 1: single line
-
-      // HI-1 FIX: Check bagged over-receipt rule with line data for expectedBagCount calculation
-      if (line.cargoForm && line.cargoForm !== 'BULK' && line.bagCount) {
-        const lineData = {
-          expectedQty: line.expectedQty,
-          nominalWeightPerBag: line.nominalWeightPerBag,
-        };
-        const baggedCheck = await BaggedPolicy.checkOverReceipt(tx, receipt.poId, line.bagCount, lineData);
-        if (baggedCheck.overReceiptBlocked) {
-          throw new InboundError(ERROR_CODES.INVALID_STATE, 'Vượt quá số lượng bag cho phép của PO', baggedCheck);
+      // Multi-line receipts supported - check bagged policy for all bagged lines
+      for (const line of receipt.lines) {
+        if (line.cargoForm && line.cargoForm !== 'BULK' && line.bagCount) {
+          const lineData = {
+            expectedQty: line.expectedQty,
+            nominalWeightPerBag: line.nominalWeightPerBag,
+          };
+          const baggedCheck = await BaggedPolicy.checkOverReceipt(tx, receipt.poId, line.bagCount, lineData);
+          if (baggedCheck.overReceiptBlocked) {
+            throw new InboundError(ERROR_CODES.INVALID_STATE, 'Vượt quá số lượng bag cho phép của PO', baggedCheck);
+          }
         }
       }
-      const toleranceLookup = await TolerancePolicy.lookupTolerance(tx, receipt.ownerId, line.itemId);
+
+      // Lookup tolerance using first line's item (tolerance applies to overall receipt)
+      const firstLine = receipt.lines[0];
+      const toleranceLookup = await TolerancePolicy.lookupTolerance(tx, receipt.ownerId, firstLine.itemId);
       
       if (toleranceLookup.tolerance === null) {
-        throw createToleranceLookupError(receipt.ownerId, line.itemId);
+        throw createToleranceLookupError(receipt.ownerId, firstLine.itemId);
       }
 
       const variancePct = TolerancePolicy.calculateVariance(netWeightKg, Number(receipt.expectedQty));
@@ -441,37 +446,48 @@ class ReceiptService {
         updatedBy: context.userId,
       };
 
-      // If accepted, update received qty on lines and post inventory
+      // If accepted, update received qty on lines and post inventory for each line
       if (toleranceResult.pass) {
-        await tx.receiptLine.updateMany({
-          where: { receiptHeaderId: receiptId },
-          data: { receivedQty: netWeightKg, status: 'RECEIVED' },
-        });
+        // Calculate total expected qty for ratio distribution
+        const totalExpectedQty = receipt.lines.reduce((sum, l) => sum + Number(l.expectedQty || 0), 0);
+        
+        let lastPostingResult = null;
+        for (const line of receipt.lines) {
+          // Distribute netWeightKg proportionally to each line's expectedQty
+          const lineRatio = totalExpectedQty > 0 ? Number(line.expectedQty || 0) / totalExpectedQty : 1 / receipt.lines.length;
+          const lineReceivedQty = netWeightKg * lineRatio;
 
-        // CR-1 FIX: Post inventory to M3 when RECEIVED
-        // BUG-FIX: Pass tx to avoid nested transaction, ensuring atomicity
-        const postingResult = await this.postingEngine.postInventory({
-          externalId: `RCPT-${receipt.id}-${line.id}`,
-          correlationId: receipt.correlationId,
-          eventCode: 'RECEIPT_RECEIVED',
-          refType: 'RECEIPT',
-          refId: receipt.id,
-          refLineId: line.id,
-          itemId: line.itemId,
-          qty: String(netWeightKg),
-          uomCode: line.uom?.uomCode || 'KG',
-          dimTo: {
-            warehouseCode: receipt.warehouse?.warehouseCode,
-            locationCode: receipt.receivingLocation?.locationCode,
-            ownerCode: receipt.owner?.ownerCode,
-            statusCode: 'AVAILABLE',
-          },
-          sourceApp: context.sourceApp || 'WEB',
-          postedBy: context.userId,
-        }, tx);
+          await tx.receiptLine.update({
+            where: { id: line.id },
+            data: { receivedQty: lineReceivedQty, status: 'RECEIVED' },
+          });
 
-        // Save posting reference to receipt header
-        updateData.postedTransId = postingResult.transId;
+          // Post inventory for each line
+          lastPostingResult = await this.postingEngine.postInventory({
+            externalId: `RCPT-${receipt.id}-${line.id}`,
+            correlationId: receipt.correlationId,
+            eventCode: 'RECEIPT_RECEIVED',
+            refType: 'RECEIPT',
+            refId: receipt.id,
+            refLineId: line.id,
+            itemId: line.itemId,
+            qty: String(lineReceivedQty),
+            uomCode: line.uom?.uomCode || 'KG',
+            dimTo: {
+              warehouseCode: receipt.warehouse?.warehouseCode,
+              locationCode: receipt.receivingLocation?.locationCode,
+              ownerCode: receipt.owner?.ownerCode,
+              statusCode: 'AVAILABLE',
+            },
+            sourceApp: context.sourceApp || 'WEB',
+            postedBy: context.userId,
+          }, tx);
+        }
+
+        // Save last posting reference to receipt header
+        if (lastPostingResult) {
+          updateData.postedTransId = lastPostingResult.transId;
+        }
       }
 
       const updated = await tx.receiptHeader.update({

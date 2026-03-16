@@ -35,6 +35,14 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 export class ReceiptController {
   constructor(private readonly receiptService: ReceiptService) {}
 
+  @Get('receipts/next-number')
+  @ApiOperation({ summary: 'Get next ASN number' })
+  @ApiResponse({ status: 200, description: 'Next ASN number' })
+  @Permission('inbound.receipt.view')
+  async getNextNumber() {
+    return this.receiptService.getNextAsnNumber();
+  }
+
   @Post('receipts')
   @ApiOperation({ summary: 'Create a new receipt' })
   @ApiResponse({ status: 201, description: 'Receipt created' })

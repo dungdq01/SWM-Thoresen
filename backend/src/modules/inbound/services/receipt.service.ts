@@ -25,6 +25,23 @@ export class ReceiptService {
     return userId && isValidUUID(userId) ? userId : null;
   }
 
+  async getNextAsnNumber(): Promise<{ code: string; prefix: string }> {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const prefix = `ASN-${today}-`;
+
+    const existing = await this.prisma.receiptHeader.findMany({
+      where: { asnId: { startsWith: prefix } },
+      select: { asnId: true },
+    });
+
+    const numbers = existing
+      .map((r) => parseInt(r.asnId?.replace(prefix, '') || '0', 10))
+      .filter((n) => !isNaN(n));
+
+    const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return { code: `${prefix}${String(nextNum).padStart(3, '0')}`, prefix: 'ASN' };
+  }
+
   async createReceipt(dto: CreateReceiptDto, userId: string) {
     try {
       // Transform frontend payload to legacy service format

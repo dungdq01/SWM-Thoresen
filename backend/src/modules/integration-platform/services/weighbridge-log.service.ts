@@ -355,7 +355,7 @@ export class WeighbridgeLogService {
     // Extract owner and item info - prioritize log fields for manual entries
     const owner = log.ownerId ? ownerMap.get(log.ownerId) : (receipt?.owner || shipment?.owner || null);
     const itemInfo = log.itemCode ? { itemCode: log.itemCode } : (receipt?.lines?.[0]?.item || shipment?.lines?.[0]?.item || null);
-    const ticketNumber = receipt?.receiptNumber || receipt?.asnId || shipment?.shipmentNumber || null;
+    const ticketNumber = receipt?.asnId || receipt?.receiptNumber || shipment?.shipmentNumber || null;
     const asnId = receipt?.asnId || null;
 
     return {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FileText, X, Plus, Trash2, Sparkles, Ship, Truck } from 'lucide-react'
-import { Button, Input, Select, Textarea } from '@shared/ui'
+import { Button, Input, Select, MultiSelect, Textarea } from '@shared/ui'
 
 const PO_TYPES = [
   { value: 'SEA', label: 'Nhập đường thủy' },
@@ -15,7 +15,7 @@ const emptyDraft = {
   poType: 'SEA',
   ownerId: '',
   vendorId: '',
-  warehouseId: '',
+  warehouseIds: [],
   vesselName: '',
   blNumber: '',
   notes: '',
@@ -41,11 +41,15 @@ export function POFormDrawer({
   useEffect(() => {
     if (!isOpen) return
     if (initialData) {
+      // Extract warehouseIds from warehouses relation or fallback to single warehouseId
+      const warehouseIds = initialData.warehouses?.length
+        ? initialData.warehouses.map((w) => w.warehouse?.id || w.warehouseId)
+        : (initialData.warehouseId ? [initialData.warehouseId] : [])
       setDraft({
         poType: initialData.poType || 'SEA',
         ownerId: initialData.ownerId || '',
         vendorId: initialData.vendorId || '',
-        warehouseId: initialData.warehouseId || '',
+        warehouseIds,
         vesselName: initialData.vesselName || '',
         blNumber: initialData.blNumber || '',
         notes: initialData.notes || '',
@@ -89,7 +93,7 @@ export function POFormDrawer({
       poType: draft.poType,
       ownerId: draft.ownerId,
       vendorId: draft.vendorId,
-      warehouseId: draft.warehouseId,
+      warehouseIds: draft.warehouseIds,
       notes: draft.notes || '',
       vesselName: draft.vesselName || '',
       blNumber: draft.blNumber || '',
@@ -106,7 +110,7 @@ export function POFormDrawer({
   }
 
   const isSeaTransportValid = draft.poType !== 'SEA' || (draft.vesselName && draft.blNumber)
-  const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseId && draft.lines.some((l) => l.itemId) && isSeaTransportValid)
+  const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseIds.length > 0 && draft.lines.some((l) => l.itemId) && isSeaTransportValid)
 
   const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
@@ -195,11 +199,12 @@ export function POFormDrawer({
                   />
                 </div>
 
-                <Select
+                <MultiSelect
                   label="Kho phân phối *"
-                  value={draft.warehouseId}
-                  onChange={(e) => setDraft((p) => ({ ...p, warehouseId: e.target.value }))}
-                  options={[{ value: '', label: '-- Chọn Warehouse --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
+                  value={draft.warehouseIds}
+                  onChange={(values) => setDraft((p) => ({ ...p, warehouseIds: values }))}
+                  options={warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))}
+                  placeholder="-- Chọn kho (có thể chọn nhiều) --"
                 />
 
                 <Textarea

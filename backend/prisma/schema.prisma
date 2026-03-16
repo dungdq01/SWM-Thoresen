@@ -583,23 +583,24 @@ model MdWarehouse {
   deactivatedAt              DateTime?     @map("deactivated_at")
   deactivatedBy              String?       @map("deactivated_by") @db.Uuid
 
-  zones              MdZone[]
-  locations          MdLocation[]
-  owners             MdOwner[]
-  rateReferences     MdRateReference[]
-  ownerItemPolicies  MdOwnerItemPolicy[]
-  inventDims         InventDim[]
-  reconciliationRuns InventoryReconciliationRun[]
-  snapshotRuns       InventorySnapshotRun[]
-  dailySnapshots     DailyStorageSnapshot[]
-  receiptHeaders     ReceiptHeader[]
-  shipmentHeaders    ShipmentHeader[]
-  purchaseOrders     PurchaseOrder[]
-  vasWorkOrders      VasWorkOrder[]
-  bilContractFeeLines BilContractFeeLine[]
-  bilEvents          BilEvent[]
-  bilStorageSnapshots BilStorageSnapshot[]
-  salesOrders        SalesOrder[]
+  zones                    MdZone[]
+  locations                MdLocation[]
+  owners                   MdOwner[]
+  rateReferences           MdRateReference[]
+  ownerItemPolicies        MdOwnerItemPolicy[]
+  inventDims               InventDim[]
+  reconciliationRuns       InventoryReconciliationRun[]
+  snapshotRuns             InventorySnapshotRun[]
+  dailySnapshots           DailyStorageSnapshot[]
+  receiptHeaders           ReceiptHeader[]
+  shipmentHeaders          ShipmentHeader[]
+  purchaseOrders           PurchaseOrder[]
+  purchaseOrderWarehouses  PurchaseOrderWarehouse[]
+  vasWorkOrders            VasWorkOrder[]
+  bilContractFeeLines      BilContractFeeLine[]
+  bilEvents                BilEvent[]
+  bilStorageSnapshots      BilStorageSnapshot[]
+  salesOrders              SalesOrder[]
 
   @@map("md_warehouse")
 }
@@ -1443,7 +1444,7 @@ model PurchaseOrder {
   status               PurchaseOrderStatus   @default(NEW)
   ownerId              String                @map("owner_id") @db.Uuid
   vendorId             String                @map("vendor_id") @db.Uuid
-  warehouseId          String                @map("warehouse_id") @db.Uuid
+  warehouseId          String?               @map("warehouse_id") @db.Uuid
   vesselName           String?               @map("vessel_name") @db.VarChar(200)
   origin               String?               @db.VarChar(200)
   blNumber             String?               @map("bl_number") @db.VarChar(100)
@@ -1457,16 +1458,31 @@ model PurchaseOrder {
   updatedAt            DateTime              @updatedAt @map("updated_at")
   updatedBy            String?               @map("updated_by") @db.Uuid
 
-  owner     MdOwner     @relation(fields: [ownerId], references: [id])
-  vendor    MdVendor    @relation(fields: [vendorId], references: [id])
-  warehouse MdWarehouse @relation(fields: [warehouseId], references: [id])
-  lines     PurchaseOrderLine[]
+  owner      MdOwner                  @relation(fields: [ownerId], references: [id])
+  vendor     MdVendor                 @relation(fields: [vendorId], references: [id])
+  warehouse  MdWarehouse?             @relation(fields: [warehouseId], references: [id])
+  warehouses PurchaseOrderWarehouse[]
+  lines      PurchaseOrderLine[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([ownerId, vendorId, status])
   @@index([poNumber])
   @@index([poType, status])
   @@map("purchase_orders")
+}
+
+model PurchaseOrderWarehouse {
+  id          String   @id @default(uuid()) @db.Uuid
+  poId        String   @map("po_id") @db.Uuid
+  warehouseId String   @map("warehouse_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  warehouse     MdWarehouse   @relation(fields: [warehouseId], references: [id])
+
+  @@unique([poId, warehouseId])
+  @@index([warehouseId])
+  @@map("purchase_order_warehouses")
 }
 
 model PurchaseOrderLine {
