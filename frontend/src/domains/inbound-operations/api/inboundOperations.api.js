@@ -77,6 +77,10 @@ export const inboundOperationsApi = {
     (id) => inboundOperationsMockApi.closeReceipt(id),
     (id) => httpClient.post(`${BASE_URL}/receipts/${id}/close`)
   ),
+  reportErrorReceipt: withDataSource(
+    (id, data) => inboundOperationsMockApi.reportErrorReceipt?.(id, data),
+    (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/report-error`, data)
+  ),
   getReceiptHistory: withDataSource(
     (id) => inboundOperationsMockApi.getReceiptHistory(id),
     (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`)

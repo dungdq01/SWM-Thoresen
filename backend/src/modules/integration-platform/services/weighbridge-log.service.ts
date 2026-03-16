@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { WeighbridgeLogRepository, WeighLogQueryParams } from '../repositories/weighbridge-log.repository';
+import { WeighbridgeEventStateRepository } from '../repositories/weighbridge-event-state.repository';
 import { WeighbridgeError, IntegrationErrorCodes } from '../domain/integration.errors';
+import { WeighEventProcessingStatus } from '../domain/integration.enums';
+import { InboundBridgeAdapter } from '../adapters/inbound-bridge.adapter_draft';
+import { FEATURES } from '../config/feature-flags_draft';
 
 @Injectable()
 export class WeighbridgeLogService {
@@ -9,6 +13,7 @@ export class WeighbridgeLogService {
 
   constructor(
     private readonly logRepo: WeighbridgeLogRepository,
+    private readonly eventStateRepo: WeighbridgeEventStateRepository,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -119,6 +124,145 @@ export class WeighbridgeLogService {
     return this.mapLogToDetailResponse(log);
   }
 
+  async confirmLog(id: string, context: { userId?: string } = {}) {
+    const log = await this.logRepo.findById(id);
+    if (!log) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.WEIGH_EVENT_NOT_FOUND,
+        `Weigh log with ID ${id} not found`,
+      );
+    }
+    if (log.eventState?.processingStatus !== WeighEventProcessingStatus.RECEIVED) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
+        `Cannot confirm weigh log with status ${log.eventState?.processingStatus}`,
+      );
+    }
+    await this.eventStateRepo.updateByLogId(id, {
+      processingStatus: WeighEventProcessingStatus.VALIDATED as any,
+    });
+
+    // [DRAFT] Notify M4 Inbound - Tắt bằng cách set FEATURES.M8_M4_AUTO_SYNC = false
+    if (FEATURES.M8_M4_AUTO_SYNC && log.receiptId) {
+      try {
+        const adapter = new InboundBridgeAdapter(this.prisma);
+        const bridgeResult = await adapter.onWeighLogConfirmed(
+          {
+            id: log.id,
+            receiptId: log.receiptId,
+            grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : undefined,
+            weighingTimestamp: log.weighingTimestamp ?? undefined,
+          },
+          context,
+        );
+        if (FEATURES.M8_M4_VERBOSE_LOGGING) {
+          this.logger.log(`[DRAFT] M8→M4 Bridge result: ${JSON.stringify(bridgeResult)}`);
+        }
+      } catch (error) {
+        // Silent fail - không throw, chỉ log warning
+        this.logger.warn(`[DRAFT] M8→M4 Bridge failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+      }
+    }
+
+    return { id, processingStatus: WeighEventProcessingStatus.VALIDATED };
+  }
+
+  async rejectLog(id: string, reason?: string) {
+    const log = await this.logRepo.findById(id);
+    if (!log) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.WEIGH_EVENT_NOT_FOUND,
+        `Weigh log with ID ${id} not found`,
+      );
+    }
+    if (log.eventState?.processingStatus !== WeighEventProcessingStatus.RECEIVED) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
+        `Cannot reject weigh log with status ${log.eventState?.processingStatus}`,
+      );
+    }
+    await this.eventStateRepo.updateByLogId(id, {
+      processingStatus: WeighEventProcessingStatus.REJECTED as any,
+      callbackError: reason || null,
+    });
+    return { id, processingStatus: WeighEventProcessingStatus.REJECTED };
+  }
+
+  async recordWeight(id: string, data: { weightKg: number }) {
+    const log = await this.logRepo.findById(id);
+    if (!log) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.WEIGH_EVENT_NOT_FOUND,
+        `Weigh log with ID ${id} not found`,
+      );
+    }
+    const status = log.eventState?.processingStatus as string | undefined;
+    if (status !== WeighEventProcessingStatus.VALIDATED && status !== WeighEventProcessingStatus.WEIGHING) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
+        `Cannot record weight for log with status ${status}`,
+      );
+    }
+
+    const now = new Date();
+
+    this.logger.log(`recordWeight id=${id} grossWeightKg=${log.grossWeightKg} tareWeightKg=${log.tareWeightKg}`);
+
+    // Lần 1: chưa có grossWeightKg → ghi gross, chuyển trạng thái sang WEIGHING
+    if (log.grossWeightKg == null) {
+      await this.logRepo.update(id, {
+        grossWeightKg: data.weightKg,
+        grossWeightAt: now,
+      });
+      await this.eventStateRepo.updateByLogId(id, {
+        processingStatus: WeighEventProcessingStatus.WEIGHING as any,
+      });
+      return { id, grossWeightKg: data.weightKg, grossWeightAt: now, processingStatus: WeighEventProcessingStatus.WEIGHING };
+    }
+
+    // Lần 2: đã có gross, chưa có tare → ghi tare + tính net, chuyển trạng thái sang COMPLETED
+    if (log.tareWeightKg == null) {
+      const netWeightKg = Number(log.grossWeightKg) - data.weightKg;
+      await this.logRepo.update(id, {
+        tareWeightKg: data.weightKg,
+        tareWeightAt: now,
+        netWeightKg: Math.abs(netWeightKg),
+      });
+      await this.eventStateRepo.updateByLogId(id, {
+        processingStatus: WeighEventProcessingStatus.COMPLETED as any,
+      });
+
+      // [DRAFT] Notify M4 Inbound khi cân hoàn thành - Tắt bằng cách set FEATURES.M8_M4_AUTO_SYNC = false
+      if (FEATURES.M8_M4_AUTO_SYNC && log.receiptId) {
+        try {
+          const adapter = new InboundBridgeAdapter(this.prisma);
+          const bridgeResult = await adapter.onWeighLogCompleted(
+            {
+              id: log.id,
+              receiptId: log.receiptId,
+              grossWeightKg: Number(log.grossWeightKg),
+              tareWeightKg: data.weightKg,
+              netWeightKg: Math.abs(netWeightKg),
+            },
+            { userId: undefined },
+          );
+          if (FEATURES.M8_M4_VERBOSE_LOGGING) {
+            this.logger.log(`[DRAFT] M8→M4 onWeighLogCompleted: ${JSON.stringify(bridgeResult)}`);
+          }
+        } catch (error) {
+          this.logger.warn(`[DRAFT] M8→M4 onWeighLogCompleted failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+        }
+      }
+
+      return { id, tareWeightKg: data.weightKg, tareWeightAt: now, netWeightKg: Math.abs(netWeightKg), processingStatus: WeighEventProcessingStatus.COMPLETED };
+    }
+
+    throw new WeighbridgeError(
+      IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
+      'Both weights have already been recorded',
+    );
+  }
+
   async updateLog(id: string, data: { notes?: string }) {
     const log = await this.logRepo.findById(id);
     if (!log) {
@@ -168,7 +312,9 @@ export class WeighbridgeLogService {
       weighingType: log.weighingType,
       weighingSequence: log.weighingSequence,
       grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : null,
+      grossWeightAt: log.grossWeightAt || null,
       tareWeightKg: log.tareWeightKg ? Number(log.tareWeightKg) : null,
+      tareWeightAt: log.tareWeightAt || null,
       netWeightKg: log.netWeightKg ? Number(log.netWeightKg) : null,
       // Frontend expected fields
       referenceType,
@@ -219,7 +365,9 @@ export class WeighbridgeLogService {
       weighingType: log.weighingType,
       weighingSequence: log.weighingSequence,
       grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : null,
+      grossWeightAt: log.grossWeightAt || null,
       tareWeightKg: log.tareWeightKg ? Number(log.tareWeightKg) : null,
+      tareWeightAt: log.tareWeightAt || null,
       netWeightKg: log.netWeightKg ? Number(log.netWeightKg) : null,
       referenceType,
       referenceId,

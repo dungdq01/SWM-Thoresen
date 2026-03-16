@@ -48,7 +48,6 @@ class ReceiptRepository {
         owner: { select: { id: true, ownerCode: true, ownerName: true } },
         vendor: { select: { id: true, vendorCode: true, vendorName: true } },
         warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } },
-        receivingLocation: { select: { id: true, locationCode: true, locationType: true } },
       } : undefined,
     });
   }

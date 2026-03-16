@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Eye, Plus, Check, X, Trash2, Pencil } from 'lucide-react'
-import { useWeighbridgeLogs, useWeighbridgeDevices, useCreateWeighEvent, useUpdateWeighLog } from '@domains/integration'
+import { Eye, Plus, Check, X, Trash2, Pencil, Weight } from 'lucide-react'
+import { useWeighbridgeLogs, useWeighbridgeDevices, useCreateWeighEvent, useUpdateWeighLog, useConfirmWeighLog, useRejectWeighLog, useRecordWeight } from '@domains/integration'
 import { useLookupOwners, useLookupItems, useLookupWarehouses } from '@domains/master-data'
 import { useInboundReceipts } from '@domains/inbound-operations'
 import { useOutboundShipments } from '@domains/outbound-operations'
@@ -8,6 +8,7 @@ import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEm
 import { CreateWeighTicketModal } from './components/CreateWeighTicketModal'
 import { ViewWeighTicketModal } from './components/ViewWeighTicketModal'
 import { EditWeighTicketModal } from './components/EditWeighTicketModal'
+import { WeighingModal } from './components/WeighingModal'
 
 const healthTone = (status) => {
   if (status === 'HEALTHY') return 'success'
@@ -29,7 +30,7 @@ const REFERENCE_TYPES = [
 
 const statusTone = (status) => {
   if (status === 'COMPLETED' || status === 'SUCCEEDED' || status === 'LINKED') return 'success'
-  if (status === 'PENDING' || status === 'PROCESSING') return 'warning'
+  if (status === 'PENDING' || status === 'PROCESSING' || status === 'WEIGHING') return 'warning'
   if (status === 'FAILED' || status === 'REJECTED') return 'danger'
   if (status === 'RECEIVED') return 'info'
   return 'default'
@@ -39,6 +40,8 @@ const statusLabel = (status) => {
   const labels = {
     RECEIVED: 'Tạo mới',
     VALIDATED: 'Đã xác nhận',
+    WEIGHING: 'Đang cân lần 2',
+    COMPLETED: 'Hoàn thành',
     LINKED: 'Đã liên kết',
     DUPLICATE: 'Trùng lặp',
     FAILED: 'Thất bại',
@@ -52,16 +55,20 @@ export function WeighbridgePage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [viewModalData, setViewModalData] = useState(null)
   const [editModalData, setEditModalData] = useState(null)
+  const [weighingModalData, setWeighingModalData] = useState(null)
 
   const { data: logsResponse, isLoading: logsLoading, refetch: refetchLogs } = useWeighbridgeLogs(logFilters)
   const { data: devicesResponse, refetch: refetchDevices } = useWeighbridgeDevices({})
   const { data: ownersData } = useLookupOwners()
   const { data: itemsData } = useLookupItems()
   const { data: warehousesData } = useLookupWarehouses()
-  const { data: receiptsData } = useInboundReceipts({ pageSize: 100 })
+  const { data: receiptsData } = useInboundReceipts({ pageSize: 100, status: 'AWAITING_WEIGHING' })
   const { data: shipmentsData } = useOutboundShipments({ pageSize: 100 })
   const createWeighEventMutation = useCreateWeighEvent()
   const updateWeighLogMutation = useUpdateWeighLog()
+  const confirmWeighLogMutation = useConfirmWeighLog()
+  const rejectWeighLogMutation = useRejectWeighLog()
+  const recordWeightMutation = useRecordWeight()
 
   const logs = logsResponse?.data || []
   const logsPagination = logsResponse?.pagination || { page: 1, totalPages: 1 }
@@ -162,13 +169,18 @@ export function WeighbridgePage() {
                   <div className="flex items-center gap-1">
                     {row.processingStatus === 'RECEIVED' && (
                       <>
-                        <Button variant="ghost" size="sm" title="Chấp nhận" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                        <Button variant="ghost" size="sm" title="Chấp nhận" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => confirmWeighLogMutation.mutate(row.id)}>
                           <Check className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Từ chối" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Button variant="ghost" size="sm" title="Từ chối" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => rejectWeighLogMutation.mutate({ id: row.id, data: {} })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </>
+                    )}
+                    {(row.processingStatus === 'VALIDATED' || row.processingStatus === 'WEIGHING') && !(row.grossWeightKg && row.tareWeightKg) && (
+                      <Button variant="ghost" size="sm" title={row.grossWeightKg ? 'Cân lần 2' : 'Cân lần 1'} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => setWeighingModalData(row)}>
+                        <Weight className="h-4 w-4" />
+                      </Button>
                     )}
                     <Button variant="ghost" size="sm" title="Xem chi tiết" onClick={() => setViewModalData(row)}>
                       <Eye className="h-4 w-4" />
@@ -249,6 +261,35 @@ export function WeighbridgePage() {
           }
         }}
         data={editModalData}
+      />
+
+      {/* Modal tiến hành cân */}
+      <WeighingModal
+        isOpen={!!weighingModalData}
+        onClose={() => setWeighingModalData(null)}
+        isLoading={recordWeightMutation.isPending}
+        onSubmit={async (payload) => {
+          try {
+            const result = await recordWeightMutation.mutateAsync({ id: payload.id, data: { weightKg: payload.weightKg } })
+            // Cập nhật weighingModalData với data mới từ API để tiếp tục cân lần 2 nếu cần
+            if (result.processingStatus === 'WEIGHING') {
+              // Sau cân lần 1, cập nhật data để modal hiển thị đúng cho lần 2
+              setWeighingModalData(prev => ({
+                ...prev,
+                grossWeightKg: result.grossWeightKg,
+                grossWeightAt: result.grossWeightAt,
+                processingStatus: result.processingStatus,
+              }))
+            } else {
+              // Cân lần 2 xong (COMPLETED) -> đóng modal
+              setWeighingModalData(null)
+            }
+            refetchLogs()
+          } catch (error) {
+            // Error handled by mutation
+          }
+        }}
+        data={weighingModalData}
       />
     </>
   )

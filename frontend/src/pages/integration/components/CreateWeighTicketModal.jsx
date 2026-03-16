@@ -289,6 +289,7 @@ export function CreateWeighTicketModal({
                     value={draft.vehicleNumber}
                     onChange={(e) => setDraft((prev) => ({ ...prev, vehicleNumber: e.target.value.toUpperCase() }))}
                     placeholder="VD: 51C-12345"
+                    disabled={!!currentTicket?.vehicleNumber}
                   />
 
                   {/* Chủ hàng */}

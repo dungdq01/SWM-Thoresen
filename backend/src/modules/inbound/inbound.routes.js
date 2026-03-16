@@ -76,6 +76,11 @@ function createInboundRoutes(prisma, authMiddleware, permissionMiddleware) {
     (req, res) => controller.startProcessing(req, res)
   );
 
+  router.post('/receipts/:id/report-error',
+    permissionMiddleware(PERMISSION_CODES.RECEIPT_CONFIRM),
+    (req, res) => controller.reportErrorReceipt(req, res)
+  );
+
   // Weigh Events
   router.post('/weigh-events/in',
     permissionMiddleware(PERMISSION_CODES.WEIGH_RECEIVE),

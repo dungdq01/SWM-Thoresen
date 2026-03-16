@@ -167,6 +167,20 @@ export function useCloseInboundReceipt() {
   return useMutation({ mutationFn: (id) => inboundOperationsApi.closeReceipt(id), onSuccess, onError })
 }
 
+export function useReportErrorInboundReceipt() {
+  const { queryClient, onError } = useInvalidateInboundQueries('Đã báo lỗi phiếu nhập', 'Không thể báo lỗi phiếu nhập')
+  return useMutation({
+    mutationFn: ({ id, data }) => inboundOperationsApi.reportErrorReceipt(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.summary })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.receipts })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.receiptDetail(id) })
+      toast.success('Đã báo lỗi phiếu nhập')
+    },
+    onError,
+  })
+}
+
 // ── Purchase Order hooks ──
 export function usePurchaseOrders(filters = {}) {
   return useQuery({

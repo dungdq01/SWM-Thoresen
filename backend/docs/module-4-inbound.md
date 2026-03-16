@@ -4,7 +4,7 @@
 > **Status:** ✅ Implemented (Feedback Fixed v3 - CR-1 DONE)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-15 (Sync with actual backend code)
+> **Last Updated:** 2026-03-16 (Added report-error API + ERROR status for receipts)
 
 ---
 
@@ -89,6 +89,7 @@ src/modules/inbound/
 | POST | `/api/v1/inbound/receipts/:id/cancel` | Cancel receipt | `INBOUND.RECEIPT.CANCEL` |
 | POST | `/api/v1/inbound/receipts/:id/reweigh` | Reweigh receipt | `INBOUND.RECEIPT.REWEIGH` |
 | POST | `/api/v1/inbound/receipts/:id/close` | Close receipt | `INBOUND.RECEIPT.CLOSE` |
+| POST | `/api/v1/inbound/receipts/:id/report-error` | Báo lỗi receipt (DRAFT → ERROR) | `INBOUND.RECEIPT.CONFIRM` |
 | POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing | `INBOUND.WEIGH.RECEIVE` |
 
 ### 3.3 Inbound Documents
@@ -356,6 +357,38 @@ src/modules/inbound/
 
 ---
 
+### 4.2.4 POST `/api/v1/inbound/receipts/:id/report-error` - Báo lỗi Receipt
+
+**Mục đích:** Đánh dấu receipt có lỗi cần xử lý (DRAFT → ERROR)
+
+**Request Body:**
+```json
+{
+  "note": "Ghi chú lý do báo lỗi (tùy chọn)"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-receipt",
+    "status": "ERROR",
+    "...": "other fields"
+  }
+}
+```
+
+**Validation:**
+- Chỉ cho phép báo lỗi khi `status = DRAFT`
+- Nếu status khác DRAFT, trả về lỗi 400
+
+**Side Effects:**
+- Ghi `receipt_status_history` với `transitionCode = REPORT_ERROR`
+
+---
+
 ### 4.3 POST `/api/v1/inbound/weigh-events/in` - Weigh In
 
 **Mục đích:** Nhận gross weight từ weighbridge
@@ -489,18 +522,19 @@ src/modules/inbound/
 |-------|-------------|
 | `NEW` | PO vừa tạo, có thể edit |
 | `CONFIRMED` | PO đã xác nhận, có thể tạo Receipt |
+| `RECEIVING` | Đang nhập hàng (có ASN đang cân) |
 | `CLOSED` | PO đã đóng (terminal) |
 | `CANCELLED` | PO đã hủy (terminal) |
 
 **PO Transitions:**
 
 ```
-NEW ──confirm──> CONFIRMED ──close──> CLOSED
- │                    │
- │              unconfirm
- │                    │
- └──cancel──────<─────┘
-                      └──cancel──> CANCELLED
+NEW ──confirm──> CONFIRMED ──(ASN weighing)──> RECEIVING ──close──> CLOSED
+ │                    │                            │
+ │              unconfirm                          │
+ │                    │                            │
+ └──cancel──────<─────┘                            │
+                      └──cancel──> CANCELLED <─────┘
 ```
 
 **Business Rules:**
@@ -508,6 +542,52 @@ NEW ──confirm──> CONFIRMED ──close──> CLOSED
 - Chỉ có thể **tạo Receipt từ PO** khi `status = CONFIRMED`
 - Chỉ có thể **unconfirm PO** khi chưa có Receipt nào được tạo từ PO đó
 - `totalExpectedQty` được tính bằng cách convert tất cả lines về KG (sử dụng `md_uom_conversion`)
+
+### 5.0.1 PO ↔ ASN Status Cascade (DRAFT)
+
+> ⚠️ **DRAFT**: Logic này chưa được xác nhận với khách hàng, có thể thay đổi.
+
+**Logic:** 1 PO có nhiều ASN (Receipt). Khi có **ít nhất 1 ASN** chuyển sang trạng thái "đang cân" (`WEIGHED_IN`), PO tự động chuyển sang trạng thái "đang nhập" (`RECEIVING`).
+
+```
+PO (CONFIRMED)
+├── ASN-1 (DRAFT)
+├── ASN-2 (AWAITING_WEIGHING) → WEIGHED_IN  ← Trigger
+└── ASN-3 (DRAFT)
+
+→ PO chuyển sang RECEIVING
+```
+
+**Trigger 1 - ASN đang cân:**
+- Khi M8 Weighbridge xác nhận phiếu cân (`confirmLog()`)
+- ASN tương ứng chuyển từ `AWAITING_WEIGHING` → `WEIGHED_IN`
+- Cascade: PO chuyển từ `CONFIRMED` → `RECEIVING`
+
+**Trigger 2 - ASN cân xong:**
+- Khi M8 Weighbridge ghi nhận cân lần 2 (`recordWeight()` → `COMPLETED`)
+- ASN tương ứng chuyển từ `WEIGHED_IN` → `WEIGHED_OUT`
+- Fill `netWeightKg` vào `ReceiptLine.receivedQty`
+- Aggregate: `PO.totalReceivedQty` = SUM của `Receipt.netWeightKg` từ các ASN đã done
+
+```
+PO (RECEIVING)
+├── ASN-1 (DRAFT)                     → receivedQty = 0
+├── ASN-2 (WEIGHED_OUT, net=1500kg)   → receivedQty = 1500
+└── ASN-3 (WEIGHED_OUT, net=2000kg)   → receivedQty = 2000
+
+→ PO.totalReceivedQty = 3500 kg
+```
+
+**Điều kiện:**
+- PO phải đang ở trạng thái `CONFIRMED` hoặc `RECEIVING`
+- ASN phải có `poId` link với PO
+
+**Files liên quan:**
+- `src/modules/integration-platform/adapters/inbound-bridge.adapter_draft.ts`
+- `src/modules/integration-platform/config/feature-flags_draft.ts`
+
+**Cách tắt logic này:**
+- Set `FEATURES.M8_M4_AUTO_SYNC = false` trong `feature-flags_draft.ts`
 
 ### 5.1 Inbound Document Data Model
 
@@ -617,6 +697,8 @@ Upload chứng từ nhập kho.
 | State | Description |
 |-------|-------------|
 | `DRAFT` | Receipt vừa tạo, chưa confirm |
+| `CONFIRMED` | Receipt đã xác nhận (alias của AWAITING_WEIGHING) |
+| `ERROR` | Receipt có lỗi cần xử lý |
 | `AWAITING_WEIGHING` | Đang chờ weigh-in |
 | `WEIGHED_IN` | Đã cân gross, đang chờ processing |
 | `PROCESSING` | Đang dỡ hàng |
@@ -631,10 +713,10 @@ Upload chứng từ nhập kho.
 
 ```
 DRAFT ──confirm──> AWAITING_WEIGHING ──weighIn──> WEIGHED_IN
-                                                      │
-                                           startProcessing
-                                                      ↓
-                                                 PROCESSING
+  │                                                    │
+  │                                         startProcessing
+  │                                                    ↓
+  └──report-error──> ERROR                        PROCESSING
                                                       │
                                                   weighOut
                                                       ↓

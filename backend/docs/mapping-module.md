@@ -6,20 +6,21 @@
 
 ## Tổng quan
 
-| Module                          | Status      | Code Path                       | DB Tables | API Endpoints |
-| ---------------------------------| -------------| ---------------------------------| -----------| ---------------|
-| Module Auth                     | ✅ Completed | `src/modules/auth`              | 7 tables  | 13 endpoints  |
-| Module 1 - Foundation           | ✅ Completed | `src/modules/foundation`        | 14 tables | ~25 endpoints |
-| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 17 tables | ~55 endpoints |
-| Module 3 - Inventory Core       | ✅ Completed | `src/modules/inventory-core`    | 10 tables | ~13 endpoints |
-| Module 4 - Inbound              | ✅ Completed | `src/modules/inbound`           | 8 tables  | ~22 endpoints |
-| Module 5 - Outbound             | ✅ Completed | `src/modules/outbound`          | 10 tables | ~18 endpoints |
-| Module 6 - Inventory Control    | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints |
-| Module 7 - Work Execution       | ✅ Completed | `src/modules/work-execution`    | 10 tables | ~20 endpoints |
-| Module 8 - Integration Platform | ✅ Completed | `src/modules/integration`       | 12 tables | ~20 endpoints |
-| Module 9 - VAS / Bagging        | ✅ Completed | `src/modules/vas`               | 5 tables  | ~11 endpoints |
-| Module 10 - Billing             | ✅ Completed | `src/modules/billing`           | 12 tables | ~22 endpoints |
-| Module 11 - Reporting           | ✅ Completed | `src/modules/reporting`         | 12 tables | ~26 endpoints |
+| Module                          | Status      | Code Path                       | DB Tables | API Endpoints | Sidebar |
+| ---------------------------------| -------------| ---------------------------------| -----------| ---------------| --------|
+| Module Auth                     | ✅ Completed | `src/modules/auth`              | 7 tables  | 13 endpoints  | - |
+| Module 1 - Foundation           | ✅ Completed | `src/modules/foundation`        | 14 tables | ~25 endpoints | Nền tảng & Quản trị |
+| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 17 tables | ~55 endpoints | Dữ liệu nền |
+| Module 3 - Inventory Core       | ✅ Completed | `src/modules/inventory-core`    | 10 tables | ~13 endpoints | Tồn kho lõi |
+| Module 4 - Inbound              | ✅ Completed | `src/modules/inbound`           | 8 tables  | ~22 endpoints | Vận hành nhập |
+| Module 5 - Outbound             | ✅ Completed | `src/modules/outbound`          | 10 tables | ~18 endpoints | Vận hành xuất |
+| Module 6 - Inventory Control    | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints | Kiểm soát kho |
+| Module 7 - Work Execution       | ✅ Completed | `src/modules/work-execution`    | 10 tables | ~20 endpoints | Thực thi công việc |
+| **Module 8A - Trạm cân**        | ✅ Completed | `src/modules/integration-platform` | 4 tables  | ~10 endpoints | **Trạm cân** ⭐ |
+| Module 8B - Integration Platform | ✅ Completed | `src/modules/integration-platform` | 8 tables  | ~15 endpoints | Trung tâm tích hợp |
+| Module 9 - VAS / Bagging        | ✅ Completed | `src/modules/vas`               | 5 tables  | ~11 endpoints | Vận hành VAS |
+| Module 10 - Billing             | ✅ Completed | `src/modules/billing`           | 12 tables | ~22 endpoints | Thanh toán & Hóa đơn |
+| Module 11 - Reporting           | ✅ Completed | `src/modules/reporting`         | 12 tables | ~26 endpoints | Báo cáo & Kiểm toán |
 
 ---
 
@@ -419,7 +420,7 @@
 **Code Path:** `src/modules/inbound`  
 **Documentation:** [`docs/module-4-inbound.md`](./module-4-inbound.md)  
 **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-**Last Updated:** 2026-03-15 (PO Management added)
+**Last Updated:** 2026-03-16 (Added report-error API + ERROR status + M8↔M4 cascade)
 
 ### Feedback Fixes Applied
 
@@ -459,8 +460,15 @@
 | GET | `/api/v1/inbound/purchase-orders/next-number` | Get next PO number |
 | PUT | `/api/v1/inbound/purchase-orders/:id` | Update PO |
 | POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO |
+| POST | `/api/v1/inbound/purchase-orders/:id/unconfirm` | Hủy xác nhận PO (về NEW) |
 | POST | `/api/v1/inbound/purchase-orders/:id/close` | Close PO |
 | POST | `/api/v1/inbound/purchase-orders/:id/cancel` | Cancel PO |
+
+**PO Status Flow:**
+- `NEW` → `CONFIRMED` → `RECEIVING` → `CLOSED`
+- `NEW` / `CONFIRMED` → `CANCELLED`
+- `CONFIRMED` → `NEW` (unconfirm, chỉ khi chưa có receipt)
+- `RECEIVING`: Tự động chuyển khi có receipt đang cân (AWAITING_WEIGHING, WEIGHED_IN, PROCESSING)
 
 ### Receipt Management
 | Method | Path | Description |
@@ -469,11 +477,27 @@
 | GET | `/api/v1/inbound/receipts` | List receipts (paginated) |
 | GET | `/api/v1/inbound/receipts/:id` | Get receipt by ID |
 | GET | `/api/v1/inbound/receipts/:id/history` | Get status history |
+| PUT | `/api/v1/inbound/receipts/:id` | Cập nhật receipt (chỉ DRAFT) |
+| DELETE | `/api/v1/inbound/receipts/:id` | Xóa receipt (chỉ DRAFT) |
 | POST | `/api/v1/inbound/receipts/:id/confirm` | Confirm receipt |
 | POST | `/api/v1/inbound/receipts/:id/cancel` | Cancel receipt |
 | POST | `/api/v1/inbound/receipts/:id/reweigh` | Reweigh receipt |
 | POST | `/api/v1/inbound/receipts/:id/close` | Close receipt |
+| POST | `/api/v1/inbound/receipts/:id/report-error` | Báo lỗi receipt (DRAFT → ERROR) |
 | POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing |
+
+**Receipt Status Flow:**
+```
+DRAFT ──confirm──> AWAITING_WEIGHING ──weighIn──> WEIGHED_IN
+  │                                                    │
+  │                                         startProcessing
+  │                                                    ↓
+  └──report-error──> ERROR                        PROCESSING
+                                                       │
+                                                   weighOut
+                                                       ↓
+                                                 WEIGHED_OUT ──> RECEIVED ──> PUTAWAY ──> CLOSED
+```
 
 ### Weighing Events
 | Method | Path | Description |
@@ -1003,40 +1027,133 @@ src/modules/inventory-control/
 
 ---
 
-# Module 8: Integration Platform
+# Module 8A: Trạm cân (Weighbridge)
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/integration-platform`  
+**Sidebar:** ⭐ **Trạm cân** (Top-level menu item)  
+**Frontend Route:** `/app/integration/weighbridge`  
+**Last Updated:** 2026-03-16
 
 ## Overview
-Module 8 là **integration backbone** của hệ thống SWM, chịu trách nhiệm thu thập dữ liệu từ các nguồn bên ngoài (weighbridge, OCR, mobile), chuẩn hóa, lưu trữ và chuyển tiếp đến các module nghiệp vụ.
 
-**Code Path:** `src/modules/integration-platform`
+Module Trạm cân quản lý toàn bộ quy trình cân xe tại kho, bao gồm:
+- **Phiếu cân**: Tạo, xác nhận, ghi nhận trọng lượng (cân lần 1, lần 2)
+- **Thiết bị cân**: Quản lý, giám sát trạng thái các trạm cân
+- **Tích hợp ASN**: Liên kết phiếu cân với phiếu nhập (Receipt)
 
-## Database Tables
+> 📌 **UI Location:** Sidebar → **Trạm cân** (standalone menu, không phải sub-menu của Trung tâm tích hợp)
+
+## Database Tables (4 tables)
 
 | # | Table Name | Description |
 |---|------------|-------------|
-| 1 | `m8_weighbridge_device` | Cấu hình thiết bị cân |
+| 1 | `m8_weighbridge_device` | Cấu hình thiết bị cân (tên, port, warehouse) |
 | 2 | `m8_weighbridge_log` | Immutable log weigh events |
 | 3 | `m8_weighbridge_event_state` | Processing state của weigh event |
-| 4 | `m8_ocr_result` | Raw OCR extraction result |
-| 5 | `m8_ocr_confirmed_snapshot` | Confirmed/corrected OCR data |
-| 6 | `m8_mobile_sync_batch` | Batch envelope từ mobile |
-| 7 | `m8_mobile_sync_event` | Từng event trong batch |
-| 8 | `m8_erp_push_log` | ERP push job + response history |
-| 9 | `m8_integration_alert` | Alert read model |
-| 10 | `m8_channel_health_snapshot` | Dashboard summary |
-| 11 | `m8_device_heartbeat` | Heartbeat history |
+| 4 | `m8_device_heartbeat` | Heartbeat history từ thiết bị |
 
 ## API Endpoints
 
-### Weighbridge APIs
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/v1/integration/weighbridge/events` | Ingest weigh event |
+| POST | `/api/v1/integration/weighbridge/events` | Tạo phiếu cân (từ thiết bị hoặc manual) |
+| GET | `/api/v1/integration/weighbridge/logs` | Danh sách phiếu cân (filter by status, referenceType) |
+| GET | `/api/v1/integration/weighbridge/logs/:id` | Chi tiết phiếu cân |
+| PUT | `/api/v1/integration/weighbridge/logs/:id` | Cập nhật ghi chú phiếu cân |
+| POST | `/api/v1/integration/weighbridge/logs/:id/confirm` | Xác nhận phiếu cân → VALIDATED |
+| POST | `/api/v1/integration/weighbridge/logs/:id/reject` | Từ chối phiếu cân (với lý do) |
+| POST | `/api/v1/integration/weighbridge/logs/:id/record-weight` | Ghi nhận cân (lần 1 hoặc lần 2) |
+| GET | `/api/v1/integration/weighbridge/devices` | Danh sách thiết bị cân |
 | POST | `/api/v1/integration/weighbridge/heartbeat` | Device heartbeat |
-| GET | `/api/v1/integration/weighbridge/logs` | Query weigh logs |
-| GET | `/api/v1/integration/weighbridge/logs/:id` | Get log detail |
-| POST | `/api/v1/integration/weighbridge/events/:id/reprocess` | Reprocess callback |
-| GET | `/api/v1/integration/weighbridge/devices` | List devices |
+
+## Weigh Log Status Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           WEIGHBRIDGE LOG STATUS FLOW                            │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  RECEIVED ──confirm──> VALIDATED ──recordWeight──> WEIGHING ──recordWeight──> COMPLETED
+│      │                     │                          │                          │
+│      │                     │                          │                          │
+│      └──reject──> FAILED   │                          │                    linkReceipt
+│                            │                          │                          │
+│                            └──────────────────────────┴─────────────────> LINKED │
+│                                                                                  │
+│                                                       (nếu trùng) ────> DUPLICATE│
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Status | Tên hiển thị | Mô tả |
+|--------|--------------|-------|
+| `RECEIVED` | Tạo mới | Phiếu cân vừa tạo, chờ xác nhận |
+| `VALIDATED` | Đã xác nhận | Đã xác nhận, sẵn sàng cân lần 1 |
+| `WEIGHING` | Đang cân lần 2 | Đã cân lần 1 (gross), chờ cân lần 2 (tare) |
+| `COMPLETED` | Hoàn thành | Đã cân xong cả 2 lần, có net weight |
+| `LINKED` | Đã liên kết | Đã liên kết với Receipt/Shipment |
+| `FAILED` | Thất bại | Bị từ chối |
+| `DUPLICATE` | Trùng lặp | Phát hiện trùng với phiếu khác |
+
+## M8A ↔ M4 Cascade Logic (DRAFT)
+
+> ⚠️ **DRAFT**: Logic này có thể thay đổi theo yêu cầu khách hàng.
+
+**Trigger 1 - Xác nhận phiếu cân:**
+- M8 `confirmLog()` → VALIDATED
+- M4 Receipt: `AWAITING_WEIGHING` → `WEIGHED_IN`
+- M4 PO: `CONFIRMED` → `RECEIVING`
+
+**Trigger 2 - Hoàn thành cân:**
+- M8 `recordWeight()` lần 2 → COMPLETED
+- M4 Receipt: `WEIGHED_IN` → `WEIGHED_OUT`
+- M4 `ReceiptLine.receivedQty` = `netWeightKg`
+- M4 `PO.totalReceivedQty` = SUM(Receipt.netWeightKg)
+
+**Files liên quan:**
+- `adapters/inbound-bridge.adapter_draft.ts`
+- `config/feature-flags_draft.ts`
+
+## Permissions
+
+| Permission Code | Description |
+|-----------------|-------------|
+| `INTEGRATION.WEIGHBRIDGE.INGEST` | Tạo phiếu cân (manual/agent) |
+| `INTEGRATION.WEIGHBRIDGE.READ` | Xem danh sách phiếu cân |
+| `INTEGRATION.WEIGHBRIDGE.UPDATE` | Cập nhật phiếu cân |
+| `INTEGRATION.WEIGHBRIDGE.CONFIRM` | Xác nhận phiếu cân |
+| `INTEGRATION.WEIGHBRIDGE.REJECT` | Từ chối phiếu cân |
+| `INTEGRATION.WEIGHBRIDGE.RECORD_WEIGHT` | Ghi nhận cân |
+| `INTEGRATION.WEIGHBRIDGE_DEVICE.READ` | Xem thiết bị cân |
+
+---
+
+# Module 8B: Integration Platform (Trung tâm tích hợp)
+
+**Status:** ✅ Completed  
+**Code Path:** `src/modules/integration-platform`  
+**Sidebar:** Trung tâm tích hợp (với sub-menus: Giám sát, Cảnh báo, Kênh kết nối, OCR Scanner)  
+**Last Updated:** 2026-03-16
+
+## Overview
+Module Integration Platform là **integration backbone** của hệ thống SWM, chịu trách nhiệm thu thập dữ liệu từ các nguồn bên ngoài (OCR, mobile, ERP), chuẩn hóa, lưu trữ và chuyển tiếp đến các module nghiệp vụ.
+
+> 📌 **Note:** Phần Weighbridge đã được tách thành Module 8A riêng biệt với menu độc lập trên sidebar.
+
+## Database Tables (8 tables)
+
+| # | Table Name | Description |
+|---|------------|-------------|
+| 1 | `m8_ocr_result` | Raw OCR extraction result |
+| 2 | `m8_ocr_confirmed_snapshot` | Confirmed/corrected OCR data |
+| 3 | `m8_mobile_sync_batch` | Batch envelope từ mobile |
+| 4 | `m8_mobile_sync_event` | Từng event trong batch |
+| 5 | `m8_erp_push_log` | ERP push job + response history |
+| 6 | `m8_integration_alert` | Alert read model |
+| 7 | `m8_channel_health_snapshot` | Dashboard summary |
+| 8 | `m8_device_heartbeat` | Heartbeat history |
+
+## API Endpoints
 
 ### OCR APIs
 | Method | Path | Description |
@@ -1090,7 +1207,7 @@ Module 8 là **integration backbone** của hệ thống SWM, chịu trách nhi�
 ### Modules that depend on Module 8:
 | Target Module | Dependency | Usage |
 |---------------|------------|-------|
-| Module 4 | `WeightCaptured`, `OCRConfirmed` | Inbound weighing + OCR |
+| Module 4 | `WeightCaptured`, `OCRConfirmed`, `confirmReceipt`, `weighOut` | Inbound weighing + OCR + cascade |
 | Module 5 | `WeightCaptured` | Outbound weighing |
 | Module 7 | `MobileSyncEventReceived` | Work execution |
 | Module 10 | `ERPPushCompleted` | Billing sync |
@@ -1101,8 +1218,12 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
 
 | Permission Code | Description |
 |-----------------|-------------|
-| `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events (agent) |
+| `INTEGRATION.WEIGHBRIDGE.INGEST` | Ingest weigh events (agent/manual) |
 | `INTEGRATION.WEIGHBRIDGE.READ` | View weighbridge logs |
+| `INTEGRATION.WEIGHBRIDGE.UPDATE` | Update weigh log |
+| `INTEGRATION.WEIGHBRIDGE.CONFIRM` | Confirm weigh log |
+| `INTEGRATION.WEIGHBRIDGE.REJECT` | Reject weigh log |
+| `INTEGRATION.WEIGHBRIDGE.RECORD_WEIGHT` | Record weight (cân lần 2) |
 | `INTEGRATION.WEIGHBRIDGE.REPROCESS` | Reprocess callback |
 | `INTEGRATION.WEIGHBRIDGE_DEVICE.READ` | List weighbridge devices |
 | `INTEGRATION.WEIGHBRIDGE_DEVICE.HEARTBEAT` | Send device heartbeat |
@@ -1132,6 +1253,84 @@ Tất cả endpoints trong Module 8 được bảo vệ bởi `AuthGuard` và `P
   - `ocr-confirmation`: snapshot + result status
 - **OCR confidence**: Per-field thresholds (BL/Vehicle: 90%, Others: 85%)
 - **Known Limitations (Phase 1)**: OCR/ERP mock, callback dispatch stub
+
+## Cross-Module Integration (DRAFT)
+
+> ⚠️ **DRAFT**: Logic dưới đây chưa được xác nhận với khách hàng, có thể thay đổi.
+
+### M8 → M4: Weighbridge → Inbound Receipt
+
+**Files liên quan (suffix `_draft` để đánh dấu tạm thời):**
+| File | Mục đích |
+|------|----------|
+| `adapters/inbound-bridge.adapter_draft.ts` | Adapter xử lý logic cross-module |
+| `config/feature-flags_draft.ts` | Feature flags để bật/tắt logic |
+
+**Flow:**
+```
+M8 WeighLog (RECEIVED) 
+    → confirmLog() 
+    → VALIDATED 
+    → [DRAFT] InboundBridgeAdapter.onWeighLogConfirmed()
+    → M4 Receipt (AWAITING_WEIGHING → WEIGHED_IN)
+```
+
+**Trigger Mapping:**
+| M8 Action | M8 Status | M4 Action | M4 Status |
+|-----------|-----------|-----------|-----------|
+| Confirm weigh log | VALIDATED | onWeighLogConfirmed() | Receipt: AWAITING_WEIGHING → WEIGHED_IN |
+| (cascade) | - | updatePOStatusIfNeeded() | PO: CONFIRMED → RECEIVING |
+| Record weight lần 2 | COMPLETED | onWeighLogCompleted() | Receipt: WEIGHED_IN → WEIGHED_OUT |
+| (cascade) | - | aggregatePOReceivedQty() | PO.totalReceivedQty = SUM(Receipt.netWeightKg) |
+
+### M8 COMPLETED → M4 Receipt + PO (DRAFT)
+
+**Logic:** Khi phiếu cân hoàn thành (cân lần 2), tự động:
+1. Cập nhật Receipt: `tareWeightKg`, `netWeightKg`, status → `WEIGHED_OUT`
+2. Fill `netWeightKg` vào `receivedQty` của ReceiptLine
+3. Aggregate `totalReceivedQty` của PO từ các ASN đã done
+
+```
+M8 WeighLog (WEIGHING)
+    → recordWeight() [lần 2]
+    → COMPLETED
+    → [DRAFT] InboundBridgeAdapter.onWeighLogCompleted()
+    → M4 Receipt (WEIGHED_IN → WEIGHED_OUT)
+    → M4 ReceiptLine.receivedQty = netWeightKg
+    → M4 PO.totalReceivedQty = SUM(Receipt.netWeightKg)
+```
+
+### PO ↔ ASN Status Cascade
+
+**Logic:** 1 PO có nhiều ASN (Receipt). Chỉ cần 1 ASN chuyển sang trạng thái "đang cân" (WEIGHED_IN) thì PO chuyển sang trạng thái "đang nhập" (RECEIVING).
+
+```
+PO (CONFIRMED)
+├── ASN-1 (DRAFT)
+├── ASN-2 (AWAITING_WEIGHING) → WEIGHED_IN  ← Trigger
+└── ASN-3 (DRAFT)
+
+→ PO chuyển sang RECEIVING
+```
+
+**Điều kiện:**
+- PO phải đang ở trạng thái `CONFIRMED`
+- ASN phải có `poId` link với PO
+- Chỉ cần 1 ASN đang cân là đủ trigger
+
+**Cách tắt logic này:**
+1. Set `FEATURES.M8_M4_AUTO_SYNC = false` trong `feature-flags_draft.ts`
+2. Hoặc xóa các file có suffix `_draft`
+
+**Cách xóa hoàn toàn:**
+1. Xóa `adapters/inbound-bridge.adapter_draft.ts`
+2. Xóa `config/feature-flags_draft.ts`
+3. Xóa import và gọi adapter trong `weighbridge-log.service.ts` (tìm `[DRAFT]`)
+
+**Design Decisions (TBD):**
+- Hiện dùng direct service call trong adapter
+- Có thể chuyển sang event-driven nếu cần
+- Silent fail: Lỗi chỉ log warning, không block M8 flow
 
 ---
 

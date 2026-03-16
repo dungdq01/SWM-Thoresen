@@ -18,6 +18,7 @@ import {
   ClipboardList,
   X,
   ScanEye,
+  Scale,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { useLanguage } from '@shared/i18n'
@@ -161,6 +162,12 @@ const getMenuConfig = (t) => [
     ],
   },
   {
+    id: 'weighbridge',
+    label: t('sidebar.items.weighbridge'),
+    icon: Scale,
+    to: '/app/integration/weighbridge',
+  },
+  {
     id: 'integration',
     label: t('sidebar.items.integrationHub'),
     icon: Waypoints,
@@ -168,7 +175,6 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/integration/monitoring', label: t('sidebar.items.monitoring') },
       { to: '/app/integration/alerts', label: t('sidebar.items.alerts') },
-      { to: '/app/integration/weighbridge', label: t('sidebar.items.weighbridge') },
       { to: '/app/integration/channels', label: t('sidebar.items.channels') },
       { to: '/app/integration/ocr', label: t('sidebar.items.ocrScanner') },
     ],

@@ -681,6 +681,51 @@ class ReceiptService {
   }
 
   /**
+   * Report error receipt (DRAFT → ERROR)
+   * Cho phép đánh dấu phiếu nhập có lỗi cần xử lý
+   */
+  async reportErrorReceipt(receiptId, data = {}, context = {}) {
+    return this.prisma.$transaction(async (tx) => {
+      // Lock receipt for update
+      await this.receiptRepo.lockForUpdate(receiptId, tx);
+      const receipt = await this.receiptRepo.findById(receiptId, true, tx);
+      if (!receipt) {
+        throw createReceiptNotFoundError(receiptId);
+      }
+
+      // Chỉ cho phép báo lỗi khi status = DRAFT
+      if (receipt.status !== RECEIPT_STATUS.DRAFT) {
+        throw createInvalidStateError(receipt.status, 'REPORT_ERROR');
+      }
+
+      const updated = await tx.receiptHeader.update({
+        where: { id: receiptId },
+        data: {
+          status: 'ERROR',
+          rowVersion: { increment: 1 },
+          updatedBy: context.userId,
+        },
+        include: { lines: true },
+      });
+
+      await tx.receiptStatusHistory.create({
+        data: {
+          receiptHeaderId: receiptId,
+          fromStatus: receipt.status,
+          toStatus: 'ERROR',
+          transitionCode: 'REPORT_ERROR',
+          triggeredBy: context.userId,
+          triggerRole: context.userRole,
+          note: data.note || null,
+          correlationId: receipt.correlationId,
+        },
+      });
+
+      return { receipt: updated };
+    });
+  }
+
+  /**
    * Get receipt by ID
    */
   async getReceipt(receiptId) {

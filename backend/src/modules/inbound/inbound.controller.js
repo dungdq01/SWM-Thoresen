@@ -209,6 +209,24 @@ class InboundController {
   }
 
   /**
+   * POST /api/v1/inbound/receipts/:id/report-error
+   */
+  async reportErrorReceipt(req, res) {
+    try {
+      const { id } = req.params;
+      const context = this.buildContext(req);
+      const result = await this.receiptService.reportErrorReceipt(id, req.body, context);
+
+      return res.status(200).json({
+        success: true,
+        data: this.mapReceiptResponse(result.receipt),
+      });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
    * POST /api/v1/inbound/weigh-events/in
    */
   async receiveWeighIn(req, res) {

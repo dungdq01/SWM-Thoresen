@@ -23,6 +23,7 @@ const PO_STATUSES = [
   { value: '', label: 'Tất cả' },
   { value: 'NEW', label: 'Tạo mới' },
   { value: 'CONFIRMED', label: 'Xác nhận' },
+  { value: 'RECEIVING', label: 'Đang nhập' },
   { value: 'CLOSED', label: 'Đã đóng' },
   { value: 'CANCELLED', label: 'Đã hủy' },
 ]
@@ -30,12 +31,13 @@ const PO_STATUSES = [
 const statusTone = (status) => {
   if (status === 'NEW') return 'info'
   if (status === 'CONFIRMED') return 'success'
+  if (status === 'RECEIVING') return 'warning'
   if (status === 'CLOSED') return 'default'
   if (status === 'CANCELLED') return 'danger'
   return 'warning'
 }
 
-const STATUS_LABELS = { NEW: 'Tạo mới', CONFIRMED: 'Xác nhận', CLOSED: 'Đã đóng', CANCELLED: 'Đã hủy' }
+const STATUS_LABELS = { NEW: 'Tạo mới', CONFIRMED: 'Xác nhận', RECEIVING: 'Đang nhập', CLOSED: 'Đã đóng', CANCELLED: 'Đã hủy' }
 
 export function PurchaseOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '', vendorId: '' })

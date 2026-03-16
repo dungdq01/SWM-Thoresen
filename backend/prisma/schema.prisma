@@ -1422,6 +1422,7 @@ enum PurchaseOrderType {
 enum PurchaseOrderStatus {
   NEW
   CONFIRMED
+  RECEIVING
   CLOSED
   CANCELLED
 }
@@ -3114,9 +3115,12 @@ enum M8DeviceStatus {
 enum M8WeighEventProcessingStatus {
   RECEIVED
   VALIDATED
+  WEIGHING
+  COMPLETED
   LINKED
   DUPLICATE
   FAILED
+  REJECTED
 }
 
 enum M8CallbackStatus {
@@ -3243,6 +3247,8 @@ model M8WeighbridgeLog {
   ownerId             String?        @map("owner_id") @db.Uuid
   itemCode            String?        @map("item_code") @db.VarChar(50)
   notes               String?        @map("notes") @db.Text
+  grossWeightAt       DateTime?      @map("gross_weight_at")
+  tareWeightAt        DateTime?      @map("tare_weight_at")
   photoAlprPath       String?        @map("photo_alpr_path") @db.VarChar(500)
   photoCargoPath      String?        @map("photo_cargo_path") @db.VarChar(500)
   latencyMs           Int?           @map("latency_ms")

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react'
-import { Eye, Pencil, Trash2, ChevronDown, ChevronUp, Package } from 'lucide-react'
-import { usePurchaseOrders, useCreateInboundReceipt, useInboundReceipts, useUpdateInboundReceipt, useDeleteInboundReceipt } from '@domains/inbound-operations'
+import { Eye, Pencil, Trash2, ChevronDown, ChevronUp, Package, CheckCircle, AlertTriangle } from 'lucide-react'
+import { usePurchaseOrders, useCreateInboundReceipt, useInboundReceipts, useUpdateInboundReceipt, useDeleteInboundReceipt, useConfirmInboundReceipt, useReportErrorInboundReceipt } from '@domains/inbound-operations'
 import { useLookupWarehouses, useLookupItems, useLookupUoms, useLookupOwners } from '@domains/master-data'
 import {
   Badge,
@@ -22,6 +22,8 @@ import { CreateInboundReceiptModal, ViewReceiptModal, EditReceiptModal } from '@
 const RECEIPT_STATUSES = [
   { value: '', label: 'Tất cả' },
   { value: 'DRAFT', label: 'Tạo mới' },
+  { value: 'CONFIRMED', label: 'Xác nhận' },
+  { value: 'ERROR', label: 'Lỗi' },
   { value: 'AWAITING_WEIGHING', label: 'Chờ cân' },
   { value: 'WEIGHED_IN', label: 'Đã cân vào' },
   { value: 'PROCESSING', label: 'Đang xử lý' },
@@ -32,6 +34,8 @@ const RECEIPT_STATUSES = [
 
 const STATUS_LABELS = {
   DRAFT: 'Tạo mới',
+  CONFIRMED: 'Xác nhận',
+  ERROR: 'Lỗi',
   AWAITING_WEIGHING: 'Chờ cân',
   WEIGHED_IN: 'Đã cân vào',
   PROCESSING: 'Đang xử lý',
@@ -42,6 +46,8 @@ const STATUS_LABELS = {
 
 const statusTone = (status) => {
   if (status === 'DRAFT') return 'default'
+  if (status === 'CONFIRMED') return 'success'
+  if (status === 'ERROR') return 'danger'
   if (status === 'AWAITING_WEIGHING') return 'info'
   if (status === 'WEIGHED_IN') return 'info'
   if (status === 'PROCESSING') return 'warning'
@@ -74,6 +80,8 @@ export function InboundReceiptsPage() {
   const createReceipt = useCreateInboundReceipt()
   const updateReceipt = useUpdateInboundReceipt()
   const deleteReceipt = useDeleteInboundReceipt()
+  const confirmReceipt = useConfirmInboundReceipt()
+  const reportErrorReceipt = useReportErrorInboundReceipt()
   const { data: warehouses = [] } = useLookupWarehouses()
   const { data: items = [] } = useLookupItems()
   const { data: uoms = [] } = useLookupUoms()
@@ -120,6 +128,24 @@ export function InboundReceiptsPage() {
     try {
       await deleteReceipt.mutateAsync(deleteConfirm.receipt.id)
       handleCloseDeleteConfirm()
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
+  // Confirm receipt handler
+  const handleConfirmReceipt = async (receipt) => {
+    try {
+      await confirmReceipt.mutateAsync(receipt.id)
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
+  // Report error receipt handler
+  const handleReportErrorReceipt = async (receipt) => {
+    try {
+      await reportErrorReceipt.mutateAsync({ id: receipt.id, data: {} })
     } catch {
       // Error handled by mutation
     }
@@ -227,6 +253,26 @@ export function InboundReceiptsPage() {
                         </Button>
                         {receipt.status === 'DRAFT' && (
                           <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Xác nhận"
+                              className="text-emerald-600 hover:text-emerald-700"
+                              onClick={() => handleConfirmReceipt(receipt)}
+                              disabled={confirmReceipt.isPending}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Báo lỗi"
+                              className="text-amber-500 hover:text-amber-600"
+                              onClick={() => handleReportErrorReceipt(receipt)}
+                              disabled={reportErrorReceipt.isPending}
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"

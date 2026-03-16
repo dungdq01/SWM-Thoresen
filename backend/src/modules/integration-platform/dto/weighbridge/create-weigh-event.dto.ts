@@ -112,6 +112,11 @@ export class UpdateWeighLogDto {
   notes?: string;
 }
 
+export class RecordWeightDto {
+  @IsNumber()
+  weightKg!: number;
+}
+
 export class ReprocessWeighEventDto {
   @IsOptional()
   @IsString()

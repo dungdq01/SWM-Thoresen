@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { FileText, X, Plus, Trash2, Sparkles, Ship } from 'lucide-react'
+import { FileText, X, Plus, Trash2, Sparkles, Ship, Truck } from 'lucide-react'
 import { Button, Input, Select, Textarea } from '@shared/ui'
 
 const PO_TYPES = [
@@ -91,8 +91,8 @@ export function POFormDrawer({
       vendorId: draft.vendorId,
       warehouseId: draft.warehouseId,
       notes: draft.notes || '',
-      vesselName: draft.poType === 'SEA' ? draft.vesselName || '' : '',
-      blNumber: draft.poType === 'SEA' ? draft.blNumber || '' : '',
+      vesselName: draft.vesselName || '',
+      blNumber: draft.blNumber || '',
       lines: draft.lines.filter((l) => l.itemId).map((l) => ({
         ...(l.id ? { id: l.id } : {}),
         itemId: l.itemId,
@@ -105,7 +105,8 @@ export function POFormDrawer({
     onSubmit(payload)
   }
 
-  const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseId && draft.lines.some((l) => l.itemId))
+  const isSeaTransportValid = draft.poType !== 'SEA' || (draft.vesselName && draft.blNumber)
+  const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseId && draft.lines.some((l) => l.itemId) && isSeaTransportValid)
 
   const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
@@ -210,40 +211,42 @@ export function POFormDrawer({
                 />
               </div>
 
-              {/* Section 2: Thông tin vận chuyển (chỉ SEA) */}
-              {draft.poType === 'SEA' && (
-                <div className="px-6 py-5 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">2</span>
-                    <h3 className="text-sm font-semibold text-navy-800">Thông tin vận chuyển</h3>
+              {/* Section 2: Thông tin vận chuyển */}
+              <div className="px-6 py-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">2</span>
+                  <h3 className="text-sm font-semibold text-navy-800">Thông tin vận chuyển</h3>
+                  {draft.poType === 'SEA' ? (
                     <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
                       <Ship className="h-3 w-3" /> Đường biển
                     </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Tên tàu / Nguồn gốc"
-                      value={draft.vesselName}
-                      onChange={(e) => setDraft((p) => ({ ...p, vesselName: e.target.value }))}
-                      placeholder="VD: MV OCEAN STAR"
-                    />
-                    <Input
-                      label="Số BL"
-                      value={draft.blNumber}
-                      onChange={(e) => setDraft((p) => ({ ...p, blNumber: e.target.value }))}
-                      placeholder="VD: BL-2026-RICE-001"
-                    />
-                  </div>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                      <Truck className="h-3 w-3" /> Đường bộ
+                    </span>
+                  )}
                 </div>
-              )}
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label={draft.poType === 'SEA' ? 'Tên tàu / Nguồn gốc *' : 'Tên tàu / Nguồn gốc'}
+                    value={draft.vesselName}
+                    onChange={(e) => setDraft((p) => ({ ...p, vesselName: e.target.value }))}
+                    placeholder="VD: MV OCEAN STAR"
+                  />
+                  <Input
+                    label={draft.poType === 'SEA' ? 'Số BL *' : 'Số BL'}
+                    value={draft.blNumber}
+                    onChange={(e) => setDraft((p) => ({ ...p, blNumber: e.target.value }))}
+                    placeholder="VD: BL-2026-RICE-001"
+                  />
+                </div>
+              </div>
 
               {/* Section 3/2: Chi tiết dòng hàng */}
               <div className="px-6 py-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">
-                      {draft.poType === 'SEA' ? '3' : '2'}
-                    </span>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">3</span>
                     <h3 className="text-sm font-semibold text-navy-800">Chi tiết dòng hàng</h3>
                     <span className="rounded-full bg-moon-100 px-2 py-0.5 text-xs font-medium text-navy-500">
                       {draft.lines.filter((l) => l.itemId).length}/{draft.lines.length} dòng

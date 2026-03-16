@@ -15,6 +15,8 @@ const statusLabel = (status) => {
   const labels = {
     RECEIVED: 'Tạo mới',
     VALIDATED: 'Đã xác nhận',
+    WEIGHING: 'Đang cân lần 2',
+    COMPLETED: 'Hoàn thành',
     LINKED: 'Đã liên kết',
     DUPLICATE: 'Trùng lặp',
     FAILED: 'Thất bại',
@@ -151,9 +153,9 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
                       <tr className="border-t border-moon-100">
                         <td className="px-4 py-3 font-medium text-navy-800">{data.itemCode || data.item?.code || '-'}</td>
                         <td className="px-4 py-3 text-right text-navy-700">{formatWeight(data.grossWeightKg)}</td>
-                        <td className="px-4 py-3 text-center text-navy-600">{formatDateTime(data.weighingTimestamp || data.createdAt)}</td>
+                        <td className="px-4 py-3 text-center text-navy-600">{formatDateTime(data.grossWeightAt)}</td>
                         <td className="px-4 py-3 text-right text-navy-700">{formatWeight(data.tareWeightKg)}</td>
-                        <td className="px-4 py-3 text-center text-navy-600">{data.tareWeightKg ? formatDateTime(data.updatedAt) : '-'}</td>
+                        <td className="px-4 py-3 text-center text-navy-600">{formatDateTime(data.tareWeightAt)}</td>
                         <td className="px-4 py-3 text-right font-semibold text-navy-900">{formatWeight(data.netWeightKg)}</td>
                       </tr>
                     </tbody>

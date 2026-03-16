@@ -108,6 +108,29 @@ export function useUpdateWeighLog() {
   return useMutation({ mutationFn: ({ id, data }) => integrationApi.updateWeighLog(id, data), onSuccess, onError })
 }
 
+export function useConfirmWeighLog() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.weighbridgeLogs], 'Đã xác nhận phiếu cân', 'Không thể xác nhận phiếu cân')
+  return useMutation({ mutationFn: (id) => integrationApi.confirmWeighLog(id), onSuccess, onError })
+}
+
+export function useRejectWeighLog() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.weighbridgeLogs], 'Đã từ chối phiếu cân', 'Không thể từ chối phiếu cân')
+  return useMutation({ mutationFn: ({ id, data }) => integrationApi.rejectWeighLog(id, data), onSuccess, onError })
+}
+
+export function useRecordWeight() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }) => integrationApi.recordWeight(id, data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.weighbridgeLogs })
+      const isCompleted = result.processingStatus === 'COMPLETED'
+      toast.success(isCompleted ? 'Đã hoàn thành cân' : 'Đã ghi nhận trọng lượng lần 1')
+    },
+    onError: (error) => toast.error(parseApiError(error)),
+  })
+}
+
 // OCR Hooks
 export function useOcrResults(filters = {}) {
   return useQuery({

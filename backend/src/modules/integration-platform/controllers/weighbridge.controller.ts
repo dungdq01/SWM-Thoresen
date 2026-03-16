@@ -7,7 +7,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { WeighbridgeIngestService } from '../services/weighbridge-ingest.service';
 import { WeighbridgeLogService } from '../services/weighbridge-log.service';
 import { WeighbridgeDeviceService } from '../services/weighbridge-device.service';
-import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto, UpdateWeighLogDto } from '../dto/weighbridge/create-weigh-event.dto';
+import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto, UpdateWeighLogDto, RecordWeightDto } from '../dto/weighbridge/create-weigh-event.dto';
 import { WeighLogQueryDto } from '../dto/weighbridge/weigh-log-query.dto';
 
 @Controller('integration/weighbridge')
@@ -86,6 +86,27 @@ export class WeighbridgeController {
   @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
   async updateLog(@Param('id') id: string, @Body() dto: UpdateWeighLogDto) {
     return this.logService.updateLog(id, { notes: dto.notes });
+  }
+
+  @Post('logs/:id/confirm')
+  @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
+  async confirmLog(@Param('id') id: string) {
+    return this.logService.confirmLog(id);
+  }
+
+  @Post('logs/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
+  async rejectLog(@Param('id') id: string, @Body() dto: ReprocessWeighEventDto) {
+    return this.logService.rejectLog(id, dto.reasonCode);
+  }
+
+  @Post('logs/:id/record-weight')
+  @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
+  async recordWeight(@Param('id') id: string, @Body() dto: RecordWeightDto) {
+    return this.logService.recordWeight(id, dto);
   }
 
   @Get('devices')

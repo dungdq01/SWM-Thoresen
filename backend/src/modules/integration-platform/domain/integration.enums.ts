@@ -15,9 +15,12 @@ export enum DeviceStatus {
 export enum WeighEventProcessingStatus {
   RECEIVED = 'RECEIVED',
   VALIDATED = 'VALIDATED',
+  WEIGHING = 'WEIGHING',
+  COMPLETED = 'COMPLETED',
   LINKED = 'LINKED',
   DUPLICATE = 'DUPLICATE',
   FAILED = 'FAILED',
+  REJECTED = 'REJECTED',
 }
 
 export enum CallbackStatus {
