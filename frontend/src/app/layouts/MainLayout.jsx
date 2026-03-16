@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { ArrowLeft, Bell, ChevronDown, Menu, Search, Sun, Moon } from 'lucide-react'
 import { AppSidebar } from './components/AppSidebar'
+import { MobileBottomNav } from './components/MobileBottomNav'
 import { Button, Switch } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
+import { usePlatform } from '@shared/hooks/usePlatform'
 import { isMockApiEnabled, setMockApiEnabled } from '@mocks/utils'
 import { GuidedTourProvider, TourOverlay, TourLauncher } from '@shared/guided-tour'
 import '@shared/guided-tour/guided-tour.css'
@@ -25,6 +27,11 @@ export function MainLayout() {
   const location = useLocation()
   const { open: openPalette } = useCommandPalette()
   const { isDark, toggle: toggleDark } = useDarkMode()
+  const { showBottomNav } = usePlatform()
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--bottom-nav-height', showBottomNav ? '56px' : '0px')
+  }, [showBottomNav])
 
   useEffect(() => { setIsMockEnabledState(isMockApiEnabled()) }, [])
 
@@ -63,7 +70,7 @@ export function MainLayout() {
       <main className={cn('flex flex-col flex-1 min-w-0 transition-all duration-300', isSidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-60')}>
         {/* ── Header ── */}
         <header
-          className="flex-shrink-0 z-20 backdrop-blur-sm"
+          className="flex-shrink-0 z-20 backdrop-blur-sm safe-area-top"
           style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
         >
           <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-6">
@@ -167,6 +174,10 @@ export function MainLayout() {
           <Outlet />
         </div>
       </main>
+
+      {showBottomNav && (
+        <MobileBottomNav onOpenSidebar={() => setIsMobileMenuOpen(true)} />
+      )}
 
       <TourOverlay />
       <CommandPalette />

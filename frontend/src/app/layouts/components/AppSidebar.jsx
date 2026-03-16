@@ -302,14 +302,15 @@ export function AppSidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-sidebar-border bg-gradient-to-b from-navy-900 to-navy-800 transition-all duration-300',
+        'fixed left-0 top-0 z-50 flex flex-col border-r border-sidebar-border bg-gradient-to-b from-navy-900 to-navy-800 transition-all duration-300',
+        'h-[100dvh]',
         isMobileOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0',
         isCollapsed ? 'lg:w-[68px]' : 'lg:w-60',
         'w-72 lg:w-auto'
       )}
     >
-      <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
+      <div className="flex min-h-[56px] items-center justify-between border-b border-sidebar-border px-4">
         <div className="flex items-center gap-3">
           {!effectiveCollapsed && (
             <>

@@ -29,3 +29,7 @@ Thumbs.db
 # Cache
 .cache/
 .eslintcache
+
+# Capacitor native projects
+android/
+ios/

@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
+  // Capacitor cần relative path cho native file:// protocol
+  // Web deploy có thể override bằng env VITE_BASE_URL
+  base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/',
   plugins: [react()],
   resolve: {
     alias: {

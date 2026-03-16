@@ -105,6 +105,7 @@ const GoLiveChecklistPage = lazy(() => import('@pages/reporting').then(m => ({ d
 // Warehouse Monitoring
 const WarehouseMonitoringPage = lazy(() => import('@pages/warehouse-monitoring').then(m => ({ default: m.WarehouseMonitoringPage })))
 
+
 const withSuspense = (Component) => (
   <Suspense fallback={<PageLoader />}>
     <Component />

@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
-import { Upload, X, FileImage, Loader2 } from 'lucide-react'
+import { Upload, X, FileImage, Loader2, Camera, ImagePlus } from 'lucide-react'
 import { Button, Modal } from '@shared/ui'
 import { useUploadOcrImage } from '@domains/integration'
+import { useCamera } from '@shared/hooks/useCamera'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf']
 const MAX_SIZE_MB = 10
@@ -20,13 +21,15 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [error, setError] = useState('')
   const inputRef = useRef(null)
   const uploadMutation = useUploadOcrImage()
+  const camera = useCamera()
 
   const resetState = useCallback(() => {
     setFile(null)
     setPreview(null)
     setError('')
     setDragActive(false)
-  }, [])
+    camera.reset()
+  }, [camera])
 
   const handleClose = useCallback(() => {
     resetState()
@@ -113,34 +116,67 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
       }
     >
       {!file ? (
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => inputRef.current?.click()}
-          className={`
-            flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 cursor-pointer transition-colors
-            ${dragActive ? 'border-ice bg-ice/5' : 'border-border hover:border-ice/50 hover:bg-muted/30'}
-          `}
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <FileImage className="h-6 w-6 text-muted-foreground" />
+        <div className="space-y-3">
+          {/* Camera + Gallery buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                const result = await camera.takePhoto()
+                if (result?.file) handleFileSelect(result.file)
+              }}
+              disabled={camera.loading}
+              className="flex-1 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-ice/40 bg-ice/5 p-4 transition-colors hover:border-ice hover:bg-ice/10"
+            >
+              <Camera className="h-6 w-6 text-ice" />
+              <span className="text-xs font-medium text-ice">{camera.loading ? 'Đang mở...' : 'Chụp ảnh'}</span>
+            </button>
+            <button
+              onClick={async () => {
+                const result = await camera.pickFromGallery()
+                if (result?.file) handleFileSelect(result.file)
+              }}
+              disabled={camera.loading}
+              className="flex-1 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-4 transition-colors hover:border-ice/50 hover:bg-muted/30"
+            >
+              <ImagePlus className="h-6 w-6 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Thư viện</span>
+            </button>
           </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-foreground">Kéo thả ảnh vào đây</p>
-            <p className="mt-1 text-xs text-muted-foreground">hoặc click để chọn file</p>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-border" />
+            <span className="text-xs text-muted-foreground">hoặc</span>
+            <div className="flex-1 border-t border-border" />
           </div>
-          <p className="text-xs text-muted-foreground">JPG, PNG, PDF — tối đa {MAX_SIZE_MB}MB</p>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".jpg,.jpeg,.png,.pdf"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) handleFileSelect(f)
-            }}
-          />
+
+          {/* Drag & drop area */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => inputRef.current?.click()}
+            className={`
+              flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors
+              ${dragActive ? 'border-ice bg-ice/5' : 'border-border hover:border-ice/50 hover:bg-muted/30'}
+            `}
+          >
+            <FileImage className="h-5 w-5 text-muted-foreground" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Kéo thả hoặc chọn file</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">JPG, PNG, PDF — tối đa {MAX_SIZE_MB}MB</p>
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleFileSelect(f)
+              }}
+            />
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
