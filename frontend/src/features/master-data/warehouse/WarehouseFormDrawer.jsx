@@ -126,13 +126,16 @@ export function WarehouseFormDrawer({
                       error={errors.warehouseCode?.message}
                     />
                   </div>
-                  <Select
-                    label="Loại kho"
-                    required
-                    options={WAREHOUSE_TYPES}
-                    error={errors.warehouseType?.message}
-                    {...register('warehouseType')}
-                  />
+                  <Controller name="warehouseType" control={control} render={({ field }) => (
+                    <Select
+                      label="Loại kho"
+                      required
+                      options={WAREHOUSE_TYPES}
+                      error={errors.warehouseType?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
                 </div>
 
                 <div>

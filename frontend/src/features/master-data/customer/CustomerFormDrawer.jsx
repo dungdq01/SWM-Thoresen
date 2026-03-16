@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Users, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -23,6 +23,7 @@ export function CustomerFormDrawer({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(customerSchema),
@@ -93,7 +94,7 @@ export function CustomerFormDrawer({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl z-[101] flex flex-col"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-navy-100 bg-gradient-to-r from-navy-50 to-white">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-navy-100">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
                   <Users className="w-5 h-5 text-white" />
@@ -156,20 +157,26 @@ export function CustomerFormDrawer({
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Nhóm khách hàng"
-                    required
-                    options={CUSTOMER_GROUPS}
-                    error={errors.customerGroup?.message}
-                    {...register('customerGroup')}
-                  />
-                  <Select
-                    label="Loại khách hàng"
-                    required
-                    options={CUSTOMER_TYPES}
-                    error={errors.customerType?.message}
-                    {...register('customerType')}
-                  />
+                  <Controller name="customerGroup" control={control} render={({ field }) => (
+                    <Select
+                      label="Nhóm khách hàng"
+                      required
+                      options={CUSTOMER_GROUPS}
+                      error={errors.customerGroup?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
+                  <Controller name="customerType" control={control} render={({ field }) => (
+                    <Select
+                      label="Loại khách hàng"
+                      required
+                      options={CUSTOMER_TYPES}
+                      error={errors.customerType?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
                 </div>
 
                 <Input

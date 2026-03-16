@@ -1,6 +1,50 @@
 import { delay, paginate, byKeyword } from './utils'
 
 const db = {
+  locationTypes: [
+    { id: 'lt-001', locationTypeCode: 'STORAGE', locationTypeName: 'Lưu trữ', description: 'Vị trí lưu kho mặc định', isDefault: true, isActive: true, rowVersion: 1 },
+    { id: 'lt-002', locationTypeCode: 'DAMAGED', locationTypeName: 'Hư hỏng', description: 'Vị trí chứa hàng hư hỏng', isDefault: false, isActive: true, rowVersion: 1 },
+    { id: 'lt-003', locationTypeCode: 'RECEIVING', locationTypeName: 'Nhận hàng', description: 'Khu vực nhận hàng', isDefault: false, isActive: true, rowVersion: 1 },
+    { id: 'lt-004', locationTypeCode: 'STAGING', locationTypeName: 'Staging', description: 'Khu vực tập kết', isDefault: false, isActive: true, rowVersion: 1 },
+    { id: 'lt-005', locationTypeCode: 'SHIPPING', locationTypeName: 'Xuất hàng', description: 'Khu vực xuất hàng', isDefault: false, isActive: true, rowVersion: 1 },
+    { id: 'lt-006', locationTypeCode: 'QC', locationTypeName: 'Kiểm tra chất lượng', description: 'Khu vực kiểm phẩm', isDefault: false, isActive: true, rowVersion: 1 },
+    { id: 'lt-007', locationTypeCode: 'BULK_FLOOR', locationTypeName: 'Sàn hàng rời', description: 'Vị trí đổ hàng xá', isDefault: false, isActive: true, rowVersion: 1 },
+  ],
+  ownerSkuMappings: [
+    { id: 'map-001', mappingCode: 'MAP-001', ownerId: 'owner-001', itemId: 'item-001', ownerSkuCode: 'TVL-BLK-RICE-5PCT-001', ownerSkuName: 'Gạo 5% tấm TVL', billingClass: 'ST01', isActive: true, rowVersion: 1 },
+    { id: 'map-002', mappingCode: 'MAP-002', ownerId: 'owner-001', itemId: 'item-002', ownerSkuCode: 'TVL-BLK-RICE-50PCT-001', ownerSkuName: 'Gạo 50% tấm TVL', billingClass: 'ST01', isActive: true, rowVersion: 1 },
+    { id: 'map-003', mappingCode: 'MAP-003', ownerId: 'owner-002', itemId: 'item-001', ownerSkuCode: 'BTP-BLK-CASSAVA-001-001', ownerSkuName: 'Tinh bột sắn BTP', billingClass: 'ST02', isActive: true, rowVersion: 1 },
+    { id: 'map-004', mappingCode: 'MAP-004', ownerId: 'owner-002', itemId: 'item-002', ownerSkuCode: 'BTP-BLK-SUGAR-REF-001', ownerSkuName: 'Đường tinh luyện BTP', billingClass: 'ST02', isActive: true, rowVersion: 1 },
+    { id: 'map-005', mappingCode: 'MAP-005', ownerId: 'owner-001', itemId: 'item-001', ownerSkuCode: 'VNL-BLK-CORN-001-001', ownerSkuName: 'Bắp hạt VNL', billingClass: 'ST01', isActive: true, rowVersion: 1 },
+    { id: 'map-006', mappingCode: 'MAP-006', ownerId: 'owner-002', itemId: 'item-002', ownerSkuCode: 'VNL-BLK-WHEAT-001-001', ownerSkuName: 'Lúa mì VNL', billingClass: 'ST01', isActive: true, rowVersion: 1 },
+    { id: 'map-007', mappingCode: 'MAP-007', ownerId: 'owner-001', itemId: 'item-001', ownerSkuCode: 'SML-BLK-CLINKER-001-001', ownerSkuName: 'Clinker SML', billingClass: 'ST03', isActive: true, rowVersion: 1 },
+    { id: 'map-008', mappingCode: 'MAP-008', ownerId: 'owner-002', itemId: 'item-002', ownerSkuCode: 'LTST-BLK-FERT-NPK-001', ownerSkuName: 'Phân bón LTST', billingClass: 'ST02', isActive: true, rowVersion: 1 },
+  ],
+  vessels: [
+    { id: 'vsl-001', vesselCode: 'VSL-001', vesselName: 'THORESEN STAR', imoNumber: '9876543', vesselType: 'BULK_CARRIER', nationality: 'Vietnam', dwtTon: 28500, loaM: 169.9, beamM: 27.2, draftM: 9.8, callSign: '3WDP', yearBuilt: 2018, owner: 'Thoresen Vinama Logistics', operator: 'TVL Shipping', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-002', vesselCode: 'VSL-002', vesselName: 'VINALINES GLORY', imoNumber: '9812345', vesselType: 'BULK_CARRIER', nationality: 'Vietnam', dwtTon: 56000, loaM: 196.0, beamM: 32.3, draftM: 11.8, callSign: '3WAB', yearBuilt: 2015, owner: 'Vinalines Logistics JSC', operator: 'Vinalines', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-003', vesselCode: 'VSL-003', vesselName: 'MEKONG PIONEER', imoNumber: '9754321', vesselType: 'BARGE', nationality: 'Vietnam', dwtTon: 3500, loaM: 68.0, beamM: 14.0, draftM: 3.2, callSign: '3WMK', yearBuilt: 2020, owner: 'Công ty TNHH Bình Tây Phương', operator: '', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-004', vesselCode: 'VSL-004', vesselName: 'SAIGON TRADER', imoNumber: '9698765', vesselType: 'GENERAL_CARGO', nationality: 'Panama', dwtTon: 12000, loaM: 140.0, beamM: 22.5, draftM: 8.5, callSign: 'HSSG', yearBuilt: 2012, owner: 'Pan Ocean Shipping', operator: 'Pan Ocean', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-005', vesselCode: 'VSL-005', vesselName: 'OCEAN DIAMOND', imoNumber: '9634567', vesselType: 'BULK_CARRIER', nationality: 'Liberia', dwtTon: 75000, loaM: 225.0, beamM: 32.3, draftM: 14.5, callSign: 'A8OD', yearBuilt: 2016, owner: 'Global Bulk Carriers Ltd', operator: '', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-006', vesselCode: 'VSL-006', vesselName: 'DONG NAI 08', imoNumber: '9587654', vesselType: 'BARGE', nationality: 'Vietnam', dwtTon: 1800, loaM: 55.0, beamM: 12.0, draftM: 2.8, callSign: '3WDN', yearBuilt: 2021, owner: 'Smartlog Technology JSC', operator: '', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-007', vesselCode: 'VSL-007', vesselName: 'BRIGHT FORTUNE', imoNumber: '9523456', vesselType: 'CONTAINER', nationality: 'Singapore', dwtTon: 42000, loaM: 210.0, beamM: 30.0, draftM: 12.0, callSign: '9VBF', yearBuilt: 2019, owner: 'Fortune Shipping Pte Ltd', operator: '', notes: '', isActive: true, rowVersion: 1 },
+    { id: 'vsl-008', vesselCode: 'VSL-008', vesselName: 'CAN THO SPIRIT', imoNumber: '9498765', vesselType: 'BARGE', nationality: 'Vietnam', dwtTon: 2200, loaM: 60.0, beamM: 13.0, draftM: 3.0, callSign: '3WCT', yearBuilt: 2022, owner: 'CTCP Lương thực Sóc Trăng', operator: '', notes: '', isActive: false, rowVersion: 1 },
+  ],
+  carriers: [
+    { id: 'car-001', carrierCode: 'CAR001', carrierName: 'CTCP Vận tải Phú Mỹ', contactName: 'Trần Quốc Việt', phone: '0254-3891-234', carrierGroup: 'TRUCKING', transportMode: 'TRUCK', defaultVehicleTypeCode: 'TRUCK_BULK', isActive: true, rowVersion: 1 },
+    { id: 'car-002', carrierCode: 'CAR002', carrierName: 'Tổng CTCP Vận tải Thuỷ Nội Địa', contactName: 'Nguyễn Hữu Dũng', phone: '028-3940-5678', carrierGroup: 'SHIPPING_LINE', transportMode: 'VESSEL', defaultVehicleTypeCode: null, isActive: true, rowVersion: 1 },
+    { id: 'car-003', carrierCode: 'CAR003', carrierName: 'DHL Supply Chain Vietnam', contactName: 'David Nguyen', phone: '028-3821-6789', carrierGroup: 'FREIGHT_FORWARDER', transportMode: 'CONTAINER', defaultVehicleTypeCode: 'CONT_40', isActive: true, rowVersion: 1 },
+    { id: 'car-004', carrierCode: 'CAR004', carrierName: 'CTCP Vận tải Sông Tiền', contactName: 'Lê Văn Phong', phone: '0273-3872-345', carrierGroup: 'SHIPPING_LINE', transportMode: 'BARGE', defaultVehicleTypeCode: null, isActive: true, rowVersion: 1 },
+    { id: 'car-005', carrierCode: 'CAR005', carrierName: 'Công ty TNHH Vận tải Miền Tây', contactName: 'Huỳnh Thanh Sơn', phone: '0292-3836-111', carrierGroup: 'TRUCKING', transportMode: 'TRUCK', defaultVehicleTypeCode: 'TRUCK_BULK', isActive: false, rowVersion: 1 },
+  ],
+  itemGroups: [
+    { id: 'ig-001', itemGroupCode: 'PG-001', itemGroupName: 'Hàng xá', description: 'Hàng rời không đóng bao', cargoForm: 'XA', isActive: true, rowVersion: 1 },
+    { id: 'ig-002', itemGroupCode: 'PG-002', itemGroupName: 'Hàng bao', description: 'Hàng đóng bao', cargoForm: 'BAO', isActive: true, rowVersion: 1 },
+    { id: 'ig-003', itemGroupCode: 'PG-003', itemGroupName: 'Vỏ bao', description: 'Bao bì, vỏ bao', cargoForm: 'KHAC', isActive: true, rowVersion: 1 },
+    { id: 'ig-004', itemGroupCode: 'PG-004', itemGroupName: 'Hàng Jumbo', description: 'Hàng đóng bao jumbo', cargoForm: 'BAO', isActive: true, rowVersion: 1 },
+    { id: 'ig-005', itemGroupCode: 'PG-005', itemGroupName: 'Hàng container', description: 'Hàng đóng container tiêu chuẩn', cargoForm: 'KHAC', isActive: true, rowVersion: 1 },
+    { id: 'ig-006', itemGroupCode: 'PG-006', itemGroupName: 'Phân bón', description: 'Phân bón hữu cơ và hóa học', cargoForm: 'XA', isActive: false, rowVersion: 1 },
+  ],
   owners: [
     { id: 'owner-001', ownerCode: 'CUST001', ownerName: 'Thoresen Bulk', shortName: 'THO', ownerGroup: 'FOREIGN', ownerType: 'IMPORT', taxCode: 'TAX-001', isActive: true, rowVersion: 1 },
     { id: 'owner-002', ownerCode: 'CUST002', ownerName: 'TVL Trading', shortName: 'TVL', ownerGroup: 'LOCAL', ownerType: 'DOMESTIC', taxCode: 'TAX-002', isActive: true, rowVersion: 1 },
@@ -95,7 +139,8 @@ function crudList(items, params, keywordFields, extraFilter = () => true) {
 const CODE_FIELD_MAP = {
   owners: 'ownerCode', vendors: 'vendorCode', customers: 'customerCode', items: 'itemCode',
   warehouses: 'warehouseCode', zones: 'zoneCode', locations: 'locationCode',
-  uoms: 'uomCode', vehicleTypes: 'vehicleTypeCode',
+  uoms: 'uomCode', vehicleTypes: 'vehicleTypeCode', itemGroups: 'itemGroupCode', carriers: 'carrierCode',
+  vessels: 'vesselCode',
 }
 
 const CODE_PREFIX_MAP = {
@@ -108,6 +153,9 @@ const CODE_PREFIX_MAP = {
   locations: 'LOC',
   uoms: 'UOM',
   vehicleTypes: 'VT',
+  itemGroups: 'PG',
+  carriers: 'CAR',
+  vessels: 'VSL',
 }
 
 function autoGenCode(collection) {
@@ -267,6 +315,75 @@ export const masterDataMockApi = {
     getList: (params = {}) => crudList(db.vehicleTypes, params, ['vehicleTypeCode', 'vehicleTypeName'], (item) => (params.isActive === undefined ? true : item.isActive === params.isActive) && (!params.category || item.category === params.category)),
     getById: (id) => delay({ data: db.vehicleTypes.find((item) => item.id === id) }),
     create: (data) => crudCreate('vehicleTypes', data), update: (id, data) => crudUpdate('vehicleTypes', id, data), deactivate: (id) => crudDeactivate('vehicleTypes', id), reactivate: (id) => crudReactivate('vehicleTypes', id),
+  },
+  carrierApi: {
+    getList: (params = {}) => crudList(db.carriers, params, ['carrierCode', 'carrierName', 'contactName'], (item) => (params.isActive === undefined ? true : item.isActive === params.isActive) && (!params.carrierGroup || item.carrierGroup === params.carrierGroup) && (!params.transportMode || item.transportMode === params.transportMode)),
+    getById: (id) => delay({ data: db.carriers.find((item) => item.id === id) }),
+    create: (data) => crudCreate('carriers', data), update: (id, data) => crudUpdate('carriers', id, data), deactivate: (id) => crudDeactivate('carriers', id), reactivate: (id) => crudReactivate('carriers', id),
+  },
+  locationTypeApi: {
+    getList: (params = {}) => crudList(db.locationTypes, params, ['locationTypeCode', 'locationTypeName', 'description'], (item) => (params.isActive === undefined ? true : item.isActive === params.isActive)),
+    getById: (id) => delay({ data: db.locationTypes.find((item) => item.id === id) }),
+    create: (data) => {
+      const dup = db.locationTypes.find((r) => r.locationTypeCode?.toUpperCase() === data.locationTypeCode?.toUpperCase())
+      if (dup) return delay(null, { statusCode: 409, message: `Mã "${data.locationTypeCode}" đã tồn tại.` })
+      const record = { id: `lt-${Date.now()}`, isActive: true, rowVersion: 1, isDefault: false, ...data }
+      db.locationTypes.unshift(record)
+      return delay({ data: record })
+    },
+    update: (id, data) => crudUpdate('locationTypes', id, data),
+    delete: (id) => {
+      const index = db.locationTypes.findIndex((item) => item.id === id)
+      if (index === -1) return delay(null, { statusCode: 404, message: 'Không tìm thấy bản ghi' })
+      db.locationTypes.splice(index, 1)
+      return delay({ data: { success: true } })
+    },
+  },
+  ownerSkuMappingApi: {
+    getList: (params = {}) => {
+      const withRefs = (m) => ({
+        ...m,
+        owner: db.owners.find((o) => o.id === m.ownerId),
+        item: db.items.find((i) => i.id === m.itemId),
+      })
+      return crudList(
+        db.ownerSkuMappings.map(withRefs), params,
+        ['mappingCode', 'ownerSkuCode', 'ownerSkuName'],
+        (item) => (params.isActive === undefined ? true : item.isActive === params.isActive) && (!params.ownerId || item.ownerId === params.ownerId)
+      )
+    },
+    getById: (id) => {
+      const m = db.ownerSkuMappings.find((item) => item.id === id)
+      if (!m) return delay({ data: null })
+      return delay({ data: { ...m, owner: db.owners.find((o) => o.id === m.ownerId), item: db.items.find((i) => i.id === m.itemId) } })
+    },
+    getNextMappingCode: () => {
+      const nums = db.ownerSkuMappings.map((m) => parseInt(m.mappingCode.replace('MAP-', ''), 10)).filter((n) => !isNaN(n))
+      const next = nums.length > 0 ? Math.max(...nums) + 1 : 1
+      return delay({ data: { code: `MAP-${String(next).padStart(3, '0')}` } })
+    },
+    create: (data) => {
+      const record = { id: `map-${Date.now()}`, isActive: true, rowVersion: 1, ...data }
+      db.ownerSkuMappings.unshift(record)
+      return delay({ data: record })
+    },
+    update: (id, data) => crudUpdate('ownerSkuMappings', id, data),
+    delete: (id) => {
+      const index = db.ownerSkuMappings.findIndex((item) => item.id === id)
+      if (index === -1) return delay(null, { statusCode: 404, message: 'Không tìm thấy bản ghi' })
+      db.ownerSkuMappings.splice(index, 1)
+      return delay({ data: { success: true } })
+    },
+  },
+  vesselApi: {
+    getList: (params = {}) => crudList(db.vessels, params, ['vesselCode', 'vesselName', 'imoNumber', 'owner'], (item) => (params.isActive === undefined ? true : item.isActive === params.isActive) && (!params.vesselType || item.vesselType === params.vesselType) && (!params.nationality || item.nationality === params.nationality)),
+    getById: (id) => delay({ data: db.vessels.find((item) => item.id === id) }),
+    create: (data) => crudCreate('vessels', data), update: (id, data) => crudUpdate('vessels', id, data), deactivate: (id) => crudDeactivate('vessels', id), reactivate: (id) => crudReactivate('vessels', id),
+  },
+  itemGroupApi: {
+    getList: (params = {}) => crudList(db.itemGroups, params, ['itemGroupCode', 'itemGroupName', 'description'], (item) => (params.isActive === undefined ? true : item.isActive === params.isActive) && (!params.cargoForm || item.cargoForm === params.cargoForm)),
+    getById: (id) => delay({ data: db.itemGroups.find((item) => item.id === id) }),
+    create: (data) => crudCreate('itemGroups', data), update: (id, data) => crudUpdate('itemGroups', id, data), deactivate: (id) => crudDeactivate('itemGroups', id), reactivate: (id) => crudReactivate('itemGroups', id),
   },
   inventoryStatusApi: {
     getList: (params = {}) => crudList(db.inventoryStatuses, params, ['statusCode', 'description']),

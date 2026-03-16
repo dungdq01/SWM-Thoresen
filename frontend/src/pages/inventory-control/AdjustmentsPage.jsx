@@ -47,8 +47,24 @@ export function AdjustmentsPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'PENDING_APPROVAL', label: 'PENDING_APPROVAL' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'POSTED', label: 'POSTED' }]} placeholder="Trạng thái" />
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'PENDING_APPROVAL', label: 'PENDING_APPROVAL' }, { value: 'APPROVED', label: 'APPROVED' }, { value: 'POSTED', label: 'POSTED' }].map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
           <Select value={filters.sourceType} onChange={(e) => setFilters((prev) => ({ ...prev, sourceType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'MANUAL', label: 'MANUAL' }, { value: 'CYCLE_COUNT', label: 'CYCLE_COUNT' }, { value: 'RECONCILIATION', label: 'RECONCILIATION' }]} placeholder="Loại nguồn" />
         </div>
 

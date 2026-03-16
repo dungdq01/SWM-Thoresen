@@ -186,12 +186,7 @@ export function OwnersPage() {
             {owners.map((owner) => (
               <TableRow key={owner.id} onClick={() => handleEdit(owner)}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice-dark">
-                      <Building2 className="h-4 w-4" />
-                    </div>
-                    <span className="font-semibold text-navy-900">{owner.ownerCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{owner.ownerCode}</span>
                 </TableCell>
                 <TableCell>
                   <div>

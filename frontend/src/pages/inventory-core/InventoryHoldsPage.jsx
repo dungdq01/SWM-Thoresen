@@ -56,7 +56,26 @@ export function InventoryHoldsPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ value: '', label: 'Tất cả' }, { value: 'ACTIVE', label: 'Đang giữ' }, { value: 'PARTIALLY_RELEASED', label: 'Giải phóng một phần' }, { value: 'RELEASED', label: 'Đã giải phóng' }, { value: 'CANCELLED', label: 'Đã hủy' }, { value: 'CONSUMED', label: 'Đã tiêu thụ' }].map((s) => (
+            <button
+              key={s.value}
+              onClick={() => handleFilterChange('status', s.value)}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Other filters */}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Select value={filters.itemId} onChange={(e) => handleFilterChange('itemId', e.target.value)} placeholder="Tất cả mặt hàng"
             options={itemOptions.map((o) => ({ value: o.id, label: o.code }))} />
           <Select value={filters.ownerId} onChange={(e) => handleFilterChange('ownerId', e.target.value)} placeholder="Tất cả chủ hàng"
@@ -64,14 +83,6 @@ export function InventoryHoldsPage() {
           <Select value={filters.warehouseId} onChange={(e) => handleFilterChange('warehouseId', e.target.value)} placeholder="Tất cả kho"
             options={warehouseOptions.map((o) => ({ value: o.id, label: `${o.code} — ${o.name}` }))} />
           <Input placeholder="Mã phiếu xuất" value={filters.shipmentId} onChange={(e) => handleFilterChange('shipmentId', e.target.value)} />
-          <Select value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} placeholder="Tất cả trạng thái"
-            options={[
-              { value: 'ACTIVE', label: 'Đang giữ' },
-              { value: 'PARTIALLY_RELEASED', label: 'Giải phóng một phần' },
-              { value: 'RELEASED', label: 'Đã giải phóng' },
-              { value: 'CANCELLED', label: 'Đã hủy' },
-              { value: 'CONSUMED', label: 'Đã tiêu thụ' },
-            ]} />
         </div>
 
         <Table>

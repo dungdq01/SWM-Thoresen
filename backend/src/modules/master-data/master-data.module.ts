@@ -15,6 +15,11 @@ import { InventoryStatusController } from './controllers/inventory-status.contro
 import { LookupController } from './controllers/lookup.controller';
 import { CustomerController } from './controllers/customer.controller';
 import { DropdownConfigController } from './controllers/dropdown-config.controller';
+import { CarrierController } from './controllers/carrier.controller';
+import { VesselController } from './controllers/vessel.controller';
+import { LocationTypeController } from './controllers/location-type.controller';
+import { OwnerSkuMappingController } from './controllers/owner-sku-mapping.controller';
+import { ItemGroupController } from './controllers/item-group.controller';
 
 import { OwnerRepository } from './repositories/owner.repository';
 import { VendorRepository } from './repositories/vendor.repository';
@@ -28,6 +33,11 @@ import { VehicleTypeRepository } from './repositories/vehicle-type.repository';
 import { InventoryStatusRepository } from './repositories/inventory-status.repository';
 import { CustomerRepository } from './repositories/customer.repository';
 import { DropdownConfigRepository } from './repositories/dropdown-config.repository';
+import { CarrierRepository } from './repositories/carrier.repository';
+import { VesselRepository } from './repositories/vessel.repository';
+import { LocationTypeRepository } from './repositories/location-type.repository';
+import { OwnerSkuMappingRepository } from './repositories/owner-sku-mapping.repository';
+import { ItemGroupRepository } from './repositories/item-group.repository';
 
 import { OwnerService } from './services/owner.service';
 import { VendorService } from './services/vendor.service';
@@ -41,6 +51,11 @@ import { InventoryStatusService } from './services/inventory-status.service';
 import { LookupService } from './services/lookup.service';
 import { CustomerService } from './services/customer.service';
 import { DropdownConfigService } from './services/dropdown-config.service';
+import { CarrierService } from './services/carrier.service';
+import { VesselService } from './services/vessel.service';
+import { LocationTypeService } from './services/location-type.service';
+import { OwnerSkuMappingService } from './services/owner-sku-mapping.service';
+import { ItemGroupService } from './services/item-group.service';
 
 @Module({
   imports: [PrismaModule, FoundationModule],
@@ -58,6 +73,11 @@ import { DropdownConfigService } from './services/dropdown-config.service';
     LookupController,
     CustomerController,
     DropdownConfigController,
+    CarrierController,
+    VesselController,
+    LocationTypeController,
+    OwnerSkuMappingController,
+    ItemGroupController,
   ],
   providers: [
     OwnerRepository,
@@ -72,6 +92,11 @@ import { DropdownConfigService } from './services/dropdown-config.service';
     InventoryStatusRepository,
     CustomerRepository,
     DropdownConfigRepository,
+    CarrierRepository,
+    VesselRepository,
+    LocationTypeRepository,
+    OwnerSkuMappingRepository,
+    ItemGroupRepository,
     OwnerService,
     VendorService,
     ItemService,
@@ -84,6 +109,11 @@ import { DropdownConfigService } from './services/dropdown-config.service';
     LookupService,
     CustomerService,
     DropdownConfigService,
+    CarrierService,
+    VesselService,
+    LocationTypeService,
+    OwnerSkuMappingService,
+    ItemGroupService,
   ],
   exports: [
     OwnerService,
@@ -98,6 +128,11 @@ import { DropdownConfigService } from './services/dropdown-config.service';
     LookupService,
     CustomerService,
     DropdownConfigService,
+    CarrierService,
+    VesselService,
+    LocationTypeService,
+    OwnerSkuMappingService,
+    ItemGroupService,
   ],
 })
 export class MasterDataModule {}

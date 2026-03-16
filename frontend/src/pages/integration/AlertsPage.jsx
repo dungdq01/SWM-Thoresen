@@ -40,8 +40,24 @@ export function AlertsPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'OPEN', label: 'Mở' }, { value: 'ACKNOWLEDGED', label: 'Đã ghi nhận' }, { value: 'RESOLVED', label: 'Đã xử lý' }]} placeholder="Trạng thái" />
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ value: '', label: 'Tất cả' }, { value: 'OPEN', label: 'Mở' }, { value: 'ACKNOWLEDGED', label: 'Đã ghi nhận' }, { value: 'RESOLVED', label: 'Đã xử lý' }].map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
           <Select value={filters.severity} onChange={(e) => setFilters((prev) => ({ ...prev, severity: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'HIGH', label: 'Cao' }, { value: 'MEDIUM', label: 'Trung bình' }, { value: 'LOW', label: 'Thấp' }]} placeholder="Mức độ" />
           <Select value={filters.alertSource} onChange={(e) => setFilters((prev) => ({ ...prev, alertSource: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'WEIGHBRIDGE', label: 'WEIGHBRIDGE' }, { value: 'ERP_SYNC', label: 'ERP_SYNC' }, { value: 'MOBILE_SYNC', label: 'MOBILE_SYNC' }, { value: 'OCR', label: 'OCR' }]} placeholder="Nguồn" />
         </div>

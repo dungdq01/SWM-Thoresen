@@ -1,9 +1,7 @@
 import { useCallback, useState } from 'react'
-import { Plus } from 'lucide-react'
 import { useTransactionList } from '@domains/inventory-core'
 import { useLookupItems, useLookupOwners } from '@domains/master-data'
 import { Badge, Button, Input, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
-import { InventoryTransactionDrawer } from '@features/inventory-core'
 
 const transTypeTone = (type) => {
   if (['RECEIPT_IN', 'COUNT_GAIN', 'VAS_PRODUCE', 'TRANSFER_IN'].includes(type)) return 'success'
@@ -37,8 +35,6 @@ export function InventoryTransactionsPage() {
     transType: '',
     correlationId: '',
   })
-  const [drawerOpen, setDrawerOpen] = useState(false)
-
   const { data: response, isLoading, refetch } = useTransactionList({
     ...filters,
     itemId: filters.itemId || undefined,
@@ -65,11 +61,7 @@ export function InventoryTransactionsPage() {
         <h2 className="section-title">Lịch sử giao dịch</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
-          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Tạo giao dịch
-          </Button>
-        </div>
+          </div>
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -139,10 +131,6 @@ export function InventoryTransactionsPage() {
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(page) => handleChange('page', page)} />
       </div>
 
-      <InventoryTransactionDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
     </>
   )
 }

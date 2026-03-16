@@ -48,8 +48,24 @@ export function MoveOrdersPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'CONFIRMED', label: 'CONFIRMED' }, { value: 'IN_PROGRESS', label: 'IN_PROGRESS' }, { value: 'COMPLETED', label: 'COMPLETED' }, { value: 'CANCELLED', label: 'CANCELLED' }]} placeholder="Trạng thái" />
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'DRAFT' }, { value: 'CONFIRMED', label: 'CONFIRMED' }, { value: 'IN_PROGRESS', label: 'IN_PROGRESS' }, { value: 'COMPLETED', label: 'COMPLETED' }, { value: 'CANCELLED', label: 'CANCELLED' }].map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
           <Select value={filters.warehouseId} onChange={(e) => setFilters((prev) => ({ ...prev, warehouseId: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]} placeholder="Kho" />
         </div>
 

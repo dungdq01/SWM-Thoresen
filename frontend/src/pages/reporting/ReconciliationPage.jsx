@@ -72,21 +72,23 @@ export function ReconciliationPage() {
         </div>
       </div>
 
-      {/* Filter */}
+      {/* Quick status filter */}
       <div className="wrs-card p-4 mb-4">
-        <div className="flex gap-3">
-          <select
-            className="wrs-input h-9 text-sm w-40"
-            value={filters.resultStatus}
-            onChange={(e) => setFilter('resultStatus', e.target.value)}
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <Button variant="outline" size="sm" onClick={() => setFilters({ resultStatus: '', page: 1, pageSize: 20 })}>
-            Reset
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {STATUS_OPTIONS.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilter('resultStatus', s.value)}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.resultStatus === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 

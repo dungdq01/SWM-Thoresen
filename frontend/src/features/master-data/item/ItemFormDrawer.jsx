@@ -136,13 +136,16 @@ export function ItemFormDrawer({
                       </div>
                     )}
                   </div>
-                  <Select
-                    label="Nhóm sản phẩm"
-                    required
-                    options={PRODUCT_GROUPS}
-                    error={errors.productGroup?.message}
-                    {...register('productGroup')}
-                  />
+                  <Controller name="productGroup" control={control} render={({ field }) => (
+                    <Select
+                      label="Nhóm sản phẩm"
+                      required
+                      options={PRODUCT_GROUPS}
+                      error={errors.productGroup?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
                 </div>
 
                 <div>
@@ -168,29 +171,38 @@ export function ItemFormDrawer({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Dạng hàng"
-                    required
-                    options={CARGO_FORMS}
-                    error={errors.cargoForm?.message}
-                    {...register('cargoForm')}
-                  />
-                  <Select
-                    label="Đơn vị tính cơ bản"
-                    required
-                    placeholder="Chọn đơn vị"
-                    options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
-                    error={errors.baseUomId?.message}
-                    {...register('baseUomId')}
-                  />
-                  <Select
-                    label="Đơn vị tính xuất HĐ"
-                    required
-                    placeholder="Chọn đơn vị"
-                    options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
-                    error={errors.billingUomId?.message}
-                    {...register('billingUomId')}
-                  />
+                  <Controller name="cargoForm" control={control} render={({ field }) => (
+                    <Select
+                      label="Dạng hàng"
+                      required
+                      options={CARGO_FORMS}
+                      error={errors.cargoForm?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
+                  <Controller name="baseUomId" control={control} render={({ field }) => (
+                    <Select
+                      label="Đơn vị tính cơ bản"
+                      required
+                      placeholder="Chọn đơn vị"
+                      options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
+                      error={errors.baseUomId?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
+                  <Controller name="billingUomId" control={control} render={({ field }) => (
+                    <Select
+                      label="Đơn vị tính xuất HĐ"
+                      required
+                      placeholder="Chọn đơn vị"
+                      options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
+                      error={errors.billingUomId?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
                 </div>
 
                 <div className="border-t border-navy-100 pt-5">

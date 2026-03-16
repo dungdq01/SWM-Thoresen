@@ -1,4 +1,4 @@
-import { forwardRef, useRef } from 'react'
+import { forwardRef, useRef, useCallback } from 'react'
 import { AlertCircle, ChevronUp, ChevronDown } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
@@ -6,24 +6,35 @@ export const Input = forwardRef(
   ({ label, error, hint, className, required, leftIcon, rightIcon, ...props }, ref) => {
     const isNumber = props.type === 'number'
     const innerRef = useRef(null)
-    const resolvedRef = ref || innerRef
+    const mergedRef = useCallback(
+      (el) => {
+        innerRef.current = el
+        if (typeof ref === 'function') ref(el)
+        else if (ref) ref.current = el
+      },
+      [ref],
+    )
 
     const step = Number(props.step ?? 1)
     const min = props.min !== undefined ? Number(props.min) : undefined
     const max = props.max !== undefined ? Number(props.max) : undefined
 
     const nudge = (delta) => {
-      const el = resolvedRef.current
+      const el = innerRef.current
       if (!el || props.disabled) return
-      const current = el.value === '' ? 0 : Number(el.value)
+      const rawValue = props.value !== undefined ? props.value : el.value
+      const current = rawValue === '' || rawValue == null ? 0 : Number(rawValue)
       let next = current + delta
       if (min !== undefined) next = Math.max(min, next)
       if (max !== undefined) next = Math.min(max, next)
-      // Trigger React's synthetic onChange via native value setter
       const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
       nativeSetter.call(el, String(next))
-      el.dispatchEvent(new Event('input',  { bubbles: true }))
-      el.dispatchEvent(new Event('change', { bubbles: true }))
+      if (props.onChange) {
+        props.onChange({ target: el, type: 'change' })
+      } else {
+        el.dispatchEvent(new Event('input',  { bubbles: true }))
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+      }
       el.focus()
     }
 
@@ -42,7 +53,8 @@ export const Input = forwardRef(
             </div>
           )}
           <input
-            ref={resolvedRef}
+            ref={mergedRef}
+            autoComplete="off"
             className={cn(
               'wrs-input flex file:border-0 file:bg-transparent file:text-sm file:font-medium ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
               isNumber && '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',

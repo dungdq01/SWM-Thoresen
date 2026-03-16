@@ -704,9 +704,10 @@ model MdOwner {
   purchaseOrders     PurchaseOrder[]
   vasWorkOrders      VasWorkOrder[]               @relation("VasWoOwner")
   vasPackagingOrders VasWorkOrder[]               @relation("VasPackagingOwner")
-  bilContracts       BilContract[]
-  bilEvents          BilEvent[]
+  bilContracts        BilContract[]
+  bilEvents           BilEvent[]
   bilStorageSnapshots BilStorageSnapshot[]
+  ownerSkuMappings    MdOwnerSkuMapping[]
   bilDebitNotes      BilDebitNote[]
   bilDebitNoteLines  BilDebitNoteLine[]
   bilExceptions      BilException[]
@@ -838,7 +839,8 @@ model MdItem {
   bilEvents             BilEvent[]
   bilStorageSnapshots   BilStorageSnapshot[]
   bilDebitNoteLines     BilDebitNoteLine[]
-  salesOrderLines      SalesOrderLine[]
+  salesOrderLines       SalesOrderLine[]
+  ownerSkuMappings      MdOwnerSkuMapping[]
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -4791,5 +4793,133 @@ model DropdownConfig {
   @@unique([entity, fieldName, value])
   @@index([entity, fieldName, isActive])
   @@map("dropdown_configs")
+}
+
+// ─── New enums ────────────────────────────────────────────────────────────────
+
+enum CarrierGroup {
+  TRUCKING
+  SHIPPING_LINE
+  FREIGHT_FORWARDER
+  BARGE_OPERATOR
+  OTHER
+}
+
+enum TransportMode {
+  TRUCK
+  VESSEL
+  BARGE
+  CONTAINER
+  RAIL
+}
+
+enum VesselType {
+  BULK_CARRIER
+  BARGE
+  GENERAL_CARGO
+  CONTAINER
+  TANKER
+  OTHER
+}
+
+// ─── New master-data models ───────────────────────────────────────────────────
+
+model MdItemGroup {
+  id            String   @id @default(uuid()) @db.Uuid
+  itemGroupCode String   @unique @map("item_group_code") @db.VarChar(50)
+  itemGroupName String   @map("item_group_name") @db.VarChar(255)
+  description   String?  @db.Text
+  cargoForm     String?  @map("cargo_form") @db.VarChar(50)
+  isActive      Boolean  @default(true) @map("is_active")
+  rowVersion    BigInt   @default(0) @map("row_version")
+  createdAt     DateTime @default(now()) @map("created_at")
+  createdBy     String?  @map("created_by") @db.Uuid
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  updatedBy     String?  @map("updated_by") @db.Uuid
+
+  @@map("md_item_groups")
+}
+
+model MdCarrier {
+  id                   String        @id @default(uuid()) @db.Uuid
+  carrierCode          String        @unique @map("carrier_code") @db.VarChar(50)
+  carrierName          String        @map("carrier_name") @db.VarChar(255)
+  contactName          String?       @map("contact_name") @db.VarChar(255)
+  phone                String?       @db.VarChar(50)
+  carrierGroup         CarrierGroup  @map("carrier_group")
+  transportMode        TransportMode @map("transport_mode")
+  defaultVehicleTypeCode String?     @map("default_vehicle_type_code") @db.VarChar(50)
+  isActive             Boolean       @default(true) @map("is_active")
+  rowVersion           BigInt        @default(0) @map("row_version")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  createdBy            String?       @map("created_by") @db.Uuid
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  updatedBy            String?       @map("updated_by") @db.Uuid
+
+  @@map("md_carriers")
+}
+
+model MdVessel {
+  id          String     @id @default(uuid()) @db.Uuid
+  vesselCode  String     @unique @map("vessel_code") @db.VarChar(50)
+  vesselName  String     @map("vessel_name") @db.VarChar(255)
+  imoNumber   String?    @map("imo_number") @db.VarChar(20)
+  vesselType  VesselType @map("vessel_type")
+  nationality String?    @db.VarChar(100)
+  callSign    String?    @map("call_sign") @db.VarChar(20)
+  dwtTon      Decimal?   @map("dwt_ton") @db.Decimal(12, 2)
+  loaM        Decimal?   @map("loa_m") @db.Decimal(8, 2)
+  beamM       Decimal?   @map("beam_m") @db.Decimal(8, 2)
+  draftM      Decimal?   @map("draft_m") @db.Decimal(8, 2)
+  yearBuilt   Int?       @map("year_built") @db.SmallInt
+  owner       String?    @db.VarChar(255)
+  operator    String?    @db.VarChar(255)
+  notes       String?    @db.Text
+  isActive    Boolean    @default(true) @map("is_active")
+  rowVersion  BigInt     @default(0) @map("row_version")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  createdBy   String?    @map("created_by") @db.Uuid
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  updatedBy   String?    @map("updated_by") @db.Uuid
+
+  @@map("md_vessels")
+}
+
+model MdOwnerSkuMapping {
+  id           String   @id @default(uuid()) @db.Uuid
+  mappingCode  String   @unique @map("mapping_code") @db.VarChar(100)
+  ownerId      String   @map("owner_id") @db.Uuid
+  itemId       String   @map("item_id") @db.Uuid
+  ownerSkuCode String   @map("owner_sku_code") @db.VarChar(100)
+  ownerSkuName String   @map("owner_sku_name") @db.VarChar(255)
+  billingClass String?  @map("billing_class") @db.VarChar(50)
+  isActive     Boolean  @default(true) @map("is_active")
+  rowVersion   BigInt   @default(0) @map("row_version")
+  createdAt    DateTime @default(now()) @map("created_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  owner MdOwner @relation(fields: [ownerId], references: [id])
+  item  MdItem  @relation(fields: [itemId], references: [id])
+
+  @@unique([ownerId, itemId, ownerSkuCode])
+  @@map("md_owner_sku_mappings")
+}
+
+model MdLocationType {
+  id               String   @id @default(uuid()) @db.Uuid
+  locationTypeCode String   @unique @map("location_type_code") @db.VarChar(50)
+  locationTypeName String   @map("location_type_name") @db.VarChar(255)
+  description      String?  @db.Text
+  isDefault        Boolean  @default(false) @map("is_default")
+  isActive         Boolean  @default(true) @map("is_active")
+  rowVersion       BigInt   @default(0) @map("row_version")
+  createdAt        DateTime @default(now()) @map("created_at")
+  createdBy        String?  @map("created_by") @db.Uuid
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  updatedBy        String?  @map("updated_by") @db.Uuid
+
+  @@map("md_location_types")
 }
 

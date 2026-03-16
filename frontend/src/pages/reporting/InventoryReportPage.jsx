@@ -69,15 +69,22 @@ export function InventoryReportPage() {
             onChange={(e) => setFilter('itemId', e.target.value)}
             className="w-64"
           />
-          <select
-            className="wrs-input h-9 text-sm"
-            value={filters.inventoryStatus}
-            onChange={(e) => setFilter('inventoryStatus', e.target.value)}
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_OPTIONS.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setFilter('inventoryStatus', s.value)}
+                className={[
+                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                  filters.inventoryStatus === s.value
+                    ? 'bg-ice text-navy-950 border-ice'
+                    : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+                ].join(' ')}
+              >
+                {s.label}
+              </button>
             ))}
-          </select>
+          </div>
           <Button
             variant="outline"
             size="sm"

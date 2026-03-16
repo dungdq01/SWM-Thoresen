@@ -176,7 +176,7 @@ export const translations = {
         inventoryStatuses: 'Trạng thái tồn kho',
         inventoryCore: 'Tồn kho lõi',
         onHand: 'Tồn kho hiện có',
-        transactions: 'Giao dịch',
+        transactions: 'Lịch sử giao dịch',
         holds: 'Giữ hàng',
         workbench: 'Bàn làm việc',
         inboundOperations: 'Vận hành nhập',

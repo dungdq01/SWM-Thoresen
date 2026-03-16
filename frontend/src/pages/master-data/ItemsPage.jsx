@@ -186,12 +186,7 @@ export function ItemsPage() {
             {items.map((item) => (
               <TableRow key={item.id} onClick={() => handleEdit(item)}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/15 text-ice dark:text-ice-light">
-                      <Package className="h-4 w-4" />
-                    </div>
-                    <span className="font-semibold text-navy-900">{item.itemCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{item.itemCode}</span>
                 </TableCell>
                 <TableCell>
                   <div>

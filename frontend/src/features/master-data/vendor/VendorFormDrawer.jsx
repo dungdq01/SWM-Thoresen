@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Ship, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -23,6 +23,7 @@ export function VendorFormDrawer({
     register,
     handleSubmit,
     reset,
+    control,
     watch,
     formState: { errors },
   } = useForm({
@@ -136,13 +137,16 @@ export function VendorFormDrawer({
                       </div>
                     )}
                   </div>
-                  <Select
-                    label="Nhóm"
-                    required
-                    options={SUPPLIER_GROUPS}
-                    error={errors.supplierGroup?.message}
-                    {...register('supplierGroup')}
-                  />
+                  <Controller name="supplierGroup" control={control} render={({ field }) => (
+                    <Select
+                      label="Nhóm"
+                      required
+                      options={SUPPLIER_GROUPS}
+                      error={errors.supplierGroup?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
                 </div>
 
                 <div>

@@ -67,12 +67,15 @@ export function VehicleTypeFormDrawer({ isOpen, onClose, onSubmit, initialData =
             <form onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 space-y-5 overflow-y-auto p-6">
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Mã loại" required disabled={isEdit} className="uppercase" error={errors.vehicleTypeCode?.message} {...register('vehicleTypeCode')} />
-                <Select
-                  label="Phân loại"
-                  options={VEHICLE_CATEGORIES}
-                  error={errors.category?.message}
-                  {...register('category')}
-                />
+                <Controller name="category" control={control} render={({ field }) => (
+                  <Select
+                    label="Phân loại"
+                    options={VEHICLE_CATEGORIES}
+                    error={errors.category?.message}
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  />
+                )} />
               </div>
               <Input label="Tên loại phương tiện" required error={errors.vehicleTypeName?.message} {...register('vehicleTypeName')} />
               <div className="grid grid-cols-3 gap-4">

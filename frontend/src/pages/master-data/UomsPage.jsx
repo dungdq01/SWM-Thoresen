@@ -173,12 +173,7 @@ export function UomsPage() {
             {uoms.map((uom) => (
               <TableRow key={uom.id} onClick={() => handleEdit(uom)}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                      <Scale className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <span className="font-medium text-navy-900">{uom.uomCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{uom.uomCode}</span>
                 </TableCell>
                 <TableCell>
                   <span className="text-navy-700">{uom.description || '—'}</span>

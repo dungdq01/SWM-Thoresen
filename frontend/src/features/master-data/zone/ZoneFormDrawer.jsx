@@ -78,12 +78,16 @@ export function ZoneFormDrawer({ isOpen, onClose, onSubmit, initialData = null, 
             <form onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 overflow-y-auto p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Mã zone" required placeholder="VD: Z-BULK-01" disabled={isEdit} error={errors.zoneCode?.message} {...register('zoneCode')} />
-                <Select label="Loại zone" required options={ZONE_TYPES} error={errors.zoneType?.message} {...register('zoneType')} />
+                <Controller name="zoneType" control={control} render={({ field }) => (
+                  <Select label="Loại zone" required options={ZONE_TYPES} error={errors.zoneType?.message} value={field.value} onChange={(e) => field.onChange(e.target.value)} />
+                )} />
               </div>
 
               <Input label="Tên zone" required placeholder="VD: Khu lưu trữ hàng rời 01" error={errors.zoneName?.message} {...register('zoneName')} />
 
-              <Select label="Kho" required options={warehouseOptions} error={errors.warehouseId?.message} placeholder="Chọn kho..." {...register('warehouseId')} />
+              <Controller name="warehouseId" control={control} render={({ field }) => (
+                <Select label="Kho" required options={warehouseOptions} error={errors.warehouseId?.message} placeholder="Chọn kho..." value={field.value} onChange={(e) => field.onChange(e.target.value)} />
+              )} />
 
               <Controller
                 name="maxCapacityMt"

@@ -182,12 +182,7 @@ export function VehicleTypesPage() {
             {vehicleTypes.map((vt) => (
               <TableRow key={vt.id} onClick={() => handleEdit(vt)}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
-                      <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <span className="font-medium text-navy-900">{vt.vehicleTypeCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{vt.vehicleTypeCode}</span>
                 </TableCell>
                 <TableCell>
                   <span className="font-medium text-navy-900">{vt.vehicleTypeName}</span>

@@ -118,17 +118,30 @@ export function PurchaseOrdersPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        {/* Filters */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {PO_STATUSES.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Other filters */}
+        <div className="grid gap-4 md:grid-cols-3">
           <Input
             placeholder="Tìm PO number, ghi chú..."
             value={filters.keyword}
             onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))}
-          />
-          <Select
-            value={filters.status}
-            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))}
-            options={PO_STATUSES}
           />
           <Select
             value={filters.ownerId}

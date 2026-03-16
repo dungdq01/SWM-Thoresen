@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Building2, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -23,6 +23,7 @@ export function OwnerFormDrawer({
     register,
     handleSubmit,
     reset,
+    control,
     setValue,
     formState: { errors },
   } = useForm({
@@ -167,20 +168,26 @@ export function OwnerFormDrawer({
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                  <Select
-                    label="Nhóm chủ hàng"
-                    required
-                    options={OWNER_GROUPS}
-                    error={errors.ownerGroup?.message}
-                    {...register('ownerGroup')}
-                  />
-                  <Select
-                    label="Loại chủ hàng"
-                    required
-                    options={OWNER_TYPES}
-                    error={errors.ownerType?.message}
-                    {...register('ownerType')}
-                  />
+                  <Controller name="ownerGroup" control={control} render={({ field }) => (
+                    <Select
+                      label="Nhóm chủ hàng"
+                      required
+                      options={OWNER_GROUPS}
+                      error={errors.ownerGroup?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
+                  <Controller name="ownerType" control={control} render={({ field }) => (
+                    <Select
+                      label="Loại chủ hàng"
+                      required
+                      options={OWNER_TYPES}
+                      error={errors.ownerType?.message}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  )} />
                 </div>
 
                 <div className="border-t border-navy-100 pt-5">

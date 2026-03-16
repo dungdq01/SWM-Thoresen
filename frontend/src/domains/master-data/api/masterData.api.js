@@ -300,6 +300,158 @@ export const vehicleTypeApi = {
   ),
 }
 
+// ==================== CARRIER APIs ====================
+export const carrierApi = {
+  getList: withDataSource(
+    (params) => masterDataMockApi.carrierApi.getList(params),
+    (params) => httpClient.get(`${BASE_URL}/carriers`, { params })
+  ),
+  getById: withDataSource(
+    (id) => masterDataMockApi.carrierApi.getById(id),
+    (id) => httpClient.get(`${BASE_URL}/carriers/${id}`)
+  ),
+  create: withDataSource(
+    (data) => masterDataMockApi.carrierApi.create(data),
+    (data) => httpClient.post(`${BASE_URL}/carriers`, data)
+  ),
+  update: withDataSource(
+    (id, data) => masterDataMockApi.carrierApi.update(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/carriers/${id}`, data)
+  ),
+  deactivate: withDataSource(
+    (id, reason) => masterDataMockApi.carrierApi.deactivate(id, reason),
+    (id, reason) => httpClient.post(`${BASE_URL}/carriers/${id}/deactivate`, { note: reason })
+  ),
+  reactivate: withDataSource(
+    (id) => masterDataMockApi.carrierApi.reactivate(id),
+    (id) => httpClient.post(`${BASE_URL}/carriers/${id}/reactivate`)
+  ),
+  getNextCode: withDataSource(
+    () => ({ data: { code: 'CAR-XXX' } }),
+    () => httpClient.get(`${BASE_URL}/carriers/next-code`)
+  ),
+}
+
+// ==================== ITEM GROUP APIs ====================
+export const itemGroupApi = {
+  getList: withDataSource(
+    (params) => masterDataMockApi.itemGroupApi.getList(params),
+    (params) => httpClient.get(`${BASE_URL}/item-groups`, { params })
+  ),
+  getById: withDataSource(
+    (id) => masterDataMockApi.itemGroupApi.getById(id),
+    (id) => httpClient.get(`${BASE_URL}/item-groups/${id}`)
+  ),
+  create: withDataSource(
+    (data) => masterDataMockApi.itemGroupApi.create(data),
+    (data) => httpClient.post(`${BASE_URL}/item-groups`, data)
+  ),
+  update: withDataSource(
+    (id, data) => masterDataMockApi.itemGroupApi.update(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/item-groups/${id}`, data)
+  ),
+  deactivate: withDataSource(
+    (id, reason) => masterDataMockApi.itemGroupApi.deactivate(id, reason),
+    (id, reason) => httpClient.post(`${BASE_URL}/item-groups/${id}/deactivate`, { note: reason })
+  ),
+  reactivate: withDataSource(
+    (id) => masterDataMockApi.itemGroupApi.reactivate(id),
+    (id) => httpClient.post(`${BASE_URL}/item-groups/${id}/reactivate`)
+  ),
+  getNextCode: withDataSource(
+    () => ({ data: { code: 'IG-XXX' } }),
+    () => httpClient.get(`${BASE_URL}/item-groups/next-code`)
+  ),
+}
+
+// ==================== LOCATION TYPE APIs ====================
+export const locationTypeApi = {
+  getList: withDataSource(
+    (params) => masterDataMockApi.locationTypeApi.getList(params),
+    (params) => httpClient.get(`${BASE_URL}/location-types`, { params })
+  ),
+  getById: withDataSource(
+    (id) => masterDataMockApi.locationTypeApi.getById(id),
+    (id) => httpClient.get(`${BASE_URL}/location-types/${id}`)
+  ),
+  create: withDataSource(
+    (data) => masterDataMockApi.locationTypeApi.create(data),
+    (data) => httpClient.post(`${BASE_URL}/location-types`, data)
+  ),
+  update: withDataSource(
+    (id, data) => masterDataMockApi.locationTypeApi.update(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/location-types/${id}`, data)
+  ),
+  delete: withDataSource(
+    (id) => masterDataMockApi.locationTypeApi.delete(id),
+    (id) => httpClient.delete(`${BASE_URL}/location-types/${id}`)
+  ),
+  getNextCode: withDataSource(
+    () => ({ data: { code: 'LT-XXX' } }),
+    () => httpClient.get(`${BASE_URL}/location-types/next-code`)
+  ),
+}
+
+// ==================== OWNER-SKU MAPPING APIs ====================
+export const ownerSkuMappingApi = {
+  getList: withDataSource(
+    (params) => masterDataMockApi.ownerSkuMappingApi.getList(params),
+    (params) => httpClient.get(`${BASE_URL}/owner-sku-mappings`, { params })
+  ),
+  getById: withDataSource(
+    (id) => masterDataMockApi.ownerSkuMappingApi.getById(id),
+    (id) => httpClient.get(`${BASE_URL}/owner-sku-mappings/${id}`)
+  ),
+  getNextCode: withDataSource(
+    () => masterDataMockApi.ownerSkuMappingApi.getNextMappingCode(),
+    () => httpClient.get(`${BASE_URL}/owner-sku-mappings/next-code`)
+  ),
+  create: withDataSource(
+    (data) => masterDataMockApi.ownerSkuMappingApi.create(data),
+    (data) => httpClient.post(`${BASE_URL}/owner-sku-mappings`, data)
+  ),
+  update: withDataSource(
+    (id, data) => masterDataMockApi.ownerSkuMappingApi.update(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/owner-sku-mappings/${id}`, data)
+  ),
+  delete: withDataSource(
+    (id) => masterDataMockApi.ownerSkuMappingApi.delete(id),
+    (id) => httpClient.delete(`${BASE_URL}/owner-sku-mappings/${id}`)
+  ),
+}
+
+// ==================== VESSEL APIs ====================
+export const vesselApi = {
+  getList: withDataSource(
+    (params) => masterDataMockApi.vesselApi.getList(params),
+    (params) => httpClient.get(`${BASE_URL}/vessels`, { params })
+  ),
+  getById: withDataSource(
+    (id) => masterDataMockApi.vesselApi.getById(id),
+    (id) => httpClient.get(`${BASE_URL}/vessels/${id}`)
+  ),
+  create: withDataSource(
+    (data) => masterDataMockApi.vesselApi.create(data),
+    (data) => httpClient.post(`${BASE_URL}/vessels`, data)
+  ),
+  update: withDataSource(
+    (id, data) => masterDataMockApi.vesselApi.update(id, data),
+    (id, data) => httpClient.put(`${BASE_URL}/vessels/${id}`, data)
+  ),
+  deactivate: withDataSource(
+    (id, reason) => masterDataMockApi.vesselApi.deactivate(id, reason),
+    (id, reason) => httpClient.post(`${BASE_URL}/vessels/${id}/deactivate`, { note: reason })
+  ),
+  reactivate: withDataSource(
+    (id) => masterDataMockApi.vesselApi.reactivate(id),
+    (id) => httpClient.post(`${BASE_URL}/vessels/${id}/reactivate`)
+  ),
+  getNextCode: withDataSource(
+    () => ({ data: { code: 'VSL-XXX' } }),
+    () => httpClient.get(`${BASE_URL}/vessels/next-code`)
+  ),
+}
+
 // ==================== INVENTORY STATUS APIs ====================
 export const inventoryStatusApi = {
   getList: withDataSource(

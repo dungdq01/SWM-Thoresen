@@ -192,12 +192,7 @@ export function VendorsPage() {
             {vendors.map((vendor) => (
               <TableRow key={vendor.id} onClick={() => handleEdit(vendor)}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-ice/15 flex items-center justify-center">
-                      <Ship className="w-4 h-4 text-ice dark:text-ice-light" />
-                    </div>
-                    <span className="font-medium text-navy-900">{vendor.vendorCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{vendor.vendorCode}</span>
                 </TableCell>
                 <TableCell>
                   <div>

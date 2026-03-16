@@ -502,5 +502,125 @@ export async function seedMasterDataSample(prisma: PrismaClient) {
   }
   console.log(`  ✅ On-Hand: ${onHandCount} new records`);
 
+  // ─── Item Groups ─────────────────────────────────────────────────────────
+  const itemGroups = [
+    { itemGroupCode: 'FEED',    itemGroupName: 'Thức ăn chăn nuôi',   cargoForm: 'BULK',    description: 'Ngũ cốc, cám, bột cá...' },
+    { itemGroupCode: 'FERT',    itemGroupName: 'Phân bón',             cargoForm: 'BULK',    description: 'Phân đạm, lân, kali...' },
+    { itemGroupCode: 'CHEM',    itemGroupName: 'Hóa chất',             cargoForm: 'DRUM',    description: 'Hóa chất công nghiệp' },
+    { itemGroupCode: 'GRAIN',   itemGroupName: 'Nông sản hạt',        cargoForm: 'BULK',    description: 'Gạo, ngô, đậu...' },
+    { itemGroupCode: 'PACKMAT', itemGroupName: 'Bao bì đóng gói',     cargoForm: 'BAGGED',  description: 'Bao PP, túi PE...' },
+    { itemGroupCode: 'OTHER',   itemGroupName: 'Khác',                 cargoForm: null,      description: null },
+  ];
+  for (const ig of itemGroups) {
+    await prisma.mdItemGroup.upsert({
+      where: { itemGroupCode: ig.itemGroupCode },
+      update: { itemGroupName: ig.itemGroupName, cargoForm: ig.cargoForm, description: ig.description, updatedBy: by },
+      create: { itemGroupCode: ig.itemGroupCode, itemGroupName: ig.itemGroupName, cargoForm: ig.cargoForm, description: ig.description, createdBy: by, updatedBy: by },
+    });
+  }
+  console.log(`  ✅ Item Groups: ${itemGroups.length} records`);
+
+  // ─── Carriers ────────────────────────────────────────────────────────────
+  const carriers = [
+    { carrierCode: 'CRR-001', carrierName: 'Công ty TNHH Vận tải Thăng Long',     contactName: 'Nguyễn Văn A', phone: '0901234561', carrierGroup: 'TRUCKING',          transportMode: 'TRUCK',  defaultVehicleTypeCode: null },
+    { carrierCode: 'CRR-002', carrierName: 'Evergreen Marine Corporation',          contactName: 'Li Wei',       phone: '+886223456789', carrierGroup: 'SHIPPING_LINE',    transportMode: 'VESSEL', defaultVehicleTypeCode: null },
+    { carrierCode: 'CRR-003', carrierName: 'Công ty CP Vận tải Sông Hồng',         contactName: 'Trần Thị B',   phone: '0912345672', carrierGroup: 'BARGE_OPERATOR',    transportMode: 'BARGE',  defaultVehicleTypeCode: null },
+    { carrierCode: 'CRR-004', carrierName: 'Transimex Logistics',                   contactName: 'Lê Văn C',     phone: '0283456789', carrierGroup: 'FREIGHT_FORWARDER', transportMode: 'TRUCK',  defaultVehicleTypeCode: null },
+    { carrierCode: 'CRR-005', carrierName: 'Maersk Line Vietnam',                   contactName: 'John Smith',   phone: '+84286543210', carrierGroup: 'SHIPPING_LINE',   transportMode: 'CONTAINER', defaultVehicleTypeCode: null },
+  ];
+  for (const c of carriers) {
+    await prisma.mdCarrier.upsert({
+      where: { carrierCode: c.carrierCode },
+      update: { carrierName: c.carrierName, contactName: c.contactName, phone: c.phone, carrierGroup: c.carrierGroup as any, transportMode: c.transportMode as any, updatedBy: by },
+      create: { carrierCode: c.carrierCode, carrierName: c.carrierName, contactName: c.contactName, phone: c.phone, carrierGroup: c.carrierGroup as any, transportMode: c.transportMode as any, defaultVehicleTypeCode: c.defaultVehicleTypeCode, createdBy: by, updatedBy: by },
+    });
+  }
+  console.log(`  ✅ Carriers: ${carriers.length} records`);
+
+  // ─── Vessels ─────────────────────────────────────────────────────────────
+  const vessels = [
+    { vesselCode: 'VSL-001', vesselName: 'MV Sông Hồng Star',     imoNumber: '9123456', vesselType: 'BULK_CARRIER',   nationality: 'Việt Nam',  callSign: 'XVAA1', dwtTon: 12500, loaM: 145.0, beamM: 22.5, draftM: 8.2, yearBuilt: 2010, owner: 'Tổng công ty Hàng hải Việt Nam', operator: 'Vinalines', notes: null },
+    { vesselCode: 'VSL-002', vesselName: 'TB Rồng Vàng 01',       imoNumber: null,       vesselType: 'BARGE',          nationality: 'Việt Nam',  callSign: null,    dwtTon: 2000,  loaM: 75.0,  beamM: 14.0, draftM: 3.5, yearBuilt: 2015, owner: 'Công ty CP Vận tải Sông Cửu Long', operator: null, notes: 'Sà lan nội địa' },
+    { vesselCode: 'VSL-003', vesselName: 'MV Pacific Harmony',    imoNumber: '9234567', vesselType: 'BULK_CARRIER',   nationality: 'Panama',    callSign: 'H3ABC', dwtTon: 28000, loaM: 185.0, beamM: 30.2, draftM: 11.5, yearBuilt: 2008, owner: 'Pacific Bulk Carriers Ltd', operator: 'Pacific Bulk Carriers Ltd', notes: null },
+    { vesselCode: 'VSL-004', vesselName: 'MV Thăng Long 08',      imoNumber: '9345678', vesselType: 'GENERAL_CARGO',  nationality: 'Việt Nam',  callSign: 'XVBB2', dwtTon: 5500,  loaM: 105.0, beamM: 17.5, draftM: 6.8, yearBuilt: 2012, owner: 'Công ty CP Vận tải Biển Đông', operator: null, notes: null },
+    { vesselCode: 'VSL-005', vesselName: 'TB Cửu Long 15',        imoNumber: null,       vesselType: 'BARGE',          nationality: 'Việt Nam',  callSign: null,    dwtTon: 3200,  loaM: 88.0,  beamM: 16.0, draftM: 4.0, yearBuilt: 2018, owner: 'Công ty TNHH Vận tải Đồng bằng', operator: null, notes: 'Sà lan tự hành' },
+    { vesselCode: 'VSL-006', vesselName: 'MV Evergreen Fortune',  imoNumber: '9456789', vesselType: 'CONTAINER',      nationality: 'Taiwan',    callSign: 'BRAH3', dwtTon: 55000, loaM: 260.0, beamM: 40.0, draftM: 14.0, yearBuilt: 2016, owner: 'Evergreen Marine Corp', operator: 'Evergreen Marine Corp', notes: null },
+    { vesselCode: 'VSL-007', vesselName: 'MV Mekong Pioneer',     imoNumber: '9567890', vesselType: 'BULK_CARRIER',   nationality: 'Việt Nam',  callSign: 'XVCC3', dwtTon: 8800,  loaM: 125.0, beamM: 20.0, draftM: 7.5, yearBuilt: 2014, owner: 'Công ty CP Hàng hải Đông Nam Á', operator: null, notes: null },
+    { vesselCode: 'VSL-008', vesselName: 'TB An Giang 22',        imoNumber: null,       vesselType: 'BARGE',          nationality: 'Việt Nam',  callSign: null,    dwtTon: 1500,  loaM: 65.0,  beamM: 12.0, draftM: 3.0, yearBuilt: 2020, owner: 'Hợp tác xã Vận tải An Giang', operator: null, notes: null },
+  ];
+  for (const v of vessels) {
+    await prisma.mdVessel.upsert({
+      where: { vesselCode: v.vesselCode },
+      update: { vesselName: v.vesselName, imoNumber: v.imoNumber, vesselType: v.vesselType as any, nationality: v.nationality, callSign: v.callSign, dwtTon: v.dwtTon, loaM: v.loaM, beamM: v.beamM, draftM: v.draftM, yearBuilt: v.yearBuilt, owner: v.owner, operator: v.operator, notes: v.notes, updatedBy: by },
+      create: { vesselCode: v.vesselCode, vesselName: v.vesselName, imoNumber: v.imoNumber, vesselType: v.vesselType as any, nationality: v.nationality, callSign: v.callSign, dwtTon: v.dwtTon, loaM: v.loaM, beamM: v.beamM, draftM: v.draftM, yearBuilt: v.yearBuilt, owner: v.owner, operator: v.operator, notes: v.notes, createdBy: by, updatedBy: by },
+    });
+  }
+  console.log(`  ✅ Vessels: ${vessels.length} records`);
+
+  // ─── Location Types ───────────────────────────────────────────────────────
+  const locationTypes = [
+    { locationTypeCode: 'STORAGE',   locationTypeName: 'Lưu trữ',            description: 'Vị trí lưu trữ hàng hóa thông thường',     isDefault: true },
+    { locationTypeCode: 'RECEIVING', locationTypeName: 'Tiếp nhận',          description: 'Vị trí tiếp nhận hàng hóa nhập kho',       isDefault: false },
+    { locationTypeCode: 'STAGING',   locationTypeName: 'Khu vực trung chuyển', description: 'Vị trí tạm thời trước khi vào kho',      isDefault: false },
+    { locationTypeCode: 'SHIPPING',  locationTypeName: 'Xuất hàng',          description: 'Vị trí chuẩn bị và đóng gói xuất kho',     isDefault: false },
+    { locationTypeCode: 'QC',        locationTypeName: 'Kiểm định chất lượng', description: 'Vị trí kiểm tra chất lượng hàng hóa',    isDefault: false },
+    { locationTypeCode: 'DAMAGED',   locationTypeName: 'Hàng hỏng',          description: 'Vị trí cách ly hàng hỏng, kém chất lượng', isDefault: false },
+    { locationTypeCode: 'RETURNS',   locationTypeName: 'Hàng trả về',        description: 'Vị trí xử lý hàng trả về từ khách hàng',   isDefault: false },
+  ];
+  for (const lt of locationTypes) {
+    await prisma.mdLocationType.upsert({
+      where: { locationTypeCode: lt.locationTypeCode },
+      update: { locationTypeName: lt.locationTypeName, description: lt.description, isDefault: lt.isDefault, updatedBy: by },
+      create: { locationTypeCode: lt.locationTypeCode, locationTypeName: lt.locationTypeName, description: lt.description, isDefault: lt.isDefault, createdBy: by, updatedBy: by },
+    });
+  }
+  console.log(`  ✅ Location Types: ${locationTypes.length} records`);
+
+  // ─── Owner-SKU Mappings ───────────────────────────────────────────────────
+  // Use owners and items seeded above (OWN-001..OWN-007, RICE-5T, UREA-BLK, etc.)
+  const osmOwner001 = await prisma.mdOwner.findFirst({ where: { ownerCode: 'OWN-001' } });
+  const osmOwner002 = await prisma.mdOwner.findFirst({ where: { ownerCode: 'OWN-002' } });
+  const osmOwner004 = await prisma.mdOwner.findFirst({ where: { ownerCode: 'OWN-004' } });
+  const osmOwner005 = await prisma.mdOwner.findFirst({ where: { ownerCode: 'OWN-005' } });
+  const osmOwner006 = await prisma.mdOwner.findFirst({ where: { ownerCode: 'OWN-006' } });
+
+  if (osmOwner001 && osmOwner002 && osmOwner004 && osmOwner005 && osmOwner006) {
+    const osmItemRice5T  = await prisma.mdItem.findFirst({ where: { itemCode: 'RICE-5T' } });
+    const osmItemRice15T = await prisma.mdItem.findFirst({ where: { itemCode: 'RICE-15T' } });
+    const osmItemUreaBlk = await prisma.mdItem.findFirst({ where: { itemCode: 'UREA-BLK' } });
+    const osmItemUrea50  = await prisma.mdItem.findFirst({ where: { itemCode: 'UREA-50' } });
+    const osmItemDap50   = await prisma.mdItem.findFirst({ where: { itemCode: 'DAP-50' } });
+    const osmItemSteelHR = await prisma.mdItem.findFirst({ where: { itemCode: 'STEEL-HR' } });
+    const osmItemRiceBlk = await prisma.mdItem.findFirst({ where: { itemCode: 'RICE-BLK' } });
+
+    const ownerSkuMappings = [
+      // OWN-001 (TVL) mappings
+      ...(osmItemRice5T  ? [{ mappingCode: 'TVL-RICE5T-SKU001',   ownerId: osmOwner001.id, itemId: osmItemRice5T.id,  ownerSkuCode: 'TVL-RICE-5PCT',    ownerSkuName: 'Gạo 5% tấm - TVL',                billingClass: 'BULK_GRAIN' }] : []),
+      ...(osmItemRiceBlk ? [{ mappingCode: 'TVL-RICEBLK-SKU002',  ownerId: osmOwner001.id, itemId: osmItemRiceBlk.id, ownerSkuCode: 'TVL-RICE-BULK',    ownerSkuName: 'Gạo rời xuất khẩu - TVL',         billingClass: 'BULK_GRAIN' }] : []),
+      // OWN-002 (NSMT) mappings
+      ...(osmItemRice15T ? [{ mappingCode: 'NSMT-RICE15T-SKU001', ownerId: osmOwner002.id, itemId: osmItemRice15T.id, ownerSkuCode: 'NSMT-RICE-15PCT',  ownerSkuName: 'Gạo 15% tấm - Nông sản Miền Nam', billingClass: 'BULK_GRAIN' }] : []),
+      ...(osmItemRice5T  ? [{ mappingCode: 'NSMT-RICE5T-SKU002',  ownerId: osmOwner002.id, itemId: osmItemRice5T.id,  ownerSkuCode: 'NSMT-RICE-5PCT',   ownerSkuName: 'Gạo 5% tấm - Nông sản Miền Nam',  billingClass: 'BULK_GRAIN' }] : []),
+      // OWN-004 (PVFCCo) mappings
+      ...(osmItemUreaBlk ? [{ mappingCode: 'PVF-UREABLK-SKU001',  ownerId: osmOwner004.id, itemId: osmItemUreaBlk.id, ownerSkuCode: 'PVF-UREA-BULK',    ownerSkuName: 'Phân Urea hạt rời - Đạm Phú Mỹ',  billingClass: 'FERTILIZER' }] : []),
+      ...(osmItemUrea50  ? [{ mappingCode: 'PVF-UREA50-SKU002',   ownerId: osmOwner004.id, itemId: osmItemUrea50.id,  ownerSkuCode: 'PVF-UREA-50KG',    ownerSkuName: 'Phân Urea bao 50kg - Đạm Phú Mỹ', billingClass: 'FERTILIZER' }] : []),
+      // OWN-005 (COFCO) mappings
+      ...(osmItemDap50   ? [{ mappingCode: 'COF-DAP50-SKU001',    ownerId: osmOwner005.id, itemId: osmItemDap50.id,   ownerSkuCode: 'COF-DAP-50KG',     ownerSkuName: 'Phân DAP bao 50kg - COFCO',        billingClass: 'FERTILIZER' }] : []),
+      ...(osmItemRiceBlk ? [{ mappingCode: 'COF-RICEBLK-SKU002',  ownerId: osmOwner005.id, itemId: osmItemRiceBlk.id, ownerSkuCode: 'COF-RICE-BULK',    ownerSkuName: 'Gạo rời - COFCO International',    billingClass: 'BULK_GRAIN' }] : []),
+      // OWN-006 (VNSteel) mappings
+      ...(osmItemSteelHR ? [{ mappingCode: 'VNS-STEELHR-SKU001',  ownerId: osmOwner006.id, itemId: osmItemSteelHR.id, ownerSkuCode: 'VNS-HRC-COIL',     ownerSkuName: 'Thép cuộn cán nóng - VNSteel',     billingClass: 'STEEL' }] : []),
+    ];
+
+    for (const m of ownerSkuMappings) {
+      await prisma.mdOwnerSkuMapping.upsert({
+        where: { mappingCode: m.mappingCode },
+        update: { ownerSkuCode: m.ownerSkuCode, ownerSkuName: m.ownerSkuName, billingClass: m.billingClass, updatedBy: by },
+        create: { mappingCode: m.mappingCode, ownerId: m.ownerId, itemId: m.itemId, ownerSkuCode: m.ownerSkuCode, ownerSkuName: m.ownerSkuName, billingClass: m.billingClass, createdBy: by, updatedBy: by },
+      });
+    }
+    console.log(`  ✅ Owner-SKU Mappings: ${ownerSkuMappings.length} records`);
+  } else {
+    console.log('  ⚠️  Owner-SKU Mappings skipped — required owners (OWN-001, OWN-002, OWN-004, OWN-005, OWN-006) not found');
+  }
+
   console.log('🎉 Master Data Sample seeded successfully!');
 }

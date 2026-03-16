@@ -18,7 +18,7 @@ export const Select = forwardRef(
 
     // Build option list — support both `options` prop and children <option> elements
     const builtOptions = []
-    if (placeholder) builtOptions.push({ value: '', label: placeholder, disabled: true })
+    if (placeholder) builtOptions.push({ value: '', label: placeholder })
     options.forEach((o) => builtOptions.push({ value: String(o.value), label: o.label }))
     // Parse children <option> elements
     if (children) {
@@ -199,8 +199,6 @@ export const Select = forwardRef(
             `}</style>
             {builtOptions.map((opt, i) => {
               const isSelected = String(opt.value) === String(currentValue ?? '')
-              const isPlaceholder = opt.disabled || (opt.value === '' && i === 0)
-              if (isPlaceholder && opt.value === '') return null
               return (
                 <div
                   key={`${opt.value}-${i}`}

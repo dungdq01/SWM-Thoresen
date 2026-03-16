@@ -44,8 +44,24 @@ export function VasWorkOrdersPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'Nháp' }, { value: 'CONFIRMED', label: 'Đã Xác Nhận' }, { value: 'IN_PROGRESS', label: 'Đang Thực Hiện' }, { value: 'COMPLETED', label: 'Hoàn Thành' }, { value: 'CANCELLED', label: 'Đã Hủy' }].map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'DRAFT', label: 'Nháp' }, { value: 'CONFIRMED', label: 'Đã Xác Nhận' }, { value: 'IN_PROGRESS', label: 'Đang Thực Hiện' }, { value: 'COMPLETED', label: 'Hoàn Thành' }, { value: 'CANCELLED', label: 'Đã Hủy' }]} placeholder="Trạng Thái" />
           <Select value={filters.vasType} onChange={(e) => setFilters((prev) => ({ ...prev, vasType: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'BAGGING', label: 'Đóng Bao' }, { value: 'REPACKING', label: 'Đóng Gói Lại' }]} placeholder="Loại VAS" />
         </div>
 

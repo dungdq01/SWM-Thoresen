@@ -229,8 +229,26 @@ export function InboundDocumentsPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        {/* Filters */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {DOC_STATUSES.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Other filters */}
+        <div className="grid gap-4 md:grid-cols-3">
           <Input
             placeholder="Tìm số B/L, số PO, tên chứng từ..."
             value={filters.keyword}
@@ -240,11 +258,6 @@ export function InboundDocumentsPage() {
             value={filters.docType}
             onChange={(e) => setFilters((prev) => ({ ...prev, docType: e.target.value, page: 1 }))}
             options={DOC_TYPES}
-          />
-          <Select
-            value={filters.status}
-            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))}
-            options={DOC_STATUSES}
           />
           <Select
             value={filters.ownerId}

@@ -27,6 +27,11 @@ const UomsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m
 const UomConversionsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.UomConversionsPage })))
 const VehicleTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VehicleTypesPage })))
 const InventoryStatusesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.InventoryStatusesPage })))
+const ItemGroupsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemGroupsPage })))
+const CarriersPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.CarriersPage })))
+const VesselsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VesselsPage })))
+const OwnerSkuMappingsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerSkuMappingsPage })))
+const LocationTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationTypesPage })))
 
 // Inventory Core Pages
 const InventoryCoreLayout = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryCoreLayout })))
@@ -143,10 +148,6 @@ export const router = createBrowserRouter([
             element: withSuspense(PermissionsPage),
           },
           {
-            path: 'reason-codes',
-            element: withSuspense(ReasonCodesPage),
-          },
-          {
             path: 'number-sequences',
             element: withSuspense(NumberSequencesPage),
           },
@@ -172,6 +173,30 @@ export const router = createBrowserRouter([
           {
             index: true,
             element: <Navigate to="/app/master-data/owners" replace />,
+          },
+          {
+            path: 'reason-codes',
+            element: withSuspense(ReasonCodesPage),
+          },
+          {
+            path: 'item-groups',
+            element: withSuspense(ItemGroupsPage),
+          },
+          {
+            path: 'carriers',
+            element: withSuspense(CarriersPage),
+          },
+          {
+            path: 'vessels',
+            element: withSuspense(VesselsPage),
+          },
+          {
+            path: 'owner-sku-mappings',
+            element: withSuspense(OwnerSkuMappingsPage),
+          },
+          {
+            path: 'location-types',
+            element: withSuspense(LocationTypesPage),
           },
           {
             path: 'owners',
@@ -370,6 +395,10 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        path: 'weighbridge',
+        element: withSuspense(WeighbridgePage),
+      },
+      {
         path: 'integration',
         element: withSuspense(IntegrationLayout),
         children: [
@@ -384,10 +413,6 @@ export const router = createBrowserRouter([
           {
             path: 'alerts',
             element: withSuspense(IntegrationAlertsPage),
-          },
-          {
-            path: 'weighbridge',
-            element: withSuspense(WeighbridgePage),
           },
           {
             path: 'channels',

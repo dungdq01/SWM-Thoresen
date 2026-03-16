@@ -103,6 +103,56 @@ export const UOM_CLASSES = [
   { value: 'AREA', label: 'Diện tích' },
 ]
 
+// Carrier constants
+export const CARRIER_GROUPS = [
+  { value: 'TRUCKING', label: 'Vận tải đường bộ' },
+  { value: 'SHIPPING_LINE', label: 'Hãng tàu' },
+  { value: 'FREIGHT_FORWARDER', label: 'Đại lý vận chuyển' },
+  { value: 'BARGE_OPERATOR', label: 'Vận tải đường sông' },
+  { value: 'OTHER', label: 'Khác' },
+]
+
+export const CARRIER_TRANSPORT_MODES = [
+  { value: 'TRUCK', label: 'Xe tải' },
+  { value: 'VESSEL', label: 'Tàu biển' },
+  { value: 'BARGE', label: 'Sà lan' },
+  { value: 'CONTAINER', label: 'Container' },
+  { value: 'RAIL', label: 'Đường sắt' },
+]
+
+// Owner-SKU Mapping constants
+export const BILLING_CLASSES = [
+  { value: 'ST01', label: 'ST01 - Standard 1' },
+  { value: 'ST02', label: 'ST02 - Standard 2' },
+  { value: 'ST03', label: 'ST03 - Standard 3' },
+  { value: 'PR01', label: 'PR01 - Premium 1' },
+  { value: 'PR02', label: 'PR02 - Premium 2' },
+]
+
+// Vessel constants
+export const VESSEL_TYPES = [
+  { value: 'BULK_CARRIER', label: 'Tàu hàng rời' },
+  { value: 'BARGE', label: 'Sà lan' },
+  { value: 'GENERAL_CARGO', label: 'Tàu hàng tổng hợp' },
+  { value: 'CONTAINER', label: 'Tàu container' },
+  { value: 'TANKER', label: 'Tàu dầu' },
+  { value: 'OTHER', label: 'Khác' },
+]
+
+// Item Group constants
+export const ITEM_GROUP_CARGO_FORMS = [
+  { value: 'BULK', label: 'Hàng rời' },
+  { value: 'BAGGED_25KG', label: 'Đóng bao 25kg' },
+  { value: 'BAGGED_40KG', label: 'Đóng bao 40kg' },
+  { value: 'BAGGED_50KG', label: 'Đóng bao 50kg' },
+  { value: 'JUMBO', label: 'Jumbo' },
+  { value: 'PACKAGING', label: 'Bao bì' },
+  { value: 'CONTAINER', label: 'Container' },
+  { value: 'DRUM', label: 'Thùng' },
+  { value: 'PALLET', label: 'Pallet' },
+  { value: 'OTHER', label: 'Khác' },
+]
+
 // Vehicle Type constants
 export const VEHICLE_CATEGORIES = [
   { value: 'TRUCK', label: 'Xe tải' },
@@ -144,6 +194,16 @@ export const MASTER_DATA_QUERY_KEYS = {
   vehicleTypes: ['master-data', 'vehicle-types'],
   vehicleTypeDetail: (id) => ['master-data', 'vehicle-types', id],
   inventoryStatuses: ['master-data', 'inventory-statuses'],
+  itemGroups: ['master-data', 'item-groups'],
+  itemGroupDetail: (id) => ['master-data', 'item-groups', id],
+  carriers: ['master-data', 'carriers'],
+  carrierDetail: (id) => ['master-data', 'carriers', id],
+  vessels: ['master-data', 'vessels'],
+  vesselDetail: (id) => ['master-data', 'vessels', id],
+  ownerSkuMappings: ['master-data', 'owner-sku-mappings'],
+  ownerSkuMappingDetail: (id) => ['master-data', 'owner-sku-mappings', id],
+  locationTypes: ['master-data', 'location-types'],
+  locationTypeDetail: (id) => ['master-data', 'location-types', id],
   // Lookups
   lookupOwners: ['master-data', 'lookups', 'owners'],
   lookupVendors: ['master-data', 'lookups', 'vendors'],

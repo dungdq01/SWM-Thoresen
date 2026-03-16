@@ -107,12 +107,7 @@ export function InventoryStatusesPage() {
             {statuses.map((status) => (
               <TableRow key={status.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">
-                      <Tags className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                    </div>
-                    <span className="font-medium text-navy-900">{status.statusCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{status.statusCode}</span>
                 </TableCell>
                 <TableCell>
                   <span className="text-navy-700">{status.description || '—'}</span>

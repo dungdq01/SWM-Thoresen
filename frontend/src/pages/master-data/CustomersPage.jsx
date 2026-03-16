@@ -214,7 +214,7 @@ export function CustomersPage() {
           {customers.map((customer) => (
             <TableRow key={customer.id} onClick={() => handleEdit(customer)}>
               <TableCell>
-                <span className="font-mono font-semibold text-navy-900">{customer.customerCode}</span>
+                <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{customer.customerCode}</span>
               </TableCell>
               <TableCell>
                 <div>

@@ -168,12 +168,7 @@ export function ZonesPage() {
             {zones.map((zone) => (
               <TableRow key={zone.id} onClick={() => setDrawerState({ isOpen: true, data: zone })}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-                      <Grid3X3 className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <span className="font-medium text-navy-900">{zone.zoneCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{zone.zoneCode}</span>
                 </TableCell>
                 <TableCell>
                   <div>

@@ -41,8 +41,22 @@ export function OutboundAllocationPage() {
       </div>
 
       <div className="wrs-card p-5 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <Select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))} options={[{ value: '', label: 'Tất cả' }, { value: 'CONFIRMED', label: 'CONFIRMED (cần phân bổ)' }, { value: 'ALLOCATED', label: 'ALLOCATED' }]} placeholder="Lọc theo trạng thái" className="max-w-xs" />
+        {/* Quick status filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ value: '', label: 'Tất cả' }, { value: 'CONFIRMED', label: 'Cần phân bổ' }, { value: 'ALLOCATED', label: 'Đã phân bổ' }].map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setFilters((prev) => ({ ...prev, status: s.value, page: 1 }))}
+              className={[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-colors border',
+                filters.status === s.value
+                  ? 'bg-ice text-navy-950 border-ice'
+                  : 'bg-transparent text-navy-400 border-moon-200 hover:border-ice hover:text-ice',
+              ].join(' ')}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
         <Table>

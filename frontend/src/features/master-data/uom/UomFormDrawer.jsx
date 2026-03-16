@@ -94,12 +94,15 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
 
               <Input label="Mô tả" required placeholder="VD: Kilogram" error={errors.description?.message} {...register('description')} />
 
-              <Select
-                label="Loại đơn vị"
-                options={UOM_CLASSES}
-                error={errors.uomClass?.message}
-                {...register('uomClass')}
-              />
+              <Controller name="uomClass" control={control} render={({ field }) => (
+                <Select
+                  label="Loại đơn vị"
+                  options={UOM_CLASSES}
+                  error={errors.uomClass?.message}
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.target.value)}
+                />
+              )} />
 
               <Controller
                 name="isBaseUom"

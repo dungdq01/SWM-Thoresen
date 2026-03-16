@@ -163,12 +163,7 @@ export function LocationsPage() {
             {locations.map((loc) => (
               <TableRow key={loc.id} onClick={() => setDrawerState({ isOpen: true, data: loc })}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
-                      <MapPin className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                    </div>
-                    <span className="font-medium text-navy-900">{loc.locationCode}</span>
-                  </div>
+                  <span className="inline-flex items-center font-mono text-xs font-semibold text-ice-dark dark:text-ice-light bg-ice/10 dark:bg-ice/15 border border-ice/20 px-2 py-1 rounded-md">{loc.locationCode}</span>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">

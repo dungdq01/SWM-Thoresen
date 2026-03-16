@@ -92,15 +92,23 @@ export function LocationFormDrawer({ isOpen, onClose, onSubmit, initialData = nu
             <form onSubmit={handleSubmit(handleFormSubmit)} className="flex-1 overflow-y-auto p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Mã vị trí" required placeholder="VD: LOC-A1-01" disabled={isEdit} error={errors.locationCode?.message} {...register('locationCode')} />
-                <Select label="Loại vị trí" required options={LOCATION_TYPES} error={errors.locationType?.message} {...register('locationType')} />
+                <Controller name="locationType" control={control} render={({ field }) => (
+                  <Select label="Loại vị trí" required options={LOCATION_TYPES} error={errors.locationType?.message} value={field.value} onChange={(e) => field.onChange(e.target.value)} />
+                )} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Select label="Kho" required options={warehouseOptions} placeholder="Chọn kho..." error={errors.warehouseId?.message} {...register('warehouseId')} />
-                <Select label="Zone" required options={zoneOptions} placeholder={warehouseId ? 'Chọn zone...' : 'Chọn kho trước'} error={errors.zoneId?.message} {...register('zoneId')} />
+                <Controller name="warehouseId" control={control} render={({ field }) => (
+                  <Select label="Kho" required options={warehouseOptions} placeholder="Chọn kho..." error={errors.warehouseId?.message} value={field.value} onChange={(e) => field.onChange(e.target.value)} />
+                )} />
+                <Controller name="zoneId" control={control} render={({ field }) => (
+                  <Select label="Zone" required options={zoneOptions} placeholder={warehouseId ? 'Chọn zone...' : 'Chọn kho trước'} error={errors.zoneId?.message} value={field.value} onChange={(e) => field.onChange(e.target.value)} />
+                )} />
               </div>
 
-              <Select label="Profile" options={LOCATION_PROFILES} error={errors.locationProfile?.message} {...register('locationProfile')} />
+              <Controller name="locationProfile" control={control} render={({ field }) => (
+                <Select label="Profile" options={LOCATION_PROFILES} error={errors.locationProfile?.message} value={field.value} onChange={(e) => field.onChange(e.target.value)} />
+              )} />
 
               <div className="grid grid-cols-2 gap-4">
                 <Controller
