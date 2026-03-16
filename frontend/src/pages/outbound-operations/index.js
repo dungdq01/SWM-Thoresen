@@ -1,6 +1,3 @@
 export { OutboundOperationsLayout } from './OutboundOperationsLayout'
 export { SalesOrdersPage } from './SalesOrdersPage'
 export { OutboundShipmentsPage } from './OutboundShipmentsPage'
-export { OutboundAllocationPage } from './OutboundAllocationPage'
-export { OutboundWeighingPage } from './OutboundWeighingPage'
-export { OutboundApprovalsPage } from './OutboundApprovalsPage'

@@ -96,9 +96,6 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/outbound-operations/sales-orders', label: 'Đơn bán hàng' },
       { to: '/app/outbound-operations/shipments', label: t('sidebar.items.shipments') },
-      { to: '/app/outbound-operations/allocation', label: t('sidebar.items.allocation') },
-      { to: '/app/outbound-operations/weighing', label: t('sidebar.items.weighing') },
-      { to: '/app/outbound-operations/approvals', label: t('sidebar.items.approvals') },
     ],
   },
   {
