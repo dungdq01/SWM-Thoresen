@@ -24,7 +24,7 @@ const createReceiptSchema = Joi.object({
   ownerId: Joi.string().uuid().required(),
   vendorId: Joi.string().uuid().required(),
   warehouseId: Joi.string().uuid().required(),
-  receivingLocationId: Joi.string().uuid().required(),
+  receivingLocationId: Joi.string().uuid().optional(),
   vehicleNumber: Joi.string().max(30).required(),
   blNumber: Joi.string().max(50).optional(),
   expectedQty: Joi.number().positive().required(),

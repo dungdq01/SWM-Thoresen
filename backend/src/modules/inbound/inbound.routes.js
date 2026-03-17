@@ -40,6 +40,12 @@ function createInboundRoutes(prisma, authMiddleware, permissionMiddleware) {
     (req, res) => controller.listReceipts(req, res)
   );
 
+  // Static route BEFORE :id to avoid collision
+  router.get('/receipts/next-number',
+    permissionMiddleware(PERMISSION_CODES.RECEIPT_READ),
+    (req, res) => controller.getNextReceiptNumber(req, res)
+  );
+
   router.get('/receipts/:id',
     permissionMiddleware(PERMISSION_CODES.RECEIPT_READ),
     (req, res) => controller.getReceipt(req, res)

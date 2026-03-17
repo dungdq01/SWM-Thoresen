@@ -154,13 +154,102 @@ export class InboundBridgeAdapter {
   }
 
   /**
-   * [DRAFT] Notify M4 Inbound khi weigh log hoàn thành (đã cân lần 2)
+   * Notify M4 Inbound khi ghi nhận trọng lượng lần 1 (grossWeight)
    *
-   * Flow: M8 COMPLETED → M4 Receipt WEIGHED_IN → WEIGHED_OUT
+   * Flow: M8 WEIGHING → M4 Receipt WEIGHED_IN → PROCESSING
+   *
+   * Khi ghi nhận TL lần 1, ASN chuyển từ "Đang cân lần 1" sang "Đang cân lần 2"
+   */
+  async onGrossWeightRecorded(
+    log: { id: string; receiptId?: string; grossWeightKg?: number },
+    context: { userId?: string } = {},
+  ): Promise<BridgeResult> {
+    if (!log.receiptId) {
+      return {
+        success: true,
+        skipped: true,
+        reason: 'No receiptId linked to weigh log',
+      };
+    }
+
+    try {
+      const receipt = await this.prisma.receiptHeader.findUnique({
+        where: { id: log.receiptId },
+        select: { id: true, status: true, correlationId: true },
+      });
+
+      if (!receipt) {
+        return {
+          success: false,
+          skipped: true,
+          reason: `Receipt ${log.receiptId} not found`,
+        };
+      }
+
+      // Guard: Chỉ xử lý nếu receipt đang ở WEIGHED_IN
+      if (receipt.status !== 'WEIGHED_IN') {
+        return {
+          success: true,
+          skipped: true,
+          receiptId: receipt.id,
+          reason: `Receipt not in WEIGHED_IN state (current: ${receipt.status})`,
+        };
+      }
+
+      // Update receipt status sang PROCESSING (đang cân lần 2)
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const updatedReceipt = await tx.receiptHeader.update({
+          where: { id: log.receiptId },
+          data: {
+            status: 'PROCESSING' as any,
+            grossWeightKg: log.grossWeightKg,
+            rowVersion: { increment: 1 },
+            updatedBy: context.userId,
+          },
+        });
+
+        // Log status change
+        await tx.receiptStatusHistory.create({
+          data: {
+            receiptHeaderId: log.receiptId!,
+            fromStatus: 'WEIGHED_IN',
+            toStatus: 'PROCESSING',
+            transitionCode: 'M8_GROSS_WEIGHT_RECORDED',
+            triggeredBy: context.userId,
+            correlationId: receipt.correlationId,
+            metadata: {
+              weighLogId: log.id,
+              grossWeightKg: log.grossWeightKg,
+              source: 'M8_WEIGHBRIDGE',
+              adapter: 'inbound-bridge.adapter',
+            },
+          },
+        });
+
+        return updatedReceipt;
+      });
+
+      return {
+        success: true,
+        receiptId: updated.id,
+        newStatus: 'PROCESSING',
+        skipped: false,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        receiptId: log.receiptId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Notify M4 Inbound khi weigh log hoàn thành (đã cân lần 2)
+   *
+   * Flow: M8 COMPLETED → M4 Receipt PROCESSING → WEIGHED_OUT
    *       + Fill netWeightKg vào receivedQty của ReceiptLine
    *       + Aggregate receivedQty vào PO.totalReceivedQty
-   *
-   * ⚠️ Logic này có thể thay đổi theo yêu cầu khách hàng
    */
   async onWeighLogCompleted(
     log: WeighLogCompletedData,
@@ -194,13 +283,13 @@ export class InboundBridgeAdapter {
         };
       }
 
-      // Guard: Chỉ xử lý nếu receipt đang ở WEIGHED_IN
-      if (receipt.status !== 'WEIGHED_IN') {
+      // Guard: Chỉ xử lý nếu receipt đang ở PROCESSING (đang cân lần 2)
+      if (receipt.status !== 'PROCESSING') {
         return {
           success: true,
           skipped: true,
           receiptId: receipt.id,
-          reason: `Receipt not in WEIGHED_IN state (current: ${receipt.status})`,
+          reason: `Receipt not in PROCESSING state (current: ${receipt.status})`,
         };
       }
 
@@ -235,7 +324,7 @@ export class InboundBridgeAdapter {
         await tx.receiptStatusHistory.create({
           data: {
             receiptHeaderId: log.receiptId!,
-            fromStatus: 'WEIGHED_IN',
+            fromStatus: 'PROCESSING',
             toStatus: 'WEIGHED_OUT',
             transitionCode: 'M8_WEIGHBRIDGE_COMPLETED',
             triggeredBy: context.userId,
@@ -338,17 +427,17 @@ export class InboundBridgeAdapter {
   }
 
   /**
-   * [DRAFT] Cập nhật PO status khi có ASN đang cân
+   * Cập nhật PO status khi có ASN đang cân
    *
    * Logic: 1 PO có nhiều ASN, chỉ cần 1 ASN ở trạng thái đang cân (WEIGHED_IN)
    * thì PO chuyển sang trạng thái RECEIVING (đang nhập)
    *
-   * ⚠️ Chỉ cập nhật nếu PO đang ở trạng thái CONFIRMED
+   * Chỉ cập nhật nếu PO đang ở trạng thái CONFIRMED
    */
   private async updatePOStatusIfNeeded(
     poId: string | null,
     context: { userId?: string } = {},
-  ): Promise<{ updated: boolean; poId?: string; newStatus?: string; reason?: string }> {
+  ): Promise<{ updated: boolean; poId?: string; newStatus?: string; fromStatus?: string; reason?: string }> {
     if (!poId) {
       return { updated: false, reason: 'No poId linked to receipt' };
     }
@@ -373,24 +462,27 @@ export class InboundBridgeAdapter {
         };
       }
 
-      // Cập nhật PO sang RECEIVING
-      // Note: Cast 'as any' vì enum mới chưa được prisma generate
-      await this.prisma.purchaseOrder.update({
-        where: { id: po.id },
-        data: {
-          status: 'RECEIVING' as any,
-          rowVersion: { increment: 1 },
-          updatedBy: context.userId,
-        },
+      const fromStatus = po.status;
+
+      // Cập nhật PO sang RECEIVING trong transaction
+      await this.prisma.$transaction(async (tx) => {
+        await tx.purchaseOrder.update({
+          where: { id: po.id },
+          data: {
+            status: 'RECEIVING' as any,
+            rowVersion: { increment: 1 },
+            updatedBy: context.userId,
+          },
+        });
       });
 
       return {
         updated: true,
         poId: po.id,
+        fromStatus,
         newStatus: 'RECEIVING',
       };
     } catch (error) {
-      // Silent fail
       return {
         updated: false,
         poId,

@@ -25,8 +25,8 @@ const RECEIPT_STATUSES = [
   { value: 'CONFIRMED', label: 'Xác nhận' },
   { value: 'ERROR', label: 'Lỗi' },
   { value: 'AWAITING_WEIGHING', label: 'Chờ cân' },
-  { value: 'WEIGHED_IN', label: 'Đã cân vào' },
-  { value: 'PROCESSING', label: 'Đang xử lý' },
+  { value: 'WEIGHED_IN', label: 'Đang cân lần 1' },
+  { value: 'PROCESSING', label: 'Đang cân lần 2' },
   { value: 'WEIGHED_OUT', label: 'Đã hoàn thành' },
   { value: 'COMPLETED', label: 'Hoàn thành' },
   { value: 'CANCELLED', label: 'Đã hủy' },
@@ -37,8 +37,8 @@ const STATUS_LABELS = {
   CONFIRMED: 'Xác nhận',
   ERROR: 'Lỗi',
   AWAITING_WEIGHING: 'Chờ cân',
-  WEIGHED_IN: 'Đã cân vào',
-  PROCESSING: 'Đang xử lý',
+  WEIGHED_IN: 'Đang cân lần 1',
+  PROCESSING: 'Đang cân lần 2',
   WEIGHED_OUT: 'Đã hoàn thành',
   COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy',
@@ -230,7 +230,7 @@ export function InboundReceiptsPage() {
                       </button>
                     </TableCell>
                     <TableCell>
-                      <p className="font-semibold text-navy-900">{receipt.asnId || receipt.receiptNumber || receipt.id?.slice(0, 8) || '—'}</p>
+                      <p className="font-semibold text-navy-900">{receipt.asnId || receipt.id?.slice(0, 8) || '—'}</p>
                       <p className="text-xs text-navy-400">{receipt.lines?.length || 0} dòng</p>
                     </TableCell>
                     <TableCell>
@@ -315,7 +315,7 @@ export function InboundReceiptsPage() {
                         <div className="border-t border-b border-moon-200 bg-moon-50/70 px-6 py-4">
                           <div className="mb-3 flex items-center gap-2">
                             <Package className="h-4 w-4 text-ice" />
-                            <h4 className="text-sm font-semibold text-navy-900">Chi tiết dòng hàng — {receipt.asnId || receipt.receiptNumber || receipt.id?.slice(0, 8)}</h4>
+                            <h4 className="text-sm font-semibold text-navy-900">Chi tiết dòng hàng — {receipt.asnId || receipt.id?.slice(0, 8)}</h4>
                           </div>
                           <table className="w-full text-sm">
                             <thead>

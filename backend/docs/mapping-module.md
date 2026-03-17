@@ -1635,3 +1635,118 @@ PO (CONFIRMED)
 | `REPORTING.EXPORT.READ` | View/download exports |
 
 ---
+
+# Cross-Module Integration: M4 Inbound ↔ M8 Weighbridge
+
+**Status:** ✅ Implemented (Draft - Feature Flag Controlled)  
+**Last Updated:** 2026-03-18  
+**Feature Flag:** `FEATURES.M8_M4_AUTO_SYNC`
+
+## Tổng quan
+
+Module M8 (Weighbridge) và M4 (Inbound) có quan hệ cascade status khi xử lý flow cân nhập hàng. M8 là nơi ghi nhận dữ liệu cân, M4 quản lý trạng thái Receipt (ASN) và Purchase Order (PO).
+
+## State Mapping
+
+### Weigh Log ↔ Receipt Status
+
+| M8 Weigh Log Status | M4 Receipt (ASN) Status | Label Frontend | Trigger |
+|---------------------|-------------------------|----------------|---------|
+| `RECEIVED` | - | Tạo mới | Ingest weigh event |
+| `VALIDATED` | `WEIGHED_IN` | Đang cân lần 1 | `confirmLog()` |
+| `WEIGHING` | `PROCESSING` | Đang cân lần 2 | `recordWeight()` lần 1 |
+| `COMPLETED` | `WEIGHED_OUT` | Đã hoàn thành | `recordWeight()` lần 2 |
+
+### Receipt Status ↔ PO Status
+
+| M4 Receipt Status | M4 PO Status | Condition |
+|-------------------|--------------|-----------|
+| `WEIGHED_IN` | `RECEIVING` | Khi có ≥1 ASN chuyển sang WEIGHED_IN |
+| `WEIGHED_OUT` | `RECEIVING` | Aggregate `totalReceivedQty` |
+
+## Bridge Methods
+
+**File:** `src/modules/integration-platform/adapters/inbound-bridge.adapter_draft.ts`
+
+| Method | Trigger | M8 Status | M4 Receipt Action | M4 PO Action |
+|--------|---------|-----------|-------------------|--------------|
+| `onWeighLogConfirmed()` | `confirmLog()` | VALIDATED | AWAITING_WEIGHING → WEIGHED_IN | CONFIRMED → RECEIVING |
+| `onGrossWeightRecorded()` | `recordWeight()` lần 1 | WEIGHING | WEIGHED_IN → PROCESSING | - |
+| `onWeighLogCompleted()` | `recordWeight()` lần 2 | COMPLETED | PROCESSING → WEIGHED_OUT | Aggregate `totalReceivedQty` |
+
+## Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ M8 Weighbridge                                                              │
+│                                                                             │
+│  [1] confirmLog()          [2] recordWeight(gross)    [3] recordWeight(tare)│
+│       VALIDATED                  WEIGHING                   COMPLETED       │
+│          │                          │                          │            │
+└──────────┼──────────────────────────┼──────────────────────────┼────────────┘
+           │                          │                          │
+           ▼                          ▼                          ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ M4 Inbound                                                                  │
+│                                                                             │
+│  ASN: AWAITING_WEIGHING → WEIGHED_IN → PROCESSING → WEIGHED_OUT             │
+│       (Chờ cân)           (Đang cân 1)  (Đang cân 2)  (Đã hoàn thành)       │
+│                                                             │               │
+│  PO:  CONFIRMED → RECEIVING                                 │               │
+│       (Xác nhận)   (Đang nhập)                              │               │
+│                         │                                   │               │
+│                         └──────── totalReceivedQty ◄────────┘               │
+│                                   = SUM(netWeightKg)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Data Sync - Cân hoàn thành
+
+Khi `recordWeight()` lần 2 (COMPLETED):
+
+| Field | Source | Target | Description |
+|-------|--------|--------|-------------|
+| `netWeightKg` | WeighLog | `ReceiptHeader.netWeightKg` | TL hàng ròng |
+| `netWeightKg` | WeighLog | `ReceiptLine.receivedQty` | SL đã nhận của ASN |
+| SUM(`netWeightKg`) | Aggregate | `PO.totalReceivedQty` | Tổng SL đã nhận của PO |
+
+**Aggregate Logic:**
+```typescript
+// Chỉ cộng các ASN có status ≥ WEIGHED_OUT
+const doneStatuses = ['WEIGHED_OUT', 'RECEIVED', 'PUTAWAY', 'CLOSED'];
+const totalReceivedQty = await prisma.receiptHeader.aggregate({
+  where: { poId, status: { in: doneStatuses } },
+  _sum: { netWeightKg: true },
+});
+```
+
+## Feature Flag Control
+
+**File:** `src/modules/integration-platform/config/feature-flags_draft.ts`
+
+```typescript
+export const FEATURES = {
+  // Bật/tắt auto sync M8→M4
+  M8_M4_AUTO_SYNC: true,
+  
+  // Verbose logging cho debug
+  M8_M4_VERBOSE_LOGGING: true,
+};
+```
+
+## Files liên quan
+
+| File | Mô tả |
+|------|-------|
+| `adapters/inbound-bridge.adapter_draft.ts` | Bridge adapter xử lý cascade |
+| `config/feature-flags_draft.ts` | Feature flags |
+| `services/weighbridge-log.service.ts` | Gọi bridge methods |
+
+## Notes
+
+- Bridge logic chạy **async** trong cùng transaction với M8 action
+- Nếu bridge fail, M8 action vẫn succeed (silent fail, chỉ log warning)
+- Có thể tắt hoàn toàn bằng `M8_M4_AUTO_SYNC = false`
+- Status history được ghi vào `receipt_status_history` với `transitionCode` tương ứng
+
+---

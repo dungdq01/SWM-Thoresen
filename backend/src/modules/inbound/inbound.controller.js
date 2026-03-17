@@ -394,6 +394,37 @@ class InboundController {
     };
   }
 
+  /**
+   * GET /api/v1/inbound/receipts/next-number
+   * Generate next ASN number for receipt creation preview
+   */
+  async getNextReceiptNumber(req, res) {
+    try {
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      const prefix = `ASN-${dateStr}`;
+
+      const result = await this.prisma.$queryRaw`
+        SELECT asn_id
+        FROM receipt_header
+        WHERE asn_id LIKE ${prefix + '%'}
+        ORDER BY asn_id DESC
+        LIMIT 1
+      `;
+
+      let nextSeq = 1;
+      if (result.length > 0 && result[0].asn_id) {
+        const lastSeq = parseInt(result[0].asn_id.split('-')[2], 10);
+        if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+      }
+
+      const code = `${prefix}-${String(nextSeq).padStart(6, '0')}`;
+      return res.json({ success: true, data: { code } });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
   // ── Purchase Order Handlers ──
 
   /**

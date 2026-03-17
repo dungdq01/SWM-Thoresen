@@ -6,8 +6,8 @@ import { Badge, Button } from '@shared/ui'
 const STATUS_LABELS = {
   DRAFT: 'Tạo mới',
   AWAITING_WEIGHING: 'Chờ cân',
-  WEIGHED_IN: 'Đã cân vào',
-  PROCESSING: 'Đang xử lý',
+  WEIGHED_IN: 'Đang cân lần 1',
+  PROCESSING: 'Đang cân lần 2',
   WEIGHED_OUT: 'Đã hoàn thành',
   COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy',
@@ -57,7 +57,7 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-navy-900">Chi tiết phiếu nhập</h2>
-                  <p className="text-sm text-navy-500">{receipt.receiptNumber || 'Chưa có số phiếu'}</p>
+                  <p className="text-sm text-navy-500">{receipt.asnId || 'Chưa có mã ASN'}</p>
                 </div>
               </div>
               <button
@@ -115,9 +115,9 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                     <span>Kho</span>
                   </div>
                   <p className="font-medium text-navy-900">
-                    {receipt.warehouse?.code || receipt.warehouseId}
-                    {receipt.warehouse?.name && (
-                      <span className="text-navy-500 ml-1">— {receipt.warehouse.name}</span>
+                    {receipt.warehouse?.warehouseCode || receipt.warehouse?.code || receipt.warehouseId}
+                    {(receipt.warehouse?.warehouseName || receipt.warehouse?.name) && (
+                      <span className="text-navy-500 ml-1">— {receipt.warehouse.warehouseName || receipt.warehouse.name}</span>
                     )}
                   </p>
                 </div>
@@ -157,9 +157,18 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-navy-500 mb-1">Chênh lệch</p>
-                    <p className="text-lg font-semibold text-navy-600">
-                      {receipt.variancePct ? `${receipt.variancePct}%` : '—'}
-                    </p>
+                    {(() => {
+                      const expected = Number(receipt.expectedQty || receipt.totalExpectedQty || 0)
+                      const actual = Number(receipt.netWeightKg || receipt.totalReceivedQty || 0)
+                      if (!actual) return <p className="text-lg font-semibold text-navy-600">—</p>
+                      const diff = expected - actual
+                      const color = diff > 0 ? 'text-amber-600' : diff < 0 ? 'text-red-600' : 'text-emerald-600'
+                      return (
+                        <p className={`text-lg font-semibold ${color}`}>
+                          {diff > 0 ? '+' : ''}{diff.toLocaleString()} kg
+                        </p>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
@@ -179,16 +188,16 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                       >
                         <div>
                           <p className="font-medium text-navy-800">
-                            {line.item?.code || line.itemId}
+                            {line.item?.itemCode || line.item?.code || line.itemId}
                           </p>
-                          <p className="text-xs text-navy-500">{line.item?.name}</p>
+                          <p className="text-xs text-navy-500">{line.item?.itemName || line.item?.name}</p>
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-navy-900">
                             {(line.expectedQty || 0).toLocaleString()} kg
                           </p>
                           <p className="text-xs text-navy-500">
-                            {line.uom?.code || line.uomId}
+                            {line.uom?.uomCode || line.uom?.code || line.uom?.description || line.uomId}
                           </p>
                         </div>
                       </div>

@@ -852,7 +852,169 @@ Any cancellable state ──cancel──> CANCELLED
 
 ---
 
-## 10. RBAC Permissions
+## 10. Multi-Vehicle Receipt — Per-Vehicle Kho & Items (Frontend)
+
+> **Updated:** 2026-03-18
+> **File:** `frontend/src/features/inbound-operations/purchase-order/CreateInboundReceiptModal.jsx`
+
+### 10.1 Bài toán
+
+Khi 1 PO có nhiều kho (multi-warehouse) và user muốn tạo nhiều phiếu nhập cùng lúc cho nhiều xe:
+
+- **Xe A** chở **Item A** đi **Kho A** (VD: OY-01 — Bãi hở A)
+- **Xe B** chở **Item B** đi **Kho B** (VD: OY-02 — Container)
+
+### 10.2 Cách hoạt động
+
+**Single vehicle (0–1 xe):** UI y hệt cũ — Kho chọn ở Section 1, items ở Section 2.
+
+**Multi vehicle (≥2 xe):** Khi user nhập nhiều biển số phân cách bằng `,` hoặc `;`:
+
+1. **Section 1 — Thông tin chung:** Dropdown Kho bị ẩn, thay bằng info box: _"Kho được chọn riêng cho từng xe ở phần Chi tiết phiếu bên dưới"_
+2. **Section 2 — Chi tiết phiếu:** Hiển thị **Tabs**, mỗi tab = 1 xe, chứa:
+   - Dropdown **Kho** riêng (filter từ kho của PO)
+   - Danh sách **items** riêng (thêm/xoá/sửa độc lập)
+3. **Tab trigger:** Hiển thị biển số xe + tên kho đã chọn + badge valid/invalid
+4. **Submit:** Mỗi xe tạo 1 API call riêng với `warehouseId` và `lines` riêng
+
+### 10.3 State Model (Frontend)
+
+```javascript
+draft = {
+  warehouseId: '',           // Dùng khi single vehicle
+  vehiclePlate: '',          // Raw input: "29A-111; 29A-222"
+  notes: '',
+  lines: [...],              // Dùng khi single vehicle
+  vehicleLines: {            // Dùng khi multi vehicle, key = plate
+    '29A-111': [{ itemId, expectedQty, uomId, ... }],
+    '29A-222': [{ itemId, expectedQty, uomId, ... }],
+  },
+  vehicleWarehouses: {       // Dùng khi multi vehicle, key = plate
+    '29A-111': 'warehouse-uuid-A',
+    '29A-222': 'warehouse-uuid-B',
+  },
+}
+```
+
+### 10.4 Sync Logic (vehiclePlates ↔ vehicleLines/vehicleWarehouses)
+
+| Transition | Hành vi |
+|------------|---------|
+| 1 xe → N xe | Clone `draft.lines` → mỗi tab. Kế thừa `warehouseId` chung → mỗi `vehicleWarehouses[plate]` |
+| Thêm xe mới | Khởi tạo lines từ PO lines gốc. `vehicleWarehouses[plate]` = `''` |
+| Xoá xe | Xoá `vehicleLines[plate]` và `vehicleWarehouses[plate]` |
+| N xe → 1 xe | Copy lines + warehouse của plate còn lại về `draft.lines` / `draft.warehouseId` |
+
+### 10.5 Validation (Multi-vehicle)
+
+Mỗi tab phải thỏa:
+- `vehicleWarehouses[plate]` không rỗng (phải chọn kho)
+- Ít nhất 1 dòng hàng với `itemId` + `uomId` + `expectedQty > 0`
+
+Form chỉ valid khi **tất cả** tab đều valid. Tab invalid hiển thị icon `AlertCircle` đỏ.
+
+### 10.6 Submit Payload (Per vehicle)
+
+```javascript
+// Gọi N lần cho N xe
+{
+  externalId: "WEB-{timestamp}-{random}",   // Idempotency key
+  poId: "PO-20260317-002",
+  asnId: "ASN-20260318-000001",             // Từ API /receipts/next-number
+  ownerId: "uuid",
+  vendorId: "uuid",
+  warehouseId: vehicleWarehouses[plate],    // Kho RIÊNG cho xe này
+  vehicleNumber: "29A-111",
+  blNumber: "BL-xxx",
+  expectedQty: 45,                          // Tổng qty của lines xe này
+  notes: "...",
+  sourceApp: "WEB",
+  lines: [...]                              // Items RIÊNG cho xe này
+}
+```
+
+---
+
+## 11. ASN Number Generation & Display (Bug Fix 2026-03-18)
+
+### 11.1 Vấn đề
+
+Cột "Mã ASN" trên trang Phiếu nhập thay đổi khi bấm Xác nhận receipt. VD: hiện `42afe6a3` → sau confirm → hiện `RCV-20260317-000001`.
+
+### 11.2 Root Cause (3 bug chồng nhau)
+
+**Bug 1 — API route thiếu:**
+- Frontend gọi `GET /api/v1/inbound/receipts/next-number` → **404** vì route không tồn tại trong Express app
+- Fallback frontend tạo ASN nhưng parse response sai → `asnId = undefined` → lưu `null` vào DB
+
+**Bug 2 — Payload thiếu trường required:**
+- Schema (`inbound.schema.js`) yêu cầu `externalId` (required) và `receivingLocationId` (required)
+- Frontend không gửi → validation fail → receipt không tạo được qua Express API
+- `receivingLocationId` không được dùng trong service → đổi thành `optional`
+
+**Bug 3 — Frontend fallback chain hiển thị sai:**
+- Display logic: `asnId || receiptNumber || id.slice(0,8)`
+- Khi DRAFT: `asnId=null`, `receiptNumber=null` → hiển thị UUID cắt ngắn (`42afe6a3`)
+- Khi confirm: backend sinh `receiptNumber=RCV-xxx` → hiển thị `receiptNumber` → trông như "mã bị đổi"
+
+### 11.3 Fixes
+
+**Fix 1 — Thêm Express route + controller method:**
+
+```
+GET /api/v1/inbound/receipts/next-number
+```
+
+- File route: `inbound.routes.js` — thêm **trước** `/receipts/:id` để tránh `:id` match
+- File controller: `inbound.controller.js` — method `getNextReceiptNumber()`
+- Logic: Query `receipt_header` tìm `asn_id` lớn nhất với prefix `ASN-{YYYYMMDD}`, tăng sequence
+- Response: `{ success: true, data: { code: "ASN-20260318-000001" } }`
+
+**Fix 2 — Frontend gửi đủ payload:**
+
+```javascript
+// CreateInboundReceiptModal.jsx - handleSubmit
+const payload = {
+  externalId: `WEB-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+  // ... other fields
+}
+```
+
+- Backend schema: `receivingLocationId` đổi từ `required` → `optional`
+
+**Fix 3 — Frontend hiển thị ưu tiên receiptNumber:**
+
+```javascript
+// InboundReceiptsPage.jsx - Cột "Mã ASN / Số phiếu"
+// Trước: receipt.asnId || receipt.receiptNumber || receipt.id?.slice(0,8)
+// Sau:
+receipt.receiptNumber || receipt.asnId || receipt.id?.slice(0, 8)
+// + Hiển thị asnId nhỏ bên dưới nếu khác receiptNumber
+```
+
+### 11.4 Phân biệt asnId vs receiptNumber
+
+| Field | Khi nào sinh | Format | Mục đích |
+|-------|-------------|--------|----------|
+| `asnId` | Khi **tạo** receipt (frontend gọi API) | `ASN-YYYYMMDD-NNNNNN` | Mã tham chiếu trước khi confirm |
+| `receiptNumber` | Khi **confirm** receipt (backend sinh) | `RCV-YYYYMMDD-NNNNNN` | Mã chính thức sau khi xác nhận |
+
+- DRAFT: hiển thị `asnId` (hoặc UUID nếu null)
+- After confirm: hiển thị `receiptNumber` (mã chính thức), `asnId` hiển thị nhỏ bên dưới
+
+### 11.5 Files thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `backend/src/modules/inbound/inbound.routes.js` | Thêm route `GET /receipts/next-number` |
+| `backend/src/modules/inbound/inbound.controller.js` | Thêm method `getNextReceiptNumber()` |
+| `backend/src/modules/inbound/inbound.schema.js` | `receivingLocationId`: required → optional |
+| `frontend/.../CreateInboundReceiptModal.jsx` | Thêm `externalId` vào payload, fix parse API response |
+| `frontend/.../InboundReceiptsPage.jsx` | Fix cột display: ưu tiên `receiptNumber`, header đổi thành "Mã ASN / Số phiếu" |
+
+---
+
+## 12. RBAC Permissions
 
 ### 10.1 Purchase Order Permissions
 

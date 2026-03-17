@@ -270,20 +270,10 @@ export function WeighbridgePage() {
         isLoading={recordWeightMutation.isPending}
         onSubmit={async (payload) => {
           try {
-            const result = await recordWeightMutation.mutateAsync({ id: payload.id, data: { weightKg: payload.weightKg } })
-            // Cập nhật weighingModalData với data mới từ API để tiếp tục cân lần 2 nếu cần
-            if (result.processingStatus === 'WEIGHING') {
-              // Sau cân lần 1, cập nhật data để modal hiển thị đúng cho lần 2
-              setWeighingModalData(prev => ({
-                ...prev,
-                grossWeightKg: result.grossWeightKg,
-                grossWeightAt: result.grossWeightAt,
-                processingStatus: result.processingStatus,
-              }))
-            } else {
-              // Cân lần 2 xong (COMPLETED) -> đóng modal
-              setWeighingModalData(null)
-            }
+            await recordWeightMutation.mutateAsync({ id: payload.id, data: { weightKg: payload.weightKg } })
+            // Tắt modal sau khi ghi nhận (cả lần 1 và lần 2)
+            // User sẽ bấm button cân để mở lại modal khi cần cân lần 2
+            setWeighingModalData(null)
             refetchLogs()
           } catch (error) {
             // Error handled by mutation

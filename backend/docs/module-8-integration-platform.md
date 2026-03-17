@@ -343,9 +343,116 @@ src/modules/integration-platform/
 
 ---
 
-## 4. Business Rules
+## 4. Weighbridge State Machine & M8↔M4 Bridge
 
-### 4.1 Weighbridge
+### 4.0 Weigh Log Processing Status
+
+**WeighEventProcessingStatus:**
+
+| State | Label | Description |
+|-------|-------|-------------|
+| `RECEIVED` | Tạo mới | Weigh event vừa được ingest |
+| `VALIDATED` | Đã xác nhận | Đã xác nhận phiếu cân (link ASN) |
+| `WEIGHING` | Đang cân lần 2 | Đã ghi nhận TL lần 1 (grossWeight) |
+| `COMPLETED` | Hoàn thành | Đã ghi nhận TL lần 2 (tareWeight) |
+| `LINKED` | Đã liên kết | Đã link với chứng từ khác |
+| `DUPLICATE` | Trùng lặp | Event ID trùng |
+| `FAILED` | Thất bại | Xử lý thất bại |
+| `REJECTED` | Từ chối | Bị từ chối |
+
+**Weigh Log Transitions:**
+
+```
+RECEIVED ──confirm──> VALIDATED ──recordWeight(gross)──> WEIGHING ──recordWeight(tare)──> COMPLETED
+    │                                                                                          │
+    └──reject──> REJECTED                                                          (trigger M4 update)
+```
+
+### 4.0.1 M8↔M4 Inbound Bridge
+
+> **Files liên quan:**
+> - `src/modules/integration-platform/adapters/inbound-bridge.adapter_draft.ts`
+> - `src/modules/integration-platform/config/feature-flags_draft.ts`
+
+**Trigger Points:**
+
+| M8 Action | M8 Status | M4 Receipt Status | M4 PO Status | Method |
+|-----------|-----------|-------------------|--------------|--------|
+| `confirmLog()` | VALIDATED | AWAITING_WEIGHING → WEIGHED_IN | CONFIRMED → RECEIVING | `onWeighLogConfirmed()` |
+| `recordWeight()` (lần 1) | WEIGHING | WEIGHED_IN → PROCESSING | - | `onGrossWeightRecorded()` |
+| `recordWeight()` (lần 2) | COMPLETED | PROCESSING → WEIGHED_OUT | Aggregate `totalReceivedQty` | `onWeighLogCompleted()` |
+
+**Flow Diagram:**
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ M8 Weighbridge                                                                           │
+│                                                                                          │
+│  RECEIVED ────confirm────> VALIDATED ────recordWeight(1)────> WEIGHING                   │
+│                                │                                  │                      │
+│                                │                                  │                      │
+│                                ▼                                  ▼                      │
+│                     onWeighLogConfirmed()              onGrossWeightRecorded()           │
+│                                │                                  │                      │
+└────────────────────────────────┼──────────────────────────────────┼──────────────────────┘
+                                 │                                  │
+                                 ▼                                  ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ M4 Inbound                                                                               │
+│                                                                                          │
+│  ASN: AWAITING_WEIGHING ──> WEIGHED_IN (Đang cân lần 1) ──> PROCESSING (Đang cân lần 2)  │
+│  PO:  CONFIRMED ─────────> RECEIVING (Đang nhập)                                         │
+│                                                                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ M8 Weighbridge                                                                           │
+│                                                                                          │
+│  WEIGHING ────recordWeight(2)────> COMPLETED                                             │
+│                                        │                                                 │
+│                                        ▼                                                 │
+│                             onWeighLogCompleted()                                        │
+│                                        │                                                 │
+└────────────────────────────────────────┼─────────────────────────────────────────────────┘
+                                         │
+                                         ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ M4 Inbound                                                                               │
+│                                                                                          │
+│  ASN: PROCESSING ──> WEIGHED_OUT (Đã hoàn thành)                                         │
+│       + ReceiptLine.receivedQty = netWeightKg                                            │
+│                                                                                          │
+│  PO:  totalReceivedQty = SUM(netWeightKg) của các ASN đã done                            │
+│                                                                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Flow - Cân hoàn thành:**
+
+```
+netWeightKg (TL hàng ròng)
+    │
+    ├──> ReceiptHeader.netWeightKg
+    │
+    ├──> ReceiptLine.receivedQty (fill SL đã nhận vào ASN)
+    │
+    └──> PO.totalReceivedQty = SUM(netWeightKg) của các ASN có status ≥ WEIGHED_OUT
+```
+
+**Cách tắt logic này:**
+```typescript
+// src/modules/integration-platform/config/feature-flags_draft.ts
+export const FEATURES = {
+  M8_M4_AUTO_SYNC: false,  // Tắt auto sync M8→M4
+  M8_M4_VERBOSE_LOGGING: false,
+};
+```
+
+---
+
+## 5. Business Rules
+
+### 5.1 Weighbridge
 - `weighbridgeEventId` must be unique (idempotency key)
 - `scaleDeviceId` phải active (chỉ với `/events` endpoint từ local agent)
 - **Manual entry từ Web UI** (`/events/manual`):
@@ -621,6 +728,15 @@ Các items này sẽ được implement trong Sprint 5.
 ---
 
 ## Changelog
+
+### 2026-03-18: M8↔M4 Inbound Bridge
+
+| Change | Mô tả |
+|--------|-------|
+| Feature flag | `FEATURES.M8_M4_AUTO_SYNC` - Bật/tắt auto sync |
+| Bridge adapter | `inbound-bridge.adapter_draft.ts` - Xử lý cascade status |
+| State sync | Weigh log status → ASN status → PO status |
+| Data sync | `netWeightKg` → `ReceiptLine.receivedQty` → `PO.totalReceivedQty` |
 
 ### 2026-03-16: Manual Weigh Event từ Web UI
 

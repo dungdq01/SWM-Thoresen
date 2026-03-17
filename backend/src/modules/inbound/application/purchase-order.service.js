@@ -7,13 +7,15 @@ const { PurchaseOrderRepository } = require('../infra/purchase-order.repository'
 const PO_STATUS = {
   DRAFT: 'DRAFT',
   CONFIRMED: 'CONFIRMED',
+  RECEIVING: 'RECEIVING',
   CLOSED: 'CLOSED',
   CANCELLED: 'CANCELLED',
 };
 
 const VALID_TRANSITIONS = {
   DRAFT: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['CLOSED', 'CANCELLED'],
+  CONFIRMED: ['RECEIVING', 'CLOSED', 'CANCELLED'],
+  RECEIVING: ['CLOSED', 'CANCELLED'],
   CLOSED: [],
   CANCELLED: [],
 };

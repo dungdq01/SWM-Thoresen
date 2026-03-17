@@ -5,13 +5,15 @@ import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CancelPurchaseOrderDto,
 enum PoStatus {
   NEW = 'NEW',
   CONFIRMED = 'CONFIRMED',
+  RECEIVING = 'RECEIVING',
   CLOSED = 'CLOSED',
   CANCELLED = 'CANCELLED',
 }
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   NEW: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['NEW', 'CLOSED', 'CANCELLED'],
+  CONFIRMED: ['NEW', 'RECEIVING', 'CLOSED', 'CANCELLED'],
+  RECEIVING: ['CLOSED', 'CANCELLED'],
   CLOSED: [],
   CANCELLED: [],
 };

@@ -58,11 +58,18 @@ export function CreateWeighTicketModal({
     })
   }
 
+  // Helper: lấy mã hiển thị của receipt (asnId > id slice)
+  const getReceiptDisplayCode = (r) => r.asnId || r.id?.slice(0, 8)
+
+  // Helper: tìm receipt theo mã hiển thị
+  const findReceiptByCode = (code) =>
+    receipts.find((r) => getReceiptDisplayCode(r) === code)
+
   // Lấy ticket hiện tại (receipt hoặc shipment)
   const currentTicket = useMemo(() => {
     if (!draft.ticketNumber) return null
     if (draft.weighingType === 'WEIGH_IN') {
-      return receipts.find((r) => r.asnId === draft.ticketNumber)
+      return findReceiptByCode(draft.ticketNumber)
     } else {
       return shipments.find((s) => s.shipmentNumber === draft.ticketNumber)
     }
@@ -84,7 +91,7 @@ export function CreateWeighTicketModal({
 
     // Tìm receipt hoặc shipment theo loại cân
     const ticket = draft.weighingType === 'WEIGH_IN'
-      ? receipts.find((r) => r.asnId === ticketId)
+      ? findReceiptByCode(ticketId)
       : shipments.find((s) => s.shipmentNumber === ticketId)
 
     if (ticket) {
@@ -180,7 +187,12 @@ export function CreateWeighTicketModal({
     if (draft.weighingType === 'WEIGH_IN') {
       return [
         { value: '', label: '-- Chọn mã phiếu nhập --' },
-        ...receipts.filter((r) => r.asnId).map((r) => ({ value: r.asnId, label: r.asnId })),
+        ...receipts
+          .filter((r) => r.asnId || r.id)
+          .map((r) => {
+            const code = getReceiptDisplayCode(r)
+            return { value: code, label: code }
+          }),
       ]
     } else {
       return [

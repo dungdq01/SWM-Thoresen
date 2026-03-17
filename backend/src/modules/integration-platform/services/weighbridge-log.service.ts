@@ -241,7 +241,27 @@ export class WeighbridgeLogService {
         processingStatus: WeighEventProcessingStatus.WEIGHING as any,
       });
 
-      // [DRAFT] Notify M5 Outbound khi ghi gross weight - SHP: WEIGHING_1 → WEIGHING_2
+      // Notify M4 Inbound khi ghi gross weight - ASN: WEIGHED_IN → PROCESSING
+      if (FEATURES.M8_M4_AUTO_SYNC && log.receiptId) {
+        try {
+          const adapter = new InboundBridgeAdapter(this.prisma);
+          const bridgeResult = await adapter.onGrossWeightRecorded(
+            {
+              id: log.id,
+              receiptId: log.receiptId,
+              grossWeightKg: data.weightKg,
+            },
+            { userId: undefined },
+          );
+          if (FEATURES.M8_M4_VERBOSE_LOGGING) {
+            this.logger.log(`M8→M4 onGrossWeightRecorded: ${JSON.stringify(bridgeResult)}`);
+          }
+        } catch (error) {
+          this.logger.warn(`M8→M4 onGrossWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+        }
+      }
+
+      // Notify M5 Outbound khi ghi gross weight - SHP: WEIGHING_1 → WEIGHING_2
       if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
         try {
           const adapter = new OutboundBridgeAdapter(this.prisma);
@@ -254,10 +274,10 @@ export class WeighbridgeLogService {
             { userId: undefined },
           );
           if (FEATURES.M8_M5_VERBOSE_LOGGING) {
-            this.logger.log(`[DRAFT] M8→M5 onGrossWeightRecorded: ${JSON.stringify(bridgeResult)}`);
+            this.logger.log(`M8→M5 onGrossWeightRecorded: ${JSON.stringify(bridgeResult)}`);
           }
         } catch (error) {
-          this.logger.warn(`[DRAFT] M8→M5 onGrossWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+          this.logger.warn(`M8→M5 onGrossWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
         }
       }
 
@@ -438,7 +458,7 @@ export class WeighbridgeLogService {
     // Extract owner and item info - prioritize log fields for manual entries
     const owner = log.ownerId ? ownerMap.get(log.ownerId) : (receipt?.owner || shipment?.owner || null);
     const itemInfo = log.itemCode ? { itemCode: log.itemCode } : (receipt?.lines?.[0]?.item || shipment?.lines?.[0]?.item || null);
-    const ticketNumber = receipt?.asnId || receipt?.receiptNumber || shipment?.shipmentNumber || null;
+    const ticketNumber = receipt?.asnId || shipment?.shipmentNumber || null;
     const asnId = receipt?.asnId || null;
 
     return {
