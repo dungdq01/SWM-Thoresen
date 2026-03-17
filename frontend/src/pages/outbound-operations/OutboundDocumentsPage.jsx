@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Eye, Download, X, Image as ImageIcon, RefreshCw } from 'lucide-react'
-import { useInboundReceipts } from '@domains/inbound-operations'
 import { useLookupOwners } from '@domains/master-data'
 import {
   Badge,
@@ -34,8 +33,7 @@ const DOC_TYPES = [
   { value: 'BILL_OF_LADING', label: 'Vận đơn (B/L)' },
   { value: 'PACKING_LIST', label: 'Phiếu đóng gói' },
   { value: 'COMMERCIAL_INVOICE', label: 'Hóa đơn thương mại' },
-  { value: 'CERTIFICATE_OF_ORIGIN', label: 'Giấy chứng nhận xuất xứ' },
-  { value: 'QUALITY_CERTIFICATE', label: 'Chứng nhận chất lượng' },
+  { value: 'DELIVERY_ORDER', label: 'Lệnh giao hàng' },
   { value: 'WEIGHT_CERTIFICATE', label: 'Phiếu cân' },
   { value: 'OTHER', label: 'Khác' },
 ]
@@ -57,8 +55,7 @@ const DOC_TYPE_LABELS = {
   BILL_OF_LADING: 'Vận đơn (B/L)',
   PACKING_LIST: 'Phiếu đóng gói',
   COMMERCIAL_INVOICE: 'Hóa đơn thương mại',
-  CERTIFICATE_OF_ORIGIN: 'C/O',
-  QUALITY_CERTIFICATE: 'Chứng nhận CL',
+  DELIVERY_ORDER: 'Lệnh giao hàng',
   WEIGHT_CERTIFICATE: 'Phiếu cân',
   OTHER: 'Khác',
 }
@@ -141,15 +138,15 @@ function ImagePreviewModal({ isOpen, onClose, doc }) {
   )
 }
 
-export function InboundDocumentsPage() {
+export function OutboundDocumentsPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', docType: '', ownerId: '' })
   const [previewDoc, setPreviewDoc] = useState(null)
 
   const { data: response, isLoading, refetch } = useQuery({
-    queryKey: ['inbound-documents', filters],
+    queryKey: ['outbound-documents', filters],
     queryFn: () => {
       const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ''))
-      return httpClient.get('/inbound/documents', { params })
+      return httpClient.get('/outbound/documents', { params })
     },
     staleTime: 15000,
   })
@@ -174,7 +171,7 @@ export function InboundDocumentsPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Chứng từ nhập</h2>
+        <h2 className="section-title">Chứng từ xuất</h2>
         <Button variant="outline" size="sm" onClick={refetch}>
           <RefreshCw className="mr-1.5 h-4 w-4" /> Làm mới
         </Button>
@@ -202,7 +199,7 @@ export function InboundDocumentsPage() {
         {/* Other filters */}
         <div className="grid gap-4 md:grid-cols-3">
           <Input
-            placeholder="Tìm số B/L, số PO, tên chứng từ..."
+            placeholder="Tìm số B/L, số SO, tên chứng từ..."
             value={filters.keyword}
             onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value, page: 1 }))}
           />
@@ -223,7 +220,7 @@ export function InboundDocumentsPage() {
           <TableHeader>
             <TableRow hoverable={false}>
               <TableHead>Mã CT</TableHead>
-              <TableHead>Số phiếu nhập</TableHead>
+              <TableHead>Số phiếu xuất</TableHead>
               <TableHead>Số xe</TableHead>
               <TableHead>Chủ hàng</TableHead>
               <TableHead>Loại chứng từ</TableHead>
@@ -235,14 +232,14 @@ export function InboundDocumentsPage() {
           </TableHeader>
           <TableBody>
             {isLoading && <TableLoading colSpan={9} />}
-            {!isLoading && rows.length === 0 && <TableEmpty colSpan={9} message="Chưa có chứng từ nhập nào" />}
+            {!isLoading && rows.length === 0 && <TableEmpty colSpan={9} message="Chưa có chứng từ xuất nào" />}
             {!isLoading && rows.map((doc) => (
               <TableRow key={doc.id}>
                 <TableCell>
-                  <p className="font-semibold text-navy-900">{doc.documentCode || doc.receiptNumber || '—'}</p>
+                  <p className="font-semibold text-navy-900">{doc.documentCode || doc.shipmentNumber || '—'}</p>
                 </TableCell>
                 <TableCell>
-                  <span className="font-mono text-sm text-navy-600">{doc.receiptHeader?.asnId || doc.receiptHeader?.receiptNumber || '—'}</span>
+                  <span className="font-mono text-sm text-navy-600">{doc.shipmentHeader?.shipmentNumber || '—'}</span>
                 </TableCell>
                 <TableCell>
                   <span className="font-mono text-sm text-navy-700">{doc.vehiclePlate || doc.vehicleNumber || '—'}</span>
@@ -253,7 +250,7 @@ export function InboundDocumentsPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant="info">
-                    {DOC_TYPE_LABELS[doc.docType] || 'Phiếu nhập'}
+                    {DOC_TYPE_LABELS[doc.docType] || 'Phiếu xuất'}
                   </Badge>
                 </TableCell>
                 <TableCell>

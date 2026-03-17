@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OcrResultRepository } from '../repositories/ocr-result.repository';
 import { OcrProviderService, OcrExtractedFields } from './ocr-provider.service';
 import { OcrFieldParserService } from './ocr-field-parser.service';
+import { OcrAutoLinkService } from './ocr-auto-link.service';
 import { OcrStatus } from '../domain/integration.enums';
 import { OcrError, IntegrationErrorCodes } from '../domain/integration.errors';
 
@@ -48,6 +49,8 @@ export class OcrExtractService {
     private readonly ocrResultRepo: OcrResultRepository,
     private readonly ocrProviderService: OcrProviderService,
     private readonly ocrFieldParserService: OcrFieldParserService,
+    @Inject(forwardRef(() => OcrAutoLinkService))
+    private readonly ocrAutoLinkService: OcrAutoLinkService,
   ) {}
 
   async extractFromImage(ocrResultId: string): Promise<OcrExtractedData> {
@@ -102,6 +105,12 @@ export class OcrExtractService {
       await this.ocrResultRepo.update(ocrResultId, updatePayload);
 
       this.logger.log(`OCR extraction completed for ${ocrResultId}, status: ${status}`);
+
+      // Trigger auto-link for INBOUND OCR (fire-and-forget)
+      this.ocrAutoLinkService.autoLinkInbound(ocrResultId).catch(err => {
+        this.logger.error(`Auto-link failed for ${ocrResultId}: ${err?.message || err}`);
+      });
+
       return extractedData;
 
     } catch (error) {

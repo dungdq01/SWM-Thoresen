@@ -18,6 +18,7 @@ import { OcrExtractService } from './services/ocr-extract.service';
 import { OcrConfirmationService } from './services/ocr-confirmation.service';
 import { OcrProviderService } from './services/ocr-provider.service';
 import { OcrFieldParserService } from './services/ocr-field-parser.service';
+import { OcrAutoLinkService } from './services/ocr-auto-link.service';
 import { MobileSyncBatchService } from './services/mobile-sync-batch.service';
 import { MobileSyncDispatchService } from './services/mobile-sync-dispatch.service';
 import { ErpPushService } from './services/erp-push.service';
@@ -58,6 +59,7 @@ import { DeviceHeartbeatRepository } from './repositories/device-heartbeat.repos
     OcrConfirmationService,
     OcrProviderService,
     OcrFieldParserService,
+    OcrAutoLinkService,
     MobileSyncBatchService,
     MobileSyncDispatchService,
     ErpPushService,

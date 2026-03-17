@@ -11,6 +11,7 @@ export interface OcrUploadParams {
   fileSize: number;
   providerName: string;
   warehouseId?: string;
+  direction?: string;
   correlationId: string;
   createdBy: string;
 }
@@ -34,6 +35,7 @@ export class OcrUploadService {
       imagePath: params.filePath.replace(/\\/g, '/'),
       providerName: params.providerName,
       status: OcrStatus.UPLOADED,
+      direction: params.direction || 'INBOUND',
       externalId,
       correlationId: params.correlationId,
       sourceChannel: 'OCR',

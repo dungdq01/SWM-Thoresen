@@ -3343,9 +3343,11 @@ model M8OcrResult {
   overallConfidence  Decimal?        @map("overall_confidence") @db.Decimal(5, 2)
   rawResponse        Json?           @map("raw_response")
   linkedReceiptId    String?         @map("linked_receipt_id") @db.Uuid
+  linkedPoId         String?         @map("linked_po_id") @db.Uuid
   linkMethod         M8OcrLinkMethod? @map("link_method")
   operatorConfirmed  Boolean         @default(false) @map("operator_confirmed")
   status             M8OcrStatus     @default(UPLOADED)
+  direction          String?         @map("direction") @db.VarChar(10)
   externalId         String          @map("external_id") @db.VarChar(100)
   correlationId      String          @map("correlation_id") @db.Uuid
   sourceChannel      String          @default("OCR") @map("source_channel") @db.VarChar(20)

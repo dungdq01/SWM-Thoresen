@@ -8,6 +8,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { OcrUploadService } from '../services/ocr-upload.service';
 import { OcrExtractService } from '../services/ocr-extract.service';
 import { OcrConfirmationService, ConfirmOcrParams, LinkOcrParams } from '../services/ocr-confirmation.service';
+import { OcrAutoLinkService } from '../services/ocr-auto-link.service';
 import { OcrFileUploadInterceptor } from '../interceptors/ocr-file-upload.interceptor';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -81,6 +82,7 @@ export class OcrController {
     private readonly uploadService: OcrUploadService,
     private readonly extractService: OcrExtractService,
     private readonly confirmationService: OcrConfirmationService,
+    private readonly autoLinkService: OcrAutoLinkService,
   ) {}
 
   @Post('uploads')
@@ -89,6 +91,7 @@ export class OcrController {
   async uploadForOcr(
     @UploadedFile() file: any,
     @Body('warehouseId') warehouseId: string,
+    @Body('direction') direction: string,
     @CurrentUser() user: RequestUser,
   ) {
     const correlationId = uuidv4();
@@ -101,6 +104,7 @@ export class OcrController {
       fileSize: file.size,
       providerName: 'google-vision',
       warehouseId,
+      direction: direction || 'INBOUND',
       correlationId,
       createdBy,
     });
@@ -164,5 +168,12 @@ export class OcrController {
   @Permission('INTEGRATION.OCR.REJECT')
   async rejectResult(@Param('id') id: string, @Body() dto: RejectOcrDto, @CurrentUser() user: RequestUser) {
     return this.confirmationService.rejectOcrResult(id, dto.reason, user.id);
+  }
+
+  @Post('backfill-documents')
+  @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.OCR.UPLOAD')
+  async backfillDocuments() {
+    return this.autoLinkService.backfillDocumentsForLinkedOcr();
   }
 }

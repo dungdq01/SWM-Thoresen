@@ -14,10 +14,16 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+const DOC_DIRECTIONS = [
+  { value: 'INBOUND', label: 'Nhập kho' },
+  { value: 'OUTBOUND', label: 'Xuất kho' },
+]
+
 export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState('')
+  const [direction, setDirection] = useState('INBOUND')
   const inputRef = useRef(null)
   const uploadMutation = useUploadOcrImage()
   const { takePhoto, pickFromGallery } = useCamera()
@@ -26,6 +32,7 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
     setFile(null)
     setPreview(null)
     setError('')
+    setDirection('INBOUND')
   }, [])
 
   const handleClose = useCallback(() => {
@@ -80,6 +87,7 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
     if (!file) return
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('direction', direction)
     try {
       await uploadMutation.mutateAsync(formData)
       handleClose()
@@ -97,6 +105,23 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
       size="md"
     >
       <div className="space-y-4">
+        {/* Direction selector */}
+        <div className="flex items-center gap-2 p-1 rounded-xl" style={{ backgroundColor: 'var(--color-bg-subtle)' }}>
+          {DOC_DIRECTIONS.map((d) => (
+            <button
+              key={d.value}
+              onClick={() => setDirection(d.value)}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                direction === d.value
+                  ? 'bg-ice text-navy-950 shadow-sm'
+                  : 'text-navy-500 hover:text-navy-700'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
         {!file ? (
           <>
             {/* Camera buttons — primary actions for mobile */}
