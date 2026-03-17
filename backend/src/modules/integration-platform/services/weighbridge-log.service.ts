@@ -240,14 +240,52 @@ export class WeighbridgeLogService {
       await this.eventStateRepo.updateByLogId(id, {
         processingStatus: WeighEventProcessingStatus.WEIGHING as any,
       });
+
+      // [DRAFT] Notify M5 Outbound khi ghi gross weight - SHP: WEIGHING_1 → WEIGHING_2
+      if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
+        try {
+          const adapter = new OutboundBridgeAdapter(this.prisma);
+          const bridgeResult = await adapter.onGrossWeightRecorded(
+            {
+              id: log.id,
+              shipmentId: log.shipmentId,
+              grossWeightKg: data.weightKg,
+            },
+            { userId: undefined },
+          );
+          if (FEATURES.M8_M5_VERBOSE_LOGGING) {
+            this.logger.log(`[DRAFT] M8→M5 onGrossWeightRecorded: ${JSON.stringify(bridgeResult)}`);
+          }
+        } catch (error) {
+          this.logger.warn(`[DRAFT] M8→M5 onGrossWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+        }
+      }
+
       return { id, grossWeightKg: data.weightKg, grossWeightAt: now, processingStatus: WeighEventProcessingStatus.WEIGHING };
     }
 
     // Lần 2: đã có gross, chưa có tare → ghi tare + tính net, chuyển trạng thái sang COMPLETED
     if (log.tareWeightKg == null) {
-      const netWeightKg = Number(log.grossWeightKg) - data.weightKg;
+      const grossWeight = Number(log.grossWeightKg);
+      const tareWeight = data.weightKg;
+
+      // Validation: Cân ra (WEIGH_OUT) - TL lần 2 không được lớn hơn TL lần 1
+      if (log.weighingType === 'WEIGH_OUT' && tareWeight > grossWeight) {
+        throw new WeighbridgeError(
+          IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
+          `Trọng lượng lần 2 (${tareWeight} kg) không được lớn hơn trọng lượng lần 1 (${grossWeight} kg)`,
+        );
+      }
+
+      // Công thức tính net weight:
+      // - Cân ra (WEIGH_OUT): TL ròng = TL lần 1 - TL lần 2 (xe đầy - xe rỗng)
+      // - Cân vào (WEIGH_IN): TL ròng = TL lần 2 - TL lần 1 (xe đầy - xe rỗng)
+      const netWeightKg = log.weighingType === 'WEIGH_OUT'
+        ? grossWeight - tareWeight
+        : tareWeight - grossWeight;
+
       await this.logRepo.update(id, {
-        tareWeightKg: data.weightKg,
+        tareWeightKg: tareWeight,
         tareWeightAt: now,
         netWeightKg: Math.abs(netWeightKg),
       });
@@ -274,6 +312,28 @@ export class WeighbridgeLogService {
           }
         } catch (error) {
           this.logger.warn(`[DRAFT] M8→M4 onWeighLogCompleted failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+        }
+      }
+
+      // [DRAFT] Notify M5 Outbound khi ghi tare weight - SHP: WEIGHING_2 → WEIGHED
+      if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
+        try {
+          const adapter = new OutboundBridgeAdapter(this.prisma);
+          const bridgeResult = await adapter.onTareWeightRecorded(
+            {
+              id: log.id,
+              shipmentId: log.shipmentId,
+              grossWeightKg: Number(log.grossWeightKg),
+              tareWeightKg: data.weightKg,
+              netWeightKg: Math.abs(netWeightKg),
+            },
+            { userId: undefined },
+          );
+          if (FEATURES.M8_M5_VERBOSE_LOGGING) {
+            this.logger.log(`[DRAFT] M8→M5 onTareWeightRecorded: ${JSON.stringify(bridgeResult)}`);
+          }
+        } catch (error) {
+          this.logger.warn(`[DRAFT] M8→M5 onTareWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
         }
       }
 

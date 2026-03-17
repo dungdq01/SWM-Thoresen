@@ -138,6 +138,172 @@ export class OutboundBridgeAdapter {
   }
 
   /**
+   * [DRAFT] Notify M5 Outbound khi ghi số cân lần 1 (gross weight)
+   *
+   * Flow: M8 WEIGHING (đã ghi gross) → M5 Shipment WEIGHING_1 → WEIGHING_2
+   */
+  async onGrossWeightRecorded(
+    log: OutboundWeighLogData,
+    context: { userId?: string } = {},
+  ): Promise<OutboundBridgeResult> {
+    if (!log.shipmentId) {
+      return {
+        success: true,
+        skipped: true,
+        reason: 'No shipmentId linked to weigh log',
+      };
+    }
+
+    try {
+      const shipment = await this.prisma.shipmentHeader.findUnique({
+        where: { id: log.shipmentId },
+        select: { id: true, status: true, salesOrderId: true, shipmentNumber: true },
+      });
+
+      if (!shipment) {
+        return {
+          success: false,
+          skipped: true,
+          reason: `Shipment ${log.shipmentId} not found`,
+        };
+      }
+
+      // Guard: Chỉ xử lý nếu shipment đang ở WEIGHING_1
+      if (shipment.status !== 'WEIGHING_1') {
+        return {
+          success: true,
+          skipped: true,
+          shipmentId: shipment.id,
+          reason: `Shipment not in WEIGHING_1 state (current: ${shipment.status})`,
+        };
+      }
+
+      // Update shipment status sang WEIGHING_2
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const updatedShipment = await tx.shipmentHeader.update({
+          where: { id: log.shipmentId },
+          data: {
+            status: 'WEIGHING_2' as any,
+            rowVersion: { increment: 1 },
+            updatedBy: context.userId,
+          },
+        });
+
+        await tx.shipmentStatusHistory.create({
+          data: {
+            shipmentHeaderId: log.shipmentId!,
+            entityLevel: 'HEADER',
+            fromStatus: 'WEIGHING_1',
+            toStatus: 'WEIGHING_2',
+            triggerAction: 'M8_GROSS_WEIGHT_RECORDED',
+            changedBy: context.userId,
+            correlationId: log.id,
+            note: `Gross weight recorded: ${log.grossWeightKg || 'N/A'} kg`,
+          },
+        });
+
+        return updatedShipment;
+      });
+
+      return {
+        success: true,
+        shipmentId: updated.id,
+        shipmentNewStatus: 'WEIGHING_2',
+        skipped: false,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        shipmentId: log.shipmentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * [DRAFT] Notify M5 Outbound khi ghi số cân lần 2 (tare weight) - hoàn thành cân
+   *
+   * Flow: M8 COMPLETED → M5 Shipment WEIGHING_2 → WEIGHED
+   */
+  async onTareWeightRecorded(
+    log: OutboundWeighLogData & { tareWeightKg?: number; netWeightKg?: number },
+    context: { userId?: string } = {},
+  ): Promise<OutboundBridgeResult> {
+    if (!log.shipmentId) {
+      return {
+        success: true,
+        skipped: true,
+        reason: 'No shipmentId linked to weigh log',
+      };
+    }
+
+    try {
+      const shipment = await this.prisma.shipmentHeader.findUnique({
+        where: { id: log.shipmentId },
+        select: { id: true, status: true, salesOrderId: true, shipmentNumber: true },
+      });
+
+      if (!shipment) {
+        return {
+          success: false,
+          skipped: true,
+          reason: `Shipment ${log.shipmentId} not found`,
+        };
+      }
+
+      // Guard: Chỉ xử lý nếu shipment đang ở WEIGHING_2
+      if (shipment.status !== 'WEIGHING_2') {
+        return {
+          success: true,
+          skipped: true,
+          shipmentId: shipment.id,
+          reason: `Shipment not in WEIGHING_2 state (current: ${shipment.status})`,
+        };
+      }
+
+      // Update shipment status sang WEIGHED
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const updatedShipment = await tx.shipmentHeader.update({
+          where: { id: log.shipmentId },
+          data: {
+            status: 'WEIGHED' as any,
+            rowVersion: { increment: 1 },
+            updatedBy: context.userId,
+          },
+        });
+
+        await tx.shipmentStatusHistory.create({
+          data: {
+            shipmentHeaderId: log.shipmentId!,
+            entityLevel: 'HEADER',
+            fromStatus: 'WEIGHING_2',
+            toStatus: 'WEIGHED',
+            triggerAction: 'M8_TARE_WEIGHT_RECORDED',
+            changedBy: context.userId,
+            correlationId: log.id,
+            note: `Weighing completed. Tare: ${log.tareWeightKg || 'N/A'} kg, Net: ${log.netWeightKg || 'N/A'} kg`,
+          },
+        });
+
+        return updatedShipment;
+      });
+
+      return {
+        success: true,
+        shipmentId: updated.id,
+        shipmentNewStatus: 'WEIGHED',
+        skipped: false,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        shipmentId: log.shipmentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
    * [DRAFT] Cập nhật SO status khi có SHP đang cân
    *
    * Logic: 1 SO có nhiều SHP, chỉ cần 1 SHP ở trạng thái đang cân (WEIGHING_1)
