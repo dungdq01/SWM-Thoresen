@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SmartLog SWM</string>
+    <string name="title_activity_main">SmartLog SWM</string>
+    <string name="package_name">com.smartlog.swm</string>
+    <string name="custom_url_scheme">com.smartlog.swm</string>
+</resources>
