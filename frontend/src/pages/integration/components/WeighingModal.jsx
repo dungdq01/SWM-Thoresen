@@ -29,11 +29,22 @@ export function WeighingModal({
     })
   }
 
+  // Công thức tính TL ròng:
+  // - Cân ra (WEIGH_OUT): Lần 1 xe trống, Lần 2 xe đầy → TL ròng = TL lần 2 - TL lần 1
+  // - Cân vào (WEIGH_IN): Lần 1 xe đầy, Lần 2 xe trống → TL ròng = TL lần 1 - TL lần 2
+  const isWeighOut = data?.weighingType === 'WEIGH_OUT'
   const netWeight = isSecondWeighing && weightKg
-    ? Math.abs(Number(data.grossWeightKg) - Number(weightKg))
+    ? (isWeighOut
+        ? Number(weightKg) - Number(data.grossWeightKg)  // Cân ra: lần 2 - lần 1 (xe đầy - xe trống)
+        : Number(data.grossWeightKg) - Number(weightKg)) // Cân vào: lần 1 - lần 2 (xe đầy - xe trống)
     : null
 
-  const isValid = weightKg !== '' && Number(weightKg) > 0
+  // Validation: Cân ra - TL lần 2 không được nhỏ hơn TL lần 1 (vì xe đã pack đồ)
+  const weightError = isSecondWeighing && isWeighOut && weightKg && Number(weightKg) < Number(data.grossWeightKg)
+    ? `Trọng lượng lần 2 (${Number(weightKg).toLocaleString('vi-VN')} kg) không được nhỏ hơn trọng lượng lần 1 (${Number(data.grossWeightKg).toLocaleString('vi-VN')} kg)`
+    : null
+
+  const isValid = weightKg !== '' && Number(weightKg) > 0 && !weightError
 
   const weighingTypeLabel = data?.weighingType === 'WEIGH_IN' ? 'Cân vào' : data?.weighingType === 'WEIGH_OUT' ? 'Cân ra' : data?.weighingType
 
@@ -140,14 +151,20 @@ export function WeighingModal({
                   placeholder="VD: 45000"
                   min="0"
                   step="0.001"
+                  error={weightError}
                 />
 
-                {netWeight != null && (
+                {netWeight != null && !weightError && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
                     <p className="text-xs text-emerald-600 mb-1">Trọng lượng hàng ròng (dự kiến)</p>
                     <p className="text-2xl font-bold text-emerald-700">
-                      {Number(netWeight).toLocaleString('vi-VN')} KG
+                      {Math.abs(netWeight).toLocaleString('vi-VN')} KG
                     </p>
+                    {isWeighOut && (
+                      <p className="text-xs text-navy-400 mt-1">
+                        = {Number(weightKg).toLocaleString('vi-VN')} - {Number(data.grossWeightKg).toLocaleString('vi-VN')} (lần 2 - lần 1)
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

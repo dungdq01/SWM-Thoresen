@@ -289,20 +289,20 @@ export class WeighbridgeLogService {
       const grossWeight = Number(log.grossWeightKg);
       const tareWeight = data.weightKg;
 
-      // Validation: Cân ra (WEIGH_OUT) - TL lần 2 không được lớn hơn TL lần 1
-      if (log.weighingType === 'WEIGH_OUT' && tareWeight > grossWeight) {
+      // Validation: Cân ra (WEIGH_OUT) - Lần 1 xe trống, Lần 2 xe đầy → TL lần 2 không được nhỏ hơn TL lần 1
+      if (log.weighingType === 'WEIGH_OUT' && tareWeight < grossWeight) {
         throw new WeighbridgeError(
           IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
-          `Trọng lượng lần 2 (${tareWeight} kg) không được lớn hơn trọng lượng lần 1 (${grossWeight} kg)`,
+          `Trọng lượng lần 2 (${tareWeight} kg) không được nhỏ hơn trọng lượng lần 1 (${grossWeight} kg)`,
         );
       }
 
       // Công thức tính net weight:
-      // - Cân ra (WEIGH_OUT): TL ròng = TL lần 1 - TL lần 2 (xe đầy - xe rỗng)
-      // - Cân vào (WEIGH_IN): TL ròng = TL lần 2 - TL lần 1 (xe đầy - xe rỗng)
+      // - Cân ra (WEIGH_OUT): Lần 1 xe trống, Lần 2 xe đầy → TL ròng = TL lần 2 - TL lần 1
+      // - Cân vào (WEIGH_IN): Lần 1 xe đầy, Lần 2 xe trống → TL ròng = TL lần 1 - TL lần 2
       const netWeightKg = log.weighingType === 'WEIGH_OUT'
-        ? grossWeight - tareWeight
-        : tareWeight - grossWeight;
+        ? tareWeight - grossWeight  // Cân ra: lần 2 - lần 1
+        : grossWeight - tareWeight; // Cân vào: lần 1 - lần 2
 
       await this.logRepo.update(id, {
         tareWeightKg: tareWeight,

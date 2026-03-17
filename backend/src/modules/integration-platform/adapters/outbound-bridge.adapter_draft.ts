@@ -261,8 +261,40 @@ export class OutboundBridgeAdapter {
         };
       }
 
-      // Update shipment status sang WEIGHED
+      // Update shipment status sang WEIGHED + cập nhật shippedQty cho lines
       const updated = await this.prisma.$transaction(async (tx) => {
+        // Lấy thông tin shipment và lines
+        const shipmentWithLines = await tx.shipmentHeader.findUnique({
+          where: { id: log.shipmentId },
+          include: { lines: true },
+        });
+
+        // Cập nhật shippedQty cho tất cả lines của shipment
+        // Logic: Nếu SHP chỉ có 1 line, fill toàn bộ netWeightKg vào line đó
+        // Nếu SHP có nhiều lines, chia tỉ lệ theo expectedQty
+        if (shipmentWithLines?.lines && shipmentWithLines.lines.length > 0 && log.netWeightKg) {
+          const totalExpectedQty = shipmentWithLines.lines.reduce(
+            (sum, l) => sum + Number(l.expectedQty || 0),
+            0,
+          );
+
+          for (const line of shipmentWithLines.lines) {
+            // Tính shippedQty theo tỉ lệ expectedQty
+            const ratio = totalExpectedQty > 0 ? Number(line.expectedQty || 0) / totalExpectedQty : 1;
+            const shippedQty = log.netWeightKg * ratio;
+
+            await tx.shipmentLine.update({
+              where: { id: line.id },
+              data: {
+                shippedQty: shippedQty,
+                lineStatus: 'LINE_SHIPPED' as any,
+                updatedBy: context.userId,
+              },
+            });
+          }
+        }
+
+        // Cập nhật status shipment
         const updatedShipment = await tx.shipmentHeader.update({
           where: { id: log.shipmentId },
           data: {
@@ -281,18 +313,23 @@ export class OutboundBridgeAdapter {
             triggerAction: 'M8_TARE_WEIGHT_RECORDED',
             changedBy: context.userId,
             correlationId: log.id,
-            note: `Weighing completed. Tare: ${log.tareWeightKg || 'N/A'} kg, Net: ${log.netWeightKg || 'N/A'} kg`,
+            note: `Weighing completed. Tare: ${log.tareWeightKg || 'N/A'} kg, Net: ${log.netWeightKg || 'N/A'} kg. ShippedQty updated.`,
           },
         });
 
         return updatedShipment;
       });
 
+      // Cập nhật SO shippedQty = tổng shippedQty của tất cả SHP liên kết với SO
+      const soResult = await this.updateSOShippedQty(shipment.salesOrderId, context);
+
       return {
         success: true,
         shipmentId: updated.id,
         shipmentNewStatus: 'WEIGHED',
         skipped: false,
+        soUpdated: soResult.updated,
+        soId: soResult.soId,
       };
     } catch (error) {
       return {
@@ -355,6 +392,80 @@ export class OutboundBridgeAdapter {
       };
     } catch (error) {
       // Silent fail
+      return {
+        updated: false,
+        soId: salesOrderId,
+        reason: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * [DRAFT] Cập nhật SO shippedQty = tổng shippedQty của tất cả SHP liên kết với SO
+   *
+   * Logic:
+   * 1. Lấy tất cả SHP lines của SO
+   * 2. Group theo soLineId để tính tổng shippedQty cho mỗi SO line
+   * 3. Cập nhật SO lines.shippedQtyKg
+   * 4. Cập nhật SO.totalShippedQtyKg = sum(SO lines.shippedQtyKg)
+   */
+  private async updateSOShippedQty(
+    salesOrderId: string | null,
+    context: { userId?: string } = {},
+  ): Promise<{ updated: boolean; soId?: string; totalShippedQty?: number; reason?: string }> {
+    if (!salesOrderId) {
+      return { updated: false, reason: 'No salesOrderId linked to shipment' };
+    }
+
+    try {
+      // Lấy tất cả SHP lines của SO
+      const shipments = await this.prisma.shipmentHeader.findMany({
+        where: { salesOrderId },
+        include: { lines: true },
+      });
+
+      // Group shippedQty theo soLineId
+      const soLineShippedMap: Record<string, number> = {};
+      let totalShippedQty = 0;
+
+      for (const shp of shipments) {
+        for (const line of shp.lines) {
+          const shippedQty = Number(line.shippedQty || 0);
+          totalShippedQty += shippedQty;
+
+          if (line.soLineId) {
+            soLineShippedMap[line.soLineId] = (soLineShippedMap[line.soLineId] || 0) + shippedQty;
+          }
+        }
+      }
+
+      // Cập nhật SO lines.shippedQtyKg
+      for (const [soLineId, shippedQtyKg] of Object.entries(soLineShippedMap)) {
+        await this.prisma.salesOrderLine.update({
+          where: { id: soLineId },
+          data: {
+            shippedQtyKg: shippedQtyKg,
+            updatedBy: context.userId,
+          },
+        });
+      }
+
+      // Cập nhật SO.totalShippedQtyKg
+      await this.prisma.salesOrder.update({
+        where: { id: salesOrderId },
+        data: {
+          totalShippedQtyKg: totalShippedQty,
+          updatedBy: context.userId,
+          rowVersion: { increment: 1 },
+        },
+      });
+
+      return {
+        updated: true,
+        soId: salesOrderId,
+        totalShippedQty,
+      };
+    } catch (error) {
       return {
         updated: false,
         soId: salesOrderId,
