@@ -29,6 +29,7 @@ export interface ShipmentQueryParams {
 const STATUS_MAP: Record<string, string> = {
   DRAFT: 'NEW',
   CONFIRMED: 'CONFIRMED',
+  WEIGHING_1: 'WEIGHING_1',
   ALLOCATED: 'ALLOCATED',
   PICKING: 'PICKING',
   LOADING: 'LOADING',
@@ -60,7 +61,30 @@ export class SimpleShipmentService {
     const externalId = `SHP-WEB-${Date.now()}-${uuidv4().slice(0, 8)}`;
     const correlationId = uuidv4();
 
-    const totalExpectedQty = dto.lines.reduce((sum, l) => sum + Number(l.expectedQty || 0), 0);
+    // Convert UOM to KG for each line
+    const kgUom = await this.prisma.mdUom.findFirst({ where: { uomCode: 'KG' } });
+    const linesWithConversion = await Promise.all(
+      dto.lines.map(async (line) => {
+        const qty = Number(line.expectedQty || 0);
+        let expectedQtyKg = qty;
+
+        if (line.uomId && kgUom && line.uomId !== kgUom.id) {
+          let conversion = await this.prisma.mdUomConversion.findFirst({
+            where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: line.itemId },
+          });
+          if (!conversion) {
+            conversion = await this.prisma.mdUomConversion.findFirst({
+              where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: null },
+            });
+          }
+          if (conversion) {
+            expectedQtyKg = qty * Number(conversion.conversionFactor);
+          }
+        }
+
+        return { ...line, expectedQtyKg };
+      }),
+    );
 
     const shipment = await this.prisma.shipmentHeader.create({
       data: {
@@ -78,14 +102,14 @@ export class SimpleShipmentService {
         sourceApp: 'WEB',
         createdBy: userId,
         lines: {
-          create: dto.lines.map((line, idx) => ({
+          create: linesWithConversion.map((line, idx) => ({
             lineNumber: idx + 1,
             soLineId: line.soLineId,
             itemId: line.itemId,
             cargoForm: 'BULK',
             uomId: line.uomId,
-            expectedQty: line.expectedQty,
-            expectedQtyKg: line.expectedQty,
+            expectedQty: line.expectedQtyKg,
+            expectedQtyKg: line.expectedQtyKg,
             lineStatus: 'PENDING',
             notes: line.notes || null,
             createdBy: userId,
@@ -250,18 +274,43 @@ export class SimpleShipmentService {
 
     // Update lines if provided
     if (dto.lines && dto.lines.length > 0) {
+      // Convert UOM to KG for each line
+      const kgUom = await this.prisma.mdUom.findFirst({ where: { uomCode: 'KG' } });
+      const linesWithConversion = await Promise.all(
+        dto.lines.map(async (line) => {
+          const qty = Number(line.expectedQty || 0);
+          let expectedQtyKg = qty;
+
+          if (line.uomId && kgUom && line.uomId !== kgUom.id) {
+            let conversion = await this.prisma.mdUomConversion.findFirst({
+              where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: line.itemId },
+            });
+            if (!conversion) {
+              conversion = await this.prisma.mdUomConversion.findFirst({
+                where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: null },
+              });
+            }
+            if (conversion) {
+              expectedQtyKg = qty * Number(conversion.conversionFactor);
+            }
+          }
+
+          return { ...line, expectedQtyKg };
+        }),
+      );
+
       // Delete existing lines and recreate
       await this.prisma.shipmentLine.deleteMany({ where: { shipmentHeaderId: id } });
       await this.prisma.shipmentLine.createMany({
-        data: dto.lines.map((line, idx) => ({
+        data: linesWithConversion.map((line, idx) => ({
           shipmentHeaderId: id,
           lineNumber: idx + 1,
           soLineId: line.soLineId,
           itemId: line.itemId,
           cargoForm: 'BULK' as any,
           uomId: line.uomId,
-          expectedQty: line.expectedQty,
-          expectedQtyKg: line.expectedQty,
+          expectedQty: line.expectedQtyKg,
+          expectedQtyKg: line.expectedQtyKg,
           lineStatus: 'PENDING' as any,
           notes: line.notes || null,
           createdBy: userId,

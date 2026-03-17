@@ -3,7 +3,7 @@ import { Eye, Plus, Check, X, Trash2, Pencil, Weight } from 'lucide-react'
 import { useWeighbridgeLogs, useWeighbridgeDevices, useCreateWeighEvent, useUpdateWeighLog, useConfirmWeighLog, useRejectWeighLog, useRecordWeight } from '@domains/integration'
 import { useLookupOwners, useLookupItems, useLookupWarehouses } from '@domains/master-data'
 import { useInboundReceipts } from '@domains/inbound-operations'
-import { useOutboundShipments } from '@domains/outbound-operations'
+import { useShipments } from '@domains/outbound-operations'
 import { Badge, Button, Pagination, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 import { CreateWeighTicketModal } from './components/CreateWeighTicketModal'
 import { ViewWeighTicketModal } from './components/ViewWeighTicketModal'
@@ -63,7 +63,7 @@ export function WeighbridgePage() {
   const { data: itemsData } = useLookupItems()
   const { data: warehousesData } = useLookupWarehouses()
   const { data: receiptsData } = useInboundReceipts({ pageSize: 100, status: 'AWAITING_WEIGHING' })
-  const { data: shipmentsData } = useOutboundShipments({ pageSize: 100 })
+  const { data: shipmentsData } = useShipments({ pageSize: 100, status: 'CONFIRMED' })
   const createWeighEventMutation = useCreateWeighEvent()
   const updateWeighLogMutation = useUpdateWeighLog()
   const confirmWeighLogMutation = useConfirmWeighLog()

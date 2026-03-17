@@ -13,6 +13,7 @@ const SO_TYPE_MAP: Record<string, string> = {
 const STATUS_MAP: Record<string, string> = {
   DRAFT: 'NEW',
   CONFIRMED: 'CONFIRMED',
+  WEIGHING: 'WEIGHING',
   PARTIALLY_RELEASED: 'PARTIAL',
   FULLY_RELEASED: 'SHIPPED',
   CLOSED: 'CLOSED',
@@ -42,7 +43,34 @@ export class SalesOrderService {
       throw new BadRequestException('No active warehouse or customer found');
     }
 
-    const totalExpectedQty = dto.lines.reduce((sum: number, l) => sum + Number(l.expectedQty || 0), 0);
+    // Convert UOM to KG for each line
+    const kgUom = await this.prisma.mdUom.findFirst({ where: { uomCode: 'KG' } });
+    const linesWithConversion = await Promise.all(
+      dto.lines.map(async (line) => {
+        const qty = Number(line.expectedQty || 0);
+        let expectedQtyKg = qty;
+
+        if (line.uomId && kgUom && line.uomId !== kgUom.id) {
+          // Try item-specific conversion first
+          let conversion = await this.prisma.mdUomConversion.findFirst({
+            where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: line.itemId },
+          });
+          if (!conversion) {
+            // Fall back to global conversion
+            conversion = await this.prisma.mdUomConversion.findFirst({
+              where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: null },
+            });
+          }
+          if (conversion) {
+            expectedQtyKg = qty * Number(conversion.conversionFactor);
+          }
+        }
+
+        return { ...line, expectedQtyKg };
+      }),
+    );
+
+    const totalExpectedQtyKg = linesWithConversion.reduce((sum, l) => sum + l.expectedQtyKg, 0);
 
     const salesOrder = await this.prisma.salesOrder.create({
       data: {
@@ -54,19 +82,19 @@ export class SalesOrderService {
         customerId: customer.id,
         warehouseId: warehouse.id,
         notes: dto.notes,
-        totalExpectedQtyKg: totalExpectedQty,
+        totalExpectedQtyKg,
         externalId,
         correlationId,
         sourceApp: 'WEB',
         createdBy: userId,
         lines: {
-          create: dto.lines.map((line, idx) => ({
+          create: linesWithConversion.map((line, idx) => ({
             lineNumber: idx + 1,
             itemId: line.itemId,
             cargoForm: 'BULK',
             uomId: line.uomId || (uuidv4()), // Will need valid UOM
-            expectedQty: line.expectedQty,
-            expectedQtyKg: line.expectedQty,
+            expectedQty: line.expectedQtyKg,
+            expectedQtyKg: line.expectedQtyKg,
             notes: line.notes,
             status: 'OPEN',
           })),
@@ -156,7 +184,35 @@ export class SalesOrderService {
       await this.prisma.salesOrderLine.deleteMany({ where: { soId: id } });
     }
 
-    const totalExpectedQty = dto.lines?.reduce((sum: number, l) => sum + Number(l.expectedQty || 0), 0) || 0;
+    // Convert UOM to KG for each line
+    let linesWithConversion: any[] = [];
+    let totalExpectedQtyKg = 0;
+    if (dto.lines) {
+      const kgUom = await this.prisma.mdUom.findFirst({ where: { uomCode: 'KG' } });
+      linesWithConversion = await Promise.all(
+        dto.lines.map(async (line) => {
+          const qty = Number(line.expectedQty || 0);
+          let expectedQtyKg = qty;
+
+          if (line.uomId && kgUom && line.uomId !== kgUom.id) {
+            let conversion = await this.prisma.mdUomConversion.findFirst({
+              where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: line.itemId },
+            });
+            if (!conversion) {
+              conversion = await this.prisma.mdUomConversion.findFirst({
+                where: { fromUomId: line.uomId, toUomId: kgUom.id, itemId: null },
+              });
+            }
+            if (conversion) {
+              expectedQtyKg = qty * Number(conversion.conversionFactor);
+            }
+          }
+
+          return { ...line, expectedQtyKg };
+        }),
+      );
+      totalExpectedQtyKg = linesWithConversion.reduce((sum, l) => sum + l.expectedQtyKg, 0);
+    }
 
     const updated = await this.prisma.salesOrder.update({
       where: { id },
@@ -164,17 +220,17 @@ export class SalesOrderService {
         ...(dto.soType && { orderType: SO_TYPE_MAP[dto.soType] as any }),
         ...(dto.blNumber && { externalSoNumber: dto.blNumber }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
-        ...(dto.lines && { totalExpectedQtyKg: totalExpectedQty }),
+        ...(dto.lines && { totalExpectedQtyKg }),
         updatedBy: userId,
         ...(dto.lines && {
           lines: {
-            create: dto.lines.map((line, idx) => ({
+            create: linesWithConversion.map((line, idx) => ({
               lineNumber: idx + 1,
               itemId: line.itemId,
               cargoForm: 'BULK',
               uomId: line.uomId || existing.warehouseId, // Fallback
-              expectedQty: line.expectedQty,
-              expectedQtyKg: line.expectedQty,
+              expectedQty: line.expectedQtyKg,
+              expectedQtyKg: line.expectedQtyKg,
               notes: line.notes,
               status: 'OPEN',
             })),

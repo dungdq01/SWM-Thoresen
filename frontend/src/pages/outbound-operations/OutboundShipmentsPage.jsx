@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, FileOutput, Check, Trash2, Pencil, AlertTriangle } from 'lucide-react'
+import React, { useState, useCallback } from 'react'
+import { Plus, FileOutput, Check, Trash2, Pencil, AlertTriangle, ChevronDown, ChevronUp, Package } from 'lucide-react'
 import {
   useSalesOrders,
   useShipments,
@@ -26,6 +26,7 @@ const SHIPMENT_STATUSES = [
   { value: '', label: 'Tất cả' },
   { value: 'NEW', label: 'Tạo mới' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
+  { value: 'WEIGHING_1', label: 'Đang cân lần 1' },
   { value: 'PICKING', label: 'Đang lấy hàng' },
   { value: 'LOADING', label: 'Đang xếp hàng' },
   { value: 'SHIPPED', label: 'Đã xuất' },
@@ -36,6 +37,7 @@ const SHIPMENT_STATUSES = [
 const statusTone = (status) => {
   if (status === 'NEW') return 'info'
   if (status === 'CONFIRMED') return 'success'
+  if (status === 'WEIGHING_1') return 'warning'
   if (['PICKING', 'LOADING'].includes(status)) return 'warning'
   if (status === 'SHIPPED') return 'success'
   if (status === 'CLOSED') return 'default'
@@ -46,6 +48,7 @@ const statusTone = (status) => {
 const STATUS_LABELS = {
   NEW: 'Tạo mới',
   CONFIRMED: 'Đã xác nhận',
+  WEIGHING_1: 'Đang cân lần 1',
   PICKING: 'Đang lấy hàng',
   LOADING: 'Đang xếp hàng',
   SHIPPED: 'Đã xuất',
@@ -56,6 +59,8 @@ const STATUS_LABELS = {
 export function OutboundShipmentsPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '' })
   const [shipmentModalState, setShipmentModalState] = useState({ isOpen: false, so: null })
+  const [expandedId, setExpandedId] = useState(null)
+  const toggleExpand = useCallback((id) => setExpandedId((prev) => (prev === id ? null : id)), [])
 
   // Fetch confirmed SOs for shipment creation
   const { data: sosResponse } = useSalesOrders({ status: 'CONFIRMED', pageSize: 100 })
@@ -179,6 +184,7 @@ export function OutboundShipmentsPage() {
         <Table>
           <TableHeader>
             <TableRow hoverable={false}>
+              <TableHead className="w-8"></TableHead>
               <TableHead>Số B/L</TableHead>
               <TableHead>Phiếu xuất</TableHead>
               <TableHead>Số SO</TableHead>
@@ -191,9 +197,9 @@ export function OutboundShipmentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableLoading colSpan={9} />}
+            {isLoading && <TableLoading colSpan={10} />}
             {!isLoading && shipments.length === 0 && (
-              <TableEmpty colSpan={9}>
+              <TableEmpty colSpan={10}>
                 <div className="flex flex-col items-center justify-center py-8">
                   <FileOutput className="h-12 w-12 text-navy-300 mb-3" />
                   <p className="text-navy-600 font-medium">Chưa có phiếu xuất kho nào</p>
@@ -203,89 +209,163 @@ export function OutboundShipmentsPage() {
                 </div>
               </TableEmpty>
             )}
-            {!isLoading && shipments.map((shp) => (
-              <TableRow key={shp.id}>
-                <TableCell>
-                  <span className="font-mono text-sm text-navy-700">{shp.blNumber || '—'}</span>
-                </TableCell>
-                <TableCell>
-                  <p className="font-semibold text-navy-900">{shp.shipmentNumber || '—'}</p>
-                  <p className="text-xs text-navy-400">{shp.lines?.length || 0} dòng</p>
-                </TableCell>
-                <TableCell>
-                  <span className="font-mono text-sm text-navy-600">{shp.soNumber || '—'}</span>
-                </TableCell>
-                <TableCell>
-                  <p className="font-medium text-navy-800">{shp.owner?.ownerCode || '—'}</p>
-                  <p className="text-xs text-navy-400">{shp.owner?.ownerName || ''}</p>
-                </TableCell>
-                <TableCell>
-                  <span className="font-mono text-sm text-navy-700">{shp.vehicleNumber || '—'}</span>
-                </TableCell>
-                <TableCell align="right">
-                  <span className="font-medium text-navy-900">{(shp.expectedQty || 0).toLocaleString()}</span>
-                  <span className="text-xs text-navy-400 ml-1">kg</span>
-                </TableCell>
-                <TableCell align="right">
-                  <span className={shp.shippedQty > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
-                    {(shp.shippedQty || 0).toLocaleString()}
-                  </span>
-                  <span className="text-xs text-navy-400 ml-1">kg</span>
-                </TableCell>
-                <TableCell align="center">
-                  <Badge variant={statusTone(shp.status)}>{STATUS_LABELS[shp.status] || shp.status}</Badge>
-                </TableCell>
-                <TableCell align="center">
-                  <div className="flex items-center justify-center gap-1">
-                    {shp.status === 'NEW' && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
-                          title="Xác nhận"
-                          onClick={() => handleConfirm(shp.id)}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-navy-600 hover:bg-navy-50"
-                          title="Chỉnh sửa"
-                          onClick={() => handleOpenEditModal(shp)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-red-600 hover:bg-red-50"
-                          title="Xóa"
-                          onClick={() => handleDelete(shp.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    {shp.status === 'CONFIRMED' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-amber-600 hover:bg-amber-50"
-                        title="Báo lỗi"
-                        onClick={() => handleReportError(shp.id)}
+            {!isLoading && shipments.map((shp) => {
+              const isExpanded = expandedId === shp.id
+              const totalExpectedFromLines = (shp.lines || []).reduce((sum, l) => sum + Number(l.expectedQty || 0), 0)
+              const totalShippedFromLines = (shp.lines || []).reduce((sum, l) => sum + Number(l.shippedQty || 0), 0)
+              return (
+                <React.Fragment key={shp.id}>
+                  <TableRow>
+                    <TableCell>
+                      <button
+                        onClick={() => toggleExpand(shp.id)}
+                        className="p-1 text-navy-400 hover:text-ice transition-colors"
                       >
-                        <AlertTriangle className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {!['NEW', 'CONFIRMED'].includes(shp.status) && (
-                      <span className="text-xs text-navy-400">—</span>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                        {isExpanded
+                          ? <ChevronUp className="h-4 w-4" />
+                          : <ChevronDown className="h-4 w-4" />}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-navy-700">{shp.blNumber || '—'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-semibold text-navy-900">{shp.shipmentNumber || '—'}</p>
+                      <p className="text-xs text-navy-400">{shp.lines?.length || 0} dòng</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-navy-600">{shp.soNumber || '—'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium text-navy-800">{shp.owner?.ownerCode || '—'}</p>
+                      <p className="text-xs text-navy-400">{shp.owner?.ownerName || ''}</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-navy-700">{shp.vehicleNumber || '—'}</span>
+                    </TableCell>
+                    <TableCell align="right" className="font-medium text-navy-900">
+                      {totalExpectedFromLines.toLocaleString()} kg
+                    </TableCell>
+                    <TableCell align="right">
+                      <span className={totalShippedFromLines > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                        {totalShippedFromLines.toLocaleString()} kg
+                      </span>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Badge variant={statusTone(shp.status)}>{STATUS_LABELS[shp.status] || shp.status}</Badge>
+                    </TableCell>
+                    <TableCell align="center">
+                      <div className="flex items-center justify-center gap-1">
+                        {shp.status === 'NEW' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
+                              title="Xác nhận"
+                              onClick={() => handleConfirm(shp.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-navy-600 hover:bg-navy-50"
+                              title="Chỉnh sửa"
+                              onClick={() => handleOpenEditModal(shp)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-600 hover:bg-red-50"
+                              title="Xóa"
+                              onClick={() => handleDelete(shp.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {shp.status === 'CONFIRMED' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-amber-600 hover:bg-amber-50"
+                            title="Báo lỗi"
+                            onClick={() => handleReportError(shp.id)}
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {!['NEW', 'CONFIRMED'].includes(shp.status) && (
+                          <span className="text-xs text-navy-400">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {/* Expand: line details */}
+                  {isExpanded && (
+                    <tr key={`${shp.id}-lines`}>
+                      <td colSpan={10} className="p-0">
+                        <div className="border-t border-b border-moon-200 bg-moon-50/70 px-6 py-4">
+                          <div className="mb-3 flex items-center gap-2">
+                            <Package className="h-4 w-4 text-ice" />
+                            <h4 className="text-sm font-semibold text-navy-900">Chi tiết dòng hàng — {shp.shipmentNumber}</h4>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-moon-200 text-left text-xs text-navy-400">
+                                <th className="pb-2 pr-3">#</th>
+                                <th className="pb-2 pr-3">Mặt hàng</th>
+                                <th className="pb-2 pr-3">ĐVT</th>
+                                <th className="pb-2 pr-3 text-right">SL dự kiến</th>
+                                <th className="pb-2 pr-3 text-right">SL đã xuất</th>
+                                <th className="pb-2 text-center">Trạng thái</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(shp.lines || []).map((line, idx) => (
+                                <tr key={line.id || idx} className="border-b border-moon-100 last:border-b-0">
+                                  <td className="py-2 pr-3 text-navy-400">{idx + 1}</td>
+                                  <td className="py-2 pr-3">
+                                    <p className="font-medium text-navy-800">{line.item?.itemName || line.item?.itemCode || '(Mặt hàng không tồn tại)'}</p>
+                                    <p className="text-xs text-navy-400">{line.item?.itemCode || line.itemId?.slice(0, 8)}</p>
+                                  </td>
+                                  <td className="py-2 pr-3 text-navy-600">{line.uom?.uomCode || 'kg'}</td>
+                                  <td className="py-2 pr-3 text-right font-medium text-navy-900">{Number(line.expectedQty || 0).toLocaleString()}</td>
+                                  <td className="py-2 pr-3 text-right">
+                                    <span className={Number(line.shippedQty || 0) > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                                      {Number(line.shippedQty || 0).toLocaleString()}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 text-center">
+                                    <Badge
+                                      variant={line.status === 'SHIPPED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'}
+                                      className="text-xs"
+                                    >
+                                      {line.status === 'OPEN' ? 'Mới' : line.status === 'SHIPPED' ? 'Đã xuất' : line.status === 'PARTIAL' ? 'Xuất 1 phần' : line.status}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t border-moon-300 font-semibold text-navy-900">
+                                <td colSpan={3} className="pt-2 pr-3">Tổng</td>
+                                <td className="pt-2 pr-3 text-right">{totalExpectedFromLines.toLocaleString()}</td>
+                                <td className="pt-2 pr-3 text-right text-emerald-600">{totalShippedFromLines.toLocaleString()}</td>
+                                <td></td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              )
+            })}
           </TableBody>
         </Table>
 

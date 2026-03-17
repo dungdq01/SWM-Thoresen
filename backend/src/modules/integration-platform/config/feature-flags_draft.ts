@@ -31,6 +31,26 @@ export const FEATURES = {
    * [DRAFT] Log chi tiết cho cross-module operations
    */
   M8_M4_VERBOSE_LOGGING: true,
+
+  /**
+   * [DRAFT] Tự động sync trạng thái từ M8 Weighbridge sang M5 Outbound
+   *
+   * Khi bật (true):
+   * - Confirm weigh log cho SHP → Cập nhật Shipment status sang WEIGHING_1
+   * - Cập nhật SO status sang WEIGHING nếu có SHP đang cân
+   *
+   * Khi tắt (false):
+   * - Không có side effect sang M5
+   * - M8 hoạt động độc lập
+   *
+   * ⚠️ Logic chưa xác nhận với khách hàng
+   */
+  M8_M5_AUTO_SYNC: true,
+
+  /**
+   * [DRAFT] Log chi tiết cho M8 → M5 operations
+   */
+  M8_M5_VERBOSE_LOGGING: true,
 };
 
 /**

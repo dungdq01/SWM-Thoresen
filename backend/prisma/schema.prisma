@@ -1776,6 +1776,7 @@ model ReceiptIntegrationState {
 enum ShipmentStatus {
   DRAFT
   CONFIRMED
+  WEIGHING_1
   ALLOCATED
   PICKING
   PICKED
@@ -4673,6 +4674,7 @@ model AuthAccountLock {
 enum SalesOrderStatus {
   DRAFT
   CONFIRMED
+  WEIGHING
   PARTIALLY_RELEASED
   FULLY_RELEASED
   SHIPPED
