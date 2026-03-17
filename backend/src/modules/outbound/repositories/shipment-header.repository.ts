@@ -13,6 +13,7 @@ export interface ShipmentFilterParams {
   dateTo?: Date;
   page?: number;
   pageSize?: number;
+  includeLines?: boolean;
 }
 
 @Injectable()
@@ -126,13 +127,23 @@ export class ShipmentHeaderRepository {
       }
     }
 
+    const includeLines = params.includeLines ?? false;
+
     const [items, total] = await Promise.all([
       this.prisma.shipmentHeader.findMany({
         where,
         include: {
-          owner: { select: { ownerCode: true, ownerName: true } },
-          warehouse: { select: { warehouseCode: true, warehouseName: true } },
+          owner: { select: { id: true, ownerCode: true, ownerName: true } },
+          warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } },
           _count: { select: { lines: true } },
+          ...(includeLines && {
+            lines: {
+              include: {
+                item: { select: { itemCode: true, itemName: true } },
+              },
+              orderBy: { lineNumber: 'asc' as const },
+            },
+          }),
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,

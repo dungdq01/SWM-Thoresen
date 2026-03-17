@@ -5,6 +5,7 @@ import { WeighbridgeEventStateRepository } from '../repositories/weighbridge-eve
 import { WeighbridgeError, IntegrationErrorCodes } from '../domain/integration.errors';
 import { WeighEventProcessingStatus } from '../domain/integration.enums';
 import { InboundBridgeAdapter } from '../adapters/inbound-bridge.adapter_draft';
+import { OutboundBridgeAdapter } from '../adapters/outbound-bridge.adapter_draft';
 import { FEATURES } from '../config/feature-flags_draft';
 
 @Injectable()
@@ -161,6 +162,28 @@ export class WeighbridgeLogService {
       } catch (error) {
         // Silent fail - không throw, chỉ log warning
         this.logger.warn(`[DRAFT] M8→M4 Bridge failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+      }
+    }
+
+    // [DRAFT] Notify M5 Outbound - Tắt bằng cách set FEATURES.M8_M5_AUTO_SYNC = false
+    if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
+      try {
+        const adapter = new OutboundBridgeAdapter(this.prisma);
+        const bridgeResult = await adapter.onWeighLogConfirmed(
+          {
+            id: log.id,
+            shipmentId: log.shipmentId,
+            grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : undefined,
+            weighingTimestamp: log.weighingTimestamp ?? undefined,
+          },
+          context,
+        );
+        if (FEATURES.M8_M5_VERBOSE_LOGGING) {
+          this.logger.log(`[DRAFT] M8→M5 Bridge result: ${JSON.stringify(bridgeResult)}`);
+        }
+      } catch (error) {
+        // Silent fail - không throw, chỉ log warning
+        this.logger.warn(`[DRAFT] M8→M5 Bridge failed: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
     }
 

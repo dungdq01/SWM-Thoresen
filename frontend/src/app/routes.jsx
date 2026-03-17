@@ -51,9 +51,6 @@ const InboundDocumentsPage = lazy(() => import('@pages/inbound-operations').then
 // Outbound Operations Pages
 const OutboundOperationsLayout = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundOperationsLayout })))
 const OutboundShipmentsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundShipmentsPage })))
-const OutboundAllocationPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundAllocationPage })))
-const OutboundWeighingPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundWeighingPage })))
-const OutboundApprovalsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundApprovalsPage })))
 const SalesOrdersPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.SalesOrdersPage })))
 
 // Inventory Control Pages
@@ -320,18 +317,6 @@ export const router = createBrowserRouter([
           {
             path: 'shipments',
             element: withSuspense(OutboundShipmentsPage),
-          },
-          {
-            path: 'allocation',
-            element: withSuspense(OutboundAllocationPage),
-          },
-          {
-            path: 'weighing',
-            element: withSuspense(OutboundWeighingPage),
-          },
-          {
-            path: 'approvals',
-            element: withSuspense(OutboundApprovalsPage),
           },
         ],
       },

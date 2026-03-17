@@ -1,612 +1,353 @@
 # Module 5: Outbound Operations — API Documentation
 
 **Module Path:** `src/modules/outbound`  
-**Status:** ✅ Implemented (Clean Architecture + RBAC + M3 Integration)  
-**Version:** 2.1.0  
-**Last Updated:** 2026-03-09  
+**Status:** ✅ Active (Sales Order Management)  
+**Version:** 3.6.0  
+**Last Updated:** 2026-03-17  
 
 ---
 
-## 1. Mục đích Module
+## 1. Tổng quan
 
-Module 5 quản lý toàn bộ **luồng xuất hàng (Outbound Operations)** từ khi tạo shipment đến khi hàng được xuất khỏi kho và ghi nhận vào inventory ledger.
+Module 5 quản lý **luồng xuất hàng (Outbound Operations)**, bắt đầu từ việc tạo đơn xuất hàng (Sales Order - SO).
 
-### Các chức năng chính:
-- **Shipment Management**: Tạo, cập nhật, confirm, cancel shipment
-- **Allocation Engine**: Phân bổ tồn kho theo FIFO cho shipment lines
-- **Weighing Orchestration**: Ghi nhận tare/gross, tính net theo line
-- **Tolerance Check**: Kiểm tra chênh lệch và quản lý approval flow
-- **Shipping & Posting**: Post inventory khi SHIPPED
-- **Audit & History**: Lưu lịch sử trạng thái và exceptions
+### Chức năng chính
+- **Sales Order Management**: Tạo, cập nhật, xác nhận, hủy đơn xuất hàng
+- **Shipment Management**: Tạo phiếu xuất kho từ SO đã xác nhận
+- Quản lý chi tiết hàng hóa theo dòng (SO Lines, Shipment Lines)
+- Theo dõi SL dự kiến và SL đã xuất
 
 ---
 
-## 1.1 Feedback Fixes Applied
-
-| Issue | Description | Status |
-|-------|-------------|--------|
-| HI-2 | Tolerance 4-level cascade lookup | ✅ Fixed |
-| HI-3 | Allocation wrapped in $transaction | ✅ Fixed |
-| HI-4 | decidedBy extracted from authenticated user | ✅ Fixed |
-| HI-6 | lockForUpdate called before allocation | ✅ Fixed |
-| HI-1 | Auto-transition to ALL_WEIGHED when all lines weighed | ✅ Fixed |
-| HI-5 | Line-level status history | ✅ Fixed |
-| CR-3 | RBAC guards on all controllers | ✅ Fixed |
-| CR-1 | Real M3 OnHand/Hold integration | ✅ Fixed |
-| CR-2 | M3 Posting at SHIPPED | ✅ Fixed |
-
----
-
-## 2. Cấu trúc Code (Clean Architecture)
+## 2. Cấu trúc Code
 
 ```
 src/modules/outbound/
-├── outbound.module.ts              # Module definition
+├── outbound.module.ts                    # Module definition
 │
-├── controllers/                    # HTTP layer
-│   ├── shipment.controller.ts      # CRUD shipment endpoints + RBAC
-│   ├── allocation.controller.ts    # Allocation endpoints + RBAC
-│   ├── weighing.controller.ts      # Weighing endpoints + RBAC
-│   ├── approval.controller.ts      # Approval endpoints + RBAC
-│   └── outbound-query.controller.ts # Query/Dashboard endpoints + RBAC
+├── controllers/
+│   ├── sales-order.controller.ts         # Sales Order REST endpoints
+│   └── simple-shipment.controller.ts     # Shipment REST endpoints
 │
-├── application/                    # Use cases (business orchestration)
-│   ├── createShipment.usecase.ts   # Create shipment with idempotency
-│   ├── allocateShipment.usecase.ts # FIFO allocation with M3 integration
-│   ├── shipShipment.usecase.ts     # Ship and M3 posting
-│   ├── receiveOutboundWeight.usecase.ts # Tare/Gross with tolerance
-│   └── index.ts
-│
-├── domain/                         # Business rules & state machine
-│   ├── outbound.state-machine.ts   # Shipment status transitions
-│   ├── outbound.policy.ts          # Business policies & rules
-│   ├── outbound.errors.ts          # Domain-specific errors
-│   └── index.ts
-│
-├── infra/                          # Data access (alternative pattern)
-│   ├── shipment.repository.ts
-│   ├── allocation.repository.ts
-│   ├── weighing.repository.ts
-│   ├── status-history.repository.ts
-│   ├── exception-log.repository.ts
-│   ├── approval.repository.ts
-│   ├── posting-link.repository.ts
-│   └── index.ts
-│
-├── services/                       # NestJS services (legacy pattern)
-│   ├── shipment.service.ts
-│   ├── shipment-command.service.ts
-│   ├── shipment-query.service.ts
-│   ├── shipment-state-machine.service.ts
-│   ├── shipment-line-state.service.ts
-│   ├── allocation.service.ts
-│   ├── weighing.service.ts
-│   ├── tolerance.service.ts
-│   └── approval.service.ts
-│
-├── repositories/                   # NestJS repositories
-│   ├── shipment-header.repository.ts
-│   ├── shipment-line.repository.ts
-│   ├── allocation-record.repository.ts
-│   ├── weighing-attempt.repository.ts
-│   ├── status-history.repository.ts
-│   ├── exception-log.repository.ts
-│   ├── approval-decision.repository.ts
-│   ├── pick-work-link.repository.ts
-│   └── posting-link.repository.ts
+├── services/
+│   ├── sales-order.service.ts            # Business logic cho SO
+│   └── simple-shipment.service.ts        # Business logic cho Shipment
 │
 └── dto/
-    ├── create-shipment.dto.ts
-    └── shipment-response.dto.ts
+    ├── sales-order.dto.ts                # DTOs cho SO
+    └── shipment.dto.ts                   # DTOs cho Shipment
 ```
-
-### Architecture Notes:
-- **domain/**: Contains pure business logic, state machine, and error definitions
-- **application/**: Contains use cases that orchestrate domain logic with real M3 integration
-- **infra/**: Contains M3AdapterService for OnHand/Hold/PostingEngine integration
-- **services/**: NestJS services (legacy pattern, still functional)
-- **controllers/**: All endpoints protected with AuthGuard + PermissionGuard, wired to use cases
-
-### M3 Integration (CR-1/CR-2 Fixed):
-- **AllocateShipmentUseCase**: Queries M3 OnHand with FIFO ordering, creates holds via HoldService
-- **ShipShipmentUseCase**: Posts to M3 PostingEngine, releases holds after shipping
-- **M3AdapterService**: NestJS wrapper for M3 JS services (OnHandService, HoldService, PostingEngineService)
 
 ---
 
 ## 3. API Endpoints
 
-### 3.1 Shipment Management
+### 3.1 Sales Order Management
 
-#### POST /api/v1/outbound/shipments
-**Mục đích:** Tạo shipment mới
+#### GET /api/v1/outbound/sales-orders/next-number
+**Mục đích:** Lấy số SO tiếp theo (auto-gen)
 
-**Request Body:**
+**Response:** `200 OK`
 ```json
 {
-  "externalId": "EXT-SHP-001",
-  "sourceType": "SO",
-  "soId": "SO-2024-001",
-  "ownerId": "uuid",
-  "warehouseId": "uuid",
-  "vehicleNumber": "51C-12345",
-  "vehicleTypeId": "uuid",
-  "lines": [
-    {
-      "itemId": "uuid",
-      "cargoForm": "BAGGED_50KG",
-      "uomId": "uuid",
-      "expectedQty": 100,
-      "expectedQtyKg": 5000,
-      "bagCount": 100,
-      "nominalWeightPerBag": 50
-    }
-  ]
+  "code": "SO-202603-00001"
 }
 ```
-
-**Response:** `201 Created`
-```json
-{
-  "id": "uuid",
-  "shipmentNumber": "SHP-2024-00001",
-  "status": "DRAFT",
-  "lines": [...],
-  "createdAt": "2024-01-15T10:00:00Z"
-}
-```
-
-**Files liên quan:**
-- `controllers/shipment.controller.ts` → `create()`
-- `services/shipment-command.service.ts` → `createShipment()`
-- `services/shipment.service.ts` → `create()`
-- `repositories/shipment-header.repository.ts` → `create()`
 
 ---
 
-#### GET /api/v1/outbound/shipments
-**Mục đích:** Danh sách shipments với phân trang và filter
+#### GET /api/v1/outbound/sales-orders
+**Mục đích:** Danh sách Sales Orders với phân trang và filter
 
 **Query Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | page | number | Trang (default: 1) |
 | pageSize | number | Số items/trang (default: 20) |
-| shipmentNumber | string | Filter theo số shipment |
-| soId | string | Filter theo SO ID |
-| vehicleNumber | string | Filter theo biển số xe |
-| ownerId | uuid | Filter theo owner |
-| warehouseId | uuid | Filter theo warehouse |
-| status | enum | Filter theo trạng thái |
+| keyword | string | Tìm theo số SO, số B/L |
+| status | string | Filter theo trạng thái |
+| ownerId | uuid | Filter theo chủ hàng |
 
 **Response:** `200 OK`
 ```json
 {
+  "data": [...],
   "items": [...],
-  "total": 100,
-  "page": 1,
-  "pageSize": 20,
-  "totalPages": 5
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "total": 100,
+    "totalPages": 5
+  }
 }
 ```
 
-**Files liên quan:**
-- `controllers/shipment.controller.ts` → `list()`
-- `services/shipment-query.service.ts` → `list()`
-- `repositories/shipment-header.repository.ts` → `findMany()`
-
 ---
 
-#### GET /api/v1/outbound/shipments/:id
-**Mục đích:** Chi tiết shipment theo ID
+#### GET /api/v1/outbound/sales-orders/:id
+**Mục đích:** Chi tiết Sales Order theo ID
 
 **Response:** `200 OK`
 ```json
 {
   "id": "uuid",
-  "shipmentNumber": "SHP-2024-00001",
-  "status": "CONFIRMED",
+  "soNumber": "SO-202603-00001",
+  "soType": "SEA",
+  "blNumber": "BL-2026-RICE-001",
+  "status": "NEW",
   "owner": { "ownerCode": "TVL", "ownerName": "Thoresen" },
-  "warehouse": { "warehouseCode": "WH01" },
+  "totalExpectedQty": 5000,
+  "totalShippedQty": 0,
+  "lines": [...]
+}
+```
+
+---
+
+#### POST /api/v1/outbound/sales-orders
+**Mục đích:** Tạo Sales Order mới
+
+**Request Body:**
+```json
+{
+  "soType": "SEA",
+  "ownerId": "uuid",
+  "blNumber": "BL-2026-RICE-001",
+  "notes": "Ghi chú",
   "lines": [
     {
-      "lineNumber": 1,
-      "item": { "itemCode": "RICE-01" },
-      "expectedQtyKg": 5000,
-      "allocatedQty": 5000,
-      "lineStatus": "ALLOCATED"
+      "itemId": "uuid",
+      "expectedQty": 1000,
+      "uomId": "uuid",
+      "notes": "Ghi chú dòng"
     }
   ]
 }
 ```
 
-**Files liên quan:**
-- `controllers/shipment.controller.ts` → `findById()`
-- `services/shipment-query.service.ts` → `findById()`
-- `repositories/shipment-header.repository.ts` → `findById()`
+**Response:** `201 Created`
 
 ---
 
-#### POST /api/v1/outbound/shipments/:id/confirm
-**Mục đích:** Xác nhận shipment (DRAFT → CONFIRMED)
-
-**Response:** `200 OK`
-```json
-{
-  "id": "uuid",
-  "status": "CONFIRMED",
-  "updatedAt": "2024-01-15T10:30:00Z"
-}
-```
-
-**Business Rules:**
-- Shipment phải có ít nhất 1 line
-- Chỉ có thể confirm từ trạng thái DRAFT
-
-**Files liên quan:**
-- `controllers/shipment.controller.ts` → `confirm()`
-- `services/shipment-command.service.ts` → `confirmShipment()`
-- `services/shipment-state-machine.service.ts` → `assertCanTransition()`
-
----
-
-#### POST /api/v1/outbound/shipments/:id/cancel
-**Mục đích:** Hủy shipment
+#### PATCH /api/v1/outbound/sales-orders/:id
+**Mục đích:** Cập nhật Sales Order (chỉ khi status = NEW/Tạo mới)
 
 **Request Body:**
 ```json
 {
-  "reasonCode": "CUSTOMER_REQUEST"
+  "soType": "LAND",
+  "ownerId": "uuid",
+  "blNumber": "BL-2026-RICE-002",
+  "notes": "Ghi chú mới",
+  "lines": [
+    {
+      "id": "uuid",
+      "itemId": "uuid",
+      "expectedQty": 1500,
+      "uomId": "uuid",
+      "notes": "Ghi chú dòng"
+    }
+  ]
 }
 ```
 
-**Response:** `200 OK`
-
-**Business Rules:**
-- Chỉ cancel được ở DRAFT, CONFIRMED, ALLOCATED
-- Nếu đã ALLOCATED, sẽ tự động release allocation
-
-**Files liên quan:**
-- `controllers/shipment.controller.ts` → `cancel()`
-- `services/shipment-command.service.ts` → `cancelShipment()`
+**Note:** `lines[].id` là optional, dùng cho việc update line có sẵn.
 
 ---
 
-### 3.2 Allocation
-
-#### POST /api/v1/outbound/shipments/:id/allocate
-**Mục đích:** Phân bổ tồn kho cho shipment
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "shipmentId": "uuid",
-  "allocatedLines": 3,
-  "failedLines": 0
-}
-```
-
-**Business Rules:**
-- Shipment phải ở trạng thái CONFIRMED
-- Allocation theo FIFO (lot_date ASC)
-- Nếu 1 line fail → toàn bộ shipment fail (no partial allocation)
-- Tạo hold trong Module 3 inventory
-- **HI-3 Fixed:** Allocation wrapped trong `$transaction` để atomic
-- **HI-6 Fixed:** Gọi `lockForUpdate()` trước khi allocate
-
-**Files liên quan:**
-- `controllers/allocation.controller.ts` → `allocate()`
-- `services/allocation.service.ts` → `allocateShipment()`
+#### POST /api/v1/outbound/sales-orders/:id/confirm
+**Mục đích:** Xác nhận Sales Order (Tạo mới → Đã xác nhận)
 
 ---
 
-#### POST /api/v1/outbound/shipments/:id/unallocate
-**Mục đích:** Giải phóng allocation
-
-**Response:** `200 OK`
-
-**Files liên quan:**
-- `controllers/allocation.controller.ts` → `unallocate()`
-- `services/allocation.service.ts` → `releaseAll()`
+#### POST /api/v1/outbound/sales-orders/:id/cancel
+**Mục đích:** Xóa/Hủy Sales Order (chỉ khi status = Tạo mới)
 
 ---
 
-#### GET /api/v1/outbound/shipments/:id/allocations
-**Mục đích:** Xem chi tiết allocation records
+#### POST /api/v1/outbound/sales-orders/:id/unconfirm
+**Mục đích:** Hủy xác nhận Sales Order (Đã xác nhận → Tạo mới)
 
-**Response:** `200 OK`
-```json
-[
-  {
-    "id": "uuid",
-    "lineNumber": 1,
-    "location": { "locationCode": "A-01-01" },
-    "allocatedQty": 2500,
-    "lotDate": "2024-01-10",
-    "fifoRank": 1,
-    "status": "ALLOCATED"
-  }
-]
-```
-
-**Files liên quan:**
-- `controllers/allocation.controller.ts` → `getAllocations()`
-- `services/shipment-query.service.ts` → `getAllocations()`
+**Note:** Chỉ có thể unconfirm SO ở trạng thái CONFIRMED.
 
 ---
 
-### 3.3 Weighing
-
-#### POST /api/v1/outbound/shipments/:id/weigh/tare
-**Mục đích:** Ghi nhận cân tare (xe không)
-
-**Request Body:**
-```json
-{
-  "rawWeightKg": 8500,
-  "sourceMode": "SCALE_AGENT",
-  "scaleTicketNo": "TKT-001",
-  "externalEventId": "EVT-001"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "id": "uuid",
-  "weighType": "TARE",
-  "sequenceNo": 1,
-  "rawWeightKg": 8500,
-  "capturedAt": "2024-01-15T11:00:00Z"
-}
-```
-
-**Business Rules:**
-- Idempotent theo externalEventId
-- Cập nhật shipment status → WEIGHING_TARE
-
-**Files liên quan:**
-- `controllers/weighing.controller.ts` → `recordTare()`
-- `services/weighing.service.ts` → `recordTare()`
+#### POST /api/v1/outbound/sales-orders/:id/close
+**Mục đích:** Đóng Sales Order (SHIPPED → CLOSED)
 
 ---
 
-#### POST /api/v1/outbound/shipments/:id/weigh/gross
-**Mục đích:** Ghi nhận cân gross (xe có hàng)
+### 3.2 Shipment Management
 
-**Request Body:**
-```json
-{
-  "lineId": "uuid",
-  "rawWeightKg": 13500,
-  "sourceMode": "SCALE_AGENT",
-  "scaleTicketNo": "TKT-002"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "attempt": {
-    "id": "uuid",
-    "weighType": "GROSS",
-    "sequenceNo": 2,
-    "rawWeightKg": 13500,
-    "calculatedNetKg": 5000
-  },
-  "toleranceResult": {
-    "passed": true,
-    "variancePct": 0,
-    "tolerancePct": 2
-  }
-}
-```
-
-**Business Rules:**
-- Phải có tare trước gross
-- Net = Gross hiện tại - Gross trước (hoặc Tare nếu là line đầu)
-- Tự động check tolerance và tạo exception nếu fail
-
-**Files liên quan:**
-- `controllers/weighing.controller.ts` → `recordGross()`
-- `services/weighing.service.ts` → `recordGross()`
-- `services/tolerance.service.ts` → `checkTolerance()`
-
----
-
-#### GET /api/v1/outbound/shipments/:id/weighing-history
-**Mục đích:** Xem lịch sử cân
-
-**Response:** `200 OK`
-```json
-[
-  { "weighType": "TARE", "sequenceNo": 1, "rawWeightKg": 8500 },
-  { "weighType": "GROSS", "sequenceNo": 2, "rawWeightKg": 13500, "calculatedNetKg": 5000 }
-]
-```
-
-**Files liên quan:**
-- `controllers/weighing.controller.ts` → `getWeighingHistory()`
-- `services/shipment-query.service.ts` → `getWeighingHistory()`
-
----
-
-### 3.4 Approval
-
-#### GET /api/v1/outbound/approvals/pending
-**Mục đích:** Danh sách shipments chờ duyệt
+#### GET /api/v1/outbound/shipments
+**Mục đích:** Danh sách Phiếu xuất kho với phân trang và filter
 
 **Query Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| warehouseId | uuid | Filter theo warehouse |
+| page | number | Trang (default: 1) |
+| pageSize | number | Số items/trang (default: 20) |
+| keyword | string | Tìm theo số phiếu, số SO, biển số xe |
+| status | string | Filter theo trạng thái |
+| ownerId | uuid | Filter theo chủ hàng |
 
 **Response:** `200 OK`
-
-**Files liên quan:**
-- `controllers/approval.controller.ts` → `getPendingApprovals()`
-- `services/approval.service.ts` → `getPendingApprovals()`
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "shipmentNumber": "SHP-202603-00001",
+      "soNumber": "SO-202603-00001",
+      "blNumber": "BL-2026-RICE-001",
+      "owner": { "ownerCode": "TVL", "ownerName": "Thoresen" },
+      "vehicleNumber": "29A-12345",
+      "status": "NEW",
+      "expectedQty": 1000,
+      "shippedQty": 0,
+      "lines": [...]
+    }
+  ],
+  "pagination": { "page": 1, "pageSize": 20, "total": 10, "totalPages": 1 }
+}
+```
 
 ---
 
-#### POST /api/v1/outbound/shipments/:id/approve
-**Mục đích:** Duyệt shipment/line có tolerance fail
+#### GET /api/v1/outbound/shipments/:id
+**Mục đích:** Chi tiết Phiếu xuất theo ID
+
+---
+
+#### POST /api/v1/outbound/shipments
+**Mục đích:** Tạo Phiếu xuất kho từ SO đã xác nhận
 
 **Request Body:**
 ```json
 {
-  "lineId": "uuid",
-  "reasonCode": "ACCEPTABLE_VARIANCE",
-  "note": "Chấp nhận chênh lệch 1.5%"
+  "salesOrderId": "uuid",
+  "warehouseId": "uuid",
+  "vehicleNumber": "29A-12345",
+  "blNumber": "BL-2026-RICE-001",
+  "notes": "Ghi chú header",
+  "lines": [
+    {
+      "itemId": "uuid",
+      "uomId": "uuid",
+      "expectedQty": 500,
+      "soLineId": "uuid",
+      "notes": "Ghi chú dòng"
+    }
+  ]
 }
 ```
 
-**Response:** `200 OK`
+**Response:** `201 Created`
 
-**Business Rules:**
-- Nếu có lineId → approve line đó
-- Nếu không có lineId → approve toàn bộ shipment
-- Resolve các exception liên quan
-- **HI-4 Fixed:** `decidedBy` extracted từ `x-user-id` header
-
-**Files liên quan:**
-- `controllers/approval.controller.ts` → `approve()`
-- `services/approval.service.ts` → `processApproval()`
+**Note:** Chỉ có thể tạo phiếu xuất từ SO đang ở trạng thái CONFIRMED.
 
 ---
 
-#### POST /api/v1/outbound/shipments/:id/reject
-**Mục đích:** Từ chối shipment/line
+#### PATCH /api/v1/outbound/shipments/:id
+**Mục đích:** Cập nhật Phiếu xuất (chỉ khi status = NEW)
 
 **Request Body:**
 ```json
 {
-  "lineId": "uuid",
-  "reasonCode": "VARIANCE_TOO_HIGH",
-  "note": "Chênh lệch quá lớn"
+  "warehouseId": "uuid",
+  "vehicleNumber": "29A-12345",
+  "notes": "Ghi chú mới",
+  "lines": [
+    {
+      "itemId": "uuid",
+      "uomId": "uuid",
+      "expectedQty": 600,
+      "soLineId": "uuid",
+      "notes": "Ghi chú dòng mới"
+    }
+  ]
 }
 ```
 
-**Response:** `200 OK`
+---
 
-**Files liên quan:**
-- `controllers/approval.controller.ts` → `reject()`
-- `services/approval.service.ts` → `processApproval()`
+#### POST /api/v1/outbound/shipments/:id/confirm
+**Mục đích:** Xác nhận Phiếu xuất (NEW → CONFIRMED)
 
 ---
 
-### 3.5 Query & Dashboard
-
-#### GET /api/v1/outbound/shipments/:id/history
-**Mục đích:** Lịch sử trạng thái shipment
-
-**Response:** `200 OK`
-```json
-[
-  {
-    "fromStatus": "DRAFT",
-    "toStatus": "CONFIRMED",
-    "triggerAction": "CONFIRM",
-    "changedAt": "2024-01-15T10:30:00Z"
-  }
-]
-```
-
-**Files liên quan:**
-- `controllers/outbound-query.controller.ts` → `getHistory()`
-- `services/shipment-query.service.ts` → `getStatusHistory()`
+#### DELETE /api/v1/outbound/shipments/:id
+**Mục đích:** Xóa Phiếu xuất (chỉ khi status = NEW)
 
 ---
 
-#### GET /api/v1/outbound/shipments/:id/exceptions
-**Mục đích:** Danh sách exceptions của shipment
+#### POST /api/v1/outbound/shipments/:id/report-error
+**Mục đích:** Báo lỗi Phiếu xuất (NEW/CONFIRMED → CANCELLED)
 
-**Response:** `200 OK`
-```json
-[
-  {
-    "exceptionType": "TOLERANCE_FAIL",
-    "exceptionCode": "TOLERANCE_OVER",
-    "severity": "HIGH",
-    "status": "OPEN",
-    "detailJson": { "variancePct": 3.5 }
-  }
-]
-```
-
-**Files liên quan:**
-- `controllers/outbound-query.controller.ts` → `getExceptions()`
-- `services/shipment-query.service.ts` → `getExceptions()`
-
----
-
-#### GET /api/v1/outbound/dashboard/summary
-**Mục đích:** Tổng quan dashboard
-
-**Response:** `200 OK`
+**Request Body:**
 ```json
 {
-  "totalDraft": 5,
-  "totalConfirmed": 10,
-  "totalAllocated": 8,
-  "totalPicking": 3,
-  "totalPendingApproval": 2,
-  "totalShippedToday": 15
+  "reasonCode": "Lý do báo lỗi"
 }
 ```
-
-**Files liên quan:**
-- `controllers/outbound-query.controller.ts` → `getDashboardSummary()`
-- `repositories/shipment-header.repository.ts` → `getDashboardSummary()`
 
 ---
 
 ## 4. State Machine
 
-### 4.1 Shipment States
+### Sales Order Status Flow
 ```
-DRAFT → CONFIRMED → ALLOCATED → PICKING → PICKED → WEIGHING_TARE → LOADING → ALL_WEIGHED → SHIPPED → CLOSED
-                                                                    ↓
-                                                              PENDING_APPROVAL
-```
-
-### 4.2 Line States
-```
-PENDING → ALLOCATED → PICKING → PICKED → LOADING → WEIGHED_PASS/WEIGHED_FAIL → LINE_SHIPPED
+Tạo mới → Đã xác nhận → Xuất 1 phần → Xuất đủ → Đã đóng
+    ↓
+  Đã hủy
 ```
 
-### 4.3 Allowed Transitions
+| From | To | Action | UI Button |
+|------|-----|--------|-----------|
+| Tạo mới (NEW) | Đã xác nhận (CONFIRMED) | confirm | ✓ Xác nhận |
+| Tạo mới (NEW) | Đã hủy (CANCELLED) | cancel | 🗑 Xóa |
+| Đã xác nhận | Tạo mới | unconfirm | ↩ Hủy xác nhận |
+| Đã xác nhận | Xuất 1 phần | - | Tự động khi có shipment |
+| Xuất 1 phần | Xuất đủ | - | Tự động khi xuất hết |
+| Xuất đủ | Đã đóng | close | - |
 
-| From | To | Action |
-|------|-----|--------|
-| DRAFT | CONFIRMED | CONFIRM |
-| DRAFT | CANCELLED | CANCEL |
-| CONFIRMED | ALLOCATED | ALLOCATE |
-| CONFIRMED | CANCELLED | CANCEL |
-| ALLOCATED | PICKING | START_PICK |
-| ALLOCATED | CONFIRMED | UNALLOCATE |
-| ALL_WEIGHED | SHIPPED | SHIP |
-| PENDING_APPROVAL | ALL_WEIGHED | APPROVE |
-| PENDING_APPROVAL | LOADING | REWEIGH |
-| SHIPPED | CLOSED | CLOSE |
+### UI Actions theo trạng thái
+
+| Trạng thái | Chỉnh sửa | Xác nhận | Xóa | Hủy xác nhận | Tạo phiếu xuất |
+|------------|-----------|----------|-----|--------------|----------------|
+| Tạo mới | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Đã xác nhận | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Xuất 1 phần | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Xuất đủ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Đã đóng | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Đã hủy | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### Shipment Status Flow
+```
+Tạo mới (NEW) → Đã xác nhận (CONFIRMED) → ... → Đã xuất (SHIPPED) → Đã đóng (CLOSED)
+    ↓
+  Đã hủy (CANCELLED)
+```
+
+### Shipment UI Actions theo trạng thái
+
+| Trạng thái | Chỉnh sửa | Xác nhận | Xóa | Báo lỗi |
+|------------|-----------|----------|-----|----------|
+| Tạo mới (NEW) | ✅ | ✅ | ✅ | ❌ |
+| Đã xác nhận | ❌ | ❌ | ❌ | ✅ |
+| Khác | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
-## 5. Error Codes
+## 5. Data Mapping
 
-| Code | Description |
-|------|-------------|
-| OUTBOUND_001 | Shipment not found |
-| OUTBOUND_002 | Invalid state transition |
-| OUTBOUND_003 | No lines to process |
-| OUTBOUND_004 | Duplicate external ID |
-| ALLOC_001 | Insufficient stock |
-| ALLOC_002 | Cannot allocate - invalid status |
-| WEIGH_001 | Must record tare first |
-| WEIGH_002 | Duplicate weight event |
-| TOL_001 | Tolerance exceeded |
-| APPR_001 | Not pending approval |
+### Frontend ↔ Backend Mapping
+
+| Frontend Field | Backend Field | Notes |
+|----------------|---------------|-------|
+| soType (SEA/LAND) | orderType (STANDARD/CONSIGNMENT) | Mapping trong service |
+| blNumber | externalSoNumber | Số B/L lưu trong externalSoNumber |
+| status (NEW/CONFIRMED/...) | status (DRAFT/CONFIRMED/...) | Mapping trong service |
 
 ---
 
@@ -614,9 +355,8 @@ PENDING → ALLOCATED → PICKING → PICKED → LOADING → WEIGHED_PASS/WEIGHE
 
 | Module | Usage |
 |--------|-------|
-| M1 Foundation | NumberSequence, ReasonCode, AuditLog |
-| M2 Master Data | Owner, Item, Warehouse, Location, VehicleType |
-| M3 Inventory Core | OnHand query, Hold creation, Posting |
+| M2 Master Data | Owner, Item, Warehouse, UOM |
+| Infrastructure | PrismaService |
 
 ---
 
@@ -625,5 +365,10 @@ PENDING → ALLOCATED → PICKING → PICKED → LOADING → WEIGHED_PASS/WEIGHE
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2024-03 | Initial implementation |
-| 1.1.0 | 2026-03-08 | Feedback fixes: HI-2 tolerance cascade, HI-3 $transaction, HI-4 decidedBy, HI-6 lockForUpdate |
-| 2.2.0 | 2026-03-11 | FE-BE Alignment fixes: (1) Fix double-prefix `@Controller('api/v1/outbound/...')` → `@Controller('outbound/...')` trong 5 controllers. (2) Register `OutboundModule` vào `app.module.ts`. Routes đúng chuẩn: `/api/v1/outbound/...` |
+| 3.0.0 | 2026-03-17 | RESET: Xóa toàn bộ logic cũ |
+| 3.1.0 | 2026-03-17 | Implement Sales Order Management: Controller, Service, DTO, API endpoints |
+| 3.2.0 | 2026-03-17 | - Đổi label trạng thái "Nháp" → "Tạo mới"<br>- Thêm UpdateSoLineDto với field `id` cho update lines<br>- Thêm `ownerId` vào UpdateSalesOrderDto<br>- UI: Button xóa chỉ hiển thị khi status = Tạo mới |
+| 3.3.0 | 2026-03-17 | **REMOVED Features:**<br>- Xóa Phân bổ (Allocation) - chưa implement<br>- Xóa Cân hàng (Weighing) - chưa implement<br>- Xóa Phê duyệt (Approvals) - chưa implement<br>Module 5 hiện chỉ còn: Sales Order, Shipments |
+| 3.4.0 | 2026-03-17 | - Thêm endpoint `POST /sales-orders/:id/unconfirm` (Đã xác nhận → Tạo mới)<br>- Thêm UI buttons: Hủy xác nhận, Tạo phiếu xuất cho trạng thái Đã xác nhận<br>- Tạo CreateShipmentModal component |
+| 3.5.0 | 2026-03-17 | **Shipment Management:**<br>- Thêm `SimpleShipmentService` và `SimpleShipmentController`<br>- Endpoints: `GET/POST /outbound/shipments`, `GET /outbound/shipments/:id`<br>- Tạo phiếu xuất từ SO đã xác nhận<br>- Lưu vào `shipment_header`, `shipment_line` |
+| 3.6.0 | 2026-03-17 | **Shipment CRUD:**<br>- Thêm `PATCH /shipments/:id` (cập nhật)<br>- Thêm `POST /shipments/:id/confirm` (xác nhận)<br>- Thêm `DELETE /shipments/:id` (xóa)<br>- Thêm `POST /shipments/:id/report-error` (báo lỗi)<br>- Thêm field `notes` cho ShipmentHeader và ShipmentLine |

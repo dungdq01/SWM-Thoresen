@@ -6,6 +6,7 @@
 export enum ShipmentStatus {
   DRAFT = 'DRAFT',
   CONFIRMED = 'CONFIRMED',
+  WEIGHING_1 = 'WEIGHING_1',
   ALLOCATED = 'ALLOCATED',
   PICKING = 'PICKING',
   PICKED = 'PICKED',
@@ -52,8 +53,11 @@ export interface TransitionContext {
 export const SHIPMENT_TRANSITIONS: StateTransition[] = [
   { from: ShipmentStatus.DRAFT, to: ShipmentStatus.CONFIRMED, action: 'CONFIRM' },
   { from: ShipmentStatus.DRAFT, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
+  { from: ShipmentStatus.CONFIRMED, to: ShipmentStatus.WEIGHING_1, action: 'START_WEIGHING' },
   { from: ShipmentStatus.CONFIRMED, to: ShipmentStatus.ALLOCATED, action: 'ALLOCATE' },
   { from: ShipmentStatus.CONFIRMED, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
+  { from: ShipmentStatus.WEIGHING_1, to: ShipmentStatus.ALLOCATED, action: 'ALLOCATE' },
+  { from: ShipmentStatus.WEIGHING_1, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
   { from: ShipmentStatus.ALLOCATED, to: ShipmentStatus.PICKING, action: 'START_PICK' },
   { from: ShipmentStatus.ALLOCATED, to: ShipmentStatus.CONFIRMED, action: 'UNALLOCATE' },
   { from: ShipmentStatus.ALLOCATED, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },

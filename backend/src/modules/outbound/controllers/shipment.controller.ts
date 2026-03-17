@@ -63,6 +63,7 @@ export class ShipmentController {
   @ApiQuery({ name: 'ownerId', required: false, type: String })
   @ApiQuery({ name: 'warehouseId', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'includeLines', required: false, type: Boolean, description: 'Include shipment lines with item info' })
   async list(
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
@@ -72,6 +73,7 @@ export class ShipmentController {
     @Query('ownerId') ownerId?: string,
     @Query('warehouseId') warehouseId?: string,
     @Query('status') status?: string,
+    @Query('includeLines') includeLines?: string,
   ) {
     return this.queryService.list({
       page: page || 1,
@@ -82,6 +84,7 @@ export class ShipmentController {
       ownerId,
       warehouseId,
       status: status as any,
+      includeLines: includeLines === 'true',
     });
   }
 

@@ -91,9 +91,9 @@ export function CreateWeighTicketModal({
       setDraft((prev) => ({
         ...prev,
         ticketNumber: ticketId,
-        warehouseId: ticket.warehouseId || '',
+        warehouseId: ticket.warehouseId || ticket.warehouse?.id || '',
         vehicleNumber: ticket.vehicleNumber || '',
-        ownerId: ticket.ownerId || '',
+        ownerId: ticket.ownerId || ticket.owner?.id || '',
         itemCode: ticket.lines?.[0]?.item?.itemCode || ticket.lines?.[0]?.itemCode || '',
       }))
     }
@@ -133,27 +133,30 @@ export function CreateWeighTicketModal({
   )
 
   // Filter options dựa trên ticket đã chọn
+  const ticketWarehouseId = currentTicket?.warehouseId || currentTicket?.warehouse?.id
+  const ticketOwnerId = currentTicket?.ownerId || currentTicket?.owner?.id
+
   const warehouseOptions = useMemo(() => {
-    if (currentTicket?.warehouseId) {
-      const w = warehouses.find((w) => w.id === currentTicket.warehouseId)
+    if (ticketWarehouseId) {
+      const w = warehouses.find((w) => w.id === ticketWarehouseId)
       return w ? [{ value: w.id, label: `${w.code} - ${w.name}` }] : [{ value: '', label: '-- Chọn kho --' }]
     }
     return [
       { value: '', label: '-- Chọn kho --' },
       ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` })),
     ]
-  }, [warehouses, currentTicket])
+  }, [warehouses, ticketWarehouseId])
 
   const ownerOptions = useMemo(() => {
-    if (currentTicket?.ownerId) {
-      const o = owners.find((o) => o.id === currentTicket.ownerId)
+    if (ticketOwnerId) {
+      const o = owners.find((o) => o.id === ticketOwnerId)
       return o ? [{ value: o.id, label: `${o.code} - ${o.name}` }] : [{ value: '', label: '-- Chọn chủ hàng --' }]
     }
     return [
       { value: '', label: '-- Chọn chủ hàng --' },
       ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` })),
     ]
-  }, [owners, currentTicket])
+  }, [owners, ticketOwnerId])
 
   const itemOptions = useMemo(() => {
     if (currentTicket?.lines?.length > 0) {
@@ -278,7 +281,7 @@ export function CreateWeighTicketModal({
                     value={draft.warehouseId}
                     onChange={(e) => setDraft((prev) => ({ ...prev, warehouseId: e.target.value }))}
                     options={warehouseOptions}
-                    disabled={!!currentTicket?.warehouseId}
+                    disabled={!!ticketWarehouseId}
                   />
                 </div>
 
@@ -298,7 +301,7 @@ export function CreateWeighTicketModal({
                     value={draft.ownerId}
                     onChange={(e) => setDraft((prev) => ({ ...prev, ownerId: e.target.value }))}
                     options={ownerOptions}
-                    disabled={!!currentTicket?.ownerId}
+                    disabled={!!ticketOwnerId}
                   />
                 </div>
 
@@ -309,6 +312,7 @@ export function CreateWeighTicketModal({
                     value={draft.itemCode}
                     onChange={(e) => setDraft((prev) => ({ ...prev, itemCode: e.target.value }))}
                     options={itemOptions}
+                    disabled={!!(currentTicket && currentTicket.lines?.length > 0)}
                   />
 
                   {/* Placeholder for layout */}

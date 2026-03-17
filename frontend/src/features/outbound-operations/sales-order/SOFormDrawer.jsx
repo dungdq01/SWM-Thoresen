@@ -1,33 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ShoppingCart, X, Plus, Trash2, Sparkles } from 'lucide-react'
-import { Button, Input, Select, Textarea } from '@shared/ui'
+import { FileText, X, Plus, Trash2, Sparkles, Ship, Truck } from 'lucide-react'
+import { Badge, Button, Input, Select, Textarea } from '@shared/ui'
 
-const CARGO_FORMS = [
-  { value: 'BULK', label: 'Hàng rời' },
-  { value: 'BAGGED_25KG', label: 'Bao 25kg' },
-  { value: 'BAGGED_40KG', label: 'Bao 40kg' },
-  { value: 'BAGGED_50KG', label: 'Bao 50kg' },
-  { value: 'JUMBO', label: 'Jumbo' },
-  { value: 'PACKAGING', label: 'Đóng gói' },
-  { value: 'DRUM', label: 'Thùng phuy' },
-  { value: 'PALLET', label: 'Pallet' },
-  { value: 'CONTAINER', label: 'Container' },
-  { value: 'OTHER', label: 'Khác' },
+const SO_TYPES = [
+  { value: 'SEA', label: 'Đường thủy' },
+  { value: 'LAND', label: 'Đường bộ' },
 ]
 
-const emptyLine = { itemId: '', expectedQty: '', uomId: '', unitPrice: '', cargoForm: 'BULK', notes: '' }
+const emptyLine = { itemId: '', expectedQty: '', shippedQty: 0, uomId: '', status: 'NEW', notes: '' }
 
 const emptyDraft = {
+  soType: 'SEA',
   ownerId: '',
-  customerId: '',
-  warehouseId: '',
-  externalSoNumber: '',
-  expectedDeliveryDate: '',
-  deliveryAddress: '',
+  blNumber: '',
   notes: '',
-  currency: 'VND',
   lines: [{ ...emptyLine }],
 }
 
@@ -39,8 +27,6 @@ export function SOFormDrawer({
   isLoading = false,
   nextSoNumber = '',
   owners = [],
-  customers = [],
-  warehouses = [],
   items = [],
   uoms = [],
 }) {
@@ -51,20 +37,17 @@ export function SOFormDrawer({
     if (!isOpen) return
     if (initialData) {
       setDraft({
+        soType: initialData.soType || 'SEA',
         ownerId: initialData.ownerId || '',
-        customerId: initialData.customerId || '',
-        warehouseId: initialData.warehouseId || '',
-        externalSoNumber: initialData.externalSoNumber || '',
-        expectedDeliveryDate: initialData.expectedDeliveryDate ? initialData.expectedDeliveryDate.slice(0, 10) : '',
-        deliveryAddress: initialData.deliveryAddress || '',
+        blNumber: initialData.blNumber || '',
         notes: initialData.notes || '',
-        currency: initialData.currency || 'VND',
         lines: (initialData.lines || []).map((l) => ({
+          id: l.id,
           itemId: l.itemId || '',
           expectedQty: Number(l.expectedQty || 0),
+          shippedQty: Number(l.shippedQty || 0),
           uomId: l.uomId || '',
-          unitPrice: l.unitPrice ? Number(l.unitPrice) : '',
-          cargoForm: l.cargoForm || 'BULK',
+          status: l.status || 'NEW',
           notes: l.notes || '',
         })),
       })
@@ -94,56 +77,38 @@ export function SOFormDrawer({
   }, [])
 
   const handleSubmit = () => {
-    if (isEdit) {
-      onSubmit({
-        customerId: draft.customerId || undefined,
-        expectedDeliveryDate: draft.expectedDeliveryDate || undefined,
-        deliveryAddress: draft.deliveryAddress || undefined,
-        notes: draft.notes || undefined,
-        externalSoNumber: draft.externalSoNumber || undefined,
-        lines: draft.lines.filter((l) => l.itemId).map((l) => ({
-          itemId: l.itemId,
-          cargoForm: l.cargoForm,
-          uomId: l.uomId,
-          expectedQty: Number(l.expectedQty || 0),
-          expectedQtyKg: Number(l.expectedQty || 0),
-          unitPrice: l.unitPrice ? Number(l.unitPrice) : undefined,
-          notes: l.notes || undefined,
-        })),
-      })
-    } else {
-      onSubmit({
-        externalId: `SO-WEB-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-        ownerId: draft.ownerId,
-        customerId: draft.customerId,
-        warehouseId: draft.warehouseId,
-        externalSoNumber: draft.externalSoNumber || undefined,
-        expectedDeliveryDate: draft.expectedDeliveryDate || undefined,
-        deliveryAddress: draft.deliveryAddress || undefined,
-        notes: draft.notes || undefined,
-        currency: draft.currency,
-        lines: draft.lines.filter((l) => l.itemId).map((l) => ({
-          itemId: l.itemId,
-          cargoForm: l.cargoForm,
-          uomId: l.uomId,
-          expectedQty: Number(l.expectedQty || 0),
-          expectedQtyKg: Number(l.expectedQty || 0),
-          unitPrice: l.unitPrice ? Number(l.unitPrice) : undefined,
-          notes: l.notes || undefined,
-        })),
-      })
+    const payload = {
+      soType: draft.soType,
+      ownerId: draft.ownerId,
+      blNumber: draft.blNumber,
+      notes: draft.notes || '',
+      lines: draft.lines.filter((l) => l.itemId).map((l) => ({
+        ...(l.id ? { id: l.id } : {}),
+        itemId: l.itemId,
+        expectedQty: Number(l.expectedQty || 0),
+        uomId: l.uomId || '',
+        notes: l.notes || '',
+      })),
     }
+    if (isEdit) payload.rowVersion = initialData.rowVersion ?? 0
+    onSubmit(payload)
   }
 
-  const isValid = isEdit
-    ? draft.lines.some((l) => l.itemId)
-    : !!(draft.ownerId && draft.customerId && draft.warehouseId && draft.lines.some((l) => l.itemId))
+  const isValid = !!(draft.ownerId && draft.blNumber && draft.lines.some((l) => l.itemId && l.expectedQty))
 
-  const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
-  const uomOptions = [{ value: '', label: '-- ĐVT --' }, ...uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))]
-  const ownerOptions = [{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]
-  const customerOptions = [{ value: '', label: '-- Chọn khách hàng --' }, ...customers.map((c) => ({ value: c.id, label: `${c.customerCode} - ${c.customerName}` }))]
-  const warehouseOptions = [{ value: '', label: '-- Chọn Kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]
+  const itemOptions = [{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
+  const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
+  const ownerOptions = [{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]
+
+  const lineStatusLabel = (status) => {
+    const map = { NEW: 'Mới', PARTIAL: 'Xuất 1 phần', SHIPPED: 'Đã xuất', CANCELLED: 'Đã hủy' }
+    return map[status] || status
+  }
+
+  const lineStatusVariant = (status) => {
+    const map = { NEW: 'info', PARTIAL: 'warning', SHIPPED: 'success', CANCELLED: 'danger' }
+    return map[status] || 'default'
+  }
 
   return createPortal(
     <AnimatePresence>
@@ -163,14 +128,14 @@ export function SOFormDrawer({
             <div className="flex shrink-0 items-center justify-between border-b border-moon-200 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy-800 text-ice-light">
-                  <ShoppingCart className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-navy-900">
-                    {isEdit ? `Chỉnh sửa ${initialData.soNumber}` : 'Tạo Đơn bán hàng mới'}
+                    {isEdit ? `Chỉnh sửa ${initialData.soNumber}` : 'Tạo đơn xuất hàng mới'}
                   </h2>
                   <p className="text-sm text-navy-400">
-                    {isEdit ? 'Cập nhật thông tin đơn bán hàng' : 'Nhập thông tin để tạo SO trong hệ thống'}
+                    {isEdit ? 'Cập nhật thông tin đơn xuất hàng' : 'Nhập thông tin để tạo SO trong hệ thống'}
                   </p>
                 </div>
               </div>
@@ -193,9 +158,30 @@ export function SOFormDrawer({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label="Loại SO *"
+                    value={draft.soType}
+                    onChange={(e) => setDraft((p) => ({ ...p, soType: e.target.value }))}
+                    options={SO_TYPES}
+                  />
+                  <Select
+                    label="Chủ hàng *"
+                    value={draft.ownerId}
+                    onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value }))}
+                    options={ownerOptions}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Số B/L *"
+                    value={draft.blNumber}
+                    onChange={(e) => setDraft((p) => ({ ...p, blNumber: e.target.value }))}
+                    placeholder="VD: BL-2026-RICE-001"
+                  />
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-navy-700">
-                      Mã SO <span className="font-normal text-navy-400">(Tự động)</span>
+                      Số SO <span className="font-normal text-navy-400">(Tự động)</span>
                     </label>
                     <div className="flex h-10 items-center gap-2 rounded-xl border-2 border-moon-200 bg-moon-50 px-4">
                       <Sparkles className="h-4 w-4 shrink-0 text-ice" />
@@ -204,52 +190,19 @@ export function SOFormDrawer({
                       </span>
                     </div>
                   </div>
-                  <Input
-                    label="Mã SO ngoài (khách hàng)"
-                    value={draft.externalSoNumber}
-                    onChange={(e) => setDraft((p) => ({ ...p, externalSoNumber: e.target.value }))}
-                    placeholder="VD: CUST-PO-2026-001"
-                  />
                 </div>
 
-                {!isEdit && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select
-                      label="Owner *"
-                      value={draft.ownerId}
-                      onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value }))}
-                      options={ownerOptions}
-                    />
-                    <Select
-                      label="Kho *"
-                      value={draft.warehouseId}
-                      onChange={(e) => setDraft((p) => ({ ...p, warehouseId: e.target.value }))}
-                      options={warehouseOptions}
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Khách hàng *"
-                    value={draft.customerId}
-                    onChange={(e) => setDraft((p) => ({ ...p, customerId: e.target.value }))}
-                    options={customerOptions}
-                  />
-                  <Input
-                    label="Ngày giao dự kiến"
-                    type="date"
-                    value={draft.expectedDeliveryDate}
-                    onChange={(e) => setDraft((p) => ({ ...p, expectedDeliveryDate: e.target.value }))}
-                  />
+                <div className="flex items-center gap-2 text-sm">
+                  {draft.soType === 'SEA' ? (
+                    <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600">
+                      <Ship className="h-3 w-3" /> Đường thủy
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-600">
+                      <Truck className="h-3 w-3" /> Đường bộ
+                    </span>
+                  )}
                 </div>
-
-                <Input
-                  label="Địa chỉ giao hàng"
-                  value={draft.deliveryAddress}
-                  onChange={(e) => setDraft((p) => ({ ...p, deliveryAddress: e.target.value }))}
-                  placeholder="Nhập địa chỉ giao hàng..."
-                />
 
                 <Textarea
                   label="Ghi chú"
@@ -260,12 +213,12 @@ export function SOFormDrawer({
                 />
               </div>
 
-              {/* Section 2: Danh sách mặt hàng */}
+              {/* Section 2: Chi tiết hàng hóa */}
               <div className="px-6 py-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">2</span>
-                    <h3 className="text-sm font-semibold text-navy-800">Danh sách mặt hàng</h3>
+                    <h3 className="text-sm font-semibold text-navy-800">Chi tiết hàng hóa</h3>
                     <span className="rounded-full bg-moon-100 px-2 py-0.5 text-xs font-medium text-navy-500">
                       {draft.lines.filter((l) => l.itemId).length}/{draft.lines.length} dòng
                     </span>
@@ -275,77 +228,85 @@ export function SOFormDrawer({
                   </Button>
                 </div>
 
-                <div className="space-y-2">
-                  {draft.lines.map((line, idx) => (
-                    <div
-                      key={idx}
-                      className="relative rounded-xl border border-moon-200 bg-moon-50/50 px-4 pb-3 pt-4 transition-colors hover:border-moon-300"
-                    >
-                      <span className="absolute -left-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-navy-700 text-[10px] font-bold text-white shadow-sm">
-                        {idx + 1}
-                      </span>
-
-                      <div className="grid grid-cols-[1fr_1fr_1fr_40px] gap-3 items-end">
-                        <Select
-                          label="Mặt hàng *"
-                          value={line.itemId}
-                          onChange={(e) => updateLine(idx, 'itemId', e.target.value)}
-                          options={itemOptions}
-                        />
-                        <Select
-                          label="Đơn vị tính *"
-                          value={line.uomId}
-                          onChange={(e) => updateLine(idx, 'uomId', e.target.value)}
-                          options={uomOptions}
-                        />
-                        <Select
-                          label="Hình thức hàng"
-                          value={line.cargoForm}
-                          onChange={(e) => updateLine(idx, 'cargoForm', e.target.value)}
-                          options={CARGO_FORMS}
-                        />
-                        <div className="flex items-end pb-0.5">
-                          {draft.lines.length > 1 ? (
-                            <button
-                              onClick={() => removeLine(idx)}
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-navy-300 transition-colors hover:bg-danger/10 hover:text-danger"
-                              title="Xóa dòng"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <div className="h-10 w-10" />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <Input
-                          label="Số lượng (kg) *"
-                          type="number"
-                          min={0}
-                          value={line.expectedQty}
-                          onChange={(e) => updateLine(idx, 'expectedQty', e.target.value)}
-                        />
-                        <Input
-                          label="Đơn giá"
-                          type="number"
-                          min={0}
-                          value={line.unitPrice}
-                          onChange={(e) => updateLine(idx, 'unitPrice', e.target.value)}
-                          placeholder="Tuỳ chọn"
-                        />
-                      </div>
-
-                      <div className="mt-2">
-                        <Input
-                          value={line.notes}
-                          onChange={(e) => updateLine(idx, 'notes', e.target.value)}
-                          placeholder="Ghi chú dòng hàng (tuỳ chọn)..."
-                        />
-                      </div>
-                    </div>
-                  ))}
+                {/* Table with horizontal scroll */}
+                <div className="rounded-xl border border-moon-200 overflow-x-auto">
+                  <table className="min-w-[900px] w-full text-sm">
+                    <thead>
+                      <tr className="bg-moon-50 text-left text-xs text-navy-500 border-b border-moon-200">
+                        <th className="px-3 py-2.5 w-12 whitespace-nowrap">STT</th>
+                        <th className="px-3 py-2.5 min-w-[220px] whitespace-nowrap">Mã hàng hóa *</th>
+                        <th className="px-3 py-2.5 w-28 text-right whitespace-nowrap">SL dự kiến *</th>
+                        <th className="px-3 py-2.5 w-24 text-right whitespace-nowrap">SL đã xuất</th>
+                        <th className="px-3 py-2.5 w-28 whitespace-nowrap">ĐVT</th>
+                        <th className="px-3 py-2.5 w-24 text-center whitespace-nowrap">Trạng thái</th>
+                        <th className="px-3 py-2.5 min-w-[180px] whitespace-nowrap">Ghi chú</th>
+                        <th className="px-3 py-2.5 w-12 text-center whitespace-nowrap">Xóa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draft.lines.map((line, idx) => (
+                        <tr key={idx} className="border-b border-moon-100 last:border-b-0 hover:bg-moon-50/50">
+                          <td className="px-3 py-2.5 text-center text-navy-400 font-medium">{idx + 1}</td>
+                          <td className="px-3 py-2.5">
+                            <Select
+                              value={line.itemId}
+                              onChange={(e) => updateLine(idx, 'itemId', e.target.value)}
+                              options={itemOptions}
+                              className="min-w-[200px]"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={line.expectedQty}
+                              onChange={(e) => updateLine(idx, 'expectedQty', e.target.value)}
+                              className="text-right w-24"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex h-10 w-20 items-center justify-end rounded-xl border border-moon-200 bg-moon-50 px-3 text-navy-400">
+                              {line.shippedQty || 0}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <Select
+                              value={line.uomId}
+                              onChange={(e) => updateLine(idx, 'uomId', e.target.value)}
+                              options={uomOptions}
+                              className="min-w-[100px]"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <Badge variant={lineStatusVariant(line.status)} className="text-xs whitespace-nowrap">
+                              {lineStatusLabel(line.status)}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <Input
+                              value={line.notes}
+                              onChange={(e) => updateLine(idx, 'notes', e.target.value)}
+                              placeholder="Ghi chú..."
+                              className="min-w-[160px]"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {draft.lines.length > 1 ? (
+                              <button
+                                onClick={() => removeLine(idx)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-navy-300 transition-colors hover:bg-danger/10 hover:text-danger"
+                                title="Xóa dòng"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <div className="h-8 w-8" />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -357,7 +318,7 @@ export function SOFormDrawer({
                 <p className="text-xs text-navy-400">
                   {isValid
                     ? <span className="font-medium text-emerald-600">✓ {draft.lines.filter((l) => l.itemId).length} dòng hàng sẵn sàng</span>
-                    : '* Owner, Khách hàng, Kho và ít nhất 1 mặt hàng là bắt buộc'}
+                    : '* Loại SO, Chủ hàng, Số B/L và ít nhất 1 mặt hàng là bắt buộc'}
                 </p>
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={onClose} disabled={isLoading}>Hủy</Button>
