@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
-import { Upload, X, FileImage, Loader2 } from 'lucide-react'
-import { Button, Modal } from '@shared/ui'
+import { Camera, ImagePlus, Upload, X, FileImage, Loader2 } from 'lucide-react'
+import { Modal } from '@shared/ui'
 import { useUploadOcrImage } from '@domains/integration'
+import { useCamera } from '@shared/hooks/useCamera'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf']
 const MAX_SIZE_MB = 10
@@ -16,16 +17,15 @@ function formatFileSize(bytes) {
 export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
-  const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef(null)
   const uploadMutation = useUploadOcrImage()
+  const { takePhoto, pickFromGallery } = useCamera()
 
   const resetState = useCallback(() => {
     setFile(null)
     setPreview(null)
     setError('')
-    setDragActive(false)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -35,11 +35,11 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
 
   const validateFile = useCallback((f) => {
     if (!ACCEPTED_TYPES.includes(f.type)) {
-      setError(`Định dạng không hỗ trợ. Chấp nhận: JPG, PNG, PDF`)
+      setError('Định dạng không hỗ trợ. Chấp nhận: JPG, PNG, PDF')
       return false
     }
     if (f.size > MAX_SIZE_BYTES) {
-      setError(`Kích thước vượt quá ${MAX_SIZE_MB}MB. File hiện tại: ${formatFileSize(f.size)}`)
+      setError(`Vượt quá ${MAX_SIZE_MB}MB. File: ${formatFileSize(f.size)}`)
       return false
     }
     setError('')
@@ -58,22 +58,23 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
     }
   }, [validateFile])
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault()
-    setDragActive(false)
-    const droppedFile = e.dataTransfer.files?.[0]
-    if (droppedFile) handleFileSelect(droppedFile)
-  }, [handleFileSelect])
+  const handleCameraCapture = useCallback(async () => {
+    const result = await takePhoto()
+    if (result?.file) {
+      setFile(result.file)
+      setPreview(result.dataUrl)
+      setError('')
+    }
+  }, [takePhoto])
 
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault()
-    setDragActive(true)
-  }, [])
-
-  const handleDragLeave = useCallback((e) => {
-    e.preventDefault()
-    setDragActive(false)
-  }, [])
+  const handleGalleryPick = useCallback(async () => {
+    const result = await pickFromGallery()
+    if (result?.file) {
+      setFile(result.file)
+      setPreview(result.dataUrl)
+      setError('')
+    }
+  }, [pickFromGallery])
 
   const handleUpload = async () => {
     if (!file) return
@@ -92,86 +93,116 @@ export function OcrUploadModal({ isOpen, onClose, onUploadSuccess }) {
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Tải ảnh lên để quét OCR"
-      description="Hỗ trợ file JPG, PNG, PDF — tối đa 10MB"
+      title="Chụp ảnh hoặc chọn file"
       size="md"
-      footer={
-        <>
-          <Button variant="outline" onClick={handleClose}>Hủy</Button>
-          <Button
-            variant="accent"
-            onClick={handleUpload}
-            disabled={!file || uploadMutation.isPending}
-          >
-            {uploadMutation.isPending ? (
-              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Đang tải lên...</>
-            ) : (
-              <><Upload className="h-4 w-4 mr-2" />Tải lên & Quét</>
-            )}
-          </Button>
-        </>
-      }
     >
-      {!file ? (
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => inputRef.current?.click()}
-          className={`
-            flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 cursor-pointer transition-colors
-            ${dragActive ? 'border-ice bg-ice/5' : 'border-border hover:border-ice/50 hover:bg-muted/30'}
-          `}
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <FileImage className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-foreground">Kéo thả ảnh vào đây</p>
-            <p className="mt-1 text-xs text-muted-foreground">hoặc click để chọn file</p>
-          </div>
-          <p className="text-xs text-muted-foreground">JPG, PNG, PDF — tối đa {MAX_SIZE_MB}MB</p>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".jpg,.jpeg,.png,.pdf"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) handleFileSelect(f)
-            }}
-          />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-start gap-4 rounded-lg border border-border bg-muted/20 p-4">
-            {preview ? (
-              <img src={preview} alt="Preview" className="h-20 w-20 rounded-md object-cover border border-border" />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-md bg-muted border border-border">
-                <FileImage className="h-8 w-8 text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-foreground truncate">{file.name}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatFileSize(file.size)}</p>
-              <p className="text-xs text-muted-foreground">{file.type}</p>
+      <div className="space-y-4">
+        {!file ? (
+          <>
+            {/* Camera buttons — primary actions for mobile */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleCameraCapture}
+                className="flex flex-col items-center gap-2 rounded-xl py-5 transition-all active:scale-[0.97]"
+                style={{ backgroundColor: 'var(--color-bg-subtle)', border: '1px solid var(--color-border)' }}
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ice/15">
+                  <Camera className="h-5 w-5 text-ice" />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>Chụp ảnh</span>
+              </button>
+
+              <button
+                onClick={handleGalleryPick}
+                className="flex flex-col items-center gap-2 rounded-xl py-5 transition-all active:scale-[0.97]"
+                style={{ backgroundColor: 'var(--color-bg-subtle)', border: '1px solid var(--color-border)' }}
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-ice/15">
+                  <ImagePlus className="h-5 w-5 text-ice" />
+                </div>
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>Thư viện</span>
+              </button>
             </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+              <span className="text-[10px] font-medium" style={{ color: 'var(--color-text-muted)' }}>HOẶC CHỌN FILE</span>
+              <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
+            </div>
+
+            {/* File picker — secondary */}
             <button
-              onClick={(e) => { e.stopPropagation(); resetState() }}
-              className="p-1 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => inputRef.current?.click()}
+              className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all active:scale-[0.98]"
+              style={{ backgroundColor: 'var(--color-bg-card)', border: '1px dashed var(--color-border)' }}
             >
-              <X className="h-4 w-4" />
+              <FileImage className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+              <div className="text-left">
+                <p className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>Chọn file từ thiết bị</p>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>JPG, PNG, PDF — tối đa {MAX_SIZE_MB}MB</p>
+              </div>
+            </button>
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleFileSelect(f)
+              }}
+            />
+          </>
+        ) : (
+          /* File selected — preview + upload */
+          <div className="space-y-4">
+            {/* Preview */}
+            <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
+              {preview ? (
+                <img src={preview} alt="Preview" className="w-full object-contain" style={{ maxHeight: '240px', backgroundColor: 'var(--color-bg-subtle)' }} />
+              ) : (
+                <div className="flex items-center justify-center py-10" style={{ backgroundColor: 'var(--color-bg-subtle)' }}>
+                  <FileImage className="h-10 w-10" style={{ color: 'var(--color-text-muted)' }} />
+                </div>
+              )}
+              <div className="flex items-center justify-between px-3 py-2" style={{ borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate" style={{ color: 'var(--color-text)' }}>{file.name}</p>
+                  <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{formatFileSize(file.size)}</p>
+                </div>
+                <button
+                  onClick={resetState}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors active:scale-95"
+                  style={{ backgroundColor: 'var(--color-bg-subtle)', color: 'var(--color-text-muted)' }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Upload button — full width */}
+            <button
+              onClick={handleUpload}
+              disabled={uploadMutation.isPending}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-ice py-3 text-sm font-bold text-navy-950 transition-all active:scale-[0.97] disabled:opacity-60"
+            >
+              {uploadMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Đang tải lên...</>
+              ) : (
+                <><Upload className="h-4 w-4" />Tải lên & Quét OCR</>
+              )}
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {error && (
-        <div className="mt-3 rounded-md bg-danger/10 border border-danger/20 px-3 py-2">
-          <p className="text-sm text-danger">{error}</p>
-        </div>
-      )}
+        {error && (
+          <div className="rounded-xl px-3 py-2" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <p className="text-xs font-medium" style={{ color: '#f87171' }}>{error}</p>
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }

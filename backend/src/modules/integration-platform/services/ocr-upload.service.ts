@@ -31,7 +31,7 @@ export class OcrUploadService {
 
     const result = await this.ocrResultRepo.create({
       ocrRequestId,
-      imagePath: params.filePath,
+      imagePath: params.filePath.replace(/\\/g, '/'),
       providerName: params.providerName,
       status: OcrStatus.UPLOADED,
       externalId,

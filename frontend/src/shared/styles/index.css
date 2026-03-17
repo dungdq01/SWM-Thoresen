@@ -383,3 +383,58 @@
   color: #e2e8f0;
 }
 
+/* ══════════════════════════════════════════════════════════
+   Safe-area & Mobile PWA support
+   ══════════════════════════════════════════════════════════ */
+
+/* CSS variables for safe-area insets */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --bottom-nav-height: 0px;
+}
+
+/* Utility classes for safe-area padding — works reliably in Safari PWA standalone */
+.safe-area-top    { padding-top:    env(safe-area-inset-top, 0px); }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-area-left   { padding-left:   env(safe-area-inset-left, 0px); }
+.safe-area-right  { padding-right:  env(safe-area-inset-right, 0px); }
+
+/* Apply safe-area to all fixed full-height panels (drawers, modals, sidebar)
+   on mobile viewports OR PWA standalone mode */
+@media (max-width: 1023px), (display-mode: standalone) {
+  [class*="fixed"][class*="inset-y"],
+  [class*="fixed"][class*="top-0"][class*="bottom-0"],
+  [class*="fixed"][class*="h-full"],
+  [class*="fixed"][class*="h-screen"] {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Bottom padding for main content to clear bottom nav */
+  .app-main {
+    padding-bottom: calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+
+/* Hide bottom nav when keyboard is open */
+body.keyboard-open [class*="fixed"][class*="bottom-0"]:not([class*="top-0"]) {
+  display: none !important;
+}
+
+/* Remove tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide scrollbar for horizontal scroll containers */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
