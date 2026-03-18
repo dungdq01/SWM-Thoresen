@@ -7,6 +7,7 @@ import { NumberSequenceRepository } from './repositories/number-sequence.reposit
 import { PermissionController } from './controllers/permission.controller';
 import { ReasonCodeController } from './controllers/reason-code.controller';
 import { RoleController } from './controllers/role.controller';
+import { UserController } from './controllers/user.controller';
 import { GovernanceRepository } from './repositories/governance.repository';
 import { LogRepository } from './repositories/log.repository';
 import { PermissionRepository } from './repositories/permission.repository';
@@ -21,6 +22,7 @@ import { NumberSequenceService } from './services/number-sequence.service';
 import { PermissionService } from './services/permission.service';
 import { ReasonCodeService } from './services/reason-code.service';
 import { RoleService } from './services/role.service';
+import { UserService } from './services/user.service';
 
 @Module({
   imports: [PrismaModule],
@@ -31,6 +33,7 @@ import { RoleService } from './services/role.service';
     NumberSequenceController,
     GovernanceController,
     LogController,
+    UserController,
   ],
   providers: [
     RoleRepository,
@@ -48,6 +51,7 @@ import { RoleService } from './services/role.service';
     GovernanceService,
     LogService,
     IdempotencyService,
+    UserService,
   ],
   exports: [AuthorizationService, IdempotencyService, LogService, NumberSequenceService, ReasonCodeService, GovernanceService],
 })

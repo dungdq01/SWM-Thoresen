@@ -85,7 +85,7 @@ export function Footer() {
                 <img 
                   src="/assets/logo.png" 
                   alt="SmartLog" 
-                  className="h-10 w-auto brightness-0 invert"
+                  className="h-10 w-auto"
                 />
                 <div className="flex flex-col">
                   <span className="text-xl font-bold text-white">SmartLog</span>

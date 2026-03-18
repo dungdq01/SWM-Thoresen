@@ -137,6 +137,11 @@ export function useOcrResults(filters = {}) {
     queryKey: [...QUERY_KEYS.ocrResults, filters],
     queryFn: () => integrationApi.getOcrResults(filters),
     staleTime: 10000,
+    refetchInterval: (query) => {
+      const rows = query?.state?.data?.data || []
+      const hasPending = rows.some((r) => r.status === 'EXTRACTING' || r.status === 'UPLOADED')
+      return hasPending ? 3000 : false
+    },
   })
 }
 

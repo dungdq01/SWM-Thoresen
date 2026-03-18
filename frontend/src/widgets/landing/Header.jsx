@@ -29,12 +29,13 @@ export function Header() {
     <header
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
-        isScrolled 
-          ? 'bg-white shadow-lg py-3' 
-          : 'bg-transparent py-4'
+        isScrolled
+          ? 'bg-white shadow-lg'
+          : 'bg-transparent'
       )}
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
-      <div className="container-custom">
+      <div className={cn('container-custom transition-all duration-500', isScrolled ? 'py-3' : 'py-4')}>
         <nav className="flex items-center justify-between">
           {/* Logo */}
           <motion.div 
@@ -48,8 +49,7 @@ export function Header() {
                 src="/assets/logo.png" 
                 alt="SmartLog" 
                 className={cn(
-                  'h-10 w-auto transition-all duration-300',
-                  !isScrolled && 'brightness-0 invert'
+                  'h-10 w-auto transition-all duration-300'
                 )}
               />
               <div className="flex flex-col">
@@ -101,7 +101,7 @@ export function Header() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <button 
-              onClick={() => navigate('/app')}
+              onClick={() => navigate('/login')}
               className={cn(
                 'px-4 py-2 text-sm font-medium transition-all duration-200 rounded-lg',
                 isScrolled 
@@ -159,7 +159,7 @@ export function Header() {
                 </a>
               ))}
               <div className="pt-4 mt-4 space-y-3 border-t border-moon-100">
-                <Button variant="outline" size="md" className="w-full" onClick={() => { setIsMobileMenuOpen(false); navigate('/app') }}>
+                <Button variant="outline" size="md" className="w-full" onClick={() => { setIsMobileMenuOpen(false); navigate('/login') }}>
                   Đăng nhập
                 </Button>
                 <Button variant="accent" size="md" className="w-full" onClick={() => { setIsMobileMenuOpen(false); navigate('/app') }}>

@@ -136,7 +136,7 @@ export const MultiSelect = forwardRef(
             onKeyDown={handleKeyDown}
             className={triggerClass}
           >
-            <div className="flex flex-1 flex-wrap gap-1 py-1">
+            <div className="flex flex-1 gap-1 py-1 overflow-x-auto" style={{ flexWrap: 'nowrap', scrollbarWidth: 'none' }}>
               {selectedOptions.length === 0 ? (
                 <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                   {placeholder}
@@ -145,7 +145,7 @@ export const MultiSelect = forwardRef(
                 selectedOptions.map((opt) => (
                   <span
                     key={opt.value}
-                    className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-xs font-medium text-ice"
+                    className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-0.5 text-xs font-medium text-ice shrink-0"
                   >
                     {opt.label}
                     <button

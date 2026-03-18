@@ -2,7 +2,10 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { MainLayout } from './layouts'
 import { PageLoader } from '@shared/ui'
+import { ProtectedRoute } from '@domains/auth'
 
+const LoginPage = lazy(() => import('@pages/auth').then(m => ({ default: m.LoginPage })))
+const UnauthorizedPage = lazy(() => import('@pages/auth').then(m => ({ default: m.UnauthorizedPage })))
 const LandingPage = lazy(() => import('@pages/landing').then(m => ({ default: m.LandingPage })))
 const DashboardPage = lazy(() => import('@pages/dashboard').then(m => ({ default: m.DashboardPage })))
 const RolesPage = lazy(() => import('@pages/settings').then(m => ({ default: m.RolesPage })))
@@ -12,6 +15,7 @@ const NumberSequencesPage = lazy(() => import('@pages/settings').then(m => ({ de
 const GovernancePage = lazy(() => import('@pages/settings').then(m => ({ default: m.GovernancePage })))
 const LogsPage = lazy(() => import('@pages/settings').then(m => ({ default: m.LogsPage })))
 const DropdownConfigPage = lazy(() => import('@pages/settings').then(m => ({ default: m.DropdownConfigPage })))
+const UsersPage = lazy(() => import('@pages/settings').then(m => ({ default: m.UsersPage })))
 
 // Master Data Pages
 const MasterDataLayout = lazy(() => import('@pages/master-data').then(m => ({ default: m.MasterDataLayout })))
@@ -115,10 +119,22 @@ export const router = createBrowserRouter([
     path: '/',
     element: withSuspense(LandingPage),
   },
+  {
+    path: '/login',
+    element: withSuspense(LoginPage),
+  },
+  {
+    path: '/app/unauthorized',
+    element: withSuspense(UnauthorizedPage),
+  },
   // Authenticated routes - với MainLayout
   {
     path: '/app',
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -160,6 +176,10 @@ export const router = createBrowserRouter([
           {
             path: 'dropdown-config',
             element: withSuspense(DropdownConfigPage),
+          },
+          {
+            path: 'users',
+            element: withSuspense(UsersPage),
           },
         ],
       },
@@ -408,11 +428,11 @@ export const router = createBrowserRouter([
             path: 'channels',
             element: withSuspense(ChannelsPage),
           },
-          {
-            path: 'ocr',
-            element: withSuspense(OcrPage),
-          },
         ],
+      },
+      {
+        path: 'ocr',
+        element: withSuspense(OcrPage),
       },
       {
         path: 'vas',

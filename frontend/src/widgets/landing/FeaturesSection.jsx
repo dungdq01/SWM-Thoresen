@@ -65,7 +65,7 @@ export function FeaturesSection() {
           </p>
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-navy-900 leading-tight max-w-2xl">
-              Khác biệt để <span className="text-ice">Dẫn đầu</span> Thành công
+              Khác biệt để <span className="text-ice">dẫn đầu</span> thành công
             </h2>
             <a 
               href="#all-solutions" 

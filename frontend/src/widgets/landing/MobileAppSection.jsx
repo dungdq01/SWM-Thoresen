@@ -414,8 +414,8 @@ export function MobileAppSection() {
                       <Icon className={`w-4 h-4 ${notif.iconColor}`} />
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-navy-900 leading-tight">{notif.title}</p>
-                      <p className="text-[10px] text-navy-400 mt-0.5 leading-tight">{notif.sub}</p>
+                      <p className="text-[11px] font-semibold leading-tight" style={{ color: '#0c1829' }}>{notif.title}</p>
+                      <p className="text-[10px] mt-0.5 leading-tight" style={{ color: '#5374a7' }}>{notif.sub}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -443,7 +443,7 @@ export function MobileAppSection() {
                   animate={{ opacity: [1, 0.3, 1] }}
                   transition={{ duration: 1.2, repeat: Infinity }}
                 />
-                <span className="text-[10px] font-semibold text-green-600 uppercase tracking-wider">Live</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#16a34a' }}>Live</span>
               </div>
             </motion.div>
           </motion.div>

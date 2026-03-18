@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, Bell, ChevronDown, Menu, Search, Sun, Moon } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Bell, ChevronDown, Menu, Search, Sun, Moon, LogOut } from 'lucide-react'
+import { useAuth } from '@domains/auth'
 import { AppSidebar } from './components/AppSidebar'
 import { MobileBottomNav } from './components/MobileBottomNav'
 import { Button, Switch } from '@shared/ui'
@@ -20,14 +21,50 @@ const HEADER_BTN = [
   'hover:border-ice/40 hover:text-ice-dark',
 ].join(' ')
 
+const ROLE_LABELS = {
+  ADMIN: 'Quản trị viên',
+  WH_MANAGER: 'Quản lý kho',
+  WH_KEEPER: 'Thủ kho',
+  WB_OPERATOR: 'Vận hành cân',
+  OPS_SUPER: 'Giám sát vận hành',
+  BILLING_OFC: 'Nhân viên billing',
+  GOVERNANCE_MANAGER: 'Quản lý governance',
+  CUST_VIEWER: 'Khách hàng',
+}
+
 export function MainLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMockEnabled, setIsMockEnabledState] = useState(() => isMockApiEnabled())
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const { open: openPalette } = useCommandPalette()
   const { isDark, toggle: toggleDark } = useDarkMode()
   const { showBottomNav } = usePlatform()
+
+  const displayName = user?.fullName || user?.username || 'Người dùng'
+  const initials = displayName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  const primaryRole = user?.roleCodes?.[0]
+  const roleLabel = primaryRole ? (ROLE_LABELS[primaryRole] || primaryRole) : ''
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false)
+    await logout()
+    navigate('/login')
+  }
 
   useEffect(() => {
     document.documentElement.style.setProperty('--bottom-nav-height', showBottomNav ? '56px' : '0px')
@@ -153,19 +190,42 @@ export function MainLayout() {
               </button>
 
               {/* User avatar */}
-              <button
-                className="flex items-center gap-2 rounded-xl border px-2 py-1.5 transition-all duration-200 hover:border-ice/40"
-                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-navy-800 text-xs font-bold text-ice-light">
-                  AD
-                </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--color-text)' }}>Admin TVL</p>
-                  <p className="text-xs leading-tight" style={{ color: 'var(--color-text-muted)' }}>Vận hành nền tảng</p>
-                </div>
-                <ChevronDown className="hidden sm:block h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
-              </button>
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 rounded-xl border px-2 py-1.5 transition-all duration-200 hover:border-ice/40"
+                  style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-navy-800 text-xs font-bold text-ice-light">
+                    {initials}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--color-text)' }}>{displayName}</p>
+                    <p className="text-xs leading-tight" style={{ color: 'var(--color-text-muted)' }}>{roleLabel}</p>
+                  </div>
+                  <ChevronDown className="hidden sm:block h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-xl z-50 py-2"
+                    style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
+                  >
+                    <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{displayName}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{user?.username}</p>
+                      {roleLabel && <p className="text-xs mt-0.5 text-ice">{roleLabel}</p>}
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors hover:bg-red-500/10 text-red-400"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>

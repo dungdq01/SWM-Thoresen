@@ -35,6 +35,10 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['foundation.roles.update', 'FOUNDATION', 'ROLE', 'UPDATE', true],
   ['foundation.roles.assign_permission', 'FOUNDATION', 'ROLE', 'ASSIGN_PERMISSION', true],
   ['foundation.permissions.view', 'FOUNDATION', 'PERMISSION', 'VIEW', false],
+  ['foundation.users.view', 'FOUNDATION', 'USER', 'VIEW', false],
+  ['foundation.users.create', 'FOUNDATION', 'USER', 'CREATE', true],
+  ['foundation.users.update', 'FOUNDATION', 'USER', 'UPDATE', true],
+  ['foundation.users.reset_password', 'FOUNDATION', 'USER', 'RESET_PASSWORD', true],
   ['foundation.users.assign_role', 'FOUNDATION', 'USER_ROLE', 'ASSIGN', true],
   ['foundation.permissions.me.view', 'FOUNDATION', 'ME_PERMISSION', 'VIEW', false],
   ['foundation.reason_codes.view', 'FOUNDATION', 'REASON_CODE', 'VIEW', false],
@@ -556,6 +560,218 @@ async function main() {
       assignedBy: admin.id,
     },
   });
+
+  // ========== Go-live Users + Credentials + UserRoles ==========
+  const goLiveUsers = [
+    { userCode: 'wh_manager',   username: 'wh_manager',   fullName: 'Nguyễn Văn Quản',  email: 'whmanager@swms.local',   password: 'WhMgr@123456',  roleCode: 'WH_MANAGER',  userRoleId: 'e5f663aa-4dd3-67ef-1aff-df605df8cc03' },
+    { userCode: 'wh_keeper',    username: 'wh_keeper',    fullName: 'Trần Thị Kho',      email: 'whkeeper@swms.local',    password: 'WhKpr@123456',  roleCode: 'WH_KEEPER',   userRoleId: 'f6a774bb-5ee4-78f0-2b00-ea706ea9dd04' },
+    { userCode: 'wb_operator',  username: 'wb_operator',  fullName: 'Lê Minh Cân',       email: 'wboperator@swms.local',  password: 'WbOp@123456',   roleCode: 'WB_OPERATOR', userRoleId: 'a7b885cc-6ff5-89a1-3c11-fb807fb0ee05' },
+    { userCode: 'ops_super',    username: 'ops_super',    fullName: 'Phạm Đức Giám',     email: 'opssuper@swms.local',    password: 'OpSu@123456',   roleCode: 'OPS_SUPER',   userRoleId: 'b8c996dd-7006-9ab2-4d22-ac908ac1ff06' },
+    { userCode: 'cust_viewer',  username: 'cust_viewer',  fullName: 'Hoàng Thị Khách',   email: 'custviewer@swms.local',  password: 'CuVw@123456',   roleCode: 'CUST_VIEWER', userRoleId: 'c9daa7ee-8117-0bc3-5e33-bda09bd20007' },
+  ];
+
+  for (const u of goLiveUsers) {
+    const user = await prisma.appUser.upsert({
+      where: { userCode: u.userCode },
+      update: { fullName: u.fullName, isActive: true },
+      create: {
+        userCode: u.userCode,
+        username: u.username,
+        fullName: u.fullName,
+        email: u.email,
+      },
+    });
+
+    const hash = await argon2.hash(u.password, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
+
+    await prisma.authLocalCredential.upsert({
+      where: { userId: user.id },
+      update: { passwordHash: hash, mustChangePassword: false },
+      create: {
+        userId: user.id,
+        passwordHash: hash,
+        passwordAlgo: 'ARGON2ID',
+        mustChangePassword: false,
+      },
+    });
+
+    const role = await prisma.role.findUnique({ where: { roleCode: u.roleCode } });
+    if (role) {
+      await prisma.userRole.upsert({
+        where: { id: u.userRoleId },
+        update: {
+          userId: user.id,
+          roleId: role.id,
+          isPrimary: true,
+          isActive: true,
+          warehouseCode: 'WH5.1',
+        },
+        create: {
+          id: u.userRoleId,
+          userId: user.id,
+          roleId: role.id,
+          isPrimary: true,
+          isActive: true,
+          warehouseCode: 'WH5.1',
+          assignedBy: admin.id,
+        },
+      });
+    }
+  }
+
+  // ========== Role-Permission Assignments for Go-live Roles ==========
+
+  // Lookup all go-live roles
+  const whManagerRole = await prisma.role.findUnique({ where: { roleCode: 'WH_MANAGER' } });
+  const whKeeperRole = await prisma.role.findUnique({ where: { roleCode: 'WH_KEEPER' } });
+  const wbOperatorRole = await prisma.role.findUnique({ where: { roleCode: 'WB_OPERATOR' } });
+  const opsSuperRole = await prisma.role.findUnique({ where: { roleCode: 'OPS_SUPER' } });
+  const custViewerRole = await prisma.role.findUnique({ where: { roleCode: 'CUST_VIEWER' } });
+
+  // Permission prefix patterns per role
+  const rolePermissionMap: Array<{ role: typeof whManagerRole; prefixes: string[] }> = [
+    // WH_MANAGER: Full warehouse ops — inbound, outbound, inventory, master data, work, reporting (no foundation admin, no billing)
+    {
+      role: whManagerRole,
+      prefixes: [
+        'master_data.',
+        'inbound.',
+        'sales_order.',
+        'OUTBOUND.',
+        'inventory.control.',
+        'work.',
+        'REPORTING.DASHBOARD.',
+        'REPORTING.INVENTORY.',
+        'REPORTING.AUDIT.',
+        'foundation.reason_codes.view',
+        'foundation.permissions.me.view',
+      ],
+    },
+    // WH_KEEPER: Daily warehouse ops — inbound receive, outbound execute, inventory view, work execution
+    {
+      role: whKeeperRole,
+      prefixes: [
+        'inbound.receipt.',
+        'inbound.weigh.',
+        'inbound.dashboard.',
+        'OUTBOUND.SHIPMENT.READ',
+        'OUTBOUND.SHIPMENT.CONFIRM',
+        'OUTBOUND.SHIPMENT.SHIP',
+        'OUTBOUND.WEIGH.',
+        'OUTBOUND.DASHBOARD.',
+        'inventory.control.onhand.read',
+        'inventory.control.movement.read',
+        'inventory.control.move.',
+        'inventory.control.status.',
+        'work.execution.',
+        'work.dashboard.',
+        'master_data.lookup.view',
+        'master_data.warehouse.view',
+        'master_data.item.view',
+        'master_data.owner.view',
+        'master_data.location.view',
+        'master_data.zone.view',
+        'master_data.uom.view',
+        'master_data.inventory_status.view',
+        'foundation.permissions.me.view',
+      ],
+    },
+    // WB_OPERATOR: Weighbridge + OCR only
+    {
+      role: wbOperatorRole,
+      prefixes: [
+        'inbound.weigh.',
+        'inbound.receipt.view',
+        'inbound.dashboard.',
+        'OUTBOUND.WEIGH.',
+        'OUTBOUND.SHIPMENT.READ',
+        'OUTBOUND.DASHBOARD.',
+        'INTEGRATION.WEIGHBRIDGE.',
+        'INTEGRATION.WEIGHBRIDGE_DEVICE.',
+        'INTEGRATION.OCR.',
+        'integration.weighbridge.',
+        'master_data.lookup.view',
+        'master_data.item.view',
+        'master_data.owner.view',
+        'master_data.vehicle_type.view',
+        'foundation.permissions.me.view',
+      ],
+    },
+    // OPS_SUPER: Supervise all ops — read everything + dashboards + reporting + approve adjustments
+    {
+      role: opsSuperRole,
+      prefixes: [
+        'inbound.',
+        'sales_order.view',
+        'sales_order.dashboard.',
+        'OUTBOUND.SHIPMENT.READ',
+        'OUTBOUND.DASHBOARD.',
+        'OUTBOUND.APPROVAL.',
+        'inventory.control.',
+        'work.',
+        'REPORTING.',
+        'INTEGRATION.MONITORING.',
+        'integration.monitoring.',
+        'integration.alerts.',
+        'INTEGRATION.ALERT.',
+        'master_data.lookup.view',
+        'master_data.warehouse.view',
+        'master_data.item.view',
+        'master_data.owner.view',
+        'master_data.customer.view',
+        'foundation.audit_logs.view',
+        'foundation.exception_logs.',
+        'foundation.permissions.me.view',
+      ],
+    },
+    // CUST_VIEWER: Read-only within owner scope — inventory on-hand, movement, inbound/outbound status, reporting
+    {
+      role: custViewerRole,
+      prefixes: [
+        'inbound.po.view',
+        'inbound.receipt.view',
+        'inbound.dashboard.',
+        'sales_order.view',
+        'sales_order.dashboard.',
+        'OUTBOUND.SHIPMENT.READ',
+        'OUTBOUND.DASHBOARD.',
+        'inventory.control.onhand.read',
+        'inventory.control.movement.read',
+        'REPORTING.DASHBOARD.',
+        'REPORTING.INVENTORY.',
+        'foundation.permissions.me.view',
+      ],
+    },
+  ];
+
+  for (const { role, prefixes } of rolePermissionMap) {
+    if (!role) continue;
+    const matchedPermissions = permissions.filter((p) =>
+      prefixes.some((prefix) => p.permissionCode.startsWith(prefix) || p.permissionCode === prefix),
+    );
+    for (const permission of matchedPermissions) {
+      await prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: role.id,
+            permissionId: permission.id,
+          },
+        },
+        update: { effect: RolePermissionEffect.ALLOW, createdBy: admin.id },
+        create: {
+          roleId: role.id,
+          permissionId: permission.id,
+          effect: RolePermissionEffect.ALLOW,
+          createdBy: admin.id,
+        },
+      });
+    }
+  }
 
   await prisma.reasonCode.upsert({
     where: { code: 'MANUAL_ADJUST' },

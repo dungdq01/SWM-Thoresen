@@ -36,8 +36,8 @@ export function usePlatform() {
     }
   }, [isNative])
 
-  // Show bottom nav on mobile
-  const showBottomNav = isMobile
+  // Bottom nav disabled
+  const showBottomNav = false
 
   return { platform, isNative, isIos, isAndroid, isMobile, showBottomNav }
 }

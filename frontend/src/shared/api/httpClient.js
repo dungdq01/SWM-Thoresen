@@ -12,6 +12,11 @@ export const httpClient = axios.create({
 
 httpClient.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('accessToken')
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
+
     const userCode = localStorage.getItem('userCode') || 'admin'
     config.headers['x-user-code'] = userCode
     
