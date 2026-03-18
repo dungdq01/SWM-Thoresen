@@ -4,7 +4,8 @@ import { Button, Badge, Input, Modal } from '@shared/ui'
 import { useOcrResultDetail, useConfirmOcrResult, useRejectOcrResult } from '@domains/integration'
 
 const CONFIDENCE_THRESHOLD = {
-  bl: 90,
+  ticket: 90,
+  bl: 85,
   vehicle: 90,
   product: 85,
   vessel: 85,
@@ -85,6 +86,7 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
   useEffect(() => {
     if (result) {
       setEdits({
+        ticketNumber: result.ticketNumber || '',
         blNumber: result.blNumber || '',
         vehicleNumber: result.vehicleNumber || '',
         productName: result.productName || '',
@@ -105,6 +107,7 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
     await confirmMutation.mutateAsync({
       id: resultId,
       data: {
+        confirmedTicketNumber: edits.ticketNumber,
         confirmedBlNumber: edits.blNumber,
         confirmedVehicleNumber: edits.vehicleNumber,
         confirmedProductName: edits.productName,
@@ -216,7 +219,8 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
           {/* Fields */}
           <div className="rounded-xl border divide-y" style={{ borderColor: 'var(--color-border)' }}>
             <div className="px-3">
-              <FieldRow label="Số phiếu" value={result.blNumber} confidence={result.blConfidence || 0} threshold={CONFIDENCE_THRESHOLD.bl} editValue={edits.blNumber} onEditChange={updateEdit('blNumber')} isLow={Number(result.blConfidence || 0) > 0 && Number(result.blConfidence || 0) < CONFIDENCE_THRESHOLD.bl} />
+              <FieldRow label="Số phiếu cân" value={result.ticketNumber} confidence={result.ticketConfidence || 0} threshold={CONFIDENCE_THRESHOLD.ticket} editValue={edits.ticketNumber} onEditChange={updateEdit('ticketNumber')} isLow={Number(result.ticketConfidence || 0) > 0 && Number(result.ticketConfidence || 0) < CONFIDENCE_THRESHOLD.ticket} />
+              <FieldRow label="Số vận đơn (B/L)" value={result.blNumber} confidence={result.blConfidence || 0} threshold={CONFIDENCE_THRESHOLD.bl} editValue={edits.blNumber} onEditChange={updateEdit('blNumber')} isLow={Number(result.blConfidence || 0) > 0 && Number(result.blConfidence || 0) < CONFIDENCE_THRESHOLD.bl} />
               <FieldRow label="Tên tàu" value={result.vesselName} confidence={result.vesselConfidence || 0} threshold={CONFIDENCE_THRESHOLD.vessel} editValue={edits.vesselName} onEditChange={updateEdit('vesselName')} isLow={Number(result.vesselConfidence || 0) > 0 && Number(result.vesselConfidence || 0) < CONFIDENCE_THRESHOLD.vessel} />
               <FieldRow label="Khách hàng" value={result.customerName} confidence={result.customerConfidence || 0} threshold={CONFIDENCE_THRESHOLD.customer} editValue={edits.customerName} onEditChange={updateEdit('customerName')} isLow={Number(result.customerConfidence || 0) > 0 && Number(result.customerConfidence || 0) < CONFIDENCE_THRESHOLD.customer} />
               <FieldRow label="Hàng hóa" value={result.productName} confidence={result.productConfidence || 0} threshold={CONFIDENCE_THRESHOLD.product} editValue={edits.productName} onEditChange={updateEdit('productName')} isLow={Number(result.productConfidence || 0) > 0 && Number(result.productConfidence || 0) < CONFIDENCE_THRESHOLD.product} />
@@ -250,6 +254,42 @@ export function OcrReviewPanel({ resultId, onClose, onActionComplete }) {
               </div>
             </div>
           </div>
+
+          {/* Linked info — show PO/Receipt for inbound, SO/Shipment for outbound */}
+          {result.status === 'LINKED' && (
+            <div className="rounded-xl border px-3 py-3 space-y-2" style={{ borderColor: 'var(--color-border)', backgroundColor: 'rgba(16,185,129,0.04)' }}>
+              <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
+                {result.direction === 'OUTBOUND' ? 'Đã liên kết phiếu xuất' : 'Đã liên kết phiếu nhập'}
+              </p>
+              {result.direction === 'OUTBOUND' ? (
+                <div className="space-y-1">
+                  {result.linkedSoId && (
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Số SO: <span className="font-medium" style={{ color: 'var(--color-text)' }}>{result.linkedSoId}</span>
+                    </p>
+                  )}
+                  {result.linkedShipmentId && (
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Phiếu xuất: <span className="font-mono font-medium" style={{ color: 'var(--color-text)' }}>{result.linkedShipmentId.slice(0, 8)}...</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {result.linkedPoId && (
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Số PO: <span className="font-medium" style={{ color: 'var(--color-text)' }}>{result.linkedPoId}</span>
+                    </p>
+                  )}
+                  {result.linkedReceiptId && (
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      Phiếu nhập: <span className="font-mono font-medium" style={{ color: 'var(--color-text)' }}>{result.linkedReceiptId.slice(0, 8)}...</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Action buttons — full width */}
           {canEdit && (

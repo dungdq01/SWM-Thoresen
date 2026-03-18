@@ -80,6 +80,7 @@ export class ReceiptService {
         warehouseId: dto.warehouseId,
         vehicleNumber: dto.vehicleNumber,
         blNumber: dto.blNumber || null,
+        vesselName: dto.vesselName || null,
         expectedQty: dto.expectedQty,
         notes: dto.notes || null,
         sourceApp: dto.sourceApp || 'WEB',

@@ -50,6 +50,7 @@ export class OcrUploadService {
 
   async getResults(params: {
     status?: string;
+    direction?: string;
     warehouseId?: string;
     linkedReceiptId?: string;
     dateFrom?: string;
@@ -59,6 +60,7 @@ export class OcrUploadService {
   }) {
     const result = await this.ocrResultRepo.findMany({
       status: params.status,
+      direction: params.direction,
       warehouseId: params.warehouseId,
       linkedReceiptId: params.linkedReceiptId,
       dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,

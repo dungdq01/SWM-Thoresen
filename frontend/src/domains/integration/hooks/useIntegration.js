@@ -133,9 +133,10 @@ export function useRecordWeight() {
 
 // OCR Hooks
 export function useOcrResults(filters = {}) {
+  const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== '' && v != null))
   return useQuery({
-    queryKey: [...QUERY_KEYS.ocrResults, filters],
-    queryFn: () => integrationApi.getOcrResults(filters),
+    queryKey: [...QUERY_KEYS.ocrResults, cleanFilters],
+    queryFn: () => integrationApi.getOcrResults(cleanFilters),
     staleTime: 10000,
     refetchInterval: (query) => {
       const rows = query?.state?.data?.data || []

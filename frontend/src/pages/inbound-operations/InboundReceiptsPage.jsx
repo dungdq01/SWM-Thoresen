@@ -200,8 +200,10 @@ export function InboundReceiptsPage() {
             <TableRow hoverable={false}>
               <TableHead className="w-8"></TableHead>
               <TableHead>Mã ASN</TableHead>
+              <TableHead>Số PO</TableHead>
               <TableHead>Số B/L</TableHead>
               <TableHead>Chủ hàng</TableHead>
+              <TableHead>Tên tàu</TableHead>
               <TableHead>Số xe</TableHead>
               <TableHead align="right">SL dự kiến</TableHead>
               <TableHead align="right">SL đã nhận</TableHead>
@@ -210,8 +212,8 @@ export function InboundReceiptsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableLoading colSpan={9} />}
-            {!isLoading && rows.length === 0 && <TableEmpty colSpan={9} message="Chưa có phiếu nhập nào" />}
+            {isLoading && <TableLoading colSpan={11} />}
+            {!isLoading && rows.length === 0 && <TableEmpty colSpan={11} message="Chưa có phiếu nhập nào" />}
             {!isLoading && rows.map((receipt) => {
               const isExpanded = expandedId === receipt.id
               const totalExpectedFromLines = (receipt.lines || []).reduce((sum, l) => sum + Number(l.expectedQty || 0), 0)
@@ -234,11 +236,17 @@ export function InboundReceiptsPage() {
                       <p className="text-xs text-navy-400">{receipt.lines?.length || 0} dòng</p>
                     </TableCell>
                     <TableCell>
+                      <span className="font-mono text-sm text-navy-600">{receipt.poId || '—'}</span>
+                    </TableCell>
+                    <TableCell>
                       <span className="font-mono text-sm text-navy-600">{receipt.blNumber || '—'}</span>
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-navy-800">{receipt.owner?.ownerCode || receipt.ownerId}</p>
                       <p className="text-xs text-navy-400">{receipt.owner?.ownerName}</p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-navy-700">{receipt.vesselName || '—'}</span>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-sm text-navy-700">{receipt.vehiclePlate || receipt.vehicleNumber || '—'}</span>
@@ -311,7 +319,7 @@ export function InboundReceiptsPage() {
                   {/* Expand: line details */}
                   {isExpanded && (
                     <tr key={`${receipt.id}-lines`}>
-                      <td colSpan={9} className="p-0">
+                      <td colSpan={11} className="p-0">
                         <div className="border-t border-b border-moon-200 bg-moon-50/70 px-6 py-4">
                           <div className="mb-3 flex items-center gap-2">
                             <Package className="h-4 w-4 text-ice" />

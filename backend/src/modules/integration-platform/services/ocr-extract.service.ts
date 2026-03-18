@@ -16,6 +16,8 @@ const SOURCE_ADJUST: Record<string, number> = {
 };
 
 export interface OcrExtractedData {
+  ticketNumber?: string;
+  ticketConfidence?: number;
   blNumber?: string;
   blConfidence?: number;
   vehicleNumber?: string;
@@ -76,6 +78,8 @@ export class OcrExtractService {
         : OcrStatus.REVIEW_REQUIRED;
 
       const updatePayload: Record<string, any> = { status };
+      if (extractedData.ticketNumber !== undefined) updatePayload.ticketNumber = extractedData.ticketNumber;
+      if (extractedData.ticketConfidence !== undefined) updatePayload.ticketConfidence = extractedData.ticketConfidence;
       if (extractedData.blNumber !== undefined) updatePayload.blNumber = extractedData.blNumber;
       if (extractedData.blConfidence !== undefined) updatePayload.blConfidence = extractedData.blConfidence;
       if (extractedData.vehicleNumber !== undefined) updatePayload.vehicleNumber = extractedData.vehicleNumber;
@@ -106,9 +110,12 @@ export class OcrExtractService {
 
       this.logger.log(`OCR extraction completed for ${ocrResultId}, status: ${status}`);
 
-      // Trigger auto-link for INBOUND OCR (fire-and-forget)
+      // Trigger auto-link (fire-and-forget) based on direction
       this.ocrAutoLinkService.autoLinkInbound(ocrResultId).catch(err => {
-        this.logger.error(`Auto-link failed for ${ocrResultId}: ${err?.message || err}`);
+        this.logger.error(`Inbound auto-link failed for ${ocrResultId}: ${err?.message || err}`);
+      });
+      this.ocrAutoLinkService.autoLinkOutbound(ocrResultId).catch(err => {
+        this.logger.error(`Outbound auto-link failed for ${ocrResultId}: ${err?.message || err}`);
       });
 
       return extractedData;
@@ -125,33 +132,29 @@ export class OcrExtractService {
     }
   }
 
-  // ─── 2-Stage Gemini Pipeline + Custom Parser Fallback ──────────
+  // ─── 2-Stage Gemini Pipeline + Custom Parser Gap-Fill ──────────
   private async runExtractionPipeline(filePath: string): Promise<OcrExtractedData> {
     // Stage 1: Gemini Vision → Structured Markdown
     const ocrResult = await this.ocrProviderService.extractText(filePath);
     const ocrText = ocrResult.fullText;
 
     this.logger.log(`Stage 1 done (${ocrResult.provider}/${ocrResult.model}): ${ocrText.length} chars`);
+    this.logger.debug(`Stage 1 OCR text (first 500 chars): ${ocrText.substring(0, 500)}`);
 
     // Stage 2: Gemini Extract → Structured JSON (only if Gemini available)
     let geminiFields: OcrExtractedFields = {};
     if (ocrResult.provider === 'gemini') {
       geminiFields = await this.ocrProviderService.extractFields(ocrText);
-      this.logger.log(`Stage 2 Gemini extraction: ${Object.keys(geminiFields).filter(k => !k.startsWith('_')).length} fields`);
+      const geminiFieldNames = Object.keys(geminiFields).filter(k => !k.startsWith('_'));
+      this.logger.log(`Stage 2 Gemini extraction: ${geminiFieldNames.length} fields → [${geminiFieldNames.join(', ')}]`);
+      this.logger.log(`Stage 2 Gemini values: ${JSON.stringify(geminiFields, null, 2)}`);
     }
 
-    // Check if Gemini extracted enough fields
-    const geminiHasData = !!(
-      geminiFields.documentNumber || geminiFields.vehicleNumber ||
-      geminiFields.grossWeightKg || geminiFields.netWeightKg
-    );
-
-    // Fallback: Custom parser (3-layer synonym + fuzzy + regex)
-    let parserFields: any = null;
-    if (!geminiHasData) {
-      this.logger.warn('Gemini returned insufficient data — falling back to custom parser');
-      parserFields = this.ocrFieldParserService.parseFields(ocrText);
-    }
+    // Stage 3: ALWAYS run custom parser (3-layer synonym + fuzzy + regex) to fill gaps
+    const parserFields = this.ocrFieldParserService.parseFields(ocrText);
+    const pf = parserFields as Record<string, any>;
+    const parserFieldNames = Object.keys(pf).filter(k => pf[k] != null && pf[k] !== 0 && pf[k] !== '');
+    this.logger.log(`Stage 3 Parser extraction: ${parserFieldNames.length} non-empty fields → [${parserFieldNames.join(', ')}]`);
 
     // Build final result — prefer Gemini, fill gaps from parser
     return this.mergeResults(geminiFields, parserFields, ocrResult.rawResponse);
@@ -178,10 +181,16 @@ export class OcrExtractService {
 
     const result: OcrExtractedData = { rawResponse };
 
-    // BL / Document Number
-    result.blNumber = gemini.documentNumber ?? parser?.blNumber;
-    result.blConfidence = gemini.documentNumber
+    // Ticket Number (số phiếu cân)
+    result.ticketNumber = gemini.documentNumber ?? parser?.ticketNumber;
+    result.ticketConfidence = gemini.documentNumber
       ? aiConf('document_number')
+      : (parser?.ticketConfidence ?? 0);
+
+    // BL / Bill of Lading (số vận đơn)
+    result.blNumber = gemini.blNumber ?? parser?.blNumber;
+    result.blConfidence = gemini.blNumber
+      ? aiConf('bl_number')
       : (parser?.blConfidence ?? 0);
 
     // Vehicle
@@ -235,7 +244,7 @@ export class OcrExtractService {
 
     // Overall confidence
     const confidences = [
-      result.blConfidence, result.vehicleConfidence,
+      result.ticketConfidence, result.blConfidence, result.vehicleConfidence,
       result.productConfidence, result.vesselConfidence,
       result.customerConfidence, result.deliveryConfidence,
       result.grossWeightConfidence, result.tareWeightConfidence,
@@ -245,6 +254,9 @@ export class OcrExtractService {
     result.overallConfidence = confidences.length > 0
       ? Math.round((confidences.reduce((a, b) => a + b, 0) / confidences.length) * 10) / 10
       : 0;
+
+    // Debug: log merged result summary
+    this.logger.log(`Merge result: ticket=${result.ticketNumber || '(none)'}, bl=${result.blNumber || '(none)'}, vehicle=${result.vehicleNumber || '(none)'}, vessel=${result.vesselName || '(none)'}, product=${result.productName || '(none)'}, customer=${result.customerName || '(none)'}, gross=${result.grossWeight ?? '(none)'}, tare=${result.tareWeight ?? '(none)'}, net=${result.qtyExtracted ?? '(none)'}, overall=${result.overallConfidence}%`);
 
     return result;
   }

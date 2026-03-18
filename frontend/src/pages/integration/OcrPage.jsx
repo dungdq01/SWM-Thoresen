@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react'
-import { ScanLine, Camera, RefreshCw, ChevronRight, Clock, Truck, Package, FileText, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ScanLine, Camera, RefreshCw, ChevronRight, Clock, Truck, Package, FileText, Loader2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
 import { useOcrResults } from '@domains/integration'
 import { Pagination } from '@shared/ui'
 import { OcrUploadModal } from './components/OcrUploadModal'
-import { OcrReviewPanel, OcrStatusBadge } from './components/OcrReviewPanel'
+import { OcrStatusBadge } from './components/OcrReviewPanel'
 
 const STATUS_FILTERS = [
   { value: '', label: 'Tất cả' },
@@ -44,9 +45,20 @@ function OcrCard({ row, isSelected, onClick }) {
       }`}
       style={{ backgroundColor: isSelected ? undefined : 'var(--color-bg-card)' }}
     >
-      {/* Top: status + confidence + time */}
+      {/* Top: direction + status + confidence + time */}
       <div className="flex items-center justify-between gap-2 mb-2">
-        <OcrStatusBadge status={row.status} />
+        <div className="flex items-center gap-1.5">
+          {row.direction === 'OUTBOUND' ? (
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+              <ArrowUpFromLine className="h-3 w-3" />Xuất
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
+              <ArrowDownToLine className="h-3 w-3" />Nhập
+            </span>
+          )}
+          <OcrStatusBadge status={row.status} />
+        </div>
         <div className="flex items-center gap-2">
           <ConfidenceDot value={row.overallConfidence} />
           <span className="text-[10px] tabular-nums" style={{ color: 'var(--color-text-muted)' }}>
@@ -60,7 +72,7 @@ function OcrCard({ row, isSelected, onClick }) {
         <div className="flex items-center gap-2">
           <FileText className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>
-            {row.blNumber || 'Chưa có số phiếu'}
+            {row.ticketNumber || row.blNumber || 'Chưa có số phiếu'}
           </p>
         </div>
 
@@ -98,9 +110,9 @@ function OcrCard({ row, isSelected, onClick }) {
 }
 
 export function OcrPage() {
-  const [filters, setFilters] = useState({ page: 1, limit: 20, status: '' })
+  const [filters, setFilters] = useState({ page: 1, limit: 20, status: '', direction: '' })
   const [showUpload, setShowUpload] = useState(false)
-  const [selectedId, setSelectedId] = useState(null)
+  const navigate = useNavigate()
 
   const { data: response, isLoading, refetch } = useOcrResults(filters)
   const rows = response?.data || []
@@ -111,13 +123,8 @@ export function OcrPage() {
   }, [refetch])
 
   const handleCardClick = useCallback((id) => {
-    setSelectedId((prev) => (prev === id ? null : id))
-  }, [])
-
-  const handleActionComplete = useCallback(() => {
-    setSelectedId(null)
-    refetch()
-  }, [refetch])
+    navigate(`/app/ocr/${id}`)
+  }, [navigate])
 
   return (
     <div className="relative">
@@ -136,7 +143,34 @@ export function OcrPage() {
         </button>
       </div>
 
-      {/* ── Filter chips — horizontal scroll ── */}
+      {/* ── Direction filter ── */}
+      <div className="flex gap-1.5 mb-2">
+        {[
+          { value: '', label: 'Tất cả' },
+          { value: 'INBOUND', label: 'Nhập', icon: <ArrowDownToLine className="h-3 w-3" /> },
+          { value: 'OUTBOUND', label: 'Xuất', icon: <ArrowUpFromLine className="h-3 w-3" /> },
+        ].map((d) => (
+          <button
+            key={d.value}
+            onClick={() => setFilters((prev) => ({ ...prev, direction: d.value, page: 1 }))}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+              filters.direction === d.value
+                ? d.value === 'OUTBOUND'
+                  ? 'bg-amber-500 text-white'
+                  : d.value === 'INBOUND'
+                  ? 'bg-sky-500 text-white'
+                  : 'bg-ice text-navy-950'
+                : 'text-moon-300 hover:text-ice'
+            }`}
+            style={filters.direction !== d.value ? { backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)' } : undefined}
+          >
+            {d.icon}
+            {d.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Status filter chips — horizontal scroll ── */}
       <div className="-mx-3 px-3 mb-3 overflow-x-auto scrollbar-none">
         <div className="flex gap-1.5 pb-1" style={{ minWidth: 'max-content' }}>
           {STATUS_FILTERS.map((s) => (
@@ -185,7 +219,7 @@ export function OcrPage() {
           <OcrCard
             key={row.id}
             row={row}
-            isSelected={selectedId === row.id}
+            isSelected={false}
             onClick={() => handleCardClick(row.id)}
           />
         ))}
@@ -202,31 +236,8 @@ export function OcrPage() {
         </div>
       )}
 
-      {/* ── Review Panel — inline expand ── */}
-      {selectedId && (
-        <div className="mt-3 rounded-xl border overflow-hidden" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}>
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <h3 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>Chi tiết OCR</h3>
-            <button
-              onClick={() => setSelectedId(null)}
-              className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors active:scale-95"
-              style={{ color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-subtle)' }}
-            >
-              Đóng
-            </button>
-          </div>
-          <div className="p-4" style={{ paddingBottom: 'calc(var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom, 0px) + 16px)' }}>
-            <OcrReviewPanel
-              resultId={selectedId}
-              onClose={() => setSelectedId(null)}
-              onActionComplete={handleActionComplete}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── FAB: Chụp & Quét — ẩn khi đang review ── */}
-      {rows.length > 0 && !selectedId && (
+      {/* ── FAB: Chụp & Quét ── */}
+      {rows.length > 0 && (
         <button
           onClick={() => setShowUpload(true)}
           className="fixed right-4 z-30 flex items-center gap-2 rounded-2xl bg-ice px-5 py-3.5 text-sm font-bold text-navy-950 shadow-lg shadow-ice/20 transition-all active:scale-95"

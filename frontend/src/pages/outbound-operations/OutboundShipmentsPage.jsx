@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { Plus, FileOutput, Check, Trash2, Pencil, AlertTriangle, ChevronDown, ChevronUp, Package } from 'lucide-react'
+import { Plus, FileOutput, Check, Trash2, Pencil, AlertTriangle, ChevronDown, ChevronUp, Package, Eye } from 'lucide-react'
 import {
   useSalesOrders,
   useShipments,
@@ -14,7 +14,7 @@ import {
   Badge, Button, Input, Select, Pagination,
   Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow,
 } from '@shared/ui'
-import { CreateShipmentModal } from '@features/outbound-operations'
+import { CreateShipmentModal, ViewShipmentModal } from '@features/outbound-operations'
 
 /**
  * Phiếu xuất kho (Outbound Shipments)
@@ -64,6 +64,8 @@ const STATUS_LABELS = {
 export function OutboundShipmentsPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '' })
   const [shipmentModalState, setShipmentModalState] = useState({ isOpen: false, so: null })
+  const [viewModalState, setViewModalState] = useState({ isOpen: false, shipment: null })
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, shipment: null })
   const [expandedId, setExpandedId] = useState(null)
   const toggleExpand = useCallback((id) => setExpandedId((prev) => (prev === id ? null : id)), [])
 
@@ -103,6 +105,12 @@ export function OutboundShipmentsPage() {
   const handleOpenEditModal = (shp) => setEditModalState({ isOpen: true, shipment: shp })
   const handleCloseEditModal = () => setEditModalState({ isOpen: false, shipment: null })
 
+  const handleOpenViewModal = (shp) => setViewModalState({ isOpen: true, shipment: shp })
+  const handleCloseViewModal = () => setViewModalState({ isOpen: false, shipment: null })
+
+  const handleOpenDeleteConfirm = (shp) => setDeleteConfirm({ isOpen: true, shipment: shp })
+  const handleCloseDeleteConfirm = () => setDeleteConfirm({ isOpen: false, shipment: null })
+
   const handleCreateShipment = async (payload) => {
     try {
       await createShipment.mutateAsync(payload)
@@ -123,16 +131,16 @@ export function OutboundShipmentsPage() {
   }
 
   const handleConfirm = (id) => confirmShipment.mutate(id)
-  const handleDelete = (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa phiếu xuất này?')) {
-      deleteShipment.mutate(id)
+  const handleDeleteShipment = async () => {
+    try {
+      await deleteShipment.mutateAsync(deleteConfirm.shipment.id)
+      handleCloseDeleteConfirm()
+    } catch {
+      // Error handled by mutation
     }
   }
-  const handleReportError = (id) => {
-    const reason = window.prompt('Nhập lý do báo lỗi:', 'Lỗi dữ liệu')
-    if (reason) {
-      reportError.mutate({ id, reasonCode: reason })
-    }
+  const handleReportError = (shp) => {
+    reportError.mutate({ id: shp.id, reasonCode: 'Lỗi dữ liệu' })
   }
 
   const ownerOptions = [
@@ -261,21 +269,39 @@ export function OutboundShipmentsPage() {
                     </TableCell>
                     <TableCell align="center">
                       <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Xem phiếu"
+                          onClick={() => handleOpenViewModal(shp)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         {shp.status === 'NEW' && (
                           <>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
+                              className="text-emerald-600 hover:text-emerald-700"
                               title="Xác nhận"
                               onClick={() => handleConfirm(shp.id)}
+                              disabled={confirmShipment.isPending}
                             >
                               <Check className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 text-navy-600 hover:bg-navy-50"
+                              className="text-amber-500 hover:text-amber-600"
+                              title="Báo lỗi"
+                              onClick={() => handleReportError(shp)}
+                              disabled={reportError.isPending}
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               title="Chỉnh sửa"
                               onClick={() => handleOpenEditModal(shp)}
                             >
@@ -284,27 +310,13 @@ export function OutboundShipmentsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 text-red-600 hover:bg-red-50"
+                              className="text-red-500 hover:text-red-700"
                               title="Xóa"
-                              onClick={() => handleDelete(shp.id)}
+                              onClick={() => handleOpenDeleteConfirm(shp)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </>
-                        )}
-                        {shp.status === 'CONFIRMED' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-amber-600 hover:bg-amber-50"
-                            title="Báo lỗi"
-                            onClick={() => handleReportError(shp.id)}
-                          >
-                            <AlertTriangle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {!['NEW', 'CONFIRMED'].includes(shp.status) && (
-                          <span className="text-xs text-navy-400">—</span>
                         )}
                       </div>
                     </TableCell>
@@ -395,6 +407,13 @@ export function OutboundShipmentsPage() {
         isLoading={createShipment.isPending}
       />
 
+      {/* Modal — View Shipment */}
+      <ViewShipmentModal
+        isOpen={viewModalState.isOpen}
+        onClose={handleCloseViewModal}
+        shipment={viewModalState.shipment}
+      />
+
       {/* Modal — Edit Shipment */}
       <CreateShipmentModal
         isOpen={editModalState.isOpen}
@@ -406,6 +425,31 @@ export function OutboundShipmentsPage() {
         uoms={uoms}
         isLoading={updateShipment.isPending}
       />
+
+      {/* Modal — Delete Confirmation */}
+      {deleteConfirm.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-navy-900 mb-2">Xác nhận xóa</h3>
+            <p className="text-navy-600 mb-4">
+              Bạn có chắc chắn muốn xóa phiếu xuất <strong>{deleteConfirm.shipment?.shipmentNumber}</strong>?
+              Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCloseDeleteConfirm}>
+                Hủy
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteShipment}
+                disabled={deleteShipment.isPending}
+              >
+                {deleteShipment.isPending ? 'Đang xóa...' : 'Xóa phiếu'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

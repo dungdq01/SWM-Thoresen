@@ -63,6 +63,14 @@ export class CreateSalesOrderDto {
 
   @IsOptional()
   @IsString()
+  vesselName?: string;
+
+  @IsOptional()
+  @IsString()
+  vehiclePlate?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 
   @IsArray()
@@ -83,6 +91,14 @@ export class UpdateSalesOrderDto {
   @IsOptional()
   @IsString()
   blNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  vesselName?: string;
+
+  @IsOptional()
+  @IsString()
+  vehiclePlate?: string;
 
   @IsOptional()
   @IsString()

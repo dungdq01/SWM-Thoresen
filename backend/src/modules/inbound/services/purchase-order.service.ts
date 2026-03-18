@@ -130,6 +130,7 @@ export class PurchaseOrderService {
       vesselName: dto.vesselName || null,
       origin: dto.origin || null,
       blNumber: dto.blNumber || null,
+      vehiclePlate: dto.vehiclePlate || null,
       notes: dto.notes || null,
       totalExpectedQty,
       totalReceivedQty: 0,
@@ -238,6 +239,7 @@ export class PurchaseOrderService {
     if (dto.vesselName !== undefined) updateData.vesselName = dto.vesselName || null;
     if (dto.origin !== undefined) updateData.origin = dto.origin || null;
     if (dto.blNumber !== undefined) updateData.blNumber = dto.blNumber || null;
+    if (dto.vehiclePlate !== undefined) updateData.vehiclePlate = dto.vehiclePlate || null;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
 
     // Handle lines update if provided

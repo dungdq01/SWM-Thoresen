@@ -351,12 +351,16 @@ export class SimpleShipmentService {
       0
     ) || 0;
 
+    const soTypeMap: Record<string, string> = { STANDARD: 'SEA', CONSIGNMENT: 'LAND', INTERNAL: 'SEA' };
+
     return {
       id: shipment.id,
       shipmentNumber: shipment.shipmentNumber,
       soNumber: shipment.soId,
       salesOrderId: shipment.salesOrderId,
+      soType: soTypeMap[shipment.salesOrder?.orderType] || 'SEA',
       blNumber: shipment.salesOrder?.externalSoNumber || '',
+      vesselName: shipment.salesOrder?.vesselName || '',
       owner: shipment.owner ? {
         id: shipment.owner.id,
         ownerCode: shipment.owner.ownerCode,

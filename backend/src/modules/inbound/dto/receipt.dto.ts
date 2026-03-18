@@ -121,6 +121,11 @@ export class CreateReceiptDto {
   @IsString()
   blNumber?: string;
 
+  @ApiPropertyOptional({ description: 'Tên tàu / Nguồn gốc' })
+  @IsOptional()
+  @IsString()
+  vesselName?: string;
+
   @ApiProperty()
   @IsNumber()
   @IsPositive()

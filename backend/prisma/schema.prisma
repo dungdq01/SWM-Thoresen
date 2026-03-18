@@ -714,6 +714,7 @@ model MdOwner {
   bilExceptions      BilException[]
   salesOrders        SalesOrder[]
   inboundDocuments   InboundDocument[]
+  outboundDocuments  OutboundDocument[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -1448,6 +1449,7 @@ model PurchaseOrder {
   vesselName           String?               @map("vessel_name") @db.VarChar(200)
   origin               String?               @db.VarChar(200)
   blNumber             String?               @map("bl_number") @db.VarChar(100)
+  vehiclePlate         String?               @map("vehicle_plate") @db.VarChar(50)
   notes                String?               @db.Text
   totalExpectedQty     Decimal               @default(0) @map("total_expected_qty") @db.Decimal(18, 3)
   totalReceivedQty     Decimal               @default(0) @map("total_received_qty") @db.Decimal(18, 3)
@@ -1557,6 +1559,21 @@ enum InboundDocumentStatus {
   ERROR
 }
 
+enum OutboundDocumentType {
+  BILL_OF_LADING
+  PACKING_LIST
+  COMMERCIAL_INVOICE
+  DELIVERY_ORDER
+  WEIGHT_CERTIFICATE
+  OTHER
+}
+
+enum OutboundDocumentStatus {
+  DRAFT
+  SCANNED
+  ERROR
+}
+
 // ========== Module 4: Inbound Operations Models ==========
 
 model ReceiptHeader {
@@ -1570,6 +1587,7 @@ model ReceiptHeader {
   warehouseId           String        @map("warehouse_id") @db.Uuid
   vehicleNumber         String        @map("vehicle_number") @db.VarChar(30)
   blNumber              String?       @map("bl_number") @db.VarChar(50)
+  vesselName            String?       @map("vessel_name") @db.VarChar(200)
   expectedQty           Decimal       @map("expected_qty") @db.Decimal(18, 3)
   grossWeightKg         Decimal?      @map("gross_weight_kg") @db.Decimal(18, 3)
   tareWeightKg          Decimal?      @map("tare_weight_kg") @db.Decimal(18, 3)
@@ -1645,7 +1663,7 @@ model ReceiptLine {
 
 model InboundDocument {
   id              String                 @id @default(uuid()) @db.Uuid
-  documentCode    String                 @unique @map("document_code") @db.VarChar(50)
+  documentCode    String                 @map("document_code") @db.VarChar(50)
   receiptHeaderId String?                @map("receipt_header_id") @db.Uuid
   docType         InboundDocumentType    @map("doc_type")
   ownerId         String?                @map("owner_id") @db.Uuid
@@ -1664,10 +1682,39 @@ model InboundDocument {
   receiptHeader ReceiptHeader? @relation(fields: [receiptHeaderId], references: [id])
   owner         MdOwner?       @relation(fields: [ownerId], references: [id])
 
+  @@index([documentCode])
   @@index([receiptHeaderId])
   @@index([ownerId, docType])
   @@index([status, uploadedAt(sort: Desc)])
   @@map("inbound_document")
+}
+
+model OutboundDocument {
+  id                String                  @id @default(uuid()) @db.Uuid
+  documentCode      String                  @map("document_code") @db.VarChar(50)
+  shipmentHeaderId  String?                 @map("shipment_header_id") @db.Uuid
+  docType           OutboundDocumentType    @map("doc_type")
+  ownerId           String?                 @map("owner_id") @db.Uuid
+  vehicleNumber     String?                 @map("vehicle_number") @db.VarChar(30)
+  fileName          String                  @map("file_name") @db.VarChar(255)
+  filePath          String                  @map("file_path") @db.VarChar(500)
+  fileSize          Int                     @map("file_size")
+  mimeType          String                  @map("mime_type") @db.VarChar(100)
+  notes             String?                 @db.VarChar(500)
+  status            OutboundDocumentStatus  @default(DRAFT)
+  uploadedAt        DateTime                @default(now()) @map("uploaded_at")
+  uploadedBy        String?                 @map("uploaded_by") @db.Uuid
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  shipmentHeader ShipmentHeader? @relation(fields: [shipmentHeaderId], references: [id])
+  owner          MdOwner?        @relation(fields: [ownerId], references: [id])
+
+  @@index([documentCode])
+  @@index([shipmentHeaderId])
+  @@index([ownerId, docType])
+  @@index([status, uploadedAt(sort: Desc)])
+  @@map("outbound_document")
 }
 
 model ReceiptWeighingLog {
@@ -1930,6 +1977,7 @@ model ShipmentHeader {
   pickWorkLinks     ShipmentPickWorkLink[]
   postingLinks      ShipmentPostingLink[]
   soLinks           ShipmentSoLink[]
+  documents         OutboundDocument[]
 
   @@index([vehicleNumber, status, createdAt(sort: Desc)])
   @@index([soId, status, createdAt(sort: Desc)])
@@ -3319,6 +3367,8 @@ model M8OcrResult {
   imagePath          String          @map("image_path") @db.VarChar(500)
   providerName       String          @map("provider_name") @db.VarChar(50)
   providerRequestId  String?         @map("provider_request_id") @db.VarChar(100)
+  ticketNumber       String?         @map("ticket_number") @db.VarChar(50)
+  ticketConfidence   Decimal?        @map("ticket_confidence") @db.Decimal(5, 2)
   blNumber           String?         @map("bl_number") @db.VarChar(50)
   blConfidence       Decimal?        @map("bl_confidence") @db.Decimal(5, 2)
   vehicleNumber      String?         @map("vehicle_number") @db.VarChar(50)
@@ -3344,6 +3394,8 @@ model M8OcrResult {
   rawResponse        Json?           @map("raw_response")
   linkedReceiptId    String?         @map("linked_receipt_id") @db.Uuid
   linkedPoId         String?         @map("linked_po_id") @db.Uuid
+  linkedShipmentId   String?         @map("linked_shipment_id") @db.Uuid
+  linkedSoId         String?         @map("linked_so_id") @db.Uuid
   linkMethod         M8OcrLinkMethod? @map("link_method")
   operatorConfirmed  Boolean         @default(false) @map("operator_confirmed")
   status             M8OcrStatus     @default(UPLOADED)
@@ -4714,6 +4766,8 @@ model SalesOrder {
   warehouseId          String           @map("warehouse_id") @db.Uuid
   expectedDeliveryDate DateTime?        @map("expected_delivery_date") @db.Date
   deliveryAddress      String?          @map("delivery_address") @db.VarChar(500)
+  vesselName           String?          @map("vessel_name") @db.VarChar(200)
+  vehiclePlate         String?          @map("vehicle_plate") @db.VarChar(200)
   notes                String?          @db.Text
   currency             String           @default("VND") @db.VarChar(10)
   totalExpectedQtyKg   Decimal          @default(0) @map("total_expected_qty_kg") @db.Decimal(18, 3)

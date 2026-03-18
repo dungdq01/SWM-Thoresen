@@ -1,36 +1,43 @@
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Package, Truck, User, Warehouse, Calendar, FileText } from 'lucide-react'
+import { X, Package, Truck, User, Warehouse, Calendar, FileOutput, Ship } from 'lucide-react'
 import { Badge, Button } from '@shared/ui'
 
 const STATUS_LABELS = {
-  DRAFT: 'Tạo mới',
-  AWAITING_WEIGHING: 'Chờ cân',
-  WEIGHED_IN: 'Đang cân lần 1',
-  PROCESSING: 'Đang cân lần 2',
-  WEIGHED_OUT: 'Đã hoàn thành',
-  COMPLETED: 'Hoàn thành',
+  NEW: 'Tạo mới',
+  CONFIRMED: 'Đã xác nhận',
+  WEIGHING_1: 'Đang cân lần 1',
+  WEIGHING_2: 'Đang cân lần 2',
+  WEIGHED: 'Hoàn thành cân',
+  PICKING: 'Đang lấy hàng',
+  LOADING: 'Đang xếp hàng',
+  SHIPPED: 'Đã xuất',
+  CLOSED: 'Đã đóng',
   CANCELLED: 'Đã hủy',
 }
 
 const statusTone = (status) => {
-  if (status === 'DRAFT') return 'default'
-  if (status === 'AWAITING_WEIGHING') return 'info'
-  if (status === 'WEIGHED_IN') return 'info'
-  if (status === 'PROCESSING') return 'warning'
-  if (status === 'WEIGHED_OUT') return 'warning'
-  if (status === 'COMPLETED') return 'success'
+  if (status === 'NEW') return 'info'
+  if (status === 'CONFIRMED') return 'success'
+  if (['WEIGHING_1', 'WEIGHING_2'].includes(status)) return 'warning'
+  if (status === 'WEIGHED') return 'success'
+  if (['PICKING', 'LOADING'].includes(status)) return 'warning'
+  if (status === 'SHIPPED') return 'success'
+  if (status === 'CLOSED') return 'default'
   if (status === 'CANCELLED') return 'danger'
   return 'default'
 }
 
-export function ViewReceiptModal({ isOpen, onClose, receipt }) {
-  if (!isOpen || !receipt) return null
+export function ViewShipmentModal({ isOpen, onClose, shipment }) {
+  if (!isOpen || !shipment) return null
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—'
     return new Date(dateStr).toLocaleString('vi-VN')
   }
+
+  const totalExpected = (shipment.lines || []).reduce((sum, l) => sum + Number(l.expectedQty || 0), 0)
+  const totalShipped = (shipment.lines || []).reduce((sum, l) => sum + Number(l.shippedQty || 0), 0)
 
   return createPortal(
     <AnimatePresence>
@@ -53,11 +60,11 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
             <div className="flex items-center justify-between border-b border-moon-200 bg-moon-50 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-100">
-                  <FileText className="h-5 w-5 text-navy-600" />
+                  <FileOutput className="h-5 w-5 text-navy-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-navy-900">Chi tiết phiếu nhập</h2>
-                  <p className="text-sm text-navy-500">{receipt.asnId || 'Chưa có mã ASN'}</p>
+                  <h2 className="text-lg font-semibold text-navy-900">Chi tiết phiếu xuất</h2>
+                  <p className="text-sm text-navy-500">{shipment.shipmentNumber || 'Chưa có mã phiếu'}</p>
                 </div>
               </div>
               <button
@@ -73,8 +80,8 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
               {/* Status Badge */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-navy-500">Trạng thái:</span>
-                <Badge variant={statusTone(receipt.status)}>
-                  {STATUS_LABELS[receipt.status] || receipt.status}
+                <Badge variant={statusTone(shipment.status)}>
+                  {STATUS_LABELS[shipment.status] || shipment.status}
                 </Badge>
               </div>
 
@@ -82,18 +89,18 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-navy-500">
-                    <FileText className="h-4 w-4" />
-                    <span>Số PO</span>
+                    <FileOutput className="h-4 w-4" />
+                    <span>Số SO</span>
                   </div>
-                  <p className="font-medium text-navy-900">{receipt.poId || '—'}</p>
+                  <p className="font-medium text-navy-900">{shipment.soNumber || '—'}</p>
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-navy-500">
-                    <FileText className="h-4 w-4" />
+                    <FileOutput className="h-4 w-4" />
                     <span>Số B/L</span>
                   </div>
-                  <p className="font-medium text-navy-900">{receipt.blNumber || '—'}</p>
+                  <p className="font-medium text-navy-900">{shipment.blNumber || '—'}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -102,9 +109,9 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                     <span>Chủ hàng</span>
                   </div>
                   <p className="font-medium text-navy-900">
-                    {receipt.owner?.ownerCode || receipt.ownerId}
-                    {receipt.owner?.ownerName && (
-                      <span className="text-navy-500 ml-1">— {receipt.owner.ownerName}</span>
+                    {shipment.owner?.ownerCode || shipment.ownerId || '—'}
+                    {shipment.owner?.ownerName && (
+                      <span className="text-navy-500 ml-1">— {shipment.owner.ownerName}</span>
                     )}
                   </p>
                 </div>
@@ -115,9 +122,9 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                     <span>Kho</span>
                   </div>
                   <p className="font-medium text-navy-900">
-                    {receipt.warehouse?.warehouseCode || receipt.warehouse?.code || receipt.warehouseId}
-                    {(receipt.warehouse?.warehouseName || receipt.warehouse?.name) && (
-                      <span className="text-navy-500 ml-1">— {receipt.warehouse.warehouseName || receipt.warehouse.name}</span>
+                    {shipment.warehouse?.warehouseCode || shipment.warehouse?.code || shipment.warehouseId || '—'}
+                    {(shipment.warehouse?.warehouseName || shipment.warehouse?.name) && (
+                      <span className="text-navy-500 ml-1">— {shipment.warehouse.warehouseName || shipment.warehouse.name}</span>
                     )}
                   </p>
                 </div>
@@ -127,7 +134,15 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                     <Truck className="h-4 w-4" />
                     <span>Biển số xe</span>
                   </div>
-                  <p className="font-medium text-navy-900">{receipt.vehicleNumber || receipt.vehiclePlate || '—'}</p>
+                  <p className="font-medium text-navy-900">{shipment.vehicleNumber || '—'}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-navy-500">
+                    <Ship className="h-4 w-4" />
+                    <span>Tên tàu</span>
+                  </div>
+                  <p className="font-medium text-navy-900">{shipment.vesselName || '—'}</p>
                 </div>
 
                 <div className="space-y-1">
@@ -135,7 +150,7 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                     <Calendar className="h-4 w-4" />
                     <span>Ngày tạo</span>
                   </div>
-                  <p className="font-medium text-navy-900">{formatDate(receipt.createdAt)}</p>
+                  <p className="font-medium text-navy-900">{formatDate(shipment.createdAt)}</p>
                 </div>
               </div>
 
@@ -144,24 +159,22 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                 <h3 className="text-sm font-semibold text-navy-800 mb-3">Thông tin khối lượng</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
-                    <p className="text-xs text-navy-500 mb-1">{receipt.receiptType === 'VESSEL' ? 'TL hàng cân cảng' : 'SL dự kiến'}</p>
+                    <p className="text-xs text-navy-500 mb-1">{shipment.soType === 'SEA' ? 'Trọng lượng hàng tịnh' : 'SL dự kiến'}</p>
                     <p className="text-lg font-semibold text-navy-900">
-                      {(receipt.expectedQty || receipt.totalExpectedQty || 0).toLocaleString()} kg
+                      {totalExpected.toLocaleString()} kg
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-navy-500 mb-1">Khối lượng thực</p>
+                    <p className="text-xs text-navy-500 mb-1">SL đã xuất</p>
                     <p className="text-lg font-semibold text-emerald-600">
-                      {(receipt.netWeightKg || receipt.totalReceivedQty || 0).toLocaleString()} kg
+                      {totalShipped.toLocaleString()} kg
                     </p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-navy-500 mb-1">Chênh lệch</p>
                     {(() => {
-                      const expected = Number(receipt.expectedQty || receipt.totalExpectedQty || 0)
-                      const actual = Number(receipt.netWeightKg || receipt.totalReceivedQty || 0)
-                      if (!actual) return <p className="text-lg font-semibold text-navy-600">—</p>
-                      const diff = expected - actual
+                      if (!totalShipped) return <p className="text-lg font-semibold text-navy-600">—</p>
+                      const diff = totalExpected - totalShipped
                       const color = diff > 0 ? 'text-amber-600' : diff < 0 ? 'text-red-600' : 'text-emerald-600'
                       return (
                         <p className={`text-lg font-semibold ${color}`}>
@@ -174,14 +187,14 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
               </div>
 
               {/* Lines */}
-              {receipt.lines && receipt.lines.length > 0 && (
+              {shipment.lines && shipment.lines.length > 0 && (
                 <div className="rounded-lg border border-moon-200 p-4">
                   <h3 className="text-sm font-semibold text-navy-800 mb-3 flex items-center gap-2">
                     <Package className="h-4 w-4" />
-                    Chi tiết hàng hóa ({receipt.lines.length} dòng)
+                    Chi tiết hàng hóa ({shipment.lines.length} dòng)
                   </h3>
                   <div className="space-y-2">
-                    {receipt.lines.map((line, index) => (
+                    {shipment.lines.map((line, index) => (
                       <div
                         key={line.id || index}
                         className="flex items-center justify-between rounded-md bg-moon-50 px-3 py-2"
@@ -194,15 +207,23 @@ export function ViewReceiptModal({ isOpen, onClose, receipt }) {
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-navy-900">
-                            {(line.expectedQty || 0).toLocaleString()} kg
+                            {Number(line.expectedQty || 0).toLocaleString()} kg
                           </p>
-                          <p className="text-xs text-navy-500">
-                            {line.uom?.uomCode || line.uom?.code || line.uom?.description || line.uomId}
+                          <p className="text-xs text-emerald-600">
+                            Đã xuất: {Number(line.shippedQty || 0).toLocaleString()} kg
                           </p>
                         </div>
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {shipment.notes && (
+                <div className="rounded-lg border border-moon-200 p-4">
+                  <h3 className="text-sm font-semibold text-navy-800 mb-2">Ghi chú</h3>
+                  <p className="text-sm text-navy-600">{shipment.notes}</p>
                 </div>
               )}
             </div>

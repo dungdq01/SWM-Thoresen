@@ -56,4 +56,8 @@ export const outboundOperationsApi = {
 
   reportShipmentError: (id, reasonCode) =>
     httpClient.post(`/outbound/shipments/${id}/report-error`, { reasonCode }),
+
+  // ─── Outbound Documents ─────────────────────────────────────────────────────
+  getOutboundDocuments: (params = {}) =>
+    httpClient.get('/outbound/documents', { params }),
 }

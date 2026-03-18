@@ -11,10 +11,21 @@ const SO_TYPES = [
 
 const emptyLine = { itemId: '', expectedQty: '', shippedQty: 0, uomId: '', status: 'NEW', notes: '' }
 
+const parseVehiclePlates = (input) => {
+  if (!input) return []
+  return input
+    .split(/[,|;]+/)
+    .map((plate) => plate.trim())
+    .filter((plate) => plate.length > 0)
+    .filter((plate, i, arr) => arr.indexOf(plate) === i)
+}
+
 const emptyDraft = {
   soType: 'SEA',
   ownerId: '',
   blNumber: '',
+  vesselName: '',
+  vehiclePlate: '',
   notes: '',
   lines: [{ ...emptyLine }],
 }
@@ -29,6 +40,7 @@ export function SOFormDrawer({
   owners = [],
   items = [],
   uoms = [],
+  vessels = [],
 }) {
   const isEdit = !!initialData
   const [draft, setDraft] = useState({ ...emptyDraft, lines: [{ ...emptyLine }] })
@@ -40,6 +52,8 @@ export function SOFormDrawer({
         soType: initialData.soType || 'SEA',
         ownerId: initialData.ownerId || '',
         blNumber: initialData.blNumber || '',
+        vesselName: initialData.vesselName || '',
+        vehiclePlate: initialData.vehiclePlate || '',
         notes: initialData.notes || '',
         lines: (initialData.lines || []).map((l) => ({
           id: l.id,
@@ -76,11 +90,16 @@ export function SOFormDrawer({
     setDraft((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== idx) }))
   }, [])
 
+  const vehiclePlates = parseVehiclePlates(draft.vehiclePlate)
+  const hasMultipleVehicles = vehiclePlates.length > 1
+
   const handleSubmit = () => {
     const payload = {
       soType: draft.soType,
       ownerId: draft.ownerId,
       blNumber: draft.blNumber,
+      vesselName: draft.vesselName || '',
+      vehiclePlate: draft.vehiclePlate || '',
       notes: draft.notes || '',
       lines: draft.lines.filter((l) => l.itemId).map((l) => ({
         ...(l.id ? { id: l.id } : {}),
@@ -94,7 +113,9 @@ export function SOFormDrawer({
     onSubmit(payload)
   }
 
-  const isValid = !!(draft.ownerId && draft.blNumber && draft.lines.some((l) => l.itemId && l.expectedQty))
+  const isSeaTransportValid = draft.soType !== 'SEA' || (draft.vesselName && draft.blNumber)
+  const isLandTransportValid = draft.soType !== 'LAND' || !!draft.vehiclePlate.trim()
+  const isValid = !!(draft.ownerId && draft.blNumber && draft.lines.some((l) => l.itemId && l.expectedQty) && isSeaTransportValid && isLandTransportValid)
 
   const itemOptions = [{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
@@ -213,11 +234,59 @@ export function SOFormDrawer({
                 />
               </div>
 
-              {/* Section 2: Chi tiết hàng hóa */}
+              {/* Section 2: Thông tin vận chuyển */}
+              <div className="px-6 py-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">2</span>
+                  <h3 className="text-sm font-semibold text-navy-800">Thông tin vận chuyển</h3>
+                  {draft.soType === 'SEA' ? (
+                    <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
+                      <Ship className="h-3 w-3" /> Đường biển
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                      <Truck className="h-3 w-3" /> Đường bộ
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label={draft.soType === 'SEA' ? 'Tên tàu *' : 'Tên tàu'}
+                    value={draft.vesselName}
+                    onChange={(e) => setDraft((p) => ({ ...p, vesselName: e.target.value }))}
+                    options={[{ value: '', label: '-- Chọn tàu --' }, ...vessels.map((v) => ({ value: v.name, label: `${v.code} - ${v.name}` }))]}
+                  />
+                  <Input
+                    label={draft.soType === 'LAND' ? 'Biển số xe *' : 'Biển số xe'}
+                    value={draft.vehiclePlate}
+                    onChange={(e) => setDraft((p) => ({ ...p, vehiclePlate: e.target.value }))}
+                    placeholder="VD: 29A-11111; 29A-12345"
+                    hint={hasMultipleVehicles ? '' : 'Dùng dấu , hoặc ; để tách nhiều xe'}
+                  />
+                </div>
+                {hasMultipleVehicles && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {vehiclePlates.map((plate, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-1 text-xs font-medium text-ice"
+                      >
+                        <Truck className="h-3 w-3" />
+                        {plate}
+                      </span>
+                    ))}
+                    <span className="text-xs text-navy-400 self-center ml-1">
+                      → Khi tạo phiếu xuất sẽ tách {vehiclePlates.length} phiếu
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 3: Chi tiết hàng hóa */}
               <div className="px-6 py-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">2</span>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">3</span>
                     <h3 className="text-sm font-semibold text-navy-800">Chi tiết hàng hóa</h3>
                     <span className="rounded-full bg-moon-100 px-2 py-0.5 text-xs font-medium text-navy-500">
                       {draft.lines.filter((l) => l.itemId).length}/{draft.lines.length} dòng
@@ -318,7 +387,7 @@ export function SOFormDrawer({
                 <p className="text-xs text-navy-400">
                   {isValid
                     ? <span className="font-medium text-emerald-600">✓ {draft.lines.filter((l) => l.itemId).length} dòng hàng sẵn sàng</span>
-                    : '* Loại SO, Chủ hàng, Số B/L và ít nhất 1 mặt hàng là bắt buộc'}
+                    : '* Loại SO, Chủ hàng, Số B/L, vận chuyển và ít nhất 1 mặt hàng là bắt buộc'}
                 </p>
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={onClose} disabled={isLoading}>Hủy</Button>

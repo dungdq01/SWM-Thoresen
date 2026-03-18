@@ -90,7 +90,7 @@ export function CreateShipmentModal({
 
     setDraft({
       warehouseId: activeSo.warehouseId || '',
-      vehiclePlate: '',
+      vehiclePlate: activeSo.vehiclePlate || '',
       notes: '',
       lines: buildInitialLines(activeSo),
       vehicleLines: {},
@@ -488,17 +488,17 @@ export function CreateShipmentModal({
                     </div>
                   </div>
 
-                  {/* Biển số xe */}
+                  {/* Biển số xe — readonly, link từ SO */}
                   <div>
-                    <Input
-                      label="Biển số xe *"
-                      value={draft.vehiclePlate}
-                      onChange={(e) =>
-                        setDraft((prev) => ({ ...prev, vehiclePlate: e.target.value }))
-                      }
-                      placeholder="VD: 29A-11111; 29A-12345"
-                      hint={hasMultipleVehicles ? '' : 'Dùng dấu , hoặc ; để tách nhiều xe'}
-                    />
+                    <label className="mb-1.5 block text-sm font-semibold text-navy-700">
+                      Biển số xe
+                    </label>
+                    <div className="flex h-10 items-center rounded-xl border border-moon-200 bg-moon-50 px-4">
+                      <Truck className="mr-2 h-4 w-4 text-navy-400" />
+                      <span className="text-sm text-navy-700">
+                        {draft.vehiclePlate || '—'}
+                      </span>
+                    </div>
                     {hasMultipleVehicles && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {vehiclePlates.map((plate, idx) => (

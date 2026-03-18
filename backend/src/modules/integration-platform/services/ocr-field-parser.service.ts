@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 export interface ParsedOcrFields {
+  ticketNumber?: string;
+  ticketConfidence: number;
   blNumber?: string;
   blConfidence: number;
   vehicleNumber?: string;
@@ -25,6 +27,7 @@ export interface ParsedOcrFields {
 }
 
 type OcrFieldCode =
+  | 'ticket_number'
   | 'bl'
   | 'vehicle'
   | 'product'
@@ -53,15 +56,25 @@ interface FieldMatch {
 // Built from 4 real weighbridge ticket samples:
 //   PTSC Phú Mỹ (2 variants), Cảng Tổng Hợp Thị Vải, SP-PSA International Port
 const SYNONYM_SEED: { label: string; field: OcrFieldCode; confidence: number }[] = [
-  // ── Số phiếu (bl) ──
-  { label: 'số phiếu', field: 'bl', confidence: 95 },
-  { label: 'phiếu số', field: 'bl', confidence: 95 },
-  { label: 'sheet no', field: 'bl', confidence: 90 },
-  { label: 'stt', field: 'bl', confidence: 80 },
-  { label: 'lgh số', field: 'bl', confidence: 85 },
-  { label: 'mã phiếu', field: 'bl', confidence: 90 },
-  { label: 'no', field: 'bl', confidence: 70 },
-  { label: 'ticket no', field: 'bl', confidence: 90 },
+  // ── Số phiếu cân (ticket_number) ──
+  { label: 'số phiếu', field: 'ticket_number', confidence: 95 },
+  { label: 'phiếu số', field: 'ticket_number', confidence: 95 },
+  { label: 'sheet no', field: 'ticket_number', confidence: 90 },
+  { label: 'stt', field: 'ticket_number', confidence: 80 },
+  { label: 'lgh số', field: 'ticket_number', confidence: 85 },
+  { label: 'mã phiếu', field: 'ticket_number', confidence: 90 },
+  { label: 'no', field: 'ticket_number', confidence: 70 },
+  { label: 'ticket no', field: 'ticket_number', confidence: 90 },
+
+  // ── Số vận đơn / Bill of Lading (bl) ──
+  { label: 'số vận đơn', field: 'bl', confidence: 95 },
+  { label: 'vận đơn', field: 'bl', confidence: 95 },
+  { label: 'bill of lading', field: 'bl', confidence: 95 },
+  { label: 'b/l', field: 'bl', confidence: 90 },
+  { label: 'b/l no', field: 'bl', confidence: 95 },
+  { label: 'bl no', field: 'bl', confidence: 90 },
+  { label: 'bl number', field: 'bl', confidence: 90 },
+  { label: 'lading no', field: 'bl', confidence: 85 },
 
   // ── Biển số xe (vehicle) ──
   { label: 'biển số', field: 'vehicle', confidence: 95 },
@@ -164,6 +177,7 @@ export class OcrFieldParserService {
 
   parseFields(fullText: string): ParsedOcrFields {
     const result: ParsedOcrFields = {
+      ticketConfidence: 0,
       blConfidence: 0,
       vehicleConfidence: 0,
       productConfidence: 0,
@@ -188,6 +202,12 @@ export class OcrFieldParserService {
     // Step 3: Assign text fields from best matches
     const pick = (field: OcrFieldCode): FieldMatch | undefined =>
       fieldMatches.filter((m) => m.field === field).sort((a, b) => b.confidence - a.confidence)[0];
+
+    const ticketMatch = pick('ticket_number');
+    if (ticketMatch) {
+      result.ticketNumber = ticketMatch.value;
+      result.ticketConfidence = ticketMatch.confidence;
+    }
 
     const blMatch = pick('bl');
     if (blMatch) {
@@ -243,7 +263,7 @@ export class OcrFieldParserService {
     this.assignWeights(result, fieldMatches, rawLabelMap, lines);
 
     this.logger.log(
-      `Parsed: BL=${result.blNumber || 'N/A'}, Vehicle=${result.vehicleNumber || 'N/A'}, ` +
+      `Parsed: Ticket=${result.ticketNumber || 'N/A'}, BL=${result.blNumber || 'N/A'}, Vehicle=${result.vehicleNumber || 'N/A'}, ` +
       `Product=${result.productName || 'N/A'}, Vessel=${result.vesselName || 'N/A'}, ` +
       `Customer=${result.customerName || 'N/A'}, Delivery=${result.deliveryLocation || 'N/A'}, ` +
       `Gross=${result.grossWeight ?? 'N/A'} ${result.grossWeightUom || ''}, ` +
@@ -359,12 +379,19 @@ export class OcrFieldParserService {
 
   // ─── Layer 3: Regex fallback ─────────────────────────────────────
   private regexFallback(fullText: string, foundFields: Set<OcrFieldCode>, matches: FieldMatch[]): void {
-    if (!foundFields.has('bl')) {
+    if (!foundFields.has('ticket_number')) {
       const m =
         fullText.match(/S[oố]\s*phi[eế]u[:\s]+(\d{6,})/i) ||
         fullText.match(/Phi[eế]u\s*s[oố][:\s]+(\d{5,})/i) ||
-        fullText.match(/Sheet\s*No[:\s]+(\d{5,})/i) ||
-        fullText.match(/B\/L\s*No[.:\s]*([A-Z0-9\-]+)/i);
+        fullText.match(/Sheet\s*No[:\s]+(\d{5,})/i);
+      if (m?.[1]) matches.push({ field: 'ticket_number', value: m[1].trim(), confidence: 78, source: 'regex' });
+    }
+
+    if (!foundFields.has('bl')) {
+      const m =
+        fullText.match(/B\/L\s*No[.:\s]*([A-Z0-9\-]+)/i) ||
+        fullText.match(/V[aậ]n\s*[đd][oơ]n[:\s]*([A-Z0-9\-]+)/i) ||
+        fullText.match(/Bill\s*of\s*Lading[:\s]*([A-Z0-9\-]+)/i);
       if (m?.[1]) matches.push({ field: 'bl', value: m[1].trim(), confidence: 78, source: 'regex' });
     }
 

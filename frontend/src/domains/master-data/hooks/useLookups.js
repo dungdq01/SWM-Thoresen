@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { lookupApi } from '../api/masterData.api'
+import { lookupApi, vesselApi } from '../api/masterData.api'
 import { MASTER_DATA_QUERY_KEYS } from '../model/constants'
 
 export function useLookupOwners() {
@@ -82,5 +82,17 @@ export function useLookupInventoryStatuses() {
     queryFn: () => lookupApi.getInventoryStatuses(),
     staleTime: 60000,
     select: (response) => (Array.isArray(response) ? response : response.data || []),
+  })
+}
+
+export function useLookupVessels() {
+  return useQuery({
+    queryKey: [...MASTER_DATA_QUERY_KEYS.vessels, 'lookup'],
+    queryFn: () => vesselApi.getList({ pageSize: 200, isActive: true }),
+    staleTime: 60000,
+    select: (response) => {
+      const rows = response?.data || []
+      return rows.map((v) => ({ id: v.id, code: v.vesselCode, name: v.vesselName }))
+    },
   })
 }

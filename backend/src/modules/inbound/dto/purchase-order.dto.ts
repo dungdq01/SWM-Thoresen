@@ -93,6 +93,11 @@ export class CreatePurchaseOrderDto {
   @IsString()
   blNumber?: string;
 
+  @ApiPropertyOptional({ description: 'Biển số xe' })
+  @IsOptional()
+  @IsString()
+  vehiclePlate?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -146,6 +151,11 @@ export class UpdatePurchaseOrderDto {
   @IsOptional()
   @IsString()
   blNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Biển số xe' })
+  @IsOptional()
+  @IsString()
+  vehiclePlate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

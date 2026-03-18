@@ -10,7 +10,7 @@ import {
   useNextSoNumber,
   useCreateShipment,
 } from '@domains/outbound-operations'
-import { useLookupOwners, useLookupItems, useLookupUoms, useLookupWarehouses } from '@domains/master-data'
+import { useLookupOwners, useLookupItems, useLookupUoms, useLookupWarehouses, useLookupVessels } from '@domains/master-data'
 import {
   Badge, Button, Input, Pagination, Select,
   Table, TableBody, TableCell, TableEmpty, TableHead,
@@ -82,6 +82,7 @@ export function SalesOrdersPage() {
   const { data: items = [] } = useLookupItems()
   const { data: uoms = [] } = useLookupUoms()
   const { data: warehouses = [] } = useLookupWarehouses()
+  const { data: vessels = [] } = useLookupVessels()
 
   const rows = response?.data || response?.items || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -156,6 +157,8 @@ export function SalesOrdersPage() {
               <TableHead>Số SO</TableHead>
               <TableHead>Loại SO</TableHead>
               <TableHead>Số B/L</TableHead>
+              <TableHead>Tên tàu</TableHead>
+              <TableHead>Biển số xe</TableHead>
               <TableHead>Chủ hàng</TableHead>
               <TableHead>Ngày tạo</TableHead>
               <TableHead align="right">SL dự kiến</TableHead>
@@ -165,9 +168,9 @@ export function SalesOrdersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && <TableLoading colSpan={10} />}
+            {isLoading && <TableLoading colSpan={12} />}
             {!isLoading && rows.length === 0 && (
-              <TableEmpty colSpan={10}>
+              <TableEmpty colSpan={12}>
                 <div className="flex flex-col items-center justify-center py-8">
                   <FileOutput className="h-12 w-12 text-navy-300 mb-3" />
                   <p className="text-navy-600 font-medium">Không có dữ liệu</p>
@@ -205,6 +208,12 @@ export function SalesOrdersPage() {
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-sm text-navy-600">{so.blNumber || '—'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-navy-600">{so.vesselName || '—'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm text-navy-700">{so.vehiclePlate || '—'}</span>
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-navy-800">{so.owner?.ownerCode || so.owner?.code || so.ownerId}</p>
@@ -261,7 +270,7 @@ export function SalesOrdersPage() {
                   {/* Expand: line details */}
                   {isExpanded && (
                     <tr key={`${so.id}-lines`}>
-                      <td colSpan={10} className="p-0">
+                      <td colSpan={12} className="p-0">
                         <div className="border-t border-b border-moon-200 bg-moon-50/70 px-6 py-4">
                           <div className="mb-3 flex items-center gap-2">
                             <Package className="h-4 w-4 text-ice" />
@@ -342,6 +351,7 @@ export function SalesOrdersPage() {
         owners={owners}
         items={items}
         uoms={uoms}
+        vessels={vessels}
       />
 
       {/* Modal — Create Shipment */}

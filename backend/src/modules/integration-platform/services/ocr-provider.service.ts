@@ -15,6 +15,7 @@ export interface OcrRawResult {
 
 export interface OcrExtractedFields {
   documentNumber?: string;
+  blNumber?: string;
   vehicleNumber?: string;
   vesselName?: string;
   productName?: string;
@@ -134,7 +135,8 @@ QUY TẮC:
 
 JSON Schema:
 {
-  "document_number": "string — số phiếu/sheet no/STT",
+  "document_number": "string — số phiếu cân/sheet no/STT/ticket no",
+  "bl_number": "string — số vận đơn/bill of lading/B/L No (nếu có trên phiếu)",
   "vehicle_number": "string — biển số xe (chỉ xe đầu kéo, không gồm rơ moóc)",
   "trailer_number": "string — biển rơ moóc (nếu có)",
   "vessel_name": "string — tên tàu",
@@ -298,6 +300,7 @@ export class OcrProviderService {
     const result: OcrExtractedFields = {};
 
     if (raw.document_number != null) result.documentNumber = String(raw.document_number);
+    if (raw.bl_number != null) result.blNumber = String(raw.bl_number);
     if (raw.vehicle_number != null) result.vehicleNumber = String(raw.vehicle_number).replace(/\s+/g, '').toUpperCase();
     if (raw.vessel_name != null) result.vesselName = String(raw.vessel_name);
     if (raw.product_name != null) result.productName = String(raw.product_name);

@@ -11,6 +11,15 @@ const PO_TYPES = [
 
 const emptyLine = { itemId: '', expectedQty: '', uomId: '', notes: '' }
 
+const parseVehiclePlates = (input) => {
+  if (!input) return []
+  return input
+    .split(/[,|;]+/)
+    .map((plate) => plate.trim())
+    .filter((plate) => plate.length > 0)
+    .filter((plate, i, arr) => arr.indexOf(plate) === i)
+}
+
 const emptyDraft = {
   poType: 'SEA',
   ownerId: '',
@@ -18,6 +27,7 @@ const emptyDraft = {
   warehouseIds: [],
   vesselName: '',
   blNumber: '',
+  vehiclePlate: '',
   notes: '',
   lines: [{ ...emptyLine }],
 }
@@ -34,6 +44,7 @@ export function POFormDrawer({
   warehouses = [],
   items = [],
   uoms = [],
+  vessels = [],
 }) {
   const isEdit = !!initialData
   const [draft, setDraft] = useState({ ...emptyDraft, lines: [{ ...emptyLine }] })
@@ -52,6 +63,7 @@ export function POFormDrawer({
         warehouseIds,
         vesselName: initialData.vesselName || '',
         blNumber: initialData.blNumber || '',
+        vehiclePlate: initialData.vehiclePlate || '',
         notes: initialData.notes || '',
         lines: (initialData.lines || []).map((l) => ({
           id: l.id,
@@ -97,6 +109,7 @@ export function POFormDrawer({
       notes: draft.notes || '',
       vesselName: draft.vesselName || '',
       blNumber: draft.blNumber || '',
+      vehiclePlate: draft.vehiclePlate || '',
       lines: draft.lines.filter((l) => l.itemId).map((l) => ({
         ...(l.id ? { id: l.id } : {}),
         itemId: l.itemId,
@@ -109,8 +122,12 @@ export function POFormDrawer({
     onSubmit(payload)
   }
 
+  const vehiclePlates = parseVehiclePlates(draft.vehiclePlate)
+  const hasMultipleVehicles = vehiclePlates.length > 1
+
   const isSeaTransportValid = draft.poType !== 'SEA' || (draft.vesselName && draft.blNumber)
-  const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseIds.length > 0 && draft.lines.some((l) => l.itemId) && isSeaTransportValid)
+  const isLandTransportValid = draft.poType !== 'LAND' || !!draft.vehiclePlate.trim()
+  const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseIds.length > 0 && draft.lines.some((l) => l.itemId) && isSeaTransportValid && isLandTransportValid)
 
   const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
@@ -232,11 +249,11 @@ export function POFormDrawer({
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
+                  <Select
                     label={draft.poType === 'SEA' ? 'Tên tàu / Nguồn gốc *' : 'Tên tàu / Nguồn gốc'}
                     value={draft.vesselName}
                     onChange={(e) => setDraft((p) => ({ ...p, vesselName: e.target.value }))}
-                    placeholder="VD: MV OCEAN STAR"
+                    options={[{ value: '', label: '-- Chọn tàu --' }, ...vessels.map((v) => ({ value: v.name, label: `${v.code} - ${v.name}` }))]}
                   />
                   <Input
                     label={draft.poType === 'SEA' ? 'Số BL *' : 'Số BL'}
@@ -244,6 +261,31 @@ export function POFormDrawer({
                     onChange={(e) => setDraft((p) => ({ ...p, blNumber: e.target.value }))}
                     placeholder="VD: BL-2026-RICE-001"
                   />
+                </div>
+                <div>
+                  <Input
+                    label={draft.poType === 'LAND' ? 'Biển số xe *' : 'Biển số xe'}
+                    value={draft.vehiclePlate}
+                    onChange={(e) => setDraft((p) => ({ ...p, vehiclePlate: e.target.value }))}
+                    placeholder="VD: 29A-11111; 29A-12345"
+                    hint={hasMultipleVehicles ? '' : 'Dùng dấu , hoặc ; để tách nhiều xe'}
+                  />
+                  {hasMultipleVehicles && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {vehiclePlates.map((plate, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-1 text-xs font-medium text-ice"
+                        >
+                          <Truck className="h-3 w-3" />
+                          {plate}
+                        </span>
+                      ))}
+                      <span className="text-xs text-navy-400 self-center ml-1">
+                        → Khi tạo phiếu nhập sẽ tách {vehiclePlates.length} phiếu
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

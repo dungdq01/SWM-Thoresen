@@ -121,6 +121,7 @@ export class OcrController {
   @Permission('INTEGRATION.OCR.READ')
   async getResults(
     @Query('status') status?: string,
+    @Query('direction') direction?: string,
     @Query('warehouseId') warehouseId?: string,
     @Query('linkedReceiptId') linkedReceiptId?: string,
     @Query('dateFrom') dateFrom?: string,
@@ -130,6 +131,7 @@ export class OcrController {
   ) {
     return this.uploadService.getResults({
       status,
+      direction,
       warehouseId,
       linkedReceiptId,
       dateFrom,

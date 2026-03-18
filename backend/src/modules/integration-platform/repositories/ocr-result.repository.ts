@@ -22,6 +22,7 @@ export class OcrResultRepository {
 
   async findMany(params: {
     status?: string;
+    direction?: string;
     warehouseId?: string;
     linkedReceiptId?: string;
     dateFrom?: Date;
@@ -29,10 +30,11 @@ export class OcrResultRepository {
     skip?: number;
     take?: number;
   }) {
-    const { status, warehouseId, linkedReceiptId, dateFrom, dateTo, skip = 0, take = 20 } = params;
+    const { status, direction, warehouseId, linkedReceiptId, dateFrom, dateTo, skip = 0, take = 20 } = params;
     const where: any = {};
 
     if (status) where.status = status;
+    if (direction) where.direction = direction;
     if (warehouseId) where.warehouseId = warehouseId;
     if (linkedReceiptId) where.linkedReceiptId = linkedReceiptId;
     if (dateFrom || dateTo) {

@@ -81,6 +81,7 @@ const IntegrationAlertsPage = lazy(() => import('@pages/integration').then(m => 
 const WeighbridgePage = lazy(() => import('@pages/integration').then(m => ({ default: m.WeighbridgePage })))
 const ChannelsPage = lazy(() => import('@pages/integration').then(m => ({ default: m.ChannelsPage })))
 const OcrPage = lazy(() => import('@pages/integration').then(m => ({ default: m.OcrPage })))
+const OcrDetailPage = lazy(() => import('@pages/integration').then(m => ({ default: m.OcrDetailPage })))
 
 // VAS Pages
 const VasLayout = lazy(() => import('@pages/vas').then(m => ({ default: m.VasLayout })))
@@ -433,6 +434,10 @@ export const router = createBrowserRouter([
       {
         path: 'ocr',
         element: withSuspense(OcrPage),
+      },
+      {
+        path: 'ocr/:id',
+        element: withSuspense(OcrDetailPage),
       },
       {
         path: 'vas',

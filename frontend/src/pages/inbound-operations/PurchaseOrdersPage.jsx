@@ -11,7 +11,7 @@ import {
   useNextPoNumber,
   useCreateInboundReceipt,
 } from '@domains/inbound-operations'
-import { useLookupOwners, useLookupVendors, useLookupWarehouses, useLookupItems, useLookupUoms } from '@domains/master-data'
+import { useLookupOwners, useLookupVendors, useLookupWarehouses, useLookupItems, useLookupUoms, useLookupVessels } from '@domains/master-data'
 import {
   Badge, Button, Input, Pagination, Select,
   Table, TableBody, TableCell, TableEmpty, TableHead,
@@ -70,6 +70,7 @@ export function PurchaseOrdersPage() {
   const { data: warehouses = [] } = useLookupWarehouses()
   const { data: items = [] } = useLookupItems()
   const { data: uoms = [] } = useLookupUoms()
+  const { data: vessels = [] } = useLookupVessels()
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -346,6 +347,7 @@ export function PurchaseOrdersPage() {
         warehouses={warehouses}
         items={items}
         uoms={uoms}
+        vessels={vessels}
       />
 
       <CreateInboundReceiptModal

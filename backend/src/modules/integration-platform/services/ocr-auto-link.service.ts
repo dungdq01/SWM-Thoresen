@@ -34,7 +34,8 @@ interface PoCandidate {
 interface OcrData {
   id: string;
   ocrRequestId: string;
-  blNumber: string | null;
+  ticketNumber?: string | null;
+  blNumber?: string | null;
   vehicleNumber: string | null;
   customerName: string | null;
   vesselName: string | null;
@@ -46,6 +47,30 @@ interface OcrData {
   createdBy: string;
   createdAt: Date;
   correlationId: string;
+}
+
+interface SoCandidate {
+  id: string;
+  soNumber: string;
+  externalSoNumber: string | null;
+  ownerId: string;
+  warehouseId: string;
+  totalExpectedQtyKg: any;
+  owner: { id: string; ownerCode: string; ownerName: string };
+  lines: Array<{
+    id: string;
+    itemId: string;
+    uomId: string | null;
+    expectedQty: any;
+    lineNumber: number;
+    item: { itemCode: string; itemName: string };
+  }>;
+}
+
+interface SoMatchResult {
+  so: SoCandidate;
+  score: number;
+  matchDetails: string[];
 }
 
 // Helper to get file info safely
@@ -170,6 +195,9 @@ export class OcrAutoLinkService {
   }
 
   // ─── Scoring algorithm ──────────────────────────────────────────
+  // Logic: số PO không có trên phiếu cân.
+  // Lấy thông tin từ ảnh OCR (tên tàu, khách hàng, nhóm hàng) so sánh với PO để tìm đúng PO.
+  // Thứ tự ưu tiên: Tên tàu (50đ) → Khách hàng/Owner (30đ) → Nhóm hàng (20đ) → Trọng lượng (5đ)
   private findBestMatch(ocrData: OcrData, candidates: PoCandidate[]): MatchResult | null {
     let best: MatchResult | null = null;
 
@@ -177,71 +205,64 @@ export class OcrAutoLinkService {
       let score = 0;
       const details: string[] = [];
 
-      // Priority 1: B/L number exact match (+50)
-      if (ocrData.blNumber && po.blNumber) {
-        const ocrBl = this.normalize(ocrData.blNumber);
-        const poBl = this.normalize(po.blNumber);
-        if (ocrBl === poBl) {
-          score += 50;
-          details.push(`BL exact: ${ocrBl}`);
-        } else if (ocrBl.includes(poBl) || poBl.includes(ocrBl)) {
-          score += 35;
-          details.push(`BL partial: ${ocrBl} ~ ${poBl}`);
-        }
-      }
-
-      // Priority 2: Customer/owner name match (+20)
-      if (ocrData.customerName && po.owner) {
-        const ocrCustomer = this.normalize(ocrData.customerName);
-        const ownerCode = this.normalize(po.owner.ownerCode);
-        const ownerName = this.normalize(po.owner.ownerName);
-        if (ocrCustomer.includes(ownerCode) || ownerCode.includes(ocrCustomer) ||
-            ocrCustomer.includes(ownerName) || ownerName.includes(ocrCustomer)) {
-          score += 20;
-          details.push(`Customer: ${ocrCustomer} ~ ${ownerCode}`);
-        }
-      }
-
-      // Priority 3: Vessel name match (+15)
+      // Priority 1: Tên tàu (vesselName) — định danh chính xác nhất (+50)
       if (ocrData.vesselName && po.vesselName) {
         const ocrVessel = this.normalize(ocrData.vesselName);
         const poVessel = this.normalize(po.vesselName);
         if (ocrVessel === poVessel) {
-          score += 15;
+          score += 50;
           details.push(`Vessel exact: ${ocrVessel}`);
         } else if (ocrVessel.includes(poVessel) || poVessel.includes(ocrVessel)) {
-          score += 10;
+          score += 35;
           details.push(`Vessel partial: ${ocrVessel} ~ ${poVessel}`);
         }
       }
 
-      // Priority 4: Product name match with PO line items (+15)
+      // Priority 2: Khách hàng (customerName ↔ owner) (+30)
+      if (ocrData.customerName && po.owner) {
+        const ocrCustomer = this.normalize(ocrData.customerName);
+        const ownerCode = this.normalize(po.owner.ownerCode);
+        const ownerName = this.normalize(po.owner.ownerName);
+        if (ocrCustomer === ownerCode || ocrCustomer === ownerName) {
+          score += 30;
+          details.push(`Customer exact: ${ocrCustomer}`);
+        } else if (
+          ocrCustomer.includes(ownerCode) || ownerCode.includes(ocrCustomer) ||
+          ocrCustomer.includes(ownerName) || ownerName.includes(ocrCustomer)
+        ) {
+          score += 20;
+          details.push(`Customer partial: ${ocrCustomer} ~ ${ownerCode}`);
+        }
+      }
+
+      // Priority 3: Nhóm hàng / tên hàng (productName ↔ PO line items) (+20)
       if (ocrData.productName && po.lines.length > 0) {
         const ocrProduct = this.normalize(ocrData.productName);
         for (const line of po.lines) {
           const itemCode = this.normalize(line.item.itemCode);
           const itemName = this.normalize(line.item.itemName);
           if (ocrProduct === itemCode || ocrProduct === itemName) {
-            score += 15;
-            details.push(`Product exact: ${ocrProduct} = ${itemCode}`);
+            score += 20;
+            details.push(`Product exact: ${ocrProduct}`);
             break;
           }
-          if (itemCode.includes(ocrProduct) || ocrProduct.includes(itemCode) ||
-              itemName.includes(ocrProduct) || ocrProduct.includes(itemName)) {
-            score += 10;
-            details.push(`Product partial: ${ocrProduct} ~ ${itemCode}/${itemName}`);
+          if (
+            itemCode.includes(ocrProduct) || ocrProduct.includes(itemCode) ||
+            itemName.includes(ocrProduct) || ocrProduct.includes(itemName)
+          ) {
+            score += 12;
+            details.push(`Product partial: ${ocrProduct} ~ ${itemName}`);
             break;
           }
         }
       }
 
-      // Priority 5: Weight proximity (+5)
+      // Priority 4: Trọng lượng gần với PO (+5, tiebreaker)
       if (ocrData.qtyExtracted && po.totalExpectedQty) {
         const ocrQty = Number(ocrData.qtyExtracted);
         const poQty = Number(po.totalExpectedQty);
         if (poQty > 0 && ocrQty > 0) {
           const ratio = ocrQty / poQty;
-          // Within 50% of expected → good enough for matching
           if (ratio >= 0.5 && ratio <= 1.5) {
             score += 5;
             details.push(`Weight proximity: ${ocrQty}/${poQty}`);
@@ -299,7 +320,7 @@ export class OcrAutoLinkService {
         data: {
           id: receiptId,
           receiptType: 'VESSEL',
-          poId: po.id,
+          poId: po.poNumber,
           asnId,
           ownerId: po.ownerId,
           vendorId: po.vendorId,
@@ -348,29 +369,9 @@ export class OcrAutoLinkService {
         },
       });
 
-      // 5. Determine document code from OCR blNumber (số phiếu) or fallback to ocrRequestId
-      // User requirement: Mã CT = số phiếu từ kết quả OCR
-      const documentCode = ocrData.blNumber || ocrData.ocrRequestId;
-
-      // Check for duplicate documentCode
-      const existingDoc = await tx.inboundDocument.findFirst({
-        where: { documentCode },
-      });
-      if (existingDoc) {
-        this.logger.warn(`Document with code ${documentCode} already exists, skipping creation`);
-        // Still update OCR result to LINKED
-        await tx.m8OcrResult.update({
-          where: { id: ocrData.id },
-          data: {
-            linkedReceiptId: receiptId,
-            linkedPoId: po.id,
-            linkMethod: 'AUTO_MATCHED',
-            status: OcrStatus.LINKED,
-          },
-        });
-        this.logger.log(`Auto-linked OCR ${ocrData.id} → PO ${po.poNumber}, Receipt ${asnId} (doc exists)`);
-        return;
-      }
+      // 5. Determine document code from OCR ticketNumber (số phiếu cân) or fallback to ocrRequestId
+      // User requirement: Mã CT = số phiếu cân từ kết quả OCR
+      const documentCode = ocrData.ticketNumber || ocrData.ocrRequestId;
 
       // 6. Create InboundDocument (Phiếu cân cảng)
       // User requirements:
@@ -472,7 +473,7 @@ export class OcrAutoLinkService {
         }
 
         // Create InboundDocument
-        const documentCode = ocr.blNumber || ocr.ocrRequestId;
+        const documentCode = ocr.ticketNumber || ocr.ocrRequestId;
         const fileInfo = getFileInfo(ocr.imagePath);
         const fileExt = extname(ocr.imagePath).toLowerCase() || '.jpg';
 
@@ -504,6 +505,303 @@ export class OcrAutoLinkService {
 
     this.logger.log(`Backfill complete: created=${created}, skipped=${skipped}, errors=${errors}`);
     return { created, skipped, errors };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  OUTBOUND: Auto-link OCR → Sales Order → Shipment + Document
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * After OCR extraction completes for an OUTBOUND direction scan,
+   * attempt to auto-match to a SEA SO and create shipment + outbound document.
+   */
+  async autoLinkOutbound(ocrResultId: string): Promise<void> {
+    const ocrResult = await this.ocrResultRepo.findById(ocrResultId);
+    if (!ocrResult) {
+      this.logger.warn(`OCR result ${ocrResultId} not found for outbound auto-link`);
+      return;
+    }
+
+    // Only process OUTBOUND direction
+    if (ocrResult.direction !== 'OUTBOUND') {
+      this.logger.log(`Skipping outbound auto-link: direction is ${ocrResult.direction}`);
+      return;
+    }
+
+    // Only process EXTRACTED or REVIEW_REQUIRED
+    if (![OcrStatus.EXTRACTED, OcrStatus.REVIEW_REQUIRED].includes(ocrResult.status as OcrStatus)) {
+      this.logger.log(`Skipping outbound auto-link: status is ${ocrResult.status}`);
+      return;
+    }
+
+    try {
+      // 1. Find candidate CONFIRMED SOs (SEA type)
+      const candidates = await this.findSoCandidates();
+      if (candidates.length === 0) {
+        this.logger.warn('No CONFIRMED SOs found for outbound matching');
+        return;
+      }
+
+      // 2. Score each SO (reuse same scoring logic as inbound)
+      const match = this.findBestSoMatch(ocrResult as OcrData, candidates);
+      if (!match || match.score < MATCH_THRESHOLD) {
+        this.logger.log(
+          `No SO match above threshold (${MATCH_THRESHOLD}). Best: ${match?.score ?? 0} for ${match?.so.soNumber ?? 'none'}`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `Matched SO ${match.so.soNumber} with score ${match.score}: ${match.matchDetails.join(', ')}`,
+      );
+
+      // 3. Create shipment + outbound document + link OCR
+      await this.createShipmentAndDocument(ocrResult as OcrData, match.so);
+
+    } catch (error) {
+      const err = error as any;
+      this.logger.error(`Outbound auto-link failed for OCR ${ocrResultId}: ${err?.message || err}`);
+      this.logger.error(`Outbound auto-link error stack: ${err?.stack || 'no stack'}`);
+    }
+  }
+
+  // ─── Find CONFIRMED SEA SOs for matching ───────────────────────
+  private async findSoCandidates(): Promise<SoCandidate[]> {
+    return this.prisma.salesOrder.findMany({
+      where: {
+        orderType: 'STANDARD', // SEA type maps to STANDARD in schema
+        status: { in: ['CONFIRMED', 'PARTIALLY_RELEASED'] },
+      },
+      include: {
+        owner: {
+          select: { id: true, ownerCode: true, ownerName: true },
+        },
+        lines: {
+          select: {
+            id: true,
+            itemId: true,
+            uomId: true,
+            expectedQty: true,
+            lineNumber: true,
+            item: { select: { itemCode: true, itemName: true } },
+          },
+          where: { status: 'OPEN' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    }) as unknown as SoCandidate[];
+  }
+
+  // ─── Scoring: OCR data → SO candidate ─────────────────────────
+  private findBestSoMatch(ocrData: OcrData, candidates: SoCandidate[]): SoMatchResult | null {
+    let best: SoMatchResult | null = null;
+
+    for (const so of candidates) {
+      let score = 0;
+      const details: string[] = [];
+
+      // Priority 1: Tên tàu (vesselName) — SO doesn't have vesselName directly,
+      // but externalSoNumber might contain B/L info; skip vessel for SO matching
+      // unless we match via shipment. Instead, use customerName ↔ owner as primary.
+
+      // Priority 1: Khách hàng / Owner (+50 for SO — more important since no vessel on SO)
+      if (ocrData.customerName && so.owner) {
+        const ocrCustomer = this.normalize(ocrData.customerName);
+        const ownerCode = this.normalize(so.owner.ownerCode);
+        const ownerName = this.normalize(so.owner.ownerName);
+        if (ocrCustomer === ownerCode || ocrCustomer === ownerName) {
+          score += 50;
+          details.push(`Customer exact: ${ocrCustomer}`);
+        } else if (
+          ocrCustomer.includes(ownerCode) || ownerCode.includes(ocrCustomer) ||
+          ocrCustomer.includes(ownerName) || ownerName.includes(ocrCustomer)
+        ) {
+          score += 35;
+          details.push(`Customer partial: ${ocrCustomer} ~ ${ownerCode}`);
+        }
+      }
+
+      // Priority 2: Nhóm hàng / tên hàng (productName ↔ SO line items) (+30)
+      if (ocrData.productName && so.lines.length > 0) {
+        const ocrProduct = this.normalize(ocrData.productName);
+        for (const line of so.lines) {
+          const itemCode = this.normalize(line.item.itemCode);
+          const itemName = this.normalize(line.item.itemName);
+          if (ocrProduct === itemCode || ocrProduct === itemName) {
+            score += 30;
+            details.push(`Product exact: ${ocrProduct}`);
+            break;
+          }
+          if (
+            itemCode.includes(ocrProduct) || ocrProduct.includes(itemCode) ||
+            itemName.includes(ocrProduct) || ocrProduct.includes(itemName)
+          ) {
+            score += 20;
+            details.push(`Product partial: ${ocrProduct} ~ ${itemName}`);
+            break;
+          }
+        }
+      }
+
+      // Priority 3: Tên tàu (vesselName) — check against SO B/L or notes (+20)
+      if (ocrData.vesselName) {
+        const ocrVessel = this.normalize(ocrData.vesselName);
+        // SO externalSoNumber stores B/L which sometimes contains vessel info
+        if (so.externalSoNumber) {
+          const soBlNorm = this.normalize(so.externalSoNumber);
+          if (soBlNorm.includes(ocrVessel) || ocrVessel.includes(soBlNorm)) {
+            score += 15;
+            details.push(`Vessel in B/L: ${ocrVessel} ~ ${soBlNorm}`);
+          }
+        }
+      }
+
+      // Priority 4: Trọng lượng gần với SO totalExpectedQtyKg (+5, tiebreaker)
+      if (ocrData.qtyExtracted && so.totalExpectedQtyKg) {
+        const ocrQty = Number(ocrData.qtyExtracted);
+        const soQty = Number(so.totalExpectedQtyKg);
+        if (soQty > 0 && ocrQty > 0) {
+          const ratio = ocrQty / soQty;
+          if (ratio >= 0.01 && ratio <= 1.5) {
+            score += 5;
+            details.push(`Weight proximity: ${ocrQty}/${soQty}`);
+          }
+        }
+      }
+
+      if (!best || score > best.score) {
+        best = { so, score, matchDetails: details };
+      }
+    }
+
+    return best;
+  }
+
+  // ─── Create Shipment + OutboundDocument + Link OCR ─────────────
+  private async createShipmentAndDocument(ocrData: OcrData, so: SoCandidate): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Generate shipment number
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const shpPrefix = `SHP-${today}-`;
+      const existingShps = await tx.shipmentHeader.findMany({
+        where: { shipmentNumber: { startsWith: shpPrefix } },
+        select: { shipmentNumber: true },
+      });
+      const shpNumbers = existingShps
+        .map((s) => parseInt(s.shipmentNumber?.replace(shpPrefix, '') || '0', 10))
+        .filter((n) => !isNaN(n));
+      const nextShpNum = shpNumbers.length > 0 ? Math.max(...shpNumbers) + 1 : 1;
+      const shipmentNumber = `${shpPrefix}${String(nextShpNum).padStart(3, '0')}`;
+
+      // 2. Create ShipmentHeader
+      const shipmentId = uuidv4();
+      const externalId = `ocr-shp-${Date.now()}-${uuidv4().slice(0, 8)}`;
+      const correlationId = ocrData.correlationId || uuidv4();
+
+      const expectedQty = ocrData.qtyExtracted
+        ? Number(ocrData.qtyExtracted)
+        : Number(so.totalExpectedQtyKg);
+
+      await tx.shipmentHeader.create({
+        data: {
+          id: shipmentId,
+          shipmentNumber,
+          soId: so.soNumber,
+          salesOrderId: so.id,
+          sourceType: 'SO',
+          ownerId: so.ownerId,
+          warehouseId: so.warehouseId,
+          vehicleNumber: ocrData.vehicleNumber || 'OCR-PENDING',
+          notes: `Tự động tạo từ OCR xuất kho - matched SO ${so.soNumber}`,
+          status: 'DRAFT',
+          externalId,
+          correlationId,
+          sourceApp: 'INTEGRATION',
+          createdBy: ocrData.createdBy || null,
+        },
+      });
+
+      // 3. Create ShipmentLine(s) from SO lines
+      if (so.lines.length > 0) {
+        await tx.shipmentLine.createMany({
+          data: so.lines.map((line, index) => ({
+            shipmentHeaderId: shipmentId,
+            lineNumber: index + 1,
+            soLineId: line.id,
+            itemId: line.itemId,
+            cargoForm: 'BULK' as any,
+            uomId: line.uomId || line.itemId,
+            expectedQty: so.lines.length === 1
+              ? expectedQty
+              : Number(line.expectedQty),
+            expectedQtyKg: so.lines.length === 1
+              ? expectedQty
+              : Number(line.expectedQty),
+            lineStatus: 'PENDING' as any,
+            createdBy: ocrData.createdBy || null,
+          })),
+        });
+      }
+
+      // 4. Create ShipmentStatusHistory
+      await tx.shipmentStatusHistory.create({
+        data: {
+          shipmentHeaderId: shipmentId,
+          entityLevel: 'HEADER',
+          fromStatus: 'DRAFT',
+          toStatus: 'DRAFT',
+          triggerAction: 'OCR_AUTO_CREATE',
+          changedBy: ocrData.createdBy || null,
+          note: `Tự động tạo từ OCR scan - matched SO ${so.soNumber}`,
+          correlationId,
+        },
+      });
+
+      // 5. Determine document code
+      const documentCode = ocrData.ticketNumber || ocrData.ocrRequestId;
+
+      // 6. Create OutboundDocument (Phiếu cân cảng xuất)
+      const fileInfo = getFileInfo(ocrData.imagePath);
+      const fileExt = extname(ocrData.imagePath).toLowerCase() || '.jpg';
+      const docId = uuidv4();
+
+      this.logger.log(`Creating OutboundDocument: code=${documentCode}, file=${ocrData.imagePath}`);
+
+      await tx.outboundDocument.create({
+        data: {
+          id: docId,
+          documentCode,
+          shipmentHeaderId: shipmentId,
+          docType: 'WEIGHT_CERTIFICATE',
+          ownerId: so.ownerId,
+          vehicleNumber: ocrData.vehicleNumber || null,
+          fileName: `${so.soNumber}${fileExt}`,
+          filePath: ocrData.imagePath,
+          fileSize: fileInfo.size,
+          mimeType: fileInfo.mimeType,
+          notes: `OCR phiếu cân cảng xuất - SO ${so.soNumber}`,
+          status: 'SCANNED',
+          uploadedBy: ocrData.createdBy || null,
+        },
+      });
+
+      this.logger.log(`OutboundDocument created: ${docId}, code: ${documentCode}`);
+
+      // 7. Update OCR result → LINKED
+      await tx.m8OcrResult.update({
+        where: { id: ocrData.id },
+        data: {
+          linkedShipmentId: shipmentId,
+          linkedSoId: so.id,
+          linkMethod: 'AUTO_MATCHED',
+          status: OcrStatus.LINKED,
+        },
+      });
+
+      this.logger.log(
+        `Outbound auto-linked OCR ${ocrData.id} → SO ${so.soNumber}, Shipment ${shipmentNumber}, Document ${documentCode}`,
+      );
+    });
   }
 
   // ─── Utility ────────────────────────────────────────────────────
