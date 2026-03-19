@@ -16,6 +16,7 @@ function Label({ children, required }) {
 }
 
 const initialFormState = {
+  type: 'INBOUND', // 'INBOUND' or 'OUTBOUND'
   itemId: '',
   qty: '',
   uomCode: 'KG',
@@ -24,6 +25,7 @@ const initialFormState = {
   locationCode: '',
   ownerCode: '',
   statusCode: 'AVAILABLE',
+  note: '',
 }
 
 export function InventoryPostingDrawer({ isOpen, onClose }) {
@@ -48,25 +50,42 @@ export function InventoryPostingDrawer({ isOpen, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     const externalId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const isOutbound = form.type === 'OUTBOUND'
+    
+    // For manual entries, siteCode is usually fixed or from context
+    const siteCode = 'TVL-SITE'
+    
     const payload = {
       externalId,
       correlationId: externalId,
-      eventCode: 'RECEIPT_RECEIVED',
+      eventCode: isOutbound ? 'SHIPMENT_SHIPPED' : 'RECEIPT_RECEIVED',
       refType: 'MANUAL_ENTRY',
       refId: `MANUAL-${Date.now()}`,
       refLineId: 'LINE-01',
       itemId: form.itemId,
-      qty: form.qty,
+      qty: isOutbound ? `-${form.qty}` : form.qty,
       uomCode: form.uomCode,
-      dimTo: {
-        siteCode: 'TVL-SITE',
-        warehouseCode: form.warehouseCode,
-        locationCode: form.locationCode,
-        ownerCode: form.ownerCode,
-        statusCode: form.statusCode,
-      },
       sourceApp: 'WEB',
     }
+
+    if (isOutbound) {
+      payload.dimFrom = {
+        siteCode,
+        warehouseCode: form.warehouseCode,
+        locationCode: form.locationCode || undefined,
+        ownerCode: form.ownerCode,
+        statusCode: form.statusCode,
+      }
+    } else {
+      payload.dimTo = {
+        siteCode,
+        warehouseCode: form.warehouseCode,
+        locationCode: form.locationCode || undefined,
+        ownerCode: form.ownerCode,
+        statusCode: form.statusCode,
+      }
+    }
+
     createPosting(payload, { onSuccess: () => onClose() })
   }
 
@@ -98,7 +117,29 @@ export function InventoryPostingDrawer({ isOpen, onClose }) {
             </div>
 
             {/* Body */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              {/* Type Toggle */}
+              <div className="flex p-1 bg-moon-100 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => handleChange('type', 'INBOUND')}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                    form.type === 'INBOUND' ? 'bg-white text-primary shadow-sm' : 'text-navy-400 hover:text-navy-600'
+                  }`}
+                >
+                  Nhập tồn kho ( + )
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChange('type', 'OUTBOUND')}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+                    form.type === 'OUTBOUND' ? 'bg-white text-red-600 shadow-sm' : 'text-navy-400 hover:text-navy-600'
+                  }`}
+                >
+                  Xuất tồn kho ( - )
+                </button>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label required>Mặt hàng</Label>
@@ -139,6 +180,16 @@ export function InventoryPostingDrawer({ isOpen, onClose }) {
                   <Select value={form.statusCode} onChange={(e) => handleChange('statusCode', e.target.value)}
                     options={statusOptions.map((o) => ({ value: o.code, label: `${o.code} - ${o.name}` }))} />
                 </div>
+                <div className="md:col-span-2">
+                  <Label>Ghi chú</Label>
+                  <textarea
+                    className="wrs-input w-full"
+                    rows={2}
+                    value={form.note}
+                    onChange={(e) => handleChange('note', e.target.value)}
+                    placeholder="Ghi chú cho bút toán nhập kho (tùy chọn)"
+                  />
+                </div>
               </div>
             </form>
 
@@ -149,9 +200,25 @@ export function InventoryPostingDrawer({ isOpen, onClose }) {
               </p>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isPending}>Hủy</Button>
-                <Button type="submit" size="sm" disabled={!isValid || isPending} loading={isPending} onClick={handleSubmit}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Nhập tồn kho
+                <Button 
+                  type="submit" 
+                  size="sm" 
+                  variant={form.type === 'OUTBOUND' ? 'danger' : 'primary'}
+                  disabled={!isValid || isPending} 
+                  loading={isPending} 
+                  onClick={handleSubmit}
+                >
+                  {form.type === 'OUTBOUND' ? (
+                    <>
+                      <X className="w-4 h-4 mr-1" />
+                      Xuất tồn kho
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Nhập tồn kho
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

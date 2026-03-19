@@ -38,8 +38,15 @@ httpClient.interceptors.request.use(
 httpClient.interceptors.response.use(
   (response) => {
     const body = response.data
-    // Unwrap ResponseInterceptor envelope: { success, data, meta }
-    return body && body.success !== undefined ? body.data : body
+    // Unwrap ResponseInterceptor envelope: { success, data, pagination? }
+    if (body && body.success !== undefined) {
+      // Preserve pagination metadata for list APIs
+      if (body.pagination) {
+        return { data: body.data, pagination: body.pagination }
+      }
+      return body.data
+    }
+    return body
   },
   (error) => {
     const errorResponse = error.response?.data || {

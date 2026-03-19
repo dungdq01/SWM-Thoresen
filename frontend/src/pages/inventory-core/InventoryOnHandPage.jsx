@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { Plus, Package, Layers, ShieldCheck, Lock, RotateCw } from 'lucide-react'
 import { useOnHandList } from '@domains/inventory-core'
 import { useLookupInventoryStatuses, useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { InventoryStatusBadge } from '@domains/master-data/components/StatusBadge'
@@ -8,11 +8,38 @@ import { InventoryPostingDrawer } from '@features/inventory-core'
 
 const TOTAL_COLS = 11
 
+function formatKg(value) {
+  const num = Number(value)
+  if (isNaN(num)) return '—'
+  return num.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' kg'
+}
+
 function formatQty(value, uomCode) {
   const num = Number(value)
   if (isNaN(num)) return '—'
-  if (uomCode === 'KG') return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-  return num.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+  if (uomCode === 'KG') return num.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  return num.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
+function KpiCard({ icon: Icon, label, value, color = 'ice', subtext }) {
+  const colorMap = {
+    ice: 'from-ice/10 to-ice/5 text-ice border-ice/20',
+    emerald: 'from-emerald-500/10 to-emerald-500/5 text-emerald-600 border-emerald-500/20',
+    amber: 'from-amber-500/10 to-amber-500/5 text-amber-600 border-amber-500/20',
+    navy: 'from-navy-500/10 to-navy-500/5 text-navy-600 border-navy-500/20',
+  }
+  return (
+    <div className={`wrs-card p-4 border bg-gradient-to-br ${colorMap[color]} flex items-start gap-3`}>
+      <div className={`flex-shrink-0 p-2 rounded-lg bg-white/60 shadow-sm`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-navy-500 uppercase tracking-wide">{label}</p>
+        <p className="text-xl font-bold text-navy-900 mt-0.5 truncate">{value}</p>
+        {subtext && <p className="text-xs text-navy-400 mt-0.5">{subtext}</p>}
+      </div>
+    </div>
+  )
 }
 
 export function InventoryOnHandPage() {
@@ -43,6 +70,21 @@ export function InventoryOnHandPage() {
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
 
+  // Compute KPI summary from current rows (client-side summary of loaded data)
+  const kpiSummary = useMemo(() => {
+    let totalPhysical = 0
+    let totalAvailable = 0
+    let totalReserved = 0
+    const uniqueItems = new Set()
+    for (const row of rows) {
+      totalPhysical += Number(row.physicalQty) || 0
+      totalAvailable += Number(row.availableQty) || 0
+      totalReserved += Number(row.reservedQty) || 0
+      if (row.item?.itemCode) uniqueItems.add(row.item.itemCode)
+    }
+    return { totalPhysical, totalAvailable, totalReserved, uniqueItems: uniqueItems.size }
+  }, [rows])
+
   const handleChange = useCallback((key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }))
   }, [])
@@ -50,14 +92,25 @@ export function InventoryOnHandPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="section-title">Tồn kho hiện tại</h2>
+        <div>
+          <h2 className="section-title">Tồn kho hiện tại</h2>
+          <p className="text-sm text-navy-400 mt-0.5">Theo dõi số lượng hàng hóa tồn kho thực tế — tất cả đơn vị quy đổi sang kg</p>
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>Làm mới</Button>
-          <Button variant="accent" size="sm" onClick={() => setDrawerOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Nhập tồn kho
-          </Button>
+              <Button variant="outline" size="sm" onClick={() => setDrawerOpen(true)}>
+                <RotateCw className="h-4 w-4 mr-2" />
+                Điều chỉnh tồn kho
+              </Button>
         </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+        <KpiCard icon={Package} label="Tổng tồn kho" value={formatKg(kpiSummary.totalPhysical)} color="ice" subtext={`${pagination.total || rows.length} dòng`} />
+        <KpiCard icon={Layers} label="Mặt hàng" value={kpiSummary.uniqueItems} color="navy" subtext="loại hàng hóa" />
+        <KpiCard icon={ShieldCheck} label="Khả dụng" value={formatKg(kpiSummary.totalAvailable)} color="emerald" />
+        <KpiCard icon={Lock} label="Đã giữ" value={formatKg(kpiSummary.totalReserved)} color="amber" />
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -107,9 +160,9 @@ export function InventoryOnHandPage() {
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Lô</TableHead>
                   <TableHead>Vị trí</TableHead>
-                  <TableHead align="right">Thực tế</TableHead>
-                  <TableHead align="right">Đã giữ</TableHead>
-                  <TableHead align="right">Khả dụng</TableHead>
+                  <TableHead align="right">Thực tế (kg)</TableHead>
+                  <TableHead align="right">Đã giữ (kg)</TableHead>
+                  <TableHead align="right">Khả dụng (kg)</TableHead>
                   <TableHead>ĐVT</TableHead>
                 </TableRow>
               </TableHeader>
@@ -168,3 +221,4 @@ export function InventoryOnHandPage() {
     </>
   )
 }
+

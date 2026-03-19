@@ -20,6 +20,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
 
 export interface OutboundWeighLogData {
   id: string;
@@ -41,7 +42,11 @@ export interface OutboundBridgeResult {
 }
 
 export class OutboundBridgeAdapter {
-  constructor(private readonly prisma: PrismaClient) {}
+  private postingEngine: any;
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.postingEngine = new PostingEngineService(prisma);
+  }
 
   /**
    * [DRAFT] Notify M5 Outbound khi weigh log được xác nhận
@@ -266,15 +271,24 @@ export class OutboundBridgeAdapter {
         // Lấy thông tin shipment và lines
         const shipmentWithLines = await tx.shipmentHeader.findUnique({
           where: { id: log.shipmentId },
-          include: { lines: true },
-        });
+          include: { 
+             lines: { include: { uom: { select: { uomCode: true } } } },
+             owner: { select: { ownerCode: true } },
+             warehouse: { select: { warehouseCode: true } },
+             allocationRecords: { 
+               include: { 
+                 inventDim: { include: { location: { select: { locationCode: true } } } } 
+               } 
+             }
+          },
+        }) as any;
 
         // Cập nhật shippedQty cho tất cả lines của shipment
         // Logic: Nếu SHP chỉ có 1 line, fill toàn bộ netWeightKg vào line đó
         // Nếu SHP có nhiều lines, chia tỉ lệ theo expectedQty
         if (shipmentWithLines?.lines && shipmentWithLines.lines.length > 0 && log.netWeightKg) {
           const totalExpectedQty = shipmentWithLines.lines.reduce(
-            (sum, l) => sum + Number(l.expectedQty || 0),
+            (sum: number, l: any) => sum + Number(l.expectedQty || 0),
             0,
           );
 
@@ -291,6 +305,53 @@ export class OutboundBridgeAdapter {
                 updatedBy: context.userId,
               },
             });
+
+            // Post Inventory Automation (Negative QTY for outbound)
+            try {
+              // SMART LOCATION PICKER: 
+              // 1. Check if line has an allocation
+              let locationCode = shipmentWithLines.allocationRecords?.find((a: any) => a.shipmentLineId === line.id)?.inventDim?.location?.locationCode;
+              
+              // 2. If no allocation, try to find ANY location in this warehouse that HAS on-hand for this item
+              if (!locationCode) {
+                const onHand = await tx.onHand.findFirst({
+                  where: {
+                    itemId: line.itemId,
+                    physicalQty: { gt: 0 },
+                    inventDim: {
+                      warehouse: { warehouseCode: shipmentWithLines.warehouse?.warehouseCode },
+                      owner: { ownerCode: shipmentWithLines.owner?.ownerCode },
+                    }
+                  },
+                  include: { inventDim: { include: { location: { select: { locationCode: true } } } } }
+                }) as any;
+                locationCode = onHand?.inventDim?.location?.locationCode;
+              }
+
+              console.log(`[OutboundBridge] Auto-posting inventory for line ${line.id}. Picked location: ${locationCode || 'DEFAULT'}`);
+
+              await this.postingEngine.postInventory({
+                externalId: `SHP-AUTO-${shipmentWithLines.id}-${line.id}-${Date.now()}`,
+                correlationId: shipmentWithLines.correlationId || log.id,
+                eventCode: 'SHIPMENT_SHIPPED',
+                refType: 'SHIPMENT',
+                refId: shipmentWithLines.id,
+                refLineId: line.id,
+                itemId: line.itemId,
+                qty: `-${shippedQty}`, // MUST be negative for outbound
+                uomCode: 'KG',
+                dimFrom: {
+                  warehouseCode: shipmentWithLines.warehouse?.warehouseCode,
+                  locationCode: locationCode || undefined, 
+                  ownerCode: shipmentWithLines.owner?.ownerCode,
+                  statusCode: 'AVAILABLE',
+                },
+                sourceApp: 'WEB',
+                postedBy: context.userId || undefined,
+              }, tx);
+            } catch (postErr) {
+               console.error('[OutboundBridge] Error posting inventory', postErr);
+            }
           }
         }
 

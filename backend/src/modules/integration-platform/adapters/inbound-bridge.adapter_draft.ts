@@ -19,6 +19,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
 
 export interface WeighLogData {
   id: string;
@@ -48,7 +49,11 @@ export interface BridgeResult {
 }
 
 export class InboundBridgeAdapter {
-  constructor(private readonly prisma: PrismaClient) {}
+  private postingEngine: any;
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.postingEngine = new PostingEngineService(prisma);
+  }
 
   /**
    * [DRAFT] Notify M4 Inbound khi weigh log được xác nhận
@@ -271,9 +276,18 @@ export class InboundBridgeAdapter {
           status: true,
           poId: true,
           correlationId: true,
-          lines: { select: { id: true } },
+          lines: { 
+            select: { 
+              id: true, 
+              expectedQty: true,
+              itemId: true,
+              uom: { select: { uomCode: true } }
+            } 
+          },
+          owner: { select: { ownerCode: true } },
+          warehouse: { select: { warehouseCode: true } },
         },
-      });
+      }) as any;
 
       if (!receipt) {
         return {
@@ -310,14 +324,50 @@ export class InboundBridgeAdapter {
         // Update receivedQty cho tất cả ReceiptLine = netWeightKg
         // (ASN thường chỉ có 1 line, nếu nhiều line thì cần logic phân bổ riêng)
         if (receipt.lines.length > 0 && log.netWeightKg != null) {
-          await tx.receiptLine.updateMany({
-            where: { receiptHeaderId: log.receiptId },
-            data: {
-              receivedQty: log.netWeightKg,
-              status: 'RECEIVED' as any,
-              updatedBy: context.userId,
-            },
-          });
+          const totalExpectedQty = receipt.lines.reduce(
+            (sum: number, l: any) => sum + Number(l.expectedQty || 0),
+            0,
+          );
+
+          for (const line of receipt.lines) {
+            const ratio = totalExpectedQty > 0 ? Number(line.expectedQty || 0) / totalExpectedQty : 1;
+            const receivedQty = log.netWeightKg * ratio;
+
+            await tx.receiptLine.update({
+              where: { id: line.id },
+              data: {
+                receivedQty: receivedQty,
+                status: 'RECEIVED' as any,
+                updatedBy: context.userId,
+              },
+            });
+
+            // Post Inventory Automation
+            try {
+              await this.postingEngine.postInventory({
+                externalId: `RCPT-AUTO-${receipt.id}-${line.id}-${Date.now()}`,
+                correlationId: receipt.correlationId || log.id,
+                eventCode: 'RECEIPT_RECEIVED',
+                refType: 'RECEIPT',
+                refId: receipt.id,
+                refLineId: line.id,
+                itemId: line.itemId,
+                qty: String(receivedQty),
+                uomCode: 'KG',
+                dimTo: {
+                  warehouseCode: receipt.warehouse?.warehouseCode,
+                  locationCode: undefined,
+                  ownerCode: receipt.owner?.ownerCode,
+                  statusCode: 'AVAILABLE',
+                },
+                sourceApp: 'WEB',
+                postedBy: context.userId || undefined,
+              }, tx);
+            } catch (postErr) {
+               // Log error but don't fail the whole transaction yet unless critical
+               console.error('[InboundBridge] Error posting inventory', postErr);
+            }
+          }
         }
 
         // Log status change
