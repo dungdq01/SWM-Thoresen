@@ -1,6 +1,6 @@
 import { IsString, IsEnum, IsNumber, IsOptional, IsBoolean, IsUUID, IsDateString, ValidateNested, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
-import { WeighingType, ReferenceType } from '../../domain/integration.enums';
+import { WeighingType, ReferenceType, LogMode, WeighDirection } from '../../domain/integration.enums';
 
 export class CreateWeighEventDto {
   @IsString()
@@ -79,6 +79,34 @@ export class CreateWeighEventDto {
 
   @IsDateString()
   eventTime!: string;
+
+  @IsOptional()
+  @IsEnum(LogMode)
+  logMode?: LogMode;
+
+  @IsOptional()
+  @IsString()
+  scaleTicketId?: string;
+
+  @IsOptional()
+  @IsEnum(WeighDirection)
+  direction?: WeighDirection;
+
+  @IsOptional()
+  @IsString()
+  documentNumber?: string;
+
+  @IsOptional()
+  @IsUUID()
+  receiptLineId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  shipmentLineId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  previousLogId?: string;
 }
 
 export class HeartbeatDto {

@@ -1,0 +1,52 @@
+{
+  "feature": "uom-by-item-filter",
+  "description": "Filter UOM dropdown options by item's DefaultUom and UomConversion table instead of showing all UOMs",
+  "backendStructure": {
+    "newFiles": [
+      "backend/src/Smartlog.Application/Features/Foundation/UomConversions/Queries/GetUomLookupByItem.cs"
+    ],
+    "modifyFiles": [
+      "backend/src/Smartlog.Api/Controllers/UomConversionsController.cs"
+    ]
+  },
+  "frontendStructure": {
+    "modifyFiles": [
+      "frontend/src/features/uoms/api/uoms.ts",
+      "frontend/src/features/uoms/api/query-keys.ts",
+      "frontend/src/core/data-sources.ts",
+      "frontend/src/features/purchase-orders/components/purchase-orders-action-dialog.tsx",
+      "frontend/src/features/sale-orders/components/sale-orders-action-dialog.tsx",
+      "frontend/src/features/orders/components/orders-action-dialog.tsx",
+      "frontend/src/features/inbound-receipts/components/inbound-receipts-create-dialog.tsx",
+      "frontend/src/features/inbound-receipts/components/inbound-receipts-edit-dialog.tsx"
+    ]
+  },
+  "apiContract": {
+    "newEndpoints": [
+      {
+        "method": "GET",
+        "path": "/api/uom-conversions/lookup",
+        "queryParams": { "itemId": "Guid (required)" },
+        "response": "ApiResult<List<LookupDto>>",
+        "description": "Returns UOM options available for a given item based on DefaultUom + UomConversion rules"
+      }
+    ]
+  },
+  "fieldDefinitions": [],
+  "templatesNeeded": {
+    "backend": [],
+    "frontend": []
+  },
+  "scriptsNeeded": [],
+  "i18nChecklist": [],
+  "requiredSamples": {
+    "queryHandler": "public class GetUomLookupByItem\n{\n    public record Query(Guid ItemId) : IQuery<List<LookupDto>>;\n\n    public class QueryHandler(IAppDbContext context) : IQueryHandler<Query, List<LookupDto>>\n    {\n        public async Task<List<LookupDto>> HandleAsync(Query query, CancellationToken ct = default)\n        {\n            var item = await context.Items.AsNoTracking()\n                .Where(x => x.Id == query.ItemId)\n                .Select(x => new { x.DefaultUom })\n                .FirstOrDefaultAsync(ct);\n\n            if (item?.DefaultUom is null) return [];\n\n            var defaultUom = await context.Uoms.AsNoTracking()\n                .Where(x => x.Code == item.DefaultUom)\n                .Select(x => new { x.Id, x.Code, x.Name })\n                .FirstOrDefaultAsync(ct);\n\n            if (defaultUom is null) return [];\n\n            var convertibleUomIds = await context.UomConversions.AsNoTracking()\n                .Where(x => x.FromUomId == defaultUom.Id || x.ToUomId == defaultUom.Id)\n                .Select(x => x.FromUomId == defaultUom.Id ? x.ToUomId : x.FromUomId)\n                .Distinct()\n                .ToListAsync(ct);\n\n            var allUomIds = convertibleUomIds.Prepend(defaultUom.Id).Distinct().ToList();\n\n            return await context.Uoms.AsNoTracking()\n                .Where(x => allUomIds.Contains(x.Id))\n                .OrderBy(x => x.Name)\n                .Select(x => new LookupDto(x.Id, x.Code, x.Name))\n                .ToListAsync(ct);\n        }\n    }\n}",
+    "controller": "[HttpGet(\"lookup\")]\n[ProducesResponseType(typeof(ApiResult<List<LookupDto>>), StatusCodes.Status200OK)]\npublic async Task<IActionResult> GetLookupByItem([FromQuery] Guid itemId, CancellationToken ct)\n{\n    var result = await dispatcher.QueryAsync(new GetUomLookupByItem.Query(itemId), ct);\n    return Ok(ApiResult<List<LookupDto>>.Success(result));\n}",
+    "featureApi": "getUomLookupByItem: async (params?: { itemId?: string }) => {\n    const response = await apiClient.get('/uom-conversions/lookup', { params })\n    return response.data.data\n}",
+    "featureSchema": "// No new schema needed - uses existing LookupDto",
+    "entity": "// No new entity - uses existing Item, Uom, UomConversion",
+    "commandHandler": "// No command needed - read-only query",
+    "dataSourceRegistration": "registerDataSource('uoms-by-item', {\n  fetcher: (params) => uomsApi.getUomLookupByItem(params),\n  queryKey: uomsKeys.itemUomLookup,\n  labelField: 'name',\n  valueField: 'code',\n})",
+    "selectFieldUsage": "<SelectField\n    name={`lineItems.${index}.uom`}\n    label={t('fields.uomId')}\n    placeholder={t('placeholders.uomId')}\n    dataSource='uoms-by-item'\n    watchField={`lineItems.${index}.itemId`}\n    watchParamKey='itemId'\n    clearOnWatchChange\n    searchable\n    className='col-span-1'\n/>"
+  }
+}

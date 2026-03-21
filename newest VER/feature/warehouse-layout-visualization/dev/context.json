@@ -1,0 +1,324 @@
+{
+  "feature": "warehouse-layout-visualization",
+  "description": "Phase 1: Layout Builder (drag-and-drop Konva.js canvas) + 2D Warehouse View with inventory heat map. Extends cat.warehouse/zone/location with spatial columns (ALTER TABLE — no new tables). 4 new API endpoints. 2 new frontend pages.",
+  "planPath": "docs/feature/warehouse-layout-visualization/dev/plan.md",
+  "tasksPath": "docs/feature/warehouse-layout-visualization/dev/tasks.md",
+
+  "backendStructure": {
+    "solutionRoot": "backend/src",
+    "domainProject": "Smartlog.Domain",
+    "applicationProject": "Smartlog.Application",
+    "infrastructureProject": "Smartlog.Infrastructure",
+    "apiProject": "Smartlog.Api",
+    "schema": "cat",
+    "entitiesNamespace": "Smartlog.Domain.Entities.MasterData",
+    "entitiesDir": "backend/src/Smartlog.Domain/Entities/MasterData/",
+    "iAppDbContextFile": "backend/src/Smartlog.Domain/IAppDbContext.cs",
+    "appDbContextFile": "backend/src/Smartlog.Infrastructure/EntityFramework/AppDbContext.cs",
+    "configurationsDir": "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/MasterData/",
+    "featuresDir": "backend/src/Smartlog.Application/Features/WarehouseLayout/",
+    "controllersDir": "backend/src/Smartlog.Api/Controllers/",
+
+    "modifiedEntities": [
+      {
+        "entity": "Warehouse",
+        "file": "backend/src/Smartlog.Domain/Entities/MasterData/Warehouse.cs",
+        "addProperties": [
+          "decimal? LayoutWidthM",
+          "decimal? LayoutHeightM",
+          "string? FloorPlanUrl"
+        ]
+      },
+      {
+        "entity": "Zone",
+        "file": "backend/src/Smartlog.Domain/Entities/MasterData/Zone.cs",
+        "addProperties": [
+          "decimal? LayoutX",
+          "decimal? LayoutY",
+          "decimal? LayoutWidth",
+          "decimal? LayoutHeight",
+          "string? LayoutColor"
+        ]
+      },
+      {
+        "entity": "Location",
+        "file": "backend/src/Smartlog.Domain/Entities/MasterData/Location.cs",
+        "addProperties": [
+          "decimal? CoordX",
+          "decimal? CoordY",
+          "decimal? CoordZ",
+          "decimal? WidthM",
+          "decimal? DepthM",
+          "decimal? HeightM",
+          "short? RotationDeg",
+          "string? Aisle",
+          "string? RackNo",
+          "short? ShelfLevel",
+          "short? BinCol"
+        ]
+      }
+    ],
+
+    "modifiedConfigurations": [
+      "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/MasterData/WarehouseConfiguration.cs",
+      "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/MasterData/ZoneConfiguration.cs",
+      "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/MasterData/LocationConfiguration.cs"
+    ],
+
+    "newFeatureFiles": {
+      "WarehouseLayout": {
+        "dir": "backend/src/Smartlog.Application/Features/WarehouseLayout/",
+        "dtos": "backend/src/Smartlog.Application/Features/WarehouseLayout/Dtos/WarehouseLayoutDtos.cs",
+        "queries": [
+          "backend/src/Smartlog.Application/Features/WarehouseLayout/Queries/GetWarehouseLayout.cs",
+          "backend/src/Smartlog.Application/Features/WarehouseLayout/Queries/GetWarehouseInventoryMap.cs"
+        ],
+        "commands": [
+          "backend/src/Smartlog.Application/Features/WarehouseLayout/Commands/SaveWarehouseLayout.cs",
+          "backend/src/Smartlog.Application/Features/WarehouseLayout/Commands/UploadFloorPlan.cs"
+        ]
+      }
+    },
+
+    "newControllers": [
+      {
+        "file": "backend/src/Smartlog.Api/Controllers/WarehouseLayoutController.cs",
+        "route": "api/warehouse-layout",
+        "class": "WarehouseLayoutController"
+      }
+    ],
+
+    "fileStorage": {
+      "interfaceFile": "backend/src/Smartlog.Application/Services/Abstractions/IFileStorageService.cs",
+      "localImpl": "backend/src/Smartlog.Infrastructure/Services/LocalDiskFileStorageService.cs",
+      "diRegistration": "backend/src/Smartlog.Api/Program.cs",
+      "interface": "Task<string> SaveAsync(IFormFile file, string folder, CancellationToken ct)",
+      "note": "Phase 1 uses local disk. Production will swap to S3/Azure Blob. folder param = 'floor-plans'"
+    },
+
+    "migrationName": "AddWarehouseLayoutCoordinates",
+    "migrationCommand": "dotnet ef migrations add AddWarehouseLayoutCoordinates --project backend/src/Smartlog.Infrastructure --startup-project backend/src/Smartlog.Api",
+
+    "keyBusinessRules": {
+      "BR-001": "Validate coord_x IN [0, warehouse.layout_width_m] in SaveWarehouseLayout command for each location",
+      "BR-002": "Validate zone rect (layout_x + layout_width) <= warehouse.layout_width_m; same for Y",
+      "BR-003": "Warn (not block) if location coord falls outside parent zone rect",
+      "BR-004": "occupancy_pct = COALESCE(SUM(oh.qty_mt),0) / NULLIF(l.capacity_mt,0) * 100",
+      "BR-005": "locations WHERE coord_x IS NULL are unplaced — exclude from canvas rendering response",
+      "BR-006": "All new columns NULL-able — zero impact on existing operations",
+      "BR-009": "Validate layout_width_m IS NOT NULL AND layout_height_m IS NOT NULL before accepting zone placement in SaveWarehouseLayout"
+    },
+
+    "inventoryMapQuery": {
+      "description": "SQL pattern for GetWarehouseInventoryMap — join location with invent_on_hand",
+      "sql": "SELECT l.id, l.code, l.coord_x, l.coord_y, l.width_m, l.depth_m, l.capacity_mt, l.rotation_deg, COALESCE(SUM(oh.qty_mt),0) AS current_qty_mt, COALESCE(SUM(oh.qty_mt)/NULLIF(l.capacity_mt,0)*100,0) AS occupancy_pct, z.layout_color AS zone_color FROM cat.location l LEFT JOIN invent.invent_on_hand oh ON oh.location_id = l.id AND oh.tenant_id = l.tenant_id JOIN cat.zone z ON z.id = l.zone_id WHERE l.warehouse_id = @WarehouseId AND l.coord_x IS NOT NULL AND l.tenant_id = @TenantId GROUP BY l.id, l.code, l.coord_x, l.coord_y, l.width_m, l.depth_m, l.capacity_mt, l.rotation_deg, z.layout_color",
+      "filterNote": "Optional filter by owner_id / item_id — add OH joins for those when filter present"
+    }
+  },
+
+  "frontendStructure": {
+    "srcDir": "frontend/src",
+    "featuresDir": "frontend/src/features/",
+    "routesDir": "frontend/src/routes/_authenticated/",
+    "sidebarFile": "frontend/src/components/layout/data/sidebar-data.ts",
+    "i18nDir": "frontend/src/i18n/locales/",
+
+    "newPackages": ["konva", "react-konva"],
+    "installCommand": "pnpm --prefix frontend add konva react-konva",
+
+    "newFeatures": [
+      {
+        "slug": "warehouse-layout",
+        "dir": "frontend/src/features/warehouse-layout/",
+        "screens": [
+          "Layout Builder — drag-and-drop canvas to place zones and locations",
+          "2D View — floor plan with inventory heat map, filters, click detail"
+        ]
+      }
+    ],
+
+    "routes": [
+      {
+        "path": "/warehouses/$warehouseId/layout",
+        "file": "warehouses/$warehouseId/layout.tsx",
+        "component": "WarehouseLayoutBuilderPage"
+      },
+      {
+        "path": "/warehouses/$warehouseId/2d-view",
+        "file": "warehouses/$warehouseId/2d-view.tsx",
+        "component": "Warehouse2DViewPage"
+      }
+    ],
+
+    "sidebarUpdate": {
+      "group": "Visualization",
+      "groupTitleKey": "navigation:sidebar.groups.visualization",
+      "items": [
+        { "title": "Layout Builder", "titleKey": "navigation:sidebar.items.layoutBuilder", "url": "/warehouses", "icon": "LayoutGrid", "note": "Links to warehouse list; individual warehouse layout via row action" },
+        { "title": "2D View", "titleKey": "navigation:sidebar.items.view2d", "url": "/warehouses", "icon": "Map", "note": "Links to warehouse list; individual 2D view via row action" }
+      ],
+      "note": "Alternative: add 'Configure Layout' and '2D View' as action buttons in existing Warehouse list/detail page instead of top-level nav. Decide with product owner."
+    },
+
+    "i18nKeys": {
+      "en_navigation": {
+        "sidebar.groups.visualization": "Visualization",
+        "sidebar.items.layoutBuilder": "Layout Builder",
+        "sidebar.items.view2d": "2D View"
+      },
+      "vi_navigation": {
+        "sidebar.groups.visualization": "Trực quan hóa",
+        "sidebar.items.layoutBuilder": "Thiết lập Layout",
+        "sidebar.items.view2d": "Sơ đồ 2D"
+      }
+    },
+
+    "formConfigNeeded": false,
+    "note_no_dynamic_grid": "This feature uses custom Konva.js canvas, not DynamicGrid. No formCode/queryConfig needed.",
+
+    "coordinateConversion": {
+      "description": "Convert meter coordinates to Konva canvas pixels",
+      "formula": "pixelX = (coord_x / warehouse.layout_width_m) * canvasWidthPx",
+      "formula_size": "pixelWidth = (width_m / warehouse.layout_width_m) * canvasWidthPx",
+      "reverse": "coord_x = (konvaX / canvasWidthPx) * warehouse.layout_width_m",
+      "note": "Maintain aspect ratio: canvasHeightPx = canvasWidthPx * (layout_height_m / layout_width_m)"
+    },
+
+    "heatMapColors": {
+      "empty_0": "#F9FAFB",
+      "low_1_40": "#BBF7D0",
+      "medium_41_70": "#FEF08A",
+      "high_71_99": "#FED7AA",
+      "full_100plus": "#FCA5A5",
+      "note": "Tailwind-compatible colors. Apply as Konva Rect fill."
+    },
+
+    "lookupPatterns": {
+      "warehouseLookup": "GET /api/warehouses/lookup → { id (UUID), code, name } → use warehouse.id",
+      "ownerLookup": "GET /api/owners/lookup → { id (UUID), code, name } → use owner.id",
+      "itemLookup": "GET /api/items/lookup → { id (UUID), code, name } → use item.id",
+      "lotLookup": "GET /api/lots/lookup → { id (UUID), code, name } → use lot.id"
+    }
+  },
+
+  "apiContract": {
+    "getLayout": {
+      "method": "GET",
+      "url": "/api/warehouse-layout/{warehouseId}",
+      "response": "WarehouseLayoutDto { warehouseId, warehouseName, layoutWidthM, layoutHeightM, floorPlanUrl, zones: ZoneLayoutDto[], locations: LocationLayoutDto[] }",
+      "note": "Returns ALL zones and ALL locations (placed + unplaced). Frontend filters by coordX != null for canvas."
+    },
+    "saveLayout": {
+      "method": "PUT",
+      "url": "/api/warehouse-layout/{warehouseId}",
+      "body": "SaveWarehouseLayoutCommand { warehouseId, layoutWidthM, layoutHeightM, zones: [{id, layoutX, layoutY, layoutWidth, layoutHeight, layoutColor}], locations: [{id, coordX, coordY, coordZ, widthM, depthM, heightM, rotationDeg, aisle, rackNo, shelfLevel, binCol}] }",
+      "response": "204 No Content",
+      "note": "Batch upsert — send full canvas state. Only update coords/sizes, never touch operational fields."
+    },
+    "uploadFloorPlan": {
+      "method": "POST",
+      "url": "/api/warehouse-layout/{warehouseId}/floor-plan",
+      "body": "multipart/form-data: file (JPG/PNG/SVG, max 10MB)",
+      "response": "{ floorPlanUrl: string }",
+      "note": "Also sets cat.warehouse.floor_plan_url in DB."
+    },
+    "getInventoryMap": {
+      "method": "GET",
+      "url": "/api/warehouse-layout/{warehouseId}/inventory-map",
+      "queryParams": "?ownerId=&itemId=&lotId= (all optional for filtering)",
+      "response": "LocationOccupancyDto[] { locationId, locationCode, coordX, coordY, widthM, depthM, rotationDeg, capacityMt, currentQtyMt, occupancyPct, zoneColor, topItems: [{ownerName, itemName, qtyMt}] }",
+      "note": "Returns only PLACED locations (coord_x IS NOT NULL). Used for heat map coloring."
+    }
+  },
+
+  "fieldDefinitions": {
+    "warehouseLayoutColumns": {
+      "layout_width_m": "numeric(10,2) NULL — warehouse real width in meters",
+      "layout_height_m": "numeric(10,2) NULL — warehouse real height in meters",
+      "floor_plan_url": "text NULL — CDN/local URL of floor plan background image"
+    },
+    "zoneLayoutColumns": {
+      "layout_x": "numeric(10,4) NULL — zone origin X from warehouse (0,0) in meters",
+      "layout_y": "numeric(10,4) NULL — zone origin Y from warehouse (0,0) in meters",
+      "layout_width": "numeric(10,4) NULL — zone width in meters",
+      "layout_height": "numeric(10,4) NULL — zone height in meters",
+      "layout_color": "varchar(20) NULL DEFAULT '#4A90D9' — hex color for zone on canvas"
+    },
+    "locationLayoutColumns": {
+      "coord_x": "numeric(10,4) NULL — location center X from warehouse origin in meters",
+      "coord_y": "numeric(10,4) NULL — location center Y from warehouse origin in meters",
+      "coord_z": "numeric(10,4) NULL DEFAULT 0 — Z height (floor=0) in meters",
+      "width_m": "numeric(6,2) NULL — location width in meters",
+      "depth_m": "numeric(6,2) NULL — location depth in meters",
+      "height_m": "numeric(6,2) NULL — location height (vertical) in meters",
+      "rotation_deg": "smallint NULL DEFAULT 0 — 0/90/180/270 only",
+      "aisle": "varchar(20) NULL — aisle identifier e.g. 'A', 'B'",
+      "rack_no": "varchar(20) NULL — rack number within aisle",
+      "shelf_level": "smallint NULL — 1=ground, 2,3,.. (for 3D Phase 2)",
+      "bin_col": "smallint NULL — bin column within shelf"
+    },
+    "occupancyThresholds": {
+      "empty": 0,
+      "low_max": 40,
+      "medium_max": 70,
+      "high_max": 99,
+      "full_min": 100
+    }
+  },
+
+  "templatesNeeded": {
+    "backend": ["entity-base.md", "cqrs-command.md", "cqrs-query.md", "ef-configuration.md", "controller.md"],
+    "frontend": ["feature-api.md", "feature-schema.md"],
+    "note": "No form-config.md needed — no DynamicGrid. No dialog-form.md — uses custom Konva canvas."
+  },
+
+  "scriptsNeeded": {
+    "installFrontendPackages": "pnpm --prefix frontend add konva react-konva",
+    "migration": "dotnet ef migrations add AddWarehouseLayoutCoordinates --project backend/src/Smartlog.Infrastructure --startup-project backend/src/Smartlog.Api",
+    "build": "dotnet build backend/",
+    "frontendDev": "pnpm --prefix frontend dev",
+    "frontendBuild": "pnpm --prefix frontend build"
+  },
+
+  "i18nChecklist": [
+    "frontend/src/i18n/locales/en/navigation.json — add visualization group, layoutBuilder, view2d keys",
+    "frontend/src/i18n/locales/vi/navigation.json — add visualization group, layoutBuilder, view2d keys",
+    "frontend/src/i18n/locales/en/warehouseLayout.json — create: layout builder labels, 2D view labels, heat map legend",
+    "frontend/src/i18n/locales/vi/warehouseLayout.json — create: Vietnamese equivalents"
+  ],
+
+  "requiredSamples": {
+    "entity": {
+      "description": "Warehouse entity property additions (extend existing entity, do not replace)",
+      "code": "// Add to existing Warehouse entity class:\npublic decimal? LayoutWidthM { get; set; }\npublic decimal? LayoutHeightM { get; set; }\npublic string? FloorPlanUrl { get; set; }\n\n// Add to Zone entity class:\npublic decimal? LayoutX { get; set; }\npublic decimal? LayoutY { get; set; }\npublic decimal? LayoutWidth { get; set; }\npublic decimal? LayoutHeight { get; set; }\npublic string? LayoutColor { get; set; }\n\n// Add to Location entity class:\npublic decimal? CoordX { get; set; }\npublic decimal? CoordY { get; set; }\npublic decimal? CoordZ { get; set; }\npublic decimal? WidthM { get; set; }\npublic decimal? DepthM { get; set; }\npublic decimal? HeightM { get; set; }\npublic short? RotationDeg { get; set; }\npublic string? Aisle { get; set; }\npublic string? RackNo { get; set; }\npublic short? ShelfLevel { get; set; }\npublic short? BinCol { get; set; }"
+    },
+    "efConfiguration": {
+      "description": "EF config additions for layout columns — add inside existing Configure() methods",
+      "code": "// Inside WarehouseConfiguration.Configure():\nbuilder.Property(e => e.LayoutWidthM).HasColumnName(\"layout_width_m\").HasPrecision(10, 2);\nbuilder.Property(e => e.LayoutHeightM).HasColumnName(\"layout_height_m\").HasPrecision(10, 2);\nbuilder.Property(e => e.FloorPlanUrl).HasColumnName(\"floor_plan_url\");\n\n// Inside ZoneConfiguration.Configure():\nbuilder.Property(e => e.LayoutX).HasColumnName(\"layout_x\").HasPrecision(10, 4);\nbuilder.Property(e => e.LayoutY).HasColumnName(\"layout_y\").HasPrecision(10, 4);\nbuilder.Property(e => e.LayoutWidth).HasColumnName(\"layout_width\").HasPrecision(10, 4);\nbuilder.Property(e => e.LayoutHeight).HasColumnName(\"layout_height\").HasPrecision(10, 4);\nbuilder.Property(e => e.LayoutColor).HasColumnName(\"layout_color\").HasMaxLength(20);\n\n// Inside LocationConfiguration.Configure():\nbuilder.Property(e => e.CoordX).HasColumnName(\"coord_x\").HasPrecision(10, 4);\nbuilder.Property(e => e.CoordY).HasColumnName(\"coord_y\").HasPrecision(10, 4);\nbuilder.Property(e => e.CoordZ).HasColumnName(\"coord_z\").HasPrecision(10, 4);\nbuilder.Property(e => e.WidthM).HasColumnName(\"width_m\").HasPrecision(6, 2);\nbuilder.Property(e => e.DepthM).HasColumnName(\"depth_m\").HasPrecision(6, 2);\nbuilder.Property(e => e.HeightM).HasColumnName(\"height_m\").HasPrecision(6, 2);\nbuilder.Property(e => e.RotationDeg).HasColumnName(\"rotation_deg\");\nbuilder.Property(e => e.Aisle).HasColumnName(\"aisle\").HasMaxLength(20);\nbuilder.Property(e => e.RackNo).HasColumnName(\"rack_no\").HasMaxLength(20);\nbuilder.Property(e => e.ShelfLevel).HasColumnName(\"shelf_level\");\nbuilder.Property(e => e.BinCol).HasColumnName(\"bin_col\");"
+    },
+    "commandHandler": {
+      "description": "SaveWarehouseLayout command — batch update zone and location coordinates",
+      "code": "public class SaveWarehouseLayout\n{\n    public record Command(\n        Guid WarehouseId,\n        decimal? LayoutWidthM,\n        decimal? LayoutHeightM,\n        List<ZoneCoordUpdate> Zones,\n        List<LocationCoordUpdate> Locations\n    ) : ICommand;\n\n    public record ZoneCoordUpdate(Guid Id, decimal? LayoutX, decimal? LayoutY, decimal? LayoutWidth, decimal? LayoutHeight, string? LayoutColor);\n    public record LocationCoordUpdate(Guid Id, decimal? CoordX, decimal? CoordY, decimal? CoordZ, decimal? WidthM, decimal? DepthM, decimal? HeightM, short? RotationDeg, string? Aisle, string? RackNo, short? ShelfLevel, short? BinCol);\n\n    public class CommandHandler(IAppDbContext context, ICurrentUser currentUser) : ICommandHandler<Command>\n    {\n        public async Task HandleAsync(Command command, CancellationToken ct = default)\n        {\n            // BR-009: validate warehouse dimensions set\n            var warehouse = await context.Warehouses\n                .FirstOrDefaultAsync(w => w.Id == command.WarehouseId && w.TenantId == currentUser.TenantId, ct)\n                ?? throw new NotFoundException(nameof(Warehouse), command.WarehouseId);\n\n            warehouse.LayoutWidthM = command.LayoutWidthM;\n            warehouse.LayoutHeightM = command.LayoutHeightM;\n\n            // Batch update zones\n            var zoneIds = command.Zones.Select(z => z.Id).ToList();\n            var zones = await context.Zones\n                .Where(z => zoneIds.Contains(z.Id) && z.TenantId == currentUser.TenantId)\n                .ToListAsync(ct);\n\n            foreach (var update in command.Zones)\n            {\n                var zone = zones.FirstOrDefault(z => z.Id == update.Id);\n                if (zone == null) continue;\n                // BR-002: zone must fit within warehouse bounds\n                if (command.LayoutWidthM.HasValue && update.LayoutX + update.LayoutWidth > command.LayoutWidthM)\n                    throw new BusinessException($\"Zone {zone.Code} exceeds warehouse width\");\n                zone.LayoutX = update.LayoutX; zone.LayoutY = update.LayoutY;\n                zone.LayoutWidth = update.LayoutWidth; zone.LayoutHeight = update.LayoutHeight;\n                zone.LayoutColor = update.LayoutColor;\n            }\n\n            // Batch update locations\n            var locationIds = command.Locations.Select(l => l.Id).ToList();\n            var locations = await context.Locations\n                .Where(l => locationIds.Contains(l.Id) && l.TenantId == currentUser.TenantId)\n                .ToListAsync(ct);\n\n            foreach (var update in command.Locations)\n            {\n                var location = locations.FirstOrDefault(l => l.Id == update.Id);\n                if (location == null) continue;\n                // BR-001: coord bounds\n                if (command.LayoutWidthM.HasValue && update.CoordX > command.LayoutWidthM)\n                    throw new BusinessException($\"Location {location.Code} X coord exceeds warehouse width\");\n                location.CoordX = update.CoordX; location.CoordY = update.CoordY; location.CoordZ = update.CoordZ;\n                location.WidthM = update.WidthM; location.DepthM = update.DepthM; location.HeightM = update.HeightM;\n                location.RotationDeg = update.RotationDeg;\n                location.Aisle = update.Aisle; location.RackNo = update.RackNo;\n                location.ShelfLevel = update.ShelfLevel; location.BinCol = update.BinCol;\n            }\n\n            await context.SaveChangesAsync(ct);\n        }\n    }\n}"
+    },
+    "queryHandler": {
+      "description": "GetWarehouseInventoryMap — raw SQL query for occupancy per location",
+      "code": "public class GetWarehouseInventoryMap\n{\n    public record Query(Guid WarehouseId, Guid? OwnerId, Guid? ItemId, Guid? LotId) : IQuery<List<LocationOccupancyDto>>;\n\n    public class QueryHandler(IAppDbContext context, ICurrentUser currentUser) : IQueryHandler<Query, List<LocationOccupancyDto>>\n    {\n        public async Task<List<LocationOccupancyDto>> HandleAsync(Query query, CancellationToken ct = default)\n        {\n            // Use raw SQL or EF with GroupBy for occupancy calculation\n            var result = await context.Locations\n                .Where(l => l.WarehouseId == query.WarehouseId\n                         && l.TenantId == currentUser.TenantId\n                         && l.CoordX != null)\n                .Select(l => new LocationOccupancyDto\n                {\n                    LocationId = l.Id,\n                    LocationCode = l.Code,\n                    CoordX = l.CoordX!.Value,\n                    CoordY = l.CoordY!.Value,\n                    WidthM = l.WidthM,\n                    DepthM = l.DepthM,\n                    RotationDeg = l.RotationDeg ?? 0,\n                    CapacityMt = l.CapacityMt,\n                    ZoneColor = l.Zone!.LayoutColor ?? \"#4A90D9\",\n                    CurrentQtyMt = l.InventOnHands\n                        .Where(oh => (query.OwnerId == null || oh.InventDim!.OwnerId == query.OwnerId)\n                                  && (query.ItemId == null || oh.ItemId == query.ItemId)\n                                  && (query.LotId == null || oh.InventDim!.LotId == query.LotId))\n                        .Sum(oh => oh.QtyMt),\n                    OccupancyPct = l.CapacityMt == null || l.CapacityMt == 0 ? null\n                        : l.InventOnHands.Sum(oh => oh.QtyMt) / l.CapacityMt * 100\n                })\n                .ToListAsync(ct);\n            return result;\n        }\n    }\n}"
+    },
+    "controller": {
+      "description": "WarehouseLayoutController — 4 endpoints",
+      "code": "using Microsoft.AspNetCore.Authorization;\nusing Microsoft.AspNetCore.Mvc;\nusing Smartlog.Application.Features.WarehouseLayout.Commands;\nusing Smartlog.Application.Features.WarehouseLayout.Queries;\nusing Smartlog.Application.Features.WarehouseLayout.Dtos;\n\nnamespace Smartlog.Api.Controllers;\n\n[ApiController]\n[Route(\"api/warehouse-layout\")]\n[Authorize]\npublic sealed class WarehouseLayoutController(IDispatcher dispatcher) : ControllerBase\n{\n    [HttpGet(\"{warehouseId:guid}\")]\n    public async Task<IActionResult> GetLayout(Guid warehouseId, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(new GetWarehouseLayout.Query(warehouseId), ct);\n        return Ok(ApiResult<WarehouseLayoutDto>.Success(result));\n    }\n\n    [HttpPut(\"{warehouseId:guid}\")]\n    public async Task<IActionResult> SaveLayout(Guid warehouseId, [FromBody] SaveWarehouseLayout.Command command, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(command with { WarehouseId = warehouseId }, ct);\n        return NoContent();\n    }\n\n    [HttpPost(\"{warehouseId:guid}/floor-plan\")]\n    [RequestSizeLimit(10 * 1024 * 1024)] // 10MB\n    public async Task<IActionResult> UploadFloorPlan(Guid warehouseId, IFormFile file, CancellationToken ct)\n    {\n        var result = await dispatcher.DispatchAsync(new UploadFloorPlan.Command(warehouseId, file), ct);\n        return Ok(ApiResult<UploadFloorPlanResult>.Success(result));\n    }\n\n    [HttpGet(\"{warehouseId:guid}/inventory-map\")]\n    public async Task<IActionResult> GetInventoryMap(\n        Guid warehouseId,\n        [FromQuery] Guid? ownerId,\n        [FromQuery] Guid? itemId,\n        [FromQuery] Guid? lotId,\n        CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(new GetWarehouseInventoryMap.Query(warehouseId, ownerId, itemId, lotId), ct);\n        return Ok(ApiResult<List<LocationOccupancyDto>>.Success(result));\n    }\n}"
+    },
+    "featureApi": {
+      "description": "Frontend API client for warehouse layout feature",
+      "code": "import { apiClient } from '@/lib/api-client'\nimport type { WarehouseLayoutDto, LocationOccupancyDto, SaveLayoutCommand } from './warehouse-layout-schema'\n\nexport const warehouseLayoutApi = {\n  getLayout: async (warehouseId: string): Promise<WarehouseLayoutDto> => {\n    const res = await apiClient.get(`/warehouse-layout/${warehouseId}`)\n    return res.data.data\n  },\n\n  saveLayout: async (warehouseId: string, data: SaveLayoutCommand): Promise<void> => {\n    await apiClient.put(`/warehouse-layout/${warehouseId}`, data)\n  },\n\n  uploadFloorPlan: async (warehouseId: string, file: File): Promise<string> => {\n    const form = new FormData()\n    form.append('file', file)\n    const res = await apiClient.post(`/warehouse-layout/${warehouseId}/floor-plan`, form, {\n      headers: { 'Content-Type': 'multipart/form-data' },\n    })\n    return res.data.data.floorPlanUrl as string\n  },\n\n  getInventoryMap: async (\n    warehouseId: string,\n    filters?: { ownerId?: string; itemId?: string; lotId?: string }\n  ): Promise<LocationOccupancyDto[]> => {\n    const res = await apiClient.get(`/warehouse-layout/${warehouseId}/inventory-map`, { params: filters })\n    return res.data.data\n  },\n}"
+    },
+    "featureSchema": {
+      "description": "Zod schemas for warehouse layout types",
+      "code": "import { z } from 'zod'\n\nexport const zoneLayoutSchema = z.object({\n  id: z.string().uuid(),\n  code: z.string(),\n  name: z.string(),\n  zoneType: z.string(),\n  layoutX: z.number().nullable(),\n  layoutY: z.number().nullable(),\n  layoutWidth: z.number().nullable(),\n  layoutHeight: z.number().nullable(),\n  layoutColor: z.string().nullable().default('#4A90D9'),\n  isPlaced: z.boolean(),\n})\n\nexport const locationLayoutSchema = z.object({\n  id: z.string().uuid(),\n  code: z.string(),\n  name: z.string(),\n  locationType: z.string(),\n  zoneId: z.string().uuid().nullable(),\n  coordX: z.number().nullable(),\n  coordY: z.number().nullable(),\n  coordZ: z.number().nullable(),\n  widthM: z.number().nullable(),\n  depthM: z.number().nullable(),\n  heightM: z.number().nullable(),\n  rotationDeg: z.number().nullable().default(0),\n  aisle: z.string().nullable(),\n  rackNo: z.string().nullable(),\n  shelfLevel: z.number().nullable(),\n  binCol: z.number().nullable(),\n  isPlaced: z.boolean(),\n})\n\nexport const warehouseLayoutSchema = z.object({\n  warehouseId: z.string().uuid(),\n  warehouseName: z.string(),\n  layoutWidthM: z.number().nullable(),\n  layoutHeightM: z.number().nullable(),\n  floorPlanUrl: z.string().nullable(),\n  zones: z.array(zoneLayoutSchema),\n  locations: z.array(locationLayoutSchema),\n})\n\nexport const locationOccupancySchema = z.object({\n  locationId: z.string().uuid(),\n  locationCode: z.string(),\n  coordX: z.number(),\n  coordY: z.number(),\n  widthM: z.number().nullable(),\n  depthM: z.number().nullable(),\n  rotationDeg: z.number(),\n  capacityMt: z.number().nullable(),\n  currentQtyMt: z.number(),\n  occupancyPct: z.number().nullable(),\n  zoneColor: z.string(),\n  topItems: z.array(z.object({\n    ownerName: z.string(),\n    itemName: z.string(),\n    qtyMt: z.number(),\n  })).optional(),\n})\n\nexport type ZoneLayoutDto = z.infer<typeof zoneLayoutSchema>\nexport type LocationLayoutDto = z.infer<typeof locationLayoutSchema>\nexport type WarehouseLayoutDto = z.infer<typeof warehouseLayoutSchema>\nexport type LocationOccupancyDto = z.infer<typeof locationOccupancySchema>\n\nexport interface SaveLayoutCommand {\n  layoutWidthM?: number | null\n  layoutHeightM?: number | null\n  zones: Array<{ id: string; layoutX?: number | null; layoutY?: number | null; layoutWidth?: number | null; layoutHeight?: number | null; layoutColor?: string | null }>\n  locations: Array<{ id: string; coordX?: number | null; coordY?: number | null; coordZ?: number | null; widthM?: number | null; depthM?: number | null; heightM?: number | null; rotationDeg?: number | null; aisle?: string | null; rackNo?: string | null; shelfLevel?: number | null; binCol?: number | null }>\n}"
+    },
+    "konvaHook": {
+      "description": "useLayoutBuilder hook — core canvas state management",
+      "code": "import { useState, useCallback } from 'react'\nimport type { WarehouseLayoutDto, ZoneLayoutDto, LocationLayoutDto } from '../schemas/warehouse-layout-schema'\n\nexport interface CanvasConfig {\n  canvasWidthPx: number\n  warehouseWidthM: number\n  warehouseHeightM: number\n}\n\nexport function useLayoutBuilder(initialData: WarehouseLayoutDto | null) {\n  const [zones, setZones] = useState<ZoneLayoutDto[]>(initialData?.zones ?? [])\n  const [locations, setLocations] = useState<LocationLayoutDto[]>(initialData?.locations ?? [])\n  const [widthM, setWidthM] = useState(initialData?.layoutWidthM ?? null)\n  const [heightM, setHeightM] = useState(initialData?.layoutHeightM ?? null)\n  const [selectedId, setSelectedId] = useState<string | null>(null)\n  const [history, setHistory] = useState<Array<{ zones: ZoneLayoutDto[]; locations: LocationLayoutDto[] }>>([])\n\n  // Meter ↔ pixel conversion\n  const meterToPixel = useCallback((meter: number, canvasWidthPx: number) => {\n    if (!widthM) return 0\n    return (meter / widthM) * canvasWidthPx\n  }, [widthM])\n\n  const pixelToMeter = useCallback((pixel: number, canvasWidthPx: number) => {\n    if (!widthM) return 0\n    return (pixel / canvasWidthPx) * widthM\n  }, [widthM])\n\n  const placeZone = useCallback((zoneId: string, dropXPx: number, dropYPx: number, canvasWidthPx: number) => {\n    const coordX = pixelToMeter(dropXPx, canvasWidthPx)\n    const coordY = pixelToMeter(dropYPx, canvasWidthPx)\n    setZones(prev => prev.map(z => z.id === zoneId ? { ...z, layoutX: coordX, layoutY: coordY, layoutWidth: z.layoutWidth ?? 20, layoutHeight: z.layoutHeight ?? 15, isPlaced: true } : z))\n  }, [pixelToMeter])\n\n  const placeLocation = useCallback((locationId: string, dropXPx: number, dropYPx: number, canvasWidthPx: number) => {\n    const coordX = pixelToMeter(dropXPx, canvasWidthPx)\n    const coordY = pixelToMeter(dropYPx, canvasWidthPx)\n    setLocations(prev => prev.map(l => l.id === locationId ? { ...l, coordX, coordY, widthM: l.widthM ?? 5, depthM: l.depthM ?? 5, isPlaced: true } : l))\n  }, [pixelToMeter])\n\n  const updateZoneCoords = useCallback((zoneId: string, updates: Partial<ZoneLayoutDto>) => {\n    setZones(prev => prev.map(z => z.id === zoneId ? { ...z, ...updates } : z))\n  }, [])\n\n  const updateLocationCoords = useCallback((locationId: string, updates: Partial<LocationLayoutDto>) => {\n    setLocations(prev => prev.map(l => l.id === locationId ? { ...l, ...updates } : l))\n  }, [])\n\n  const undo = useCallback(() => {\n    if (history.length === 0) return\n    const prev = history[history.length - 1]\n    setZones(prev.zones)\n    setLocations(prev.locations)\n    setHistory(h => h.slice(0, -1))\n  }, [history])\n\n  return { zones, locations, widthM, heightM, setWidthM, setHeightM, selectedId, setSelectedId, placeZone, placeLocation, updateZoneCoords, updateLocationCoords, meterToPixel, pixelToMeter, undo }\n}"
+    }
+  }
+}

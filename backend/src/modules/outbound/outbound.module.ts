@@ -5,6 +5,8 @@ import { SimpleShipmentController } from './controllers/simple-shipment.controll
 import { SimpleShipmentService } from './services/simple-shipment.service';
 import { OutboundDocumentController } from './controllers/outbound-document.controller';
 import { OutboundDocumentService } from './services/outbound-document.service';
+import { PostShipResidualService } from './services/post-ship-residual.service';
+import { SoQtyRollupService } from './services/so-qty-rollup.service';
 
 /**
  * Module 5: Outbound Operations
@@ -25,7 +27,7 @@ import { OutboundDocumentService } from './services/outbound-document.service';
 @Module({
   imports: [],
   controllers: [SalesOrderController, SimpleShipmentController, OutboundDocumentController],
-  providers: [SalesOrderService, SimpleShipmentService, OutboundDocumentService],
-  exports: [SalesOrderService, SimpleShipmentService, OutboundDocumentService],
+  providers: [SalesOrderService, SimpleShipmentService, OutboundDocumentService, PostShipResidualService, SoQtyRollupService],
+  exports: [SalesOrderService, SimpleShipmentService, OutboundDocumentService, PostShipResidualService, SoQtyRollupService],
 })
 export class OutboundModule {}

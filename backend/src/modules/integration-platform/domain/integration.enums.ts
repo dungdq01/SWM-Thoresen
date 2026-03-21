@@ -21,6 +21,19 @@ export enum WeighEventProcessingStatus {
   DUPLICATE = 'DUPLICATE',
   FAILED = 'FAILED',
   REJECTED = 'REJECTED',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
+  RESOLVED = 'RESOLVED',
+}
+
+export enum LogMode {
+  CHECK_IN = 'CHECK_IN',
+  WEIGHING = 'WEIGHING',
+}
+
+export enum WeighDirection {
+  INBOUND = 'INBOUND',
+  OUTBOUND = 'OUTBOUND',
 }
 
 export enum CallbackStatus {
@@ -123,4 +136,8 @@ export enum AlertCode {
 export enum ReferenceType {
   RECEIPT = 'RECEIPT',
   SHIPMENT = 'SHIPMENT',
+}
+
+export enum ChainWarning {
+  CHAIN_WEIGHT_MISMATCH = 'CHAIN_WEIGHT_MISMATCH',
 }

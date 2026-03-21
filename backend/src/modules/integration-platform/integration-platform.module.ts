@@ -13,6 +13,7 @@ import { MonitoringController } from './controllers/monitoring.controller';
 import { WeighbridgeIngestService } from './services/weighbridge-ingest.service';
 import { WeighbridgeLogService } from './services/weighbridge-log.service';
 import { WeighbridgeDeviceService } from './services/weighbridge-device.service';
+import { WeighbridgeCascadingService } from './services/weighbridge-cascading.service';
 import { OcrUploadService } from './services/ocr-upload.service';
 import { OcrExtractService } from './services/ocr-extract.service';
 import { OcrConfirmationService } from './services/ocr-confirmation.service';
@@ -54,6 +55,7 @@ import { DeviceHeartbeatRepository } from './repositories/device-heartbeat.repos
     WeighbridgeIngestService,
     WeighbridgeLogService,
     WeighbridgeDeviceService,
+    WeighbridgeCascadingService,
     OcrUploadService,
     OcrExtractService,
     OcrConfirmationService,
@@ -83,6 +85,7 @@ import { DeviceHeartbeatRepository } from './repositories/device-heartbeat.repos
   exports: [
     WeighbridgeIngestService,
     WeighbridgeLogService,
+    WeighbridgeCascadingService,
     OcrUploadService,
     MobileSyncBatchService,
     ErpPushService,

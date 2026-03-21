@@ -1,0 +1,415 @@
+{
+  "feature": "tvl-swm-phase4-operations",
+  "description": "Phase 4 Operations: Inbound (PO → Receipt → Putaway), Outbound (SO → Order → Allocation → Ship), Transfer + Inventory Adjustment",
+  "backendStructure": {
+    "track4A": {
+      "featurePath": "Features/Inbound",
+      "namespace": "Smartlog.Application.Features.Inbound",
+      "entities": {
+        "PurchaseOrder": "Smartlog.Domain.Entities.Inbound.PurchaseOrder",
+        "PurchaseOrderLine": "Smartlog.Domain.Entities.Inbound.PurchaseOrderLine",
+        "InboundReceipt": "Smartlog.Domain.Entities.Inbound.InboundReceipt",
+        "InboundReceiptLine": "Smartlog.Domain.Entities.Inbound.InboundReceiptLine",
+        "WorkHeader": "Smartlog.Domain.Entities.Inbound.WorkHeader",
+        "WorkLine": "Smartlog.Domain.Entities.Inbound.WorkLine"
+      },
+      "subFolders": ["PurchaseOrders", "PurchaseOrderLines", "InboundReceipts", "InboundReceiptLines", "WorkOrders"],
+      "controllers": ["PurchaseOrdersController", "InboundReceiptsController", "WorkOrdersController"],
+      "queryConfigs": ["PurchaseOrders.json", "InboundReceipts.json", "WorkOrders.json"]
+    },
+    "track4B": {
+      "featurePath": "Features/Outbound",
+      "namespace": "Smartlog.Application.Features.Outbound",
+      "entities": {
+        "SaleOrder": "Smartlog.Domain.Entities.Outbound.SaleOrder",
+        "SaleOrderDetail": "Smartlog.Domain.Entities.Outbound.SaleOrderDetail",
+        "OrderHeader": "Smartlog.Domain.Entities.Outbound.OrderHeader",
+        "OrderDetail": "Smartlog.Domain.Entities.Outbound.OrderDetail",
+        "AllocationRecord": "Smartlog.Domain.Entities.Outbound.AllocationRecord"
+      },
+      "subFolders": ["SaleOrders", "SaleOrderDetails", "Orders", "OrderDetails", "Allocations"],
+      "controllers": ["SaleOrdersController", "OrdersController"],
+      "queryConfigs": ["SaleOrders.json", "Orders.json"]
+    },
+    "track4C": {
+      "featurePath": "Features/Transfers",
+      "namespace": "Smartlog.Application.Features.Transfers",
+      "entities": {
+        "TransferHeader": "Smartlog.Domain.Entities.Transfer.TransferHeader",
+        "TransferLine": "Smartlog.Domain.Entities.Transfer.TransferLine"
+      },
+      "subFolders": ["Transfers", "TransferLines"],
+      "controllers": ["TransfersController"],
+      "queryConfigs": ["Transfers.json"]
+    },
+    "sharedServices": {
+      "IInventTransService": "Smartlog.Application.Services.Abstractions.IInventTransService",
+      "IAllocationService": "Smartlog.Application.Services.Abstractions.IAllocationService",
+      "ILotService": "Smartlog.Application.Services.Abstractions.ILotService",
+      "IWeighbridgeService": "Smartlog.Application.Services.Abstractions.IWeighbridgeService",
+      "INumberSequenceService": "Smartlog.Application.Services.Abstractions.INumberSequenceService"
+    }
+  },
+  "frontendStructure": {
+    "track4A": {
+      "features": [
+        {
+          "name": "purchase-orders",
+          "path": "features/purchase-orders",
+          "route": "/purchase-orders",
+          "i18nNamespace": "purchaseOrders",
+          "formCodes": { "grid": "OPSPORG01", "search": "OPSPORS01" }
+        },
+        {
+          "name": "inbound-receipts",
+          "path": "features/inbound-receipts",
+          "route": "/inbound-receipts",
+          "i18nNamespace": "inboundReceipts",
+          "formCodes": { "grid": "OPSIRCG01", "search": "OPSIRCS01" }
+        }
+      ]
+    },
+    "track4B": {
+      "features": [
+        {
+          "name": "sale-orders",
+          "path": "features/sale-orders",
+          "route": "/sale-orders",
+          "i18nNamespace": "saleOrders",
+          "formCodes": { "grid": "OPSSORG01", "search": "OPSSORS01" }
+        },
+        {
+          "name": "orders",
+          "path": "features/orders",
+          "route": "/orders",
+          "i18nNamespace": "orders",
+          "formCodes": { "grid": "OPSORDG01", "search": "OPSORDS01" }
+        }
+      ]
+    },
+    "track4C": {
+      "features": [
+        {
+          "name": "transfers",
+          "path": "features/transfers",
+          "route": "/transfers",
+          "i18nNamespace": "transfers",
+          "formCodes": { "grid": "OPSTRFG01", "search": "OPSTRFS01" }
+        }
+      ]
+    },
+    "sidebarGroups": [
+      {
+        "title": "Inbound",
+        "i18nKey": "navigation.inbound",
+        "items": [
+          { "title": "Purchase Orders", "url": "/purchase-orders", "i18nKey": "navigation.purchaseOrders" },
+          { "title": "Inbound Receipts", "url": "/inbound-receipts", "i18nKey": "navigation.inboundReceipts" }
+        ]
+      },
+      {
+        "title": "Outbound",
+        "i18nKey": "navigation.outbound",
+        "items": [
+          { "title": "Sale Orders", "url": "/sale-orders", "i18nKey": "navigation.saleOrders" },
+          { "title": "Orders", "url": "/orders", "i18nKey": "navigation.orders" }
+        ]
+      },
+      {
+        "title": "Transfer",
+        "i18nKey": "navigation.transfer",
+        "items": [
+          { "title": "Transfers", "url": "/transfers", "i18nKey": "navigation.transfers" }
+        ]
+      }
+    ]
+  },
+  "apiContract": {
+    "track4A": {
+      "purchaseOrders": {
+        "endpoints": [
+          { "method": "GET", "path": "/api/purchase-orders", "handler": "GetPurchaseOrderList", "returns": "DynamicGridResult" },
+          { "method": "POST", "path": "/api/purchase-orders/search", "handler": "GetPurchaseOrderList", "returns": "DynamicGridResult" },
+          { "method": "GET", "path": "/api/purchase-orders/lookup", "handler": "GetPurchaseOrderLookup", "returns": "List<LookupDto>" },
+          { "method": "GET", "path": "/api/purchase-orders/{id}", "handler": "GetPurchaseOrderById", "returns": "PurchaseOrderDto" },
+          { "method": "POST", "path": "/api/purchase-orders", "handler": "CreatePurchaseOrder", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/purchase-orders/{id}", "handler": "UpdatePurchaseOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/purchase-orders/{id}/confirm", "handler": "ConfirmPurchaseOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/purchase-orders/{id}/close", "handler": "ClosePurchaseOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/purchase-orders/{poId}/lines", "handler": "AddPurchaseOrderLine", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/purchase-order-lines/{id}", "handler": "UpdatePurchaseOrderLine", "returns": "void" },
+          { "method": "DELETE", "path": "/api/purchase-order-lines/{id}", "handler": "RemovePurchaseOrderLine", "returns": "void" }
+        ]
+      },
+      "inboundReceipts": {
+        "endpoints": [
+          { "method": "GET", "path": "/api/inbound-receipts", "handler": "GetInboundReceiptList", "returns": "DynamicGridResult" },
+          { "method": "POST", "path": "/api/inbound-receipts/search", "handler": "GetInboundReceiptList", "returns": "DynamicGridResult" },
+          { "method": "GET", "path": "/api/inbound-receipts/{id}", "handler": "GetInboundReceiptById", "returns": "InboundReceiptDto" },
+          { "method": "POST", "path": "/api/inbound-receipts", "handler": "CreateInboundReceipt", "returns": "Guid" },
+          { "method": "POST", "path": "/api/inbound-receipts/{id}/receive", "handler": "ReceiveInboundReceipt", "returns": "void" },
+          { "method": "PUT", "path": "/api/inbound-receipt-lines/{id}", "handler": "UpdateInboundReceiptLine", "returns": "void" },
+          { "method": "POST", "path": "/api/inbound-receipt-lines/{id}/receive", "handler": "ReceiveInboundReceiptLine", "returns": "void" }
+        ]
+      },
+      "workOrders": {
+        "endpoints": [
+          { "method": "GET", "path": "/api/work-orders", "handler": "GetWorkOrderList", "returns": "DynamicGridResult" },
+          { "method": "POST", "path": "/api/work-orders/search", "handler": "GetWorkOrderList", "returns": "DynamicGridResult" },
+          { "method": "GET", "path": "/api/work-orders/{id}", "handler": "GetWorkOrderById", "returns": "WorkOrderDto" },
+          { "method": "POST", "path": "/api/work-orders/{id}/claim", "handler": "ClaimWorkOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/work-orders/{id}/complete", "handler": "CompleteWorkOrder", "returns": "void" }
+        ]
+      }
+    },
+    "track4B": {
+      "saleOrders": {
+        "endpoints": [
+          { "method": "GET", "path": "/api/sale-orders", "handler": "GetSaleOrderList", "returns": "DynamicGridResult" },
+          { "method": "POST", "path": "/api/sale-orders/search", "handler": "GetSaleOrderList", "returns": "DynamicGridResult" },
+          { "method": "GET", "path": "/api/sale-orders/lookup", "handler": "GetSaleOrderLookup", "returns": "List<LookupDto>" },
+          { "method": "GET", "path": "/api/sale-orders/{id}", "handler": "GetSaleOrderById", "returns": "SaleOrderDto" },
+          { "method": "POST", "path": "/api/sale-orders", "handler": "CreateSaleOrder", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/sale-orders/{id}", "handler": "UpdateSaleOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/sale-orders/{id}/approve", "handler": "ApproveSaleOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/sale-orders/{soId}/details", "handler": "AddSaleOrderDetail", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/sale-order-details/{id}", "handler": "UpdateSaleOrderDetail", "returns": "void" }
+        ]
+      },
+      "orders": {
+        "endpoints": [
+          { "method": "GET", "path": "/api/orders", "handler": "GetOrderList", "returns": "DynamicGridResult" },
+          { "method": "POST", "path": "/api/orders/search", "handler": "GetOrderList", "returns": "DynamicGridResult" },
+          { "method": "GET", "path": "/api/orders/{id}", "handler": "GetOrderById", "returns": "OrderDto" },
+          { "method": "POST", "path": "/api/orders", "handler": "CreateOrder", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/orders/{id}", "handler": "UpdateOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/orders/{id}/allocate", "handler": "AllocateOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/order-details/{id}/allocate", "handler": "AllocateOrderDetail", "returns": "void" },
+          { "method": "DELETE", "path": "/api/allocations/{id}", "handler": "CancelAllocation", "returns": "void" },
+          { "method": "POST", "path": "/api/orders/{id}/pick", "handler": "PickOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/orders/{id}/load", "handler": "LoadOrder", "returns": "void" },
+          { "method": "POST", "path": "/api/orders/{id}/ship", "handler": "ShipOrder", "returns": "void" }
+        ]
+      }
+    },
+    "track4C": {
+      "transfers": {
+        "endpoints": [
+          { "method": "GET", "path": "/api/transfers", "handler": "GetTransferList", "returns": "DynamicGridResult" },
+          { "method": "POST", "path": "/api/transfers/search", "handler": "GetTransferList", "returns": "DynamicGridResult" },
+          { "method": "GET", "path": "/api/transfers/{id}", "handler": "GetTransferById", "returns": "TransferDto" },
+          { "method": "POST", "path": "/api/transfers", "handler": "CreateTransfer", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/transfers/{id}", "handler": "UpdateTransfer", "returns": "void" },
+          { "method": "POST", "path": "/api/transfers/{id}/approve", "handler": "ApproveTransfer", "returns": "void" },
+          { "method": "POST", "path": "/api/transfers/{id}/ship", "handler": "ShipTransfer", "returns": "void" },
+          { "method": "POST", "path": "/api/transfers/{id}/receive", "handler": "ReceiveTransfer", "returns": "void" },
+          { "method": "POST", "path": "/api/transfers/{id}/close", "handler": "CloseTransfer", "returns": "void" },
+          { "method": "POST", "path": "/api/transfers/{transferId}/lines", "handler": "AddTransferLine", "returns": "Guid" },
+          { "method": "PUT", "path": "/api/transfer-lines/{id}", "handler": "UpdateTransferLine", "returns": "void" },
+          { "method": "DELETE", "path": "/api/transfer-lines/{id}", "handler": "RemoveTransferLine", "returns": "void" }
+        ]
+      }
+    }
+  },
+  "fieldDefinitions": {
+    "PurchaseOrder": {
+      "poNumber": { "type": "string", "maxLength": 50, "required": true, "autoGenerated": true },
+      "poType": { "type": "enum:PoType", "values": ["Standard", "Return", "Transfer", "CrossDock"], "required": true },
+      "status": { "type": "enum:PoStatus", "values": ["Draft", "Confirmed", "PartialReceived", "Received", "Closed", "Cancelled"], "default": "Draft" },
+      "ownerId": { "type": "Guid", "required": true, "fk": "Owner" },
+      "vendorId": { "type": "Guid?", "fk": "Vendor" },
+      "warehouseId": { "type": "Guid", "required": true, "fk": "Warehouse" },
+      "expectedDate": { "type": "DateTime?" },
+      "notes": { "type": "string?", "maxLength": 500 }
+    },
+    "PurchaseOrderLine": {
+      "lineNumber": { "type": "int", "required": true },
+      "expectedQtyKg": { "type": "decimal(18,4)", "required": true },
+      "receivedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "netWeightKg": { "type": "decimal(18,4)?" },
+      "uom": { "type": "string?", "maxLength": 20 },
+      "lotAttr01-12": { "type": "string?", "maxLength": 100, "count": 12 },
+      "purchaseOrderId": { "type": "Guid", "required": true, "fk": "PurchaseOrder" },
+      "itemId": { "type": "Guid", "required": true, "fk": "Item" }
+    },
+    "InboundReceipt": {
+      "receiptNumber": { "type": "string", "maxLength": 50, "required": true, "autoGenerated": true },
+      "vehiclePlate": { "type": "string?", "maxLength": 20 },
+      "status": { "type": "enum:ReceiptStatus", "values": ["Draft", "Pending", "WeighingIn", "Unloading", "Inspecting", "WeighingOut", "Completed", "OverReceived", "Cancelled"], "default": "Draft" },
+      "purchaseOrderId": { "type": "Guid", "required": true, "fk": "PurchaseOrder" },
+      "notes": { "type": "string?", "maxLength": 500 }
+    },
+    "InboundReceiptLine": {
+      "expectedQtyKg": { "type": "decimal(18,4)", "required": true },
+      "receivedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "netWeightKg": { "type": "decimal(18,4)?" },
+      "uom": { "type": "string?", "maxLength": 20 },
+      "inboundReceiptId": { "type": "Guid", "required": true, "fk": "InboundReceipt" },
+      "purchaseOrderLineId": { "type": "Guid?", "fk": "PurchaseOrderLine" },
+      "itemId": { "type": "Guid", "required": true, "fk": "Item" },
+      "lotId": { "type": "Guid?", "fk": "Lot", "note": "Set by LotService on receive" }
+    },
+    "WorkHeader": {
+      "workNumber": { "type": "string", "maxLength": 50, "required": true, "autoGenerated": true },
+      "workType": { "type": "enum:WorkType", "values": ["Putaway", "Pick", "Move", "Replenish"], "required": true },
+      "referenceId": { "type": "Guid?", "note": "Points to receipt/order depending on type" },
+      "status": { "type": "enum:WorkStatus", "values": ["Open", "InProgress", "Completed", "Cancelled"], "default": "Open" }
+    },
+    "WorkLine": {
+      "stepNumber": { "type": "int", "required": true },
+      "stepType": { "type": "enum:WorkStepType", "values": ["Pick", "Put"], "required": true },
+      "fromLocationId": { "type": "Guid?", "fk": "Location" },
+      "toLocationId": { "type": "Guid?", "fk": "Location" },
+      "qtyKg": { "type": "decimal(18,4)", "required": true },
+      "status": { "type": "enum:WorkStatus", "values": ["Open", "InProgress", "Completed", "Cancelled"], "default": "Open" },
+      "workHeaderId": { "type": "Guid", "required": true, "fk": "WorkHeader" }
+    },
+    "SaleOrder": {
+      "soNumber": { "type": "string", "maxLength": 50, "required": true, "autoGenerated": true },
+      "orderType": { "type": "string?", "maxLength": 50, "note": "STANDARD/CONTAINER_STUFFING/BULK_LOADING" },
+      "status": { "type": "enum:SoStatus", "values": ["Draft", "Confirmed", "Allocated", "Picking", "Loaded", "Shipped", "Cancelled"], "default": "Draft" },
+      "ownerId": { "type": "Guid", "required": true, "fk": "Owner" },
+      "requestedDate": { "type": "DateTime?" },
+      "notes": { "type": "string?", "maxLength": 500 }
+    },
+    "SaleOrderDetail": {
+      "originalQty": { "type": "decimal(18,4)", "required": true, "note": "Immutable after SO approved" },
+      "allocatedQty": { "type": "decimal(18,4)", "default": 0 },
+      "pickedQty": { "type": "decimal(18,4)", "default": 0 },
+      "shippedQty": { "type": "decimal(18,4)", "default": 0 },
+      "netWeightKg": { "type": "decimal(18,4)?" },
+      "uom": { "type": "string?", "maxLength": 20 },
+      "saleOrderId": { "type": "Guid", "required": true, "fk": "SaleOrder" },
+      "itemId": { "type": "Guid", "required": true, "fk": "Item" },
+      "lotId": { "type": "Guid?", "fk": "Lot", "note": "Optional lot filter" }
+    },
+    "OrderHeader": {
+      "orderNumber": { "type": "string", "maxLength": 50, "required": true, "autoGenerated": true },
+      "vehiclePlate": { "type": "string?", "maxLength": 20 },
+      "containerNumber": { "type": "string?", "maxLength": 50 },
+      "status": { "type": "enum:OrderStatus", "values": ["Draft", "Confirmed", "Allocated", "PartialAllocated", "Picking", "PartialPicked", "Picked", "Loading", "PartialLoaded", "Loaded", "Weighing", "Shipped", "Cancelled"] },
+      "saleOrderId": { "type": "Guid", "required": true, "fk": "SaleOrder" },
+      "carrierId": { "type": "Guid?", "fk": "Carrier" }
+    },
+    "OrderDetail": {
+      "expectedQtyKg": { "type": "decimal(18,4)", "required": true },
+      "allocatedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "pickedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "loadedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "weighedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "shippedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "netWeightKg": { "type": "decimal(18,4)?" },
+      "uom": { "type": "string?", "maxLength": 20 },
+      "lineStatus": { "type": "enum:OrderDetailStatus" },
+      "orderHeaderId": { "type": "Guid", "required": true, "fk": "OrderHeader" },
+      "saleOrderDetailId": { "type": "Guid?", "fk": "SaleOrderDetail" },
+      "itemId": { "type": "Guid", "required": true, "fk": "Item" }
+    },
+    "AllocationRecord": {
+      "allocatedQtyKg": { "type": "decimal(18,4)", "required": true },
+      "allocationMethod": { "type": "enum:AllocationMethod", "values": ["Fifo", "Lifo", "Manual", "ByLot", "ByLocation"] },
+      "status": { "type": "enum:AllocationStatus", "values": ["Active", "Released", "Expired", "Cancelled", "Completed"] },
+      "expiresAt": { "type": "DateTime?" },
+      "orderDetailId": { "type": "Guid", "required": true, "fk": "OrderDetail" },
+      "inventDimId": { "type": "Guid", "required": true, "fk": "InventDim" }
+    },
+    "TransferHeader": {
+      "transferNumber": { "type": "string", "maxLength": 50, "required": true, "autoGenerated": true },
+      "sourceWarehouseId": { "type": "Guid", "required": true, "fk": "Warehouse" },
+      "destWarehouseId": { "type": "Guid", "required": true, "fk": "Warehouse" },
+      "transferReason": { "type": "string?", "maxLength": 200 },
+      "status": { "type": "enum:TransferStatus", "values": ["Draft", "Confirmed", "InTransit", "PartialReceived", "Received", "Completed", "Cancelled", "OnHold"], "default": "Draft" },
+      "ownerId": { "type": "Guid", "required": true, "fk": "Owner" }
+    },
+    "TransferLine": {
+      "plannedQtyKg": { "type": "decimal(18,4)", "required": true },
+      "shippedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "receivedQtyKg": { "type": "decimal(18,4)", "default": 0 },
+      "varianceKg": { "type": "decimal(18,4)?" },
+      "transferHeaderId": { "type": "Guid", "required": true, "fk": "TransferHeader" },
+      "itemId": { "type": "Guid", "required": true, "fk": "Item" },
+      "lotId": { "type": "Guid?", "fk": "Lot" }
+    }
+  },
+  "templatesNeeded": {
+    "backend": ["form-config.md"],
+    "frontend": ["feature-module.md"]
+  },
+  "scriptsNeeded": {
+    "formConfigSeed": true,
+    "formCodes": [
+      "OPSPORG01", "OPSPORS01",
+      "OPSIRCG01", "OPSIRCS01",
+      "OPSWKOG01", "OPSWKOS01",
+      "OPSSORG01", "OPSSORS01",
+      "OPSORDG01", "OPSORDS01",
+      "OPSTRFG01", "OPSTRFS01"
+    ]
+  },
+  "formConfigNeeded": true,
+  "i18nChecklist": {
+    "namespaces": ["purchaseOrders", "inboundReceipts", "saleOrders", "orders", "transfers"],
+    "files": [
+      "frontend/src/i18n/locales/en/purchaseOrders.json",
+      "frontend/src/i18n/locales/vi/purchaseOrders.json",
+      "frontend/src/i18n/locales/en/inboundReceipts.json",
+      "frontend/src/i18n/locales/vi/inboundReceipts.json",
+      "frontend/src/i18n/locales/en/saleOrders.json",
+      "frontend/src/i18n/locales/vi/saleOrders.json",
+      "frontend/src/i18n/locales/en/orders.json",
+      "frontend/src/i18n/locales/vi/orders.json",
+      "frontend/src/i18n/locales/en/transfers.json",
+      "frontend/src/i18n/locales/vi/transfers.json"
+    ],
+    "registrations": [
+      "frontend/src/i18n/index.ts",
+      "frontend/src/lib/i18n-helpers.ts"
+    ]
+  },
+  "requiredSamples": {
+    "entity": "// All entities already exist. Example: PurchaseOrder\nusing Smartlog.Domain.Entities.MasterData;\nusing Smartlog.Domain.Enums;\n\nnamespace Smartlog.Domain.Entities.Inbound;\n\npublic class PurchaseOrder : TenantEntity\n{\n    public string PoNumber { get; set; } = null!;\n    public PoType PoType { get; set; }\n    public PoStatus Status { get; set; }\n    public Guid OwnerId { get; set; }\n    public Guid? VendorId { get; set; }\n    public Guid WarehouseId { get; set; }\n    public DateTime? ExpectedDate { get; set; }\n    public string? Notes { get; set; }\n    public virtual Owner Owner { get; set; } = null!;\n    public virtual Vendor? Vendor { get; set; }\n    public virtual Warehouse Warehouse { get; set; } = null!;\n    public virtual ICollection<PurchaseOrderLine> Lines { get; set; } = [];\n    public virtual ICollection<InboundReceipt> Receipts { get; set; } = [];\n}",
+    "commandHandler": "// Reference: CreateOwner pattern\nusing Smartlog.Domain.Entities.MasterData;\n\nnamespace Smartlog.Application.Features.MasterData.Owners.Commands;\n\npublic class CreateOwner\n{\n    public record Command(\n        string StorerKey,\n        string Name,\n        string? OwnerType,\n        bool DualTrackingEnabled,\n        string? ContactPerson,\n        string? ContactEmail,\n        string? ContactPhone,\n        bool IsActive = true\n    ) : ICommand<Guid>;\n\n    public class CommandValidator : AbstractValidator<Command>\n    {\n        public CommandValidator(ILocalizationService localizationService)\n        {\n            RuleFor(x => x.StorerKey)\n                .NotEmpty().WithName(localizationService.GetPropertyName(\"Owner.StorerKey\"))\n                .MaximumLength(OwnerConsts.ColumnMaxLengths.StorerKey)\n                    .WithName(localizationService.GetPropertyName(\"Owner.StorerKey\"));\n        }\n    }\n\n    public class CommandHandler(\n        IAppDbContext context,\n        ILogger<CommandHandler> logger) : ICommandHandler<Command, Guid>\n    {\n        public async Task<Guid> HandleAsync(Command command, CancellationToken cancellationToken = default)\n        {\n            if (await context.Owners.AnyAsync(x => x.StorerKey.ToLower() == command.StorerKey.ToLower(), cancellationToken))\n                throw BusinessRule.Owners.StorerKeyAlreadyExists.ToBusinessException([command.StorerKey]);\n\n            var entity = new Owner { StorerKey = command.StorerKey, Name = command.Name /* ... */ };\n            context.Owners.Add(entity);\n            await context.SaveChangesAsync(cancellationToken);\n            return entity.Id;\n        }\n    }\n}",
+    "queryHandler": "// Reference: GetOwnerList (DynamicGrid) + GetOwnerById\nnamespace Smartlog.Application.Features.MasterData.Owners.Queries;\n\npublic class GetOwnerList\n{\n    public record Query : DynamicListQuery, IDynamicGridQuery, IQuery<DynamicGridResult>\n    {\n        public string FormCode { get; init; } = \"MDTOWNG01\";\n        public string? SearchFormCode { get; init; } = \"MDTOWNS01\";\n        public Dictionary<string, object?>? FilterValues { get; init; }\n    }\n\n    public class QueryHandler(IServiceProvider serviceProvider, ICurrentUser currentUser)\n        : DynamicGridQueryHandler<Query>(serviceProvider), IQueryHandler<Query, DynamicGridResult>\n    {\n        protected override string GetConfigName() => \"Owners\";\n        protected override Guid? UserId() => currentUser?.UserId;\n    }\n}\n\npublic class GetOwnerById\n{\n    public record Query(Guid Id) : IQuery<OwnerDto?>;\n    public class QueryHandler(IAppDbContext context) : IQueryHandler<Query, OwnerDto?>\n    {\n        public async Task<OwnerDto?> HandleAsync(Query query, CancellationToken ct = default)\n        {\n            var entity = await context.Owners.AsNoTracking().FirstOrDefaultAsync(x => x.Id == query.Id, ct);\n            return entity?.ToDto();\n        }\n    }\n}",
+    "controller": "// Reference: OwnersController\n[ApiController]\n[Route(\"api/owners\")]\n[Authorize]\npublic sealed class OwnersController(IDispatcher dispatcher) : ControllerBase\n{\n    [HttpGet(\"lookup\")]\n    public async Task<IActionResult> Lookup([FromQuery] string? search, [FromQuery] int? limit, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(new GetOwnerLookup.Query { Search = search, Limit = limit }, ct);\n        return Ok(ApiResult<List<LookupDto>>.Success(result));\n    }\n\n    [HttpGet]\n    public async Task<IActionResult> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 10,\n        [FromQuery] string? filter = null, [FromQuery] string? sort = null,\n        [FromQuery] string? formCode = \"MDTOWNG01\", CancellationToken ct = default)\n    {\n        var query = new GetOwnerList.Query { Page = page, PageSize = pageSize, Filter = filter, Sort = sort, FormCode = formCode ?? \"MDTOWNG01\" };\n        return Ok(ApiResult<DynamicGridResult>.Success(await dispatcher.QueryAsync(query, ct)));\n    }\n\n    [HttpPost(\"search\")]\n    public async Task<IActionResult> Search([FromBody] GetOwnerList.Query query, CancellationToken ct)\n        => Ok(ApiResult<DynamicGridResult>.Success(await dispatcher.QueryAsync(query, ct)));\n\n    [HttpGet(\"{id:guid}\")]\n    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(new GetOwnerById.Query(id), ct);\n        return result == null ? NotFound() : Ok(ApiResult<OwnerDto>.Success(result));\n    }\n\n    [HttpPost]\n    public async Task<IActionResult> Create([FromBody] CreateOwner.Command command, CancellationToken ct)\n        => StatusCode(201, ApiResult<Guid>.Success(await dispatcher.DispatchAsync(command, ct)));\n\n    [HttpPut(\"{id:guid}\")]\n    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOwner.Command command, CancellationToken ct)\n    { await dispatcher.DispatchAsync(command with { Id = id }, ct); return NoContent(); }\n\n    [HttpDelete(\"{id:guid}\")]\n    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)\n    { await dispatcher.DispatchAsync(new DeleteOwner.Command(id), ct); return NoContent(); }\n}",
+    "featureApi": "// Reference: weighbridges API\nimport { apiClient } from '@/lib/api-client'\n\nexport const weighbridgesApi = {\n    getWeighbridges: async (params: SearchParams) => {\n        const response = await apiClient.post('/weighbridges/search', {\n            ...params,\n            formCode: params.formCode || 'OPSWBDG01',\n            searchFormCode: params.searchFormCode || 'OPSWBDS01',\n            filterValues: params.filterValues || {},\n        })\n        return response.data.data\n    },\n    getWeighbridge: async (id: string) => {\n        const response = await apiClient.get(`/weighbridges/${id}`)\n        return response.data.data\n    },\n    createWeighbridge: async (data: CreateWeighbridgeCommand) => {\n        const response = await apiClient.post('/weighbridges', data)\n        return response.data.data\n    },\n    updateWeighbridge: async (id: string, data: UpdateWeighbridgeCommand) => {\n        const response = await apiClient.put(`/weighbridges/${id}`, data)\n        return response.data.data\n    },\n    deleteWeighbridge: async (id: string) => { await apiClient.delete(`/weighbridges/${id}`) },\n    getWeighbridgeLookup: async (params?: { search?: string }) => {\n        const response = await apiClient.get('/weighbridges/lookup', { params })\n        return response.data.data\n    },\n}",
+    "featureSchema": "// Reference: weighbridges schema\nimport { z } from 'zod'\n\nexport const weighbridgeSchema = z.object({\n    id: z.string(),\n    code: z.string(),\n    name: z.string(),\n    maxCapacityKg: z.number(),\n    integrationMode: z.string(),\n    warehouseId: z.string(),\n    warehouseName: z.string().optional().nullable(),\n    isActive: z.boolean().default(true),\n    createdTime: z.string().optional().nullable(),\n    createdBy: z.string().optional().nullable(),\n    updatedTime: z.string().optional().nullable(),\n    updatedBy: z.string().optional().nullable(),\n})\n\nexport type Weighbridge = z.infer<typeof weighbridgeSchema>"
+  },
+  "optionalSamples": {
+    "queryConfig": "// Reference: Owners.json\n{\n    \"TABLE_INFO\": {\n        \"MENU_NM\": \"Owner List\", \"MENU_NM_VI\": \"Danh sach Chu hang\",\n        \"DB_NM\": \"mdt\", \"TABLE_NM\": \"owner\", \"TABLE_ALIAS\": \"o\", \"DB_TYPE\": \"PG\",\n        \"GRID_FORM_CODE\": \"MDTOWNG01\", \"SEARCH_FORM_CODE\": \"MDTOWNS01\"\n    },\n    \"COLUMN_INFO\": [\n        { \"COLUMN_NM\": \"id\", \"COLUMN_ALIAS\": \"id\", \"QUERY\": \"o.id\" },\n        { \"COLUMN_NM\": \"storer_key\", \"COLUMN_ALIAS\": \"storerKey\", \"QUERY\": \"o.storer_key\" }\n    ],\n    \"JOIN_INFO\": [],\n    \"WHERE_INFO\": [\n        { \"SORT_SEQ\": 1, \"QUERY\": \"o.tenant_id = @TenantId\" },\n        { \"SORT_SEQ\": 2, \"QUERY\": \"o.deleted_time IS NULL\" }\n    ],\n    \"ORDER_INFO\": [{ \"SORT_SEQ\": 1, \"QUERY\": \"o.created_time DESC\" }]\n}",
+    "featureListConfig": "// Reference: weighbridges-list.config.ts\nimport { type ViewConfig } from '@/core/types'\n\nexport const weighbridgesListConfig: ViewConfig = {\n    metadata: {\n        name: 'WeighbridgesList', title: 'weighbridges.list.title', path: '/weighbridges',\n        mode: 'dynamic', requiredFormConfigs: ['OPSWBDS01', 'OPSWBDG01'],\n        defaultSearchOpen: false, description: 'weighbridges.list.description',\n    },\n    layout: { type: 'standard', sections: ['header', 'search', 'content'] },\n    header: [\n        { componentType: 'page-title', props: { title: 'weighbridges.list.title', description: 'weighbridges.list.description' } },\n        { componentType: 'header-toolbar', children: [{ componentType: 'search-toggle-button' }, { componentType: 'ai-help-button' }] },\n    ],\n    search: { componentType: 'search-form', formConfig: 'OPSWBDS01', props: { placeholder: 'weighbridges.list.searchPlaceholder' } },\n    content: [\n        { componentType: 'data-grid', formConfig: 'OPSWBDG01', props: { searchKey: 'name', selectable: true, rowActions: [{ id: 'edit', label: 'weighbridges.actions.edit', icon: 'Edit' }] } },\n        { componentType: 'action-toolbar', props: { pagination: true, actions: [{ id: 'add', label: 'weighbridges.list.actions.add', variant: 'default', icon: 'Plus' }] } },\n    ],\n    api: { list: '/weighbridges', listMethod: 'POST', create: '/weighbridges', update: '/weighbridges/:id' },\n}",
+    "featureInputConfig": "// Reference: weighbridges-input.config.ts\nimport { type FormFieldConfig } from '@/core/components/form'\nimport { z } from 'zod'\nimport i18n from '@/i18n'\n\nexport const createWeighbridgesInputSchema = () => z.object({\n    code: z.string().min(1, i18n.t('validation.codeRequired', { ns: 'weighbridges' })).max(50),\n    name: z.string().min(1, i18n.t('validation.nameRequired', { ns: 'weighbridges' })).max(200),\n    maxCapacityKg: z.coerce.number().positive(),\n    integrationMode: z.string().default('Manual'),\n    warehouseId: z.string().min(1),\n    isActive: z.boolean().default(true),\n})\n\nexport const weighbridgesInputFields: FormFieldConfig[] = [\n    { fieldId: 'code', label: 'weighbridges.fields.code', placeholder: 'weighbridges.placeholders.code', componentType: 'text', required: true, colSpan: 1 },\n    // ... more fields\n]",
+    "featureDialogs": "// Reference: weighbridges-dialogs.tsx\nimport { FeatureDialogManager } from '@/components/feature-dialog-manager'\nimport { useWeighbridges } from './use-weighbridges'\nimport { weighbridgesApi } from '../api/weighbridges'\nimport { weighbridgesInputFields, createWeighbridgesInputSchema, weighbridgesDefaultValues } from '../config/weighbridges-input.config'\nimport { useTranslation } from 'react-i18next'\nimport { viewDataKeys } from '@/core/api/query-keys'\n\nexport function WeighbridgesDialogs() {\n    const { t } = useTranslation('weighbridges')\n    const inputSchema = createWeighbridgesInputSchema()\n    const { open, setOpen, currentRow, setCurrentRow } = useWeighbridges()\n    return (\n        <FeatureDialogManager\n            open={open} onOpenChange={(val) => setOpen(val as 'add' | 'edit')}\n            currentRow={currentRow} onRowChange={setCurrentRow}\n            formConfig={weighbridgesInputFields} formSchema={inputSchema}\n            formDefaultValues={weighbridgesDefaultValues}\n            createMutationFn={weighbridgesApi.createWeighbridge}\n            updateMutationFn={(id, data) => weighbridgesApi.updateWeighbridge(id, data)}\n            queryKey={viewDataKeys.listsBySource('weighbridges')}\n            entityName={t('entityName')} maxWidth='md' gridCols={2}\n        />\n    )\n}"
+  },
+  "dbSchemas": {
+    "track4A": "operation",
+    "track4B": "operation",
+    "track4C": "operation"
+  },
+  "businessRules": {
+    "inbound": [
+      "BR-4A-001: PO can only be edited in Draft status",
+      "BR-4A-002: PO confirm posts EXPECTED InventTrans for all lines",
+      "BR-4A-003: Receipt line receives lot_id via GetOrCreateLot at receive",
+      "BR-4A-004: Receipt posts PHYSICAL InventTrans at RECEIVING location + reverses EXPECTED",
+      "BR-4A-005: Putaway creates InventTrans pair: -RECV, +STORAGE (lot preserved)",
+      "BR-4A-006: Over-receipt > tolerance_pct requires manager approval",
+      "BR-4A-007: Weighbridge net_weight updates receipt line net_weight_kg"
+    ],
+    "outbound": [
+      "BR-4B-001: SO original_qty is immutable after approved",
+      "BR-4B-002: SO → 1+ Orders (1 per vehicle)",
+      "BR-4B-003: FIFO allocation: oldest inventory first",
+      "BR-4B-004: Allocation expires after allocation_expiry_hours (default 24h)",
+      "BR-4B-005: Cannot ship more than allocated qty",
+      "BR-4B-006: Weighbridge verification captures weight but does NOT change inventory",
+      "BR-4B-007: Post-ship residual at SHIPPING auto-generates putaway work"
+    ],
+    "transfer": [
+      "BR-4C-001: Transfer source and dest warehouse must be different",
+      "BR-4C-002: Transfer preserves lot_id across warehouses",
+      "BR-4C-003: IN_TRANSIT status visible in on_hand at source warehouse",
+      "BR-4C-004: Transit loss = shipped - received → auto-adjustment",
+      "BR-4C-005: Adjustment over threshold requires approval"
+    ]
+  }
+}

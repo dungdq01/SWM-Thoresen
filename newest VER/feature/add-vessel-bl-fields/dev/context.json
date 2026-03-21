@@ -1,0 +1,104 @@
+{
+  "feature": "add-vessel-bl-fields",
+  "description": "Add VesselName and BlNumber fields to InboundReceipt, SaleOrder, and OrderHeader entities (full-stack)",
+  "backendStructure": {
+    "entities": [
+      "backend/src/Smartlog.Domain/Entities/Inbound/InboundReceipt.cs",
+      "backend/src/Smartlog.Domain/Entities/Outbound/SaleOrder.cs",
+      "backend/src/Smartlog.Domain/Entities/Outbound/OrderHeader.cs"
+    ],
+    "efConfigurations": [
+      "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/Inbound/InboundReceiptConfiguration.cs",
+      "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/Outbound/SaleOrderConfiguration.cs",
+      "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/Outbound/OrderHeaderConfiguration.cs"
+    ],
+    "commands": [
+      "backend/src/Smartlog.Application/Features/Inbound/InboundReceipts/Commands/CreateInboundReceipt.cs",
+      "backend/src/Smartlog.Application/Features/Inbound/InboundReceipts/Commands/UpdateInboundReceipt.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/SaleOrders/Commands/CreateSaleOrder.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/SaleOrders/Commands/UpdateSaleOrder.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/Orders/Commands/CreateOrder.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/Orders/Commands/UpdateOrder.cs"
+    ],
+    "dtos": [
+      "backend/src/Smartlog.Application/Features/Inbound/InboundReceipts/Dtos/InboundReceiptDto.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/SaleOrders/Dtos/SaleOrderDto.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/Orders/Dtos/OrderDto.cs"
+    ],
+    "mappings": [
+      "backend/src/Smartlog.Application/Features/Inbound/InboundReceipts/Mappings/InboundReceiptMappings.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/SaleOrders/Mappings/SaleOrderMappings.cs",
+      "backend/src/Smartlog.Application/Features/Outbound/Orders/Mappings/OrderMappings.cs"
+    ]
+  },
+  "frontendStructure": {
+    "schemas": [
+      "frontend/src/features/inbound-receipts/data/schema.ts",
+      "frontend/src/features/sale-orders/data/schema.ts",
+      "frontend/src/features/orders/data/schema.ts"
+    ],
+    "apiLayers": [
+      "frontend/src/features/inbound-receipts/api/inbound-receipts.ts",
+      "frontend/src/features/sale-orders/api/sale-orders.ts",
+      "frontend/src/features/orders/api/orders.ts"
+    ],
+    "inputConfigs": [
+      "frontend/src/features/inbound-receipts/config/inbound-receipts-input.config.ts",
+      "frontend/src/features/sale-orders/config/sale-orders-input.config.ts",
+      "frontend/src/features/orders/config/orders-input.config.ts"
+    ],
+    "i18n": [
+      "frontend/src/i18n/locales/en/inboundReceipts.json",
+      "frontend/src/i18n/locales/en/saleOrders.json",
+      "frontend/src/i18n/locales/en/orders.json",
+      "frontend/src/i18n/locales/vi/inboundReceipts.json",
+      "frontend/src/i18n/locales/vi/saleOrders.json",
+      "frontend/src/i18n/locales/vi/orders.json"
+    ]
+  },
+  "apiContract": {
+    "modifiedEndpoints": [
+      { "method": "POST", "path": "/inbound-receipts", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "PUT", "path": "/inbound-receipts/:id", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "GET", "path": "/inbound-receipts/:id", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "POST", "path": "/sale-orders", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "PUT", "path": "/sale-orders/:id", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "GET", "path": "/sale-orders/:id", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "POST", "path": "/orders", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "PUT", "path": "/orders/:id", "addedFields": ["vesselName", "blNumber"] },
+      { "method": "GET", "path": "/orders/:id", "addedFields": ["vesselName", "blNumber"] }
+    ]
+  },
+  "fieldDefinitions": {
+    "vesselName": { "type": "string", "maxLength": 100, "nullable": true, "columnName": "vessel_name" },
+    "blNumber": { "type": "string", "maxLength": 50, "nullable": true, "columnName": "bl_number" }
+  },
+  "templatesNeeded": {
+    "backend": [],
+    "frontend": []
+  },
+  "scriptsNeeded": [],
+  "i18nChecklist": {
+    "inboundReceipts": {
+      "en": { "fields": ["vesselName", "blNumber"], "placeholders": ["vesselName", "blNumber"] },
+      "vi": { "fields": ["vesselName", "blNumber"], "placeholders": ["vesselName", "blNumber"] }
+    },
+    "saleOrders": {
+      "en": { "fields": ["vesselName", "blNumber"], "placeholders": ["vesselName", "blNumber"] },
+      "vi": { "fields": ["vesselName", "blNumber"], "placeholders": ["vesselName", "blNumber"] }
+    },
+    "orders": {
+      "en": { "fields": ["vesselName", "blNumber"], "placeholders": ["vesselName", "blNumber"] },
+      "vi": { "fields": ["vesselName", "blNumber"], "placeholders": ["vesselName", "blNumber"] }
+    }
+  },
+  "requiredSamples": {
+    "entity": "public string? VesselName { get; set; }\npublic string? BlNumber { get; set; }",
+    "efConfig": "builder.Property(e => e.VesselName).HasColumnName(\"vessel_name\").HasMaxLength(100);\nbuilder.Property(e => e.BlNumber).HasColumnName(\"bl_number\").HasMaxLength(50);",
+    "commandHandler": "VesselName = command.VesselName,\nBlNumber = command.BlNumber",
+    "dto": "string? VesselName,\nstring? BlNumber",
+    "mapping": "entity.VesselName,\nentity.BlNumber",
+    "featureApi": "vesselName?: string | null\nblNumber?: string | null",
+    "featureSchema": "vesselName: z.string().optional().nullable(),\nblNumber: z.string().optional().nullable()"
+  }
+}

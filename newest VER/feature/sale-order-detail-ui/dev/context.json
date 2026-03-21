@@ -1,0 +1,110 @@
+{
+  "feature": "sale-order-detail-ui",
+  "description": "Add Sale Order Detail (line items) management to the Add/Edit Sale Order form, including backend delete command and frontend detail UI with useFieldArray pattern",
+  "backendStructure": {
+    "featurePath": "Features/Outbound",
+    "namespace": "Smartlog.Application.Features.Outbound",
+    "entities": {
+      "SaleOrder": "Smartlog.Domain.Entities.Outbound.SaleOrder",
+      "SaleOrderDetail": "Smartlog.Domain.Entities.Outbound.SaleOrderDetail"
+    },
+    "subFolders": ["SaleOrders", "SaleOrderDetails"],
+    "controllers": ["SaleOrdersController", "SaleOrderDetailsController"],
+    "queryConfigs": ["SaleOrders.json"],
+    "businessRules": {
+      "SaleOrders": {
+        "NotFound": "OPS-4100",
+        "CannotEditNonDraft": "OPS-4102"
+      },
+      "SaleOrderDetails": {
+        "NotFound": "OPS-4110",
+        "CannotModifyNonDraftSo": "OPS-4111"
+      }
+    }
+  },
+  "frontendStructure": {
+    "featurePath": "features/sale-orders",
+    "route": "/sale-orders",
+    "i18nNamespace": "saleOrders",
+    "formCodes": {
+      "grid": "OPSSORG01",
+      "search": "OPSSORS01"
+    }
+  },
+  "apiContract": {
+    "newEndpoints": [
+      {
+        "method": "DELETE",
+        "path": "/api/sale-order-details/{id}",
+        "description": "Remove a SaleOrderDetail line",
+        "request": "RemoveSaleOrderDetail.Command(Guid Id)",
+        "response": "204 No Content"
+      }
+    ],
+    "modifiedEndpoints": [
+      {
+        "method": "PUT",
+        "path": "/api/sale-orders/{id}",
+        "description": "Update SaleOrder header + replace all detail lines",
+        "addedFields": ["List<DetailItem> Details"],
+        "strategy": "Delete existing details then re-add from provided list"
+      }
+    ]
+  },
+  "fieldDefinitions": {
+    "SaleOrderDetail_lineItem": [
+      { "name": "itemId", "type": "Guid", "required": true, "frontend": "SelectField with dataSource='items'" },
+      { "name": "originalQty", "type": "decimal", "required": true, "validation": "> 0", "frontend": "NumberField" },
+      { "name": "uom", "type": "string", "maxLength": 20, "required": false, "frontend": "SelectField with dataSource='uoms-code'" },
+      { "name": "netWeightKg", "type": "decimal?", "required": false, "frontend": "NumberField" },
+      { "name": "lotId", "type": "Guid?", "required": false, "frontend": "SelectField with dataSource='lots'" }
+    ]
+  },
+  "templatesNeeded": {
+    "backend": [],
+    "frontend": []
+  },
+  "scriptsNeeded": [],
+  "formConfigNeeded": false,
+  "i18nChecklist": {
+    "en": "frontend/src/i18n/locales/en/saleOrders.json",
+    "vi": "frontend/src/i18n/locales/vi/saleOrders.json",
+    "keysToAdd": [
+      "fields.lineItems", "fields.itemId", "fields.originalQty", "fields.uom", "fields.netWeightKg", "fields.lotId",
+      "placeholders.itemId", "placeholders.originalQty", "placeholders.uom", "placeholders.netWeightKg", "placeholders.lotId",
+      "lineItems.addItem", "lineItems.removeItem", "lineItems.noItems",
+      "validation.itemRequired", "validation.originalQtyRequired", "validation.uomMaxLength"
+    ]
+  },
+  "requiredSamples": {
+    "entity": {
+      "description": "SaleOrderDetail entity (already exists)",
+      "path": "backend/src/Smartlog.Domain/Entities/Outbound/SaleOrderDetail.cs"
+    },
+    "commandHandler": {
+      "description": "RemoveSaleOrderDetail command - follow RemovePurchaseOrderLine pattern",
+      "snippet": "public class RemoveSaleOrderDetail\n{\n    public record Command(Guid Id) : ICommand;\n\n    public class CommandValidator : AbstractValidator<Command>\n    {\n        public CommandValidator(ILocalizationService localizationService)\n        {\n            RuleFor(x => x.Id)\n                .NotEmpty()\n                    .WithName(localizationService.GetPropertyName(\"SaleOrderDetail.Id\"));\n        }\n    }\n\n    public class CommandHandler(\n        IAppDbContext context,\n        ILogger<CommandHandler> logger) : ICommandHandler<Command>\n    {\n        public async Task HandleAsync(Command command, CancellationToken cancellationToken = default)\n        {\n            var entity = await context.SaleOrderDetails\n                .Include(x => x.SaleOrder)\n                .FirstOrDefaultAsync(x => x.Id == command.Id, cancellationToken)\n                ?? throw BusinessRule.SaleOrderDetails.NotFound.ToBusinessException([command.Id]);\n\n            if (entity.SaleOrder.Status != SoStatus.Draft)\n                throw BusinessRule.SaleOrderDetails.CannotModifyNonDraftSo.ToBusinessException([entity.SaleOrder.SoNumber]);\n\n            context.SaleOrderDetails.Remove(entity);\n            await context.SaveChangesAsync(cancellationToken);\n\n            logger.LogInformation(\"SaleOrderDetail {Id} removed from SO {SoNumber}\", entity.Id, entity.SaleOrder.SoNumber);\n        }\n    }\n}"
+    },
+    "queryHandler": {
+      "description": "GetSaleOrderById already includes Details - no changes needed",
+      "path": "backend/src/Smartlog.Application/Features/Outbound/SaleOrders/Queries/GetSaleOrderById.cs"
+    },
+    "controller": {
+      "description": "Add DELETE endpoint to SaleOrderDetailsController",
+      "snippet": "[HttpDelete(\"{id:guid}\")]\n[ProducesResponseType(StatusCodes.Status204NoContent)]\npublic async Task<IActionResult> Remove(Guid id, CancellationToken ct)\n{\n    await dispatcher.DispatchAsync(new RemoveSaleOrderDetail.Command(id), ct);\n    return NoContent();\n}"
+    },
+    "featureApi": {
+      "description": "Updated sale-orders.ts API with details support",
+      "snippet": "export interface CreateSoDetailCommand {\n    itemId: string\n    originalQty: number\n    netWeightKg?: number | null\n    uom?: string | null\n    lotId?: string | null\n}\n\nexport interface CreateSaleOrderCommand {\n    orderType: string\n    ownerId: string\n    requestedDate?: string | null\n    notes?: string | null\n    details: CreateSoDetailCommand[]\n}\n\nexport interface UpdateSaleOrderCommand {\n    orderType: string\n    ownerId: string\n    requestedDate?: string | null\n    notes?: string | null\n    details: CreateSoDetailCommand[]\n}"
+    },
+    "featureSchema": {
+      "description": "Updated schema.ts with SaleOrderDetail type",
+      "snippet": "export const saleOrderDetailSchema = z.object({\n    id: z.string().optional(),\n    itemId: z.string(),\n    itemName: z.string().optional().nullable(),\n    originalQty: z.number(),\n    uom: z.string().optional().nullable(),\n    netWeightKg: z.number().optional().nullable(),\n    lotId: z.string().optional().nullable(),\n    lotNumber: z.string().optional().nullable(),\n})\n\nexport type SaleOrderDetail = z.infer<typeof saleOrderDetailSchema>"
+    },
+    "actionDialog": {
+      "description": "SaleOrdersActionDialog with useFieldArray - follow PurchaseOrder pattern",
+      "referenceFile": "frontend/src/features/purchase-orders/components/purchase-orders-action-dialog.tsx",
+      "keyPattern": "useFieldArray({ control, name: 'details' }) with SelectField(itemId), NumberField(originalQty), SelectField(uom), NumberField(netWeightKg), SelectField(lotId)"
+    }
+  }
+}

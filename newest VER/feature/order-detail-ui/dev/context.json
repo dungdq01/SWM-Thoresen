@@ -1,0 +1,99 @@
+{
+  "feature": "order-detail-ui",
+  "description": "Add Order Detail (line items) management to Add/Edit Order form",
+  "backendStructure": {
+    "featurePath": "Features/Outbound",
+    "namespace": "Smartlog.Application.Features.Outbound",
+    "entities": {
+      "OrderHeader": "Smartlog.Domain.Entities.Outbound.OrderHeader",
+      "OrderDetail": "Smartlog.Domain.Entities.Outbound.OrderDetail"
+    },
+    "subFolders": ["Orders", "OrderDetails"],
+    "controllers": ["OrdersController", "OrderDetailsController"],
+    "businessRules": {
+      "Orders": {
+        "NotFound": "OPS-4120",
+        "SoNotApproved": "OPS-4123"
+      },
+      "OrderDetails": {
+        "NotFound": "OPS-4130"
+      }
+    }
+  },
+  "frontendStructure": {
+    "featurePath": "features/orders",
+    "route": "/orders",
+    "i18nNamespace": "orders",
+    "formCodes": {
+      "grid": "OPSORDG01",
+      "search": "OPSORDS01"
+    }
+  },
+  "apiContract": {
+    "newEndpoints": [
+      {
+        "method": "POST",
+        "path": "/api/orders/{orderId}/details",
+        "description": "Add OrderDetail to existing Order",
+        "request": "AddOrderDetail.Command",
+        "response": "201 Created with Guid"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/order-details/{id}",
+        "description": "Remove an OrderDetail line",
+        "request": "RemoveOrderDetail.Command(Guid Id)",
+        "response": "204 No Content"
+      }
+    ],
+    "modifiedEndpoints": [
+      {
+        "method": "PUT",
+        "path": "/api/orders/{id}",
+        "description": "Update Order header + replace all detail lines",
+        "addedFields": ["List<CreateOrder.DetailItem>? Details"],
+        "strategy": "Delete existing details then re-add from provided list"
+      }
+    ]
+  },
+  "fieldDefinitions": {
+    "OrderDetail_lineItem_userEditable": [
+      { "name": "itemId", "type": "Guid", "required": true, "frontend": "SelectField with dataSource='items'" },
+      { "name": "expectedQtyKg", "type": "decimal", "required": true, "validation": "> 0", "frontend": "NumberField" },
+      { "name": "uom", "type": "string", "maxLength": 20, "required": false, "frontend": "SelectField with dataSource='uoms-code'" },
+      { "name": "netWeightKg", "type": "decimal?", "required": false, "frontend": "NumberField" }
+    ]
+  },
+  "i18nChecklist": {
+    "en": "frontend/src/i18n/locales/en/orders.json",
+    "vi": "frontend/src/i18n/locales/vi/orders.json",
+    "keysToAdd": [
+      "fields.lineItems", "fields.itemId", "fields.expectedQtyKg", "fields.uom", "fields.netWeightKg",
+      "placeholders.itemId", "placeholders.expectedQtyKg", "placeholders.uom", "placeholders.netWeightKg",
+      "lineItems.addItem", "lineItems.removeItem", "lineItems.noItems",
+      "validation.itemRequired", "validation.expectedQtyRequired", "validation.uomMaxLength"
+    ]
+  },
+  "requiredSamples": {
+    "entity": {
+      "path": "backend/src/Smartlog.Domain/Entities/Outbound/OrderDetail.cs"
+    },
+    "commandHandler": {
+      "description": "Follow SaleOrderDetail patterns (just implemented)",
+      "addRef": "backend/src/Smartlog.Application/Features/Outbound/SaleOrderDetails/Commands/AddSaleOrderDetail.cs",
+      "removeRef": "backend/src/Smartlog.Application/Features/Outbound/SaleOrderDetails/Commands/RemoveSaleOrderDetail.cs"
+    },
+    "controller": {
+      "ref": "backend/src/Smartlog.Api/Controllers/SaleOrdersController.cs"
+    },
+    "featureApi": {
+      "ref": "frontend/src/features/sale-orders/api/sale-orders.ts"
+    },
+    "featureSchema": {
+      "ref": "frontend/src/features/sale-orders/data/schema.ts"
+    },
+    "actionDialog": {
+      "ref": "frontend/src/features/sale-orders/components/sale-orders-action-dialog.tsx"
+    }
+  }
+}

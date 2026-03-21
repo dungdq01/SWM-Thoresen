@@ -19,6 +19,7 @@ import { InventoryCoreModule } from './modules/inventory-core/inventory-core.mod
 import { InventoryControlModule } from './modules/inventory-control/inventory-control.module';
 import { WorkExecutionModule } from './modules/work-execution/work-execution.module.nest';
 import { SalesOrderModule } from './modules/sales-orders/sales-order.module';
+import { GoodsSplitModule } from './modules/goods-split/goods-split.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { SalesOrderModule } from './modules/sales-orders/sales-order.module';
     InventoryControlModule,
     WorkExecutionModule,
     SalesOrderModule,
+    GoodsSplitModule,
   ],
   controllers: [HealthController],
   providers: [
