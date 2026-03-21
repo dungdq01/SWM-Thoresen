@@ -98,6 +98,9 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/outbound-operations/sales-orders', label: 'Đơn bán hàng' },
       { to: '/app/outbound-operations/shipments', label: 'Phiếu xuất kho' },
+      { to: '/app/outbound-operations/allocation', label: 'Phân bổ kho' },
+      { to: '/app/outbound-operations/weighing', label: 'Cân hàng' },
+      { to: '/app/outbound-operations/approvals', label: 'Phê duyệt' },
       { to: '/app/outbound-operations/documents', label: 'Chứng từ xuất' },
     ],
   },

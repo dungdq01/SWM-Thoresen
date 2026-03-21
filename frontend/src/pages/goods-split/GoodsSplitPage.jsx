@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useGoodsSplits, useCreateGoodsSplit, useConfirmGoodsSplit, usePostGoodsSplit, useCancelGoodsSplit } from '@domains/goods-split'
-import { useLookupOwners, useLookupItems, useLookupWarehouses } from '@domains/master-data'
+import { useGoodsSplits, useCreateGoodsSplit, useConfirmGoodsSplit, usePostGoodsSplit, useCancelGoodsSplit, useReceiptsForSplit } from '@domains/goods-split'
+import { useLookupOwners, useLookupItems, useLookupWarehouses, useLookupUoms } from '@domains/master-data'
 import { Badge, Button, Pagination, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow } from '@shared/ui'
 import { Plus, RefreshCw, Eye, Check, BookOpen, X, Split } from 'lucide-react'
 import { GoodsSplitCreateDrawer } from './components/GoodsSplitCreateDrawer'
@@ -28,6 +28,8 @@ export function GoodsSplitPage() {
   const { data: owners = [] } = useLookupOwners()
   const { data: items = [] } = useLookupItems()
   const { data: warehouses = [] } = useLookupWarehouses()
+  const { data: uoms = [] } = useLookupUoms()
+  const { data: receipts = [] } = useReceiptsForSplit()
 
   const rows = response?.data || []
   const pagination = response?.pagination || { page: 1, totalPages: 1 }
@@ -196,6 +198,8 @@ export function GoodsSplitPage() {
         owners={owners}
         items={items}
         warehouses={warehouses}
+        uoms={uoms}
+        receipts={receipts}
       />
 
       {detailId && (

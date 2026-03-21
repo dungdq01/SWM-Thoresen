@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Package, Sparkles } from 'lucide-react'
@@ -22,6 +22,7 @@ export function LotFormDrawer({
   isLoading = false,
 }) {
   const isEdit = !!initialData
+  const [editStatus, setEditStatus] = useState('ACTIVE')
   const { data: nextCodeResponse } = useLotNextCode(isOpen && !isEdit)
   const nextCode = nextCodeResponse?.data?.code || ''
 
@@ -53,11 +54,12 @@ export function LotFormDrawer({
           warehouseId: initialData.warehouseId || '',
           firstReceivedDate: initialData.firstReceivedDate ? initialData.firstReceivedDate.split('T')[0] : '',
           sourceLotId: initialData.sourceLotId || '',
-          status: initialData.status || 'ACTIVE',
           notes: initialData.notes || '',
         })
+        setEditStatus(initialData.status || 'ACTIVE')
       } else {
         reset(lotDefaultValues)
+        setEditStatus('ACTIVE')
       }
     }
   }, [isOpen, initialData, reset])
@@ -81,6 +83,7 @@ export function LotFormDrawer({
       notes: data.notes || undefined,
     }
     if (isEdit && initialData) {
+      payload.status = editStatus
       payload.rowVersion = Number(initialData.rowVersion)
     }
     onSubmit(payload)
@@ -198,15 +201,12 @@ export function LotFormDrawer({
                 </div>
 
                 {isEdit && (
-                  <Controller name="status" control={control} render={({ field }) => (
-                    <Select
-                      label="Trạng thái lô"
-                      options={LOT_STATUSES}
-                      error={errors.status?.message}
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    />
-                  )} />
+                  <Select
+                    label="Trạng thái lô"
+                    options={LOT_STATUSES}
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                  />
                 )}
 
                 <div>

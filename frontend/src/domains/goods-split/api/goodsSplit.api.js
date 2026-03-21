@@ -9,4 +9,5 @@ export const goodsSplitApi = {
   confirm: (id, data = {}) => httpClient.post(`${BASE_URL}/${id}/confirm`, data),
   post: (id) => httpClient.post(`${BASE_URL}/${id}/post`),
   cancel: (id, reasonCode) => httpClient.post(`${BASE_URL}/${id}/cancel`, { reasonCode }),
+  getReceipts: (params) => httpClient.get('/inbound/receipts', { params }),
 }

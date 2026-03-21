@@ -57,6 +57,40 @@ export const outboundOperationsApi = {
   reportShipmentError: (id, reasonCode) =>
     httpClient.post(`/outbound/shipments/${id}/report-error`, { reasonCode }),
 
+  // ─── Allocation ──────────────────────────────────────────────────────────────
+  getAllocations: (params = {}) =>
+    httpClient.get('/outbound/allocation', { params }),
+
+  allocateShipment: (id) =>
+    httpClient.post(`/outbound/allocation/${id}/allocate`),
+
+  unallocateShipment: (id) =>
+    httpClient.post(`/outbound/allocation/${id}/unallocate`),
+
+  // ─── Weighing ──────────────────────────────────────────────────────────────
+  recordTareWeight: (data) =>
+    httpClient.post('/outbound/weigh/tare', data),
+
+  recordGrossWeight: (data) =>
+    httpClient.post('/outbound/weigh/gross', data),
+
+  getWeighingHistory: (params = {}) =>
+    httpClient.get('/outbound/weigh/weighing-history', { params }),
+
+  // ─── Approval ──────────────────────────────────────────────────────────────
+  getPendingApprovals: (params = {}) =>
+    httpClient.get('/outbound/approvals/pending', { params }),
+
+  approveShipment: (data) =>
+    httpClient.post('/outbound/approvals/approve', data),
+
+  rejectShipment: (data) =>
+    httpClient.post('/outbound/approvals/reject', data),
+
+  // ─── Ship ──────────────────────────────────────────────────────────────────
+  shipShipment: (id) =>
+    httpClient.post(`/outbound/shipments/${id}/ship`),
+
   // ─── Outbound Documents ─────────────────────────────────────────────────────
   getOutboundDocuments: (params = {}) =>
     httpClient.get('/outbound/documents', { params }),

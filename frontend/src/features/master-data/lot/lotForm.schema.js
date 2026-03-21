@@ -6,7 +6,6 @@ export const lotSchema = z.object({
   warehouseId: z.string().min(1, 'Vui lòng chọn kho'),
   firstReceivedDate: z.string().optional(),
   sourceLotId: z.string().optional(),
-  status: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -16,6 +15,5 @@ export const lotDefaultValues = {
   warehouseId: '',
   firstReceivedDate: '',
   sourceLotId: '',
-  status: 'ACTIVE',
   notes: '',
 }

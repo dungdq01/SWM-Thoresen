@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Button, Input, Select } from '@shared/ui'
 import { Split, X, Plus, Trash2 } from 'lucide-react'
 
-export function GoodsSplitCreateDrawer({ isOpen, onClose, onSubmit, isLoading, owners = [], items = [], warehouses = [] }) {
+export function GoodsSplitCreateDrawer({ isOpen, onClose, onSubmit, isLoading, owners = [], items = [], warehouses = [], uoms = [], receipts = [] }) {
   const [form, setForm] = useState({
     sourceReceiptId: '',
     sourcePOId: '',
@@ -24,8 +24,31 @@ export function GoodsSplitCreateDrawer({ isOpen, onClose, onSubmit, isLoading, o
     })
   }, [isOpen])
 
+  const receiptOptions = useMemo(() =>
+    receipts.map(r => ({
+      value: r.id,
+      label: `${r.receiptNumber || 'Nháp'} — ${r.owner?.ownerCode || ''} — ${r.status}`,
+    })),
+    [receipts]
+  )
+
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleReceiptChange = (receiptId) => {
+    const receipt = receipts.find(r => r.id === receiptId)
+    if (receipt) {
+      setForm(prev => ({
+        ...prev,
+        sourceReceiptId: receiptId,
+        sourcePOId: receipt.poId || '',
+        warehouseId: receipt.warehouseId || '',
+        totalQty: receipt.netWeightKg ? String(receipt.netWeightKg) : receipt.expectedQty ? String(receipt.expectedQty) : '',
+      }))
+    } else {
+      handleChange('sourceReceiptId', receiptId)
+    }
   }
 
   const handleDetailChange = (idx, field, value) => {
@@ -105,11 +128,12 @@ export function GoodsSplitCreateDrawer({ isOpen, onClose, onSubmit, isLoading, o
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy-800 text-[10px] font-bold text-white">1</span>
                   <h3 className="text-sm font-semibold text-navy-900">Thông tin nguồn</h3>
                 </div>
-                <Input
-                  label="Receipt ID nguồn"
-                  placeholder="UUID của phiếu nhập"
+                <Select
+                  label="Phiếu nhập nguồn"
                   value={form.sourceReceiptId}
-                  onChange={(e) => handleChange('sourceReceiptId', e.target.value)}
+                  onChange={(e) => handleReceiptChange(e.target.value)}
+                  options={receiptOptions}
+                  placeholder="Chọn phiếu nhập"
                 />
                 <Input
                   label="Số PO (tùy chọn)"
@@ -129,29 +153,30 @@ export function GoodsSplitCreateDrawer({ isOpen, onClose, onSubmit, isLoading, o
                   label="Mặt hàng"
                   value={form.itemId}
                   onChange={(e) => handleChange('itemId', e.target.value)}
-                  options={items.map(i => ({ value: i.id, label: `${i.itemCode} — ${i.itemName}` }))}
+                  options={items.map(i => ({ value: i.id, label: `${i.itemCode || i.code} — ${i.itemName || i.name}` }))}
                   placeholder="Chọn mặt hàng"
                 />
                 <Select
                   label="Kho"
                   value={form.warehouseId}
                   onChange={(e) => handleChange('warehouseId', e.target.value)}
-                  options={warehouses.map(w => ({ value: w.id, label: `${w.warehouseCode} — ${w.warehouseName}` }))}
+                  options={warehouses.map(w => ({ value: w.id, label: `${w.warehouseCode || w.code} — ${w.warehouseName || w.name}` }))}
                   placeholder="Chọn kho"
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label="Tổng SL (kg)"
+                    label="Tổng SL"
                     type="number"
                     placeholder="0"
                     value={form.totalQty}
                     onChange={(e) => handleChange('totalQty', e.target.value)}
                   />
-                  <Input
-                    label="UOM ID"
-                    placeholder="UUID đơn vị tính"
+                  <Select
+                    label="Đơn vị tính"
                     value={form.uomId}
                     onChange={(e) => handleChange('uomId', e.target.value)}
+                    options={uoms.map(u => ({ value: u.id, label: `${u.uomCode || u.code} — ${u.uomName || u.name}` }))}
+                    placeholder="Chọn ĐVT"
                   />
                 </div>
               </div>
@@ -180,7 +205,7 @@ export function GoodsSplitCreateDrawer({ isOpen, onClose, onSubmit, isLoading, o
                         label={`Chủ hàng #${idx + 1}`}
                         value={detail.targetOwnerId}
                         onChange={(e) => handleDetailChange(idx, 'targetOwnerId', e.target.value)}
-                        options={owners.map(o => ({ value: o.id, label: `${o.ownerCode} — ${o.ownerName}` }))}
+                        options={owners.map(o => ({ value: o.id, label: `${o.ownerCode || o.code} — ${o.ownerName || o.name}` }))}
                         placeholder="Chọn chủ hàng đích"
                       />
                     </div>

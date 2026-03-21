@@ -66,3 +66,11 @@ export function useCancelGoodsSplit() {
     onError: (err) => toast.error(err?.response?.data?.message || 'Lỗi hủy phiếu'),
   })
 }
+
+export function useReceiptsForSplit() {
+  return useQuery({
+    queryKey: ['receipts-for-split'],
+    queryFn: () => goodsSplitApi.getReceipts({ pageSize: 200 }).then(r => r.data?.data || r.data || []),
+    staleTime: 60000,
+  })
+}

@@ -6,4 +6,5 @@ export {
   useConfirmGoodsSplit,
   usePostGoodsSplit,
   useCancelGoodsSplit,
+  useReceiptsForSplit,
 } from './hooks/useGoodsSplit'
