@@ -36,6 +36,7 @@ const CarriersPage = lazy(() => import('@pages/master-data').then(m => ({ defaul
 const VesselsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VesselsPage })))
 const OwnerSkuMappingsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerSkuMappingsPage })))
 const LocationTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationTypesPage })))
+const LotsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LotsPage })))
 
 // Inventory Core Pages
 const InventoryCoreLayout = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryCoreLayout })))
@@ -264,6 +265,10 @@ export const router = createBrowserRouter([
           {
             path: 'inventory-statuses',
             element: withSuspense(InventoryStatusesPage),
+          },
+          {
+            path: 'lots',
+            element: withSuspense(LotsPage),
           },
         ],
       },

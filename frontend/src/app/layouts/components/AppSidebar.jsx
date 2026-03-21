@@ -52,6 +52,7 @@ const getMenuConfig = (t) => [
       { to: '/app/master-data/vessels', label: 'Tên tàu' },
       { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU' },
       { to: '/app/master-data/items', label: t('sidebar.items.items') },
+      { to: '/app/master-data/lots', label: 'Lô hàng' },
       { to: '/app/master-data/warehouses', label: t('sidebar.items.warehouses') },
       { to: '/app/master-data/zones', label: t('sidebar.items.zones') },
       { to: '/app/master-data/locations', label: t('sidebar.items.locations') },

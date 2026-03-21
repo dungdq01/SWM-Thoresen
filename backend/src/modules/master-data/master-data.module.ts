@@ -20,6 +20,7 @@ import { VesselController } from './controllers/vessel.controller';
 import { LocationTypeController } from './controllers/location-type.controller';
 import { OwnerSkuMappingController } from './controllers/owner-sku-mapping.controller';
 import { ItemGroupController } from './controllers/item-group.controller';
+import { LotController } from './controllers/lot.controller';
 
 import { OwnerRepository } from './repositories/owner.repository';
 import { VendorRepository } from './repositories/vendor.repository';
@@ -38,6 +39,7 @@ import { VesselRepository } from './repositories/vessel.repository';
 import { LocationTypeRepository } from './repositories/location-type.repository';
 import { OwnerSkuMappingRepository } from './repositories/owner-sku-mapping.repository';
 import { ItemGroupRepository } from './repositories/item-group.repository';
+import { LotRepository } from './repositories/lot.repository';
 
 import { OwnerService } from './services/owner.service';
 import { VendorService } from './services/vendor.service';
@@ -56,6 +58,7 @@ import { VesselService } from './services/vessel.service';
 import { LocationTypeService } from './services/location-type.service';
 import { OwnerSkuMappingService } from './services/owner-sku-mapping.service';
 import { ItemGroupService } from './services/item-group.service';
+import { LotService } from './services/lot.service';
 
 @Module({
   imports: [PrismaModule, FoundationModule],
@@ -78,6 +81,7 @@ import { ItemGroupService } from './services/item-group.service';
     LocationTypeController,
     OwnerSkuMappingController,
     ItemGroupController,
+    LotController,
   ],
   providers: [
     OwnerRepository,
@@ -97,6 +101,7 @@ import { ItemGroupService } from './services/item-group.service';
     LocationTypeRepository,
     OwnerSkuMappingRepository,
     ItemGroupRepository,
+    LotRepository,
     OwnerService,
     VendorService,
     ItemService,
@@ -114,6 +119,7 @@ import { ItemGroupService } from './services/item-group.service';
     LocationTypeService,
     OwnerSkuMappingService,
     ItemGroupService,
+    LotService,
   ],
   exports: [
     OwnerService,
@@ -133,6 +139,7 @@ import { ItemGroupService } from './services/item-group.service';
     LocationTypeService,
     OwnerSkuMappingService,
     ItemGroupService,
+    LotService,
   ],
 })
 export class MasterDataModule {}

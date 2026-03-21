@@ -512,6 +512,23 @@ export const lookupApi = {
   ),
 }
 
+// ==================== LOT APIs ====================
+export const lotApi = {
+  getList: (params) => httpClient.get(`${BASE_URL}/lots`, { params }),
+  getById: (id) => httpClient.get(`${BASE_URL}/lots/${id}`),
+  getByCode: (lotCode) => httpClient.get(`${BASE_URL}/lots/by-code/${lotCode}`),
+  getByHash: (lotHash) => httpClient.get(`${BASE_URL}/lots/by-hash/${lotHash}`),
+  create: (data) => httpClient.post(`${BASE_URL}/lots`, data),
+  getOrCreate: (data) => httpClient.post(`${BASE_URL}/lots/get-or-create`, data),
+  update: (id, data) => httpClient.put(`${BASE_URL}/lots/${id}`, data),
+  deactivate: (id, reason) => httpClient.post(`${BASE_URL}/lots/${id}/deactivate`, { note: reason }),
+  reactivate: (id) => httpClient.post(`${BASE_URL}/lots/${id}/reactivate`),
+  getNextCode: () => httpClient.get(`${BASE_URL}/lots/next-code`),
+  getFifo: (params) => httpClient.get(`${BASE_URL}/lots/fifo`, { params }),
+  getTraceability: (id) => httpClient.get(`${BASE_URL}/lots/${id}/traceability`),
+  getDerivedLots: (id) => httpClient.get(`${BASE_URL}/lots/${id}/derived-lots`),
+}
+
 // ==================== DROPDOWN CONFIG APIs ====================
 export const dropdownConfigApi = {
   getList: withDataSource(

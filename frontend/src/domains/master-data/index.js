@@ -20,4 +20,5 @@ export {
   ownerSkuMappingApi,
   lookupApi,
   dropdownConfigApi,
+  lotApi,
 } from './api/masterData.api'
