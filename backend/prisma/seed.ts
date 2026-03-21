@@ -135,6 +135,12 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['master_data.uom_conversion.create', 'MASTER_DATA', 'UOM_CONVERSION', 'CREATE', true],
   ['master_data.uom_conversion.update', 'MASTER_DATA', 'UOM_CONVERSION', 'UPDATE', true],
   ['master_data.uom_conversion.delete', 'MASTER_DATA', 'UOM_CONVERSION', 'DELETE', true],
+  // Lot Management
+  ['master_data.lot.view', 'MASTER_DATA', 'LOT', 'VIEW', false],
+  ['master_data.lot.create', 'MASTER_DATA', 'LOT', 'CREATE', true],
+  ['master_data.lot.update', 'MASTER_DATA', 'LOT', 'UPDATE', true],
+  ['master_data.lot.deactivate', 'MASTER_DATA', 'LOT', 'DEACTIVATE', true],
+  ['master_data.lot.reactivate', 'MASTER_DATA', 'LOT', 'REACTIVATE', true],
   // Inbound: Purchase Orders
   ['inbound.po.view', 'INBOUND', 'PO', 'VIEW', false],
   ['inbound.po.create', 'INBOUND', 'PO', 'CREATE', true],

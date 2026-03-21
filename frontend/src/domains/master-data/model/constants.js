@@ -215,4 +215,16 @@ export const MASTER_DATA_QUERY_KEYS = {
   lookupUoms: ['master-data', 'lookups', 'uoms'],
   lookupVehicleTypes: ['master-data', 'lookups', 'vehicle-types'],
   lookupInventoryStatuses: ['master-data', 'lookups', 'inventory-statuses'],
+  // Lots
+  lots: ['master-data', 'lots'],
+  lotDetail: (id) => ['master-data', 'lots', id],
+  lotTraceability: (id) => ['master-data', 'lots', id, 'traceability'],
+  lotDerivedLots: (id) => ['master-data', 'lots', id, 'derived-lots'],
+  lotFifo: (itemId, ownerId, warehouseId) => ['master-data', 'lots', 'fifo', itemId, ownerId, warehouseId],
 }
+
+// Lot constants
+export const LOT_STATUSES = [
+  { value: 'ACTIVE', label: 'Hoạt động' },
+  { value: 'INACTIVE', label: 'Ngừng hoạt động' },
+]

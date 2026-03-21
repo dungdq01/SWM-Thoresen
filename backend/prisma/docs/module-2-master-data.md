@@ -15,12 +15,13 @@ Thiết kế hiện tại dùng `PostgreSQL` qua Prisma và được khai báo t
 - `backend/prisma/schema.prisma`
 - `backend/prisma/seed.ts`
 
-## 2. Danh sách bảng thực tế (17 tables)
+## 2. Danh sách bảng thực tế (18 tables)
 
 ### Nhóm Core Master
 - `md_owner` - Chủ hàng
 - `md_vendor` - Nhà cung cấp / Tàu
 - `md_item` - Mặt hàng
+- `md_lot` - Lô hàng
 
 ### Nhóm Warehouse Structure
 - `md_warehouse` - Kho
@@ -147,6 +148,37 @@ Thiết kế hiện tại dùng `PostgreSQL` qua Prisma và được khai báo t
   - unique `item_code`
   - index `(cargo_form, is_active)`
   - index `(product_group, is_active)`
+
+---
+
+### `md_lot`
+- **Để làm gì**
+  - Lưu thông tin lô hàng để theo dõi truy vết nguồn gốc và hỗ trợ FIFO.
+- **Field chính**
+  - `id` - UUID primary key
+  - `lot_code` - Mã lô (unique, auto-generated: LOT-YYYYMMDD-XXXX)
+  - `item_id` - FK đến item
+  - `owner_id` - FK đến owner
+  - `warehouse_id` - FK đến warehouse
+  - `first_received_date` - Ngày nhập đầu tiên (dùng cho FIFO)
+  - `source_lot_id` - FK đến lot gốc (cho VAS truy vết)
+  - `lot_hash` - Hash định danh (SHA256 của item_id + owner_id + warehouse_id + attributes)
+  - `status` - Trạng thái (ACTIVE / INACTIVE)
+  - `attributes` - JSON chứa thuộc tính mở rộng (quality, batch, expiry, etc.)
+  - `notes` - Ghi chú
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+  - `deactivated_at`, `deactivated_by`
+- **Index/constraint đáng chú ý**
+  - unique `lot_code`
+  - unique `lot_hash`
+  - index `(item_id, owner_id, warehouse_id, status)`
+  - index `(first_received_date)` - cho FIFO sorting
+  - index `(source_lot_id)` - cho truy vết VAS
+- **Lưu ý**
+  - Lot là immutable (không sửa core info: item, owner, warehouse)
+  - `source_lot_id` dùng để truy vết nguồn gốc khi VAS tạo lot mới từ lot cũ
+  - `lot_hash` đảm bảo cùng điều kiện → cùng lot (dùng cho get_or_create)
 
 ---
 

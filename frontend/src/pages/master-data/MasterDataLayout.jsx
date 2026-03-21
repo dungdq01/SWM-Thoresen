@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Building2, Database, LayoutGrid, Link2, Package, MapPin, Scale, Ship, Tags, Truck, Warehouse, Grid3X3, Users, ArrowRightLeft, FileText, Layers } from 'lucide-react'
+import { Building2, Database, LayoutGrid, Link2, Package, MapPin, Scale, Ship, Tags, Truck, Warehouse, Grid3X3, Users, ArrowRightLeft, FileText, Layers, Boxes } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navGroups = [
@@ -14,6 +14,7 @@ const navGroups = [
       { to: '/app/master-data/vessels', label: 'Tên tàu', icon: Ship },
       { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU', icon: Link2 },
       { to: '/app/master-data/items', label: 'Mặt hàng', icon: Package },
+      { to: '/app/master-data/lots', label: 'Lô hàng', icon: Boxes },
       { to: '/app/master-data/warehouses', label: 'Kho', icon: Warehouse },
       { to: '/app/master-data/zones', label: 'Khu vực', icon: Grid3X3 },
       { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },

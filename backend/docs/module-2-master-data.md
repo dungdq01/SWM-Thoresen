@@ -31,6 +31,7 @@ backend/src/modules/master-data/
 │   ├── inventory-status.controller.ts
 │   ├── customer.controller.ts
 │   ├── dropdown-config.controller.ts
+│   ├── lot.controller.ts
 │   └── lookup.controller.ts
 ├── dto/
 │   ├── common.dto.ts
@@ -42,7 +43,8 @@ backend/src/modules/master-data/
 │   ├── location.dto.ts
 │   ├── uom.dto.ts
 │   ├── vehicle-type.dto.ts
-│   └── inventory-status.dto.ts
+│   ├── inventory-status.dto.ts
+│   └── lot.dto.ts
 ├── repositories/
 │   ├── owner.repository.ts
 │   ├── vendor.repository.ts
@@ -52,7 +54,8 @@ backend/src/modules/master-data/
 │   ├── location.repository.ts
 │   ├── uom.repository.ts
 │   ├── vehicle-type.repository.ts
-│   └── inventory-status.repository.ts
+│   ├── inventory-status.repository.ts
+│   └── lot.repository.ts
 ├── services/
 │   ├── owner.service.ts
 │   ├── vendor.service.ts
@@ -63,6 +66,7 @@ backend/src/modules/master-data/
 │   ├── uom.service.ts
 │   ├── vehicle-type.service.ts
 │   ├── inventory-status.service.ts
+│   ├── lot.service.ts
 │   └── lookup.service.ts
 └── master-data.module.ts
 ```
@@ -116,6 +120,7 @@ export class OwnerController {
 | UomConversion | master_data.uom.create | master_data.uom.view | master_data.uom.update | - | - |
 | InventoryStatus | - | MASTER_DATA.INVENTORY_STATUS.READ | MASTER_DATA.INVENTORY_STATUS.UPDATE | - | - |
 | Lookup | - | MASTER_DATA.LOOKUP.READ | - | - | - |
+| Lot | master_data.lot.create | master_data.lot.view | master_data.lot.update | master_data.lot.deactivate | master_data.lot.reactivate |
 
 ## 3.2 Audit Trail Integration
 
@@ -811,6 +816,163 @@ curl "http://localhost:3000/api/v1/master-data/lookups/zones?warehouseId=<uuid>"
 
 ---
 
+## 6.13 Lot APIs
+
+### `GET /api/v1/master-data/lots/next-code`
+- **Để làm gì**
+  - Lấy mã lô tiếp theo (auto-generate).
+- **Response data chính**
+```json
+{
+  "data": { "code": "LOT-20260322-0001" }
+}
+```
+
+### `POST /api/v1/master-data/lots`
+- **Để làm gì**
+  - Tạo lô hàng mới.
+- **Body**
+```json
+{
+  "itemId": "uuid",
+  "ownerId": "uuid",
+  "warehouseId": "uuid",
+  "firstReceivedDate": "2026-03-22",
+  "sourceLotId": "uuid (optional - cho VAS)",
+  "attributes": { "quality": "A", "batch": "B001" },
+  "notes": "Ghi chú"
+}
+```
+- **File code tham gia**
+  - `controllers/lot.controller.ts`
+  - `services/lot.service.ts`
+  - `repositories/lot.repository.ts`
+- **Response data chính**
+```json
+{
+  "id": "uuid",
+  "lotCode": "LOT-20260322-0001",
+  "itemId": "uuid",
+  "ownerId": "uuid",
+  "warehouseId": "uuid",
+  "firstReceivedDate": "2026-03-22",
+  "lotHash": "sha256-hash",
+  "status": "ACTIVE",
+  "isActive": true,
+  "rowVersion": 0
+}
+```
+
+### `POST /api/v1/master-data/lots/get-or-create`
+- **Để làm gì**
+  - Lấy lot hiện có hoặc tạo mới nếu chưa tồn tại (dùng cho Inbound).
+- **Body**
+```json
+{
+  "itemId": "uuid",
+  "ownerId": "uuid",
+  "warehouseId": "uuid",
+  "attributes": { "quality": "A" },
+  "firstReceivedDate": "2026-03-22"
+}
+```
+- **Response data chính**
+```json
+{
+  "lot": { ... },
+  "created": true
+}
+```
+
+### `GET /api/v1/master-data/lots`
+- **Để làm gì**
+  - Lấy danh sách lô có phân trang.
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`
+  - `itemId`, `ownerId`, `warehouseId`, `status`, `sourceLotId`
+- **Response data chính**
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 100,
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 5
+  }
+}
+```
+
+### `GET /api/v1/master-data/lots/fifo`
+- **Để làm gì**
+  - Lấy danh sách lot theo FIFO (sắp xếp theo `firstReceivedDate` tăng dần).
+- **Query params** (required)
+  - `itemId`, `ownerId`, `warehouseId`
+
+### `GET /api/v1/master-data/lots/:id`
+- **Để làm gì**
+  - Lấy chi tiết lô theo ID.
+
+### `GET /api/v1/master-data/lots/:id/traceability`
+- **Để làm gì**
+  - Truy vết nguồn gốc lô hàng (source chain + derived lots).
+- **Response data chính**
+```json
+{
+  "sourceLots": [...],
+  "derivedLots": [...]
+}
+```
+
+### `GET /api/v1/master-data/lots/:id/derived-lots`
+- **Để làm gì**
+  - Lấy danh sách lô được tạo từ lô này (VAS output).
+
+### `GET /api/v1/master-data/lots/by-code/:lotCode`
+- **Để làm gì**
+  - Tìm lô theo mã lô.
+
+### `GET /api/v1/master-data/lots/by-hash/:lotHash`
+- **Để làm gì**
+  - Tìm lô theo lot hash.
+- **Response data chính**
+```json
+{
+  "found": true,
+  "lot": { ... }
+}
+```
+
+### `PUT /api/v1/master-data/lots/:id`
+- **Để làm gì**
+  - Cập nhật lô (chỉ cho phép cập nhật status, attributes, notes).
+- **Body**
+```json
+{
+  "status": "INACTIVE",
+  "attributes": { "quality": "B" },
+  "notes": "Updated notes",
+  "rowVersion": 0
+}
+```
+
+### `POST /api/v1/master-data/lots/:id/deactivate`
+- **Để làm gì**
+  - Soft delete lô.
+- **Body**
+```json
+{
+  "reasonCode": "EXPIRED",
+  "note": "Lô hết hạn"
+}
+```
+
+### `POST /api/v1/master-data/lots/:id/reactivate`
+- **Để làm gì**
+  - Kích hoạt lại lô đã bị deactivate.
+
+---
+
 ## 11. Changelog — FE-BE Alignment Fixes (2026-03-11)
 
 | Fix | Mô tả |
@@ -819,5 +981,6 @@ curl "http://localhost:3000/api/v1/master-data/lookups/zones?warehouseId=<uuid>"
 | Docs 6.8 VehicleType | Thêm endpoint `POST /api/v1/master-data/vehicle-types/:id/reactivate` vào docs (code đã có, docs stale) |
 | Docs 6.11 Customer | Thêm toàn bộ Customer APIs vào docs: next-code, CRUD, deactivate, reactivate |
 | Docs 6.12 UomConversion | Thêm toàn bộ UOM Conversion APIs vào docs: CRUD + DELETE |
-| Folder structure | Cập nhật folder structure thêm `customer.controller.ts`, `uom-conversion.controller.ts`, `dropdown-config.controller.ts` |
-| Permission Codes | Thêm Customer và UomConversion vào bảng Permission Codes |
+| Docs 6.13 Lot | Thêm toàn bộ Lot Management APIs vào docs: CRUD, get-or-create, fifo, traceability |
+| Folder structure | Cập nhật folder structure thêm `customer.controller.ts`, `uom-conversion.controller.ts`, `dropdown-config.controller.ts`, `lot.controller.ts` |
+| Permission Codes | Thêm Customer, UomConversion và Lot vào bảng Permission Codes |

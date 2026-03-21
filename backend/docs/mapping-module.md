@@ -10,7 +10,7 @@
 | ---------------------------------| -------------| ---------------------------------| -----------| ---------------| --------|
 | Module Auth                     | ✅ Completed | `src/modules/auth`              | 7 tables  | 13 endpoints  | - |
 | Module 1 - Foundation           | ✅ Completed | `src/modules/foundation`        | 14 tables | ~25 endpoints | Nền tảng & Quản trị |
-| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 17 tables | ~55 endpoints | Dữ liệu nền |
+| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 18 tables | ~68 endpoints | Dữ liệu nền |
 | Module 3 - Inventory Core       | ✅ Completed | `src/modules/inventory-core`    | 10 tables | ~13 endpoints | Tồn kho lõi |
 | Module 4 - Inbound              | ✅ Completed | `src/modules/inbound`           | 8 tables  | ~22 endpoints | Vận hành nhập |
 | Module 5 - Outbound             | ✅ Completed | `src/modules/outbound`          | 10 tables | ~18 endpoints | Vận hành xuất |
@@ -183,13 +183,14 @@
 **Documentation:** [`docs/module-2-master-data.md`](./module-2-master-data.md)  
 **Database Docs:** [`prisma/docs/module-2-master-data.md`](../prisma/docs/module-2-master-data.md)
 
-## Database Tables (17 tables)
+## Database Tables (18 tables)
 
 | Table | Description | Group |
 |-------|-------------|-------|
 | `md_owner` | Chủ hàng | Core Master |
 | `md_vendor` | Nhà cung cấp / Tàu | Core Master |
 | `md_item` | Mặt hàng | Core Master |
+| `md_lot` | Lô hàng (FIFO, truy vết) | Core Master |
 | `md_warehouse` | Kho | Warehouse |
 | `md_zone` | Zone trong kho | Warehouse |
 | `md_location` | Vị trí trong zone | Warehouse |
@@ -294,6 +295,23 @@
 | GET | `/api/v1/master-data/inventory-statuses/:id` | Get inventory status by ID |
 | PUT | `/api/v1/master-data/inventory-statuses/:id` | Update inventory status |
 
+### Lot Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/master-data/lots` | Tạo lô hàng mới |
+| POST | `/api/v1/master-data/lots/get-or-create` | Lấy hoặc tạo lô (cho Inbound) |
+| GET | `/api/v1/master-data/lots` | List lots (paginated) |
+| GET | `/api/v1/master-data/lots/fifo` | List lots theo FIFO |
+| GET | `/api/v1/master-data/lots/next-code` | Get next lot code |
+| GET | `/api/v1/master-data/lots/:id` | Get lot by ID |
+| GET | `/api/v1/master-data/lots/:id/traceability` | Truy vết nguồn gốc |
+| GET | `/api/v1/master-data/lots/:id/derived-lots` | Lấy lot phái sinh |
+| GET | `/api/v1/master-data/lots/by-code/:lotCode` | Get lot by code |
+| GET | `/api/v1/master-data/lots/by-hash/:lotHash` | Get lot by hash |
+| PUT | `/api/v1/master-data/lots/:id` | Update lot |
+| POST | `/api/v1/master-data/lots/:id/deactivate` | Deactivate lot |
+| POST | `/api/v1/master-data/lots/:id/reactivate` | Reactivate lot |
+
 ### Lookup Endpoints (for dropdowns)
 | Method | Path | Description |
 |--------|------|-------------|
@@ -306,6 +324,28 @@
 | GET | `/api/v1/master-data/lookups/uoms` | Get active UOMs |
 | GET | `/api/v1/master-data/lookups/vehicle-types` | Get active vehicle types |
 | GET | `/api/v1/master-data/lookups/inventory-statuses` | Get active inventory statuses |
+
+## Cross-Module Dependencies (Module 2)
+
+### Module 2 is used by:
+| Target Module | Entity/Service | Usage |
+|---------------|----------------|-------|
+| Module 3 | `MdWarehouse`, `MdLocation`, `MdOwner`, `MdInventoryStatus`, `MdItem`, `MdUom` | Dimension validation |
+| Module 4 | `MdOwner`, `MdVendor`, `MdItem`, `MdWarehouse`, `MdLocation`, **`MdLot`** | Inbound validation + **Lot get-or-create** |
+| Module 5 | `MdOwner`, `MdItem`, `MdWarehouse`, `MdLocation`, `MdInventoryStatus`, `MdVehicleType`, **`MdLot`** | Outbound validation + **FIFO lot lookup** |
+| Module 6 | `MdItem`, `MdLocation`, `MdInventoryStatus` | Inventory control operations |
+| Module 7 | `MdWarehouse`, `MdLocation` | Work execution |
+| Module 9 | `MdOwner`, `MdItem`, **`MdLot`** | VAS operations + **Lot traceability (source_lot_id)** |
+| Module 10 | `MdOwner`, `MdItem`, `MdWarehouse`, `MdServiceCode`, `MdDayType` | Billing calculations |
+| Module 11 | All master data entities | Reporting queries |
+
+### Lot Integration Points
+| Integration | Module | Usage |
+|-------------|--------|-------|
+| **Inbound** | Module 4 | Gọi `lots/get-or-create` khi nhận hàng để tự động tạo/tìm lot |
+| **Outbound** | Module 5 | Gọi `lots/fifo` để lấy danh sách lot theo FIFO cho allocation |
+| **VAS** | Module 9 | Tạo lot mới với `source_lot_id` để truy vết nguồn gốc |
+| **Reporting** | Module 11 | Query lot data cho báo cáo truy vết nguồn gốc |
 
 ---
 

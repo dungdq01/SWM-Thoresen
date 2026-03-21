@@ -199,6 +199,11 @@ enum ImportErrorLevel {
   CRITICAL
 }
 
+enum LotStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model AppUser {
   id                    String    @id @default(uuid()) @db.Uuid
   userCode              String    @unique @map("user_code") @db.VarChar(50)
@@ -603,6 +608,7 @@ model MdWarehouse {
   bilEvents               BilEvent[]
   bilStorageSnapshots     BilStorageSnapshot[]
   salesOrders             SalesOrder[]
+  lots                     MdLot[]
   GoodsSplitHeader        GoodsSplitHeader[]
 
   @@map("md_warehouse")
@@ -718,7 +724,7 @@ model MdOwner {
   salesOrders         SalesOrder[]
   inboundDocuments    InboundDocument[]
   outboundDocuments   OutboundDocument[]
-  lots                Lot[]
+  lots               MdLot[]
   splitOriginalOwner  GoodsSplitHeader[]           @relation("SplitOriginalOwner")
   splitTargetOwner    GoodsSplitDetail[]           @relation("SplitTargetOwner")
 
@@ -851,7 +857,7 @@ model MdItem {
   bilDebitNoteLines     BilDebitNoteLine[]
   salesOrderLines       SalesOrderLine[]
   ownerSkuMappings      MdOwnerSkuMapping[]
-  lots                  Lot[]
+  lots                  MdLot[]
   goodsSplitHeaders     GoodsSplitHeader[]
 
   @@index([cargoForm, isActive])
@@ -859,6 +865,39 @@ model MdItem {
   @@index([isPackaging, isActive])
   @@index([itemGroupId])
   @@map("md_item")
+}
+
+model MdLot {
+  id                String    @id @default(uuid()) @db.Uuid
+  lotCode           String    @unique @map("lot_code") @db.VarChar(50)
+  itemId            String    @map("item_id") @db.Uuid
+  ownerId           String    @map("owner_id") @db.Uuid
+  warehouseId       String    @map("warehouse_id") @db.Uuid
+  firstReceivedDate DateTime  @map("first_received_date") @db.Date
+  sourceLotId       String?   @map("source_lot_id") @db.Uuid
+  lotHash           String    @unique @map("lot_hash") @db.VarChar(64)
+  status            LotStatus @default(ACTIVE)
+  attributes        Json?
+  notes             String?   @db.Text
+  isActive          Boolean   @default(true) @map("is_active")
+  rowVersion        BigInt    @default(0) @map("row_version")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  createdBy         String?   @map("created_by") @db.Uuid
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  updatedBy         String?   @map("updated_by") @db.Uuid
+  deactivatedAt     DateTime? @map("deactivated_at")
+  deactivatedBy     String?   @map("deactivated_by") @db.Uuid
+
+  item      MdItem      @relation(fields: [itemId], references: [id])
+  owner     MdOwner     @relation(fields: [ownerId], references: [id])
+  warehouse MdWarehouse @relation(fields: [warehouseId], references: [id])
+  sourceLot MdLot?      @relation("LotSourceTrace", fields: [sourceLotId], references: [id])
+  derivedLots MdLot[]   @relation("LotSourceTrace")
+
+  @@index([itemId, ownerId, warehouseId, status])
+  @@index([firstReceivedDate])
+  @@index([sourceLotId])
+  @@map("md_lot")
 }
 
 model MdVehicleType {
