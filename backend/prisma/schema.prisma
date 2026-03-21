@@ -725,6 +725,7 @@ model MdOwner {
   inboundDocuments    InboundDocument[]
   outboundDocuments   OutboundDocument[]
   lots               MdLot[]
+  lotsV2             Lot[]
   splitOriginalOwner  GoodsSplitHeader[]           @relation("SplitOriginalOwner")
   splitTargetOwner    GoodsSplitDetail[]           @relation("SplitTargetOwner")
 
@@ -858,6 +859,7 @@ model MdItem {
   salesOrderLines       SalesOrderLine[]
   ownerSkuMappings      MdOwnerSkuMapping[]
   lots                  MdLot[]
+  lotsV2                Lot[]
   goodsSplitHeaders     GoodsSplitHeader[]
 
   @@index([cargoForm, isActive])
