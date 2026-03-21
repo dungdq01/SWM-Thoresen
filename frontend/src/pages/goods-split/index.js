@@ -1,0 +1,1 @@
+export { GoodsSplitPage } from './GoodsSplitPage'

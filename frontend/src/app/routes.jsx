@@ -106,6 +106,9 @@ const AuditTrailPage = lazy(() => import('@pages/reporting').then(m => ({ defaul
 const ReconciliationPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.ReconciliationPage })))
 const GoLiveChecklistPage = lazy(() => import('@pages/reporting').then(m => ({ default: m.GoLiveChecklistPage })))
 
+// Goods Split
+const GoodsSplitPage = lazy(() => import('@pages/goods-split').then(m => ({ default: m.GoodsSplitPage })))
+
 // Warehouse Monitoring
 const WarehouseMonitoringPage = lazy(() => import('@pages/warehouse-monitoring').then(m => ({ default: m.WarehouseMonitoringPage })))
 
@@ -349,6 +352,10 @@ export const router = createBrowserRouter([
             element: withSuspense(OutboundDocumentsPage),
           },
         ],
+      },
+      {
+        path: 'goods-split',
+        element: withSuspense(GoodsSplitPage),
       },
       {
         path: 'inventory-control',

@@ -7,6 +7,7 @@ import { RequestUser } from '../../../common/interfaces/request-user.interface';
 import { WeighbridgeIngestService } from '../services/weighbridge-ingest.service';
 import { WeighbridgeLogService } from '../services/weighbridge-log.service';
 import { WeighbridgeDeviceService } from '../services/weighbridge-device.service';
+import { WeighbridgeCascadingService, CascadingWeighInput } from '../services/weighbridge-cascading.service';
 import { CreateWeighEventDto, HeartbeatDto, ReprocessWeighEventDto, UpdateWeighLogDto, RecordWeightDto } from '../dto/weighbridge/create-weigh-event.dto';
 import { WeighLogQueryDto } from '../dto/weighbridge/weigh-log-query.dto';
 
@@ -17,6 +18,7 @@ export class WeighbridgeController {
     private readonly ingestService: WeighbridgeIngestService,
     private readonly logService: WeighbridgeLogService,
     private readonly deviceService: WeighbridgeDeviceService,
+    private readonly cascadingService: WeighbridgeCascadingService,
   ) {}
 
   @Post('events')
@@ -107,6 +109,16 @@ export class WeighbridgeController {
   @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
   async recordWeight(@Param('id') id: string, @Body() dto: RecordWeightDto) {
     return this.logService.recordWeight(id, dto);
+  }
+
+  @Post('weighbridge-logs')
+  @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE.INGEST')
+  async processCascadingWeighEvent(
+    @Body() input: CascadingWeighInput,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.cascadingService.processWeighEvent(input, user.id);
   }
 
   @Get('devices')

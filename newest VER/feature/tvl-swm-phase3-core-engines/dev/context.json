@@ -1,0 +1,237 @@
+{
+  "feature": "tvl-swm-phase3-core-engines",
+  "description": "Phase 3 Core Engines: Lot+InventDim hash services, InventTrans append-only ledger with materialization, Weighbridge engine with auto-resolve and cascading",
+  "backendStructure": {
+    "tracks": {
+      "3A": {
+        "name": "Lot + InventDim Engine",
+        "featurePaths": [
+          "Application/Features/Inventory/InventoryStatuses/",
+          "Application/Features/Inventory/Lots/"
+        ],
+        "servicePaths": [
+          "Application/Services/Abstractions/ILotService.cs",
+          "Application/Services/Abstractions/IInventDimService.cs",
+          "Application/Services/LotService.cs",
+          "Application/Services/InventDimService.cs"
+        ],
+        "entities": ["InventoryStatus", "Lot", "InventDim"],
+        "controllers": ["InventoryStatusesController", "LotsController"]
+      },
+      "3B": {
+        "name": "InventTrans Engine",
+        "featurePaths": [
+          "Application/Features/Inventory/OnHand/",
+          "Application/Features/Inventory/InventTrans/",
+          "Application/Features/Inventory/Admin/",
+          "Application/Features/Inventory/Adjustments/"
+        ],
+        "servicePaths": [
+          "Application/Services/Abstractions/IInventTransService.cs",
+          "Application/Services/Abstractions/IAllocationService.cs",
+          "Application/Services/Abstractions/IOnHandQueryService.cs",
+          "Application/Services/InventTransService.cs",
+          "Application/Services/AllocationService.cs",
+          "Application/Services/OnHandQueryService.cs",
+          "Application/Services/MaterializationWorker.cs"
+        ],
+        "entities": ["InventTrans", "OnHand", "InventoryEventOutbox", "MaterializationCheckpoint", "InventoryAdjustment"],
+        "controllers": ["OnHandController", "InventTransController", "InventoryAdjustmentsController"]
+      },
+      "3C": {
+        "name": "Weighbridge Engine",
+        "featurePaths": [
+          "Application/Features/Weighbridge/Weighbridges/",
+          "Application/Features/Weighbridge/WeighbridgeLogs/"
+        ],
+        "servicePaths": [
+          "Application/Services/Abstractions/IWeighbridgeService.cs",
+          "Application/Services/WeighbridgeService.cs"
+        ],
+        "entities": ["Weighbridge", "WeighbridgeLog"],
+        "controllers": ["WeighbridgesController", "WeighbridgeLogsController"]
+      }
+    },
+    "constantsPaths": [
+      "Domain.Shared/Constants/LotConsts.cs",
+      "Domain.Shared/Constants/InventDimConsts.cs",
+      "Domain.Shared/Constants/InventTransConsts.cs",
+      "Domain.Shared/Constants/InventoryStatusConsts.cs",
+      "Domain.Shared/Constants/WeighbridgeConsts.cs",
+      "Domain.Shared/Constants/WeighbridgeLogConsts.cs"
+    ],
+    "businessRulePaths": [
+      "Domain.Shared/BusinessRule.Inventory.cs",
+      "Domain.Shared/BusinessRule.Weighbridge.cs"
+    ],
+    "queryConfigPaths": [
+      "QueryConfigs/InventoryStatuses.json",
+      "QueryConfigs/Lots.json",
+      "QueryConfigs/OnHand.json",
+      "QueryConfigs/InventTrans.json",
+      "QueryConfigs/InventoryAdjustments.json",
+      "QueryConfigs/Weighbridges.json",
+      "QueryConfigs/WeighbridgeLogs.json"
+    ]
+  },
+  "frontendStructure": {
+    "features": [
+      {
+        "name": "weighbridges",
+        "path": "features/weighbridges/",
+        "route": "/weighbridges",
+        "formCodes": {
+          "grid": "OPSWBDG01",
+          "search": "OPSWBDS01"
+        }
+      },
+      {
+        "name": "weighbridge-logs",
+        "path": "features/weighbridge-logs/",
+        "route": "/weighbridge-logs",
+        "formCodes": {
+          "grid": "OPSWBLG01",
+          "search": "OPSWBLS01"
+        }
+      }
+    ],
+    "i18nNamespaces": ["weighbridges", "weighbridgeLogs"],
+    "sidebarGroup": "operations"
+  },
+  "apiContract": {
+    "inventoryStatuses": {
+      "GET /api/inventory-statuses": "List all (DynamicGrid)",
+      "POST /api/inventory-statuses": "Create custom status",
+      "GET /api/inventory-statuses/lookup": "Lookup for dropdowns"
+    },
+    "lots": {
+      "GET /api/lots": "List (filter: itemId, ownerId, status)",
+      "GET /api/lots/{id}": "Detail with attributes",
+      "GET /api/lots/{id}/traceability": "Source lot chain",
+      "GET /api/lots/lookup": "Lookup for dropdowns"
+    },
+    "onHand": {
+      "GET /api/on-hand": "List (filter: warehouseId, ownerId, itemId, lotId)",
+      "GET /api/on-hand/summary": "Aggregated by item/owner/warehouse"
+    },
+    "inventTrans": {
+      "GET /api/invent-trans": "List (filter: itemId, referenceType, dateRange)"
+    },
+    "inventoryAdjustments": {
+      "GET /api/inventory-adjustments": "List (DynamicGrid)",
+      "POST /api/inventory-adjustments": "Create (pending approval)",
+      "PUT /api/inventory-adjustments/{id}/approve": "Approve → post InventTrans",
+      "PUT /api/inventory-adjustments/{id}/reject": "Reject"
+    },
+    "inventoryAdmin": {
+      "POST /api/inventory/rebuild": "Full rebuild on_hand from invent_trans",
+      "GET /api/inventory/materialization-status": "Check lag/health"
+    },
+    "weighbridges": {
+      "GET /api/weighbridges": "List (DynamicGrid)",
+      "POST /api/weighbridges": "Create",
+      "PUT /api/weighbridges/{id}": "Update",
+      "DELETE /api/weighbridges/{id}": "Soft delete",
+      "GET /api/weighbridges/{id}": "Detail",
+      "GET /api/weighbridges/lookup": "Lookup for dropdowns"
+    },
+    "weighbridgeLogs": {
+      "POST /api/weighbridge-logs": "Create log (single endpoint for inbound+outbound)",
+      "GET /api/weighbridge-logs": "List (filter: documentNumber, date, status)",
+      "GET /api/weighbridge-logs/{id}": "Detail with cascading chain"
+    }
+  },
+  "fieldDefinitions": {
+    "inventoryStatus": {
+      "code": { "type": "string", "maxLength": 50, "required": true },
+      "name": { "type": "string", "maxLength": 200, "required": true },
+      "isAvailableForAllocation": { "type": "boolean", "default": true },
+      "isAvailableForPick": { "type": "boolean", "default": true },
+      "isActive": { "type": "boolean", "default": true }
+    },
+    "lot": {
+      "lotNumber": { "type": "string", "maxLength": 100, "autoGenerated": true },
+      "lotAttr01-12": { "type": "string", "maxLength": 500, "nullable": true },
+      "lotHash": { "type": "string", "maxLength": 128, "computed": true },
+      "sourceLotId": { "type": "guid", "nullable": true, "selfRef": true },
+      "itemId": { "type": "guid", "required": true },
+      "ownerId": { "type": "guid", "required": true }
+    },
+    "inventDim": {
+      "siteId": { "type": "guid", "nullable": true },
+      "warehouseId": { "type": "guid", "required": true },
+      "locationId": { "type": "guid", "nullable": true },
+      "ownerId": { "type": "guid", "required": true },
+      "inventoryStatus": { "type": "enum:InventoryStatusCode", "required": true },
+      "lotId": { "type": "guid", "nullable": true },
+      "dimHash": { "type": "string", "maxLength": 128, "computed": true }
+    },
+    "inventTrans": {
+      "seqNo": { "type": "long", "autoIncrement": true },
+      "batchId": { "type": "guid", "nullable": true },
+      "itemId": { "type": "guid", "required": true },
+      "inventDimId": { "type": "guid", "required": true },
+      "transType": { "type": "enum:TransType", "required": true },
+      "stage": { "type": "enum:TransStage", "required": true },
+      "qty": { "type": "decimal", "required": true },
+      "qtyMt": { "type": "decimal", "nullable": true },
+      "referenceType": { "type": "string", "maxLength": 50, "nullable": true },
+      "referenceId": { "type": "guid", "nullable": true },
+      "postedAt": { "type": "datetime", "default": "UtcNow" }
+    },
+    "onHand": {
+      "itemId": { "type": "guid", "required": true },
+      "inventDimId": { "type": "guid", "required": true },
+      "physicalQty": { "type": "decimal", "default": 0 },
+      "reservedQty": { "type": "decimal", "default": 0 },
+      "allocatedQty": { "type": "decimal", "default": 0 },
+      "lastMaterializedAt": { "type": "datetime", "nullable": true }
+    },
+    "weighbridge": {
+      "code": { "type": "string", "maxLength": 50, "required": true },
+      "name": { "type": "string", "maxLength": 200, "required": true },
+      "maxCapacityKg": { "type": "decimal", "required": true },
+      "integrationMode": { "type": "enum:IntegrationMode", "required": true },
+      "warehouseId": { "type": "guid", "required": true },
+      "isActive": { "type": "boolean", "default": true }
+    },
+    "weighbridgeLog": {
+      "logNumber": { "type": "string", "maxLength": 100, "autoGenerated": true },
+      "type": { "type": "enum:WeighbridgeLogType", "autoDetected": true },
+      "documentNumber": { "type": "string", "maxLength": 100, "nullable": true },
+      "grossWeightKg": { "type": "decimal", "nullable": true },
+      "tareWeightKg": { "type": "decimal", "nullable": true },
+      "netWeightKg": { "type": "decimal", "computed": true },
+      "vehiclePlate": { "type": "string", "maxLength": 50, "nullable": true },
+      "previousLogId": { "type": "guid", "nullable": true, "selfRef": true },
+      "status": { "type": "enum:WeighbridgeLogStatus", "default": "Pending" },
+      "weighbridgeId": { "type": "guid", "required": true }
+    }
+  },
+  "templatesNeeded": {
+    "backend": ["form-config.md"],
+    "frontend": ["feature-module.md"]
+  },
+  "formConfigNeeded": true,
+  "scriptsNeeded": [],
+  "i18nChecklist": {
+    "en": ["weighbridges.json", "weighbridgeLogs.json"],
+    "vi": ["weighbridges.json", "weighbridgeLogs.json"]
+  },
+  "requiredSamples": {
+    "entity": "// Reference: backend/src/Smartlog.Domain/Entities/MasterData/Item.cs\n// All Phase 3 entities already exist. No new entities to create.",
+    "commandHandler": "// Pattern from CreateItem.cs:\npublic class CreateWeighbridge\n{\n    public record Command(\n        string Code,\n        string Name,\n        decimal MaxCapacityKg,\n        IntegrationMode IntegrationMode,\n        Guid WarehouseId,\n        bool IsActive = true\n    ) : ICommand<Guid>;\n\n    public class CommandValidator : AbstractValidator<Command>\n    {\n        public CommandValidator(ILocalizationService localizationService)\n        {\n            RuleFor(x => x.Code).NotEmpty().WithName(localizationService.GetPropertyName(\"Weighbridge.Code\"))\n                .MaximumLength(WeighbridgeConsts.ColumnMaxLengths.Code).WithName(localizationService.GetPropertyName(\"Weighbridge.Code\"));\n            RuleFor(x => x.Name).NotEmpty().WithName(localizationService.GetPropertyName(\"Weighbridge.Name\"))\n                .MaximumLength(WeighbridgeConsts.ColumnMaxLengths.Name).WithName(localizationService.GetPropertyName(\"Weighbridge.Name\"));\n            RuleFor(x => x.MaxCapacityKg).GreaterThan(0).WithName(localizationService.GetPropertyName(\"Weighbridge.MaxCapacityKg\"));\n            RuleFor(x => x.WarehouseId).NotEmpty().WithName(localizationService.GetPropertyName(\"Weighbridge.WarehouseId\"));\n        }\n    }\n\n    public class CommandHandler(\n        IAppDbContext context,\n        ILogger<CommandHandler> logger) : ICommandHandler<Command, Guid>\n    {\n        public async Task<Guid> HandleAsync(Command command, CancellationToken cancellationToken = default)\n        {\n            if (await context.Weighbridges.AnyAsync(x => x.Code.ToLower() == command.Code.ToLower(), cancellationToken))\n                throw BusinessRule.Weighbridges.CodeAlreadyExists.ToBusinessException([command.Code]);\n\n            var entity = new Weighbridge\n            {\n                Code = command.Code,\n                Name = command.Name,\n                MaxCapacityKg = command.MaxCapacityKg,\n                IntegrationMode = command.IntegrationMode,\n                WarehouseId = command.WarehouseId,\n                IsActive = command.IsActive\n            };\n\n            context.Weighbridges.Add(entity);\n            await context.SaveChangesAsync(cancellationToken);\n            logger.LogInformation(\"Weighbridge {Code} created with ID {Id}\", entity.Code, entity.Id);\n            return entity.Id;\n        }\n    }\n}",
+    "queryHandler": "// Pattern from GetItemList.cs:\npublic class GetWeighbridgeList\n{\n    public record Query : DynamicListQuery, IDynamicGridQuery, IQuery<DynamicGridResult>\n    {\n        public string FormCode { get; init; } = \"OPSWBDG01\";\n        public string? SearchFormCode { get; init; } = \"OPSWBDS01\";\n        public Dictionary<string, object?>? FilterValues { get; init; }\n    }\n\n    public class QueryHandler(IServiceProvider serviceProvider, ICurrentUser currentUser)\n        : DynamicGridQueryHandler<Query>(serviceProvider), IQueryHandler<Query, DynamicGridResult>\n    {\n        protected override string GetConfigName() => \"Weighbridges\";\n        protected override Guid? UserId() => currentUser?.UserId;\n    }\n}",
+    "controller": "// Pattern from ItemsController.cs:\n[ApiController]\n[Route(\"api/weighbridges\")]\n[Authorize]\npublic sealed class WeighbridgesController(IDispatcher dispatcher) : ControllerBase\n{\n    [HttpGet(\"lookup\")]\n    [ProducesResponseType(typeof(ApiResult<List<LookupDto>>), StatusCodes.Status200OK)]\n    public async Task<IActionResult> Lookup([FromQuery] Guid? warehouseId = null, [FromQuery] string? search = null, CancellationToken ct = default)\n    {\n        var result = await dispatcher.QueryAsync(new GetWeighbridgeLookup.Query { WarehouseId = warehouseId, Search = search }, ct);\n        return Ok(ApiResult<List<LookupDto>>.Success(result));\n    }\n\n    [HttpPost(\"search\")]\n    public async Task<IActionResult> Search([FromBody] GetWeighbridgeList.Query query, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(query, ct);\n        return Ok(ApiResult<DynamicGridResult>.Success(result));\n    }\n\n    [HttpGet(\"{id:guid}\")]\n    public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(new GetWeighbridgeById.Query(id), ct);\n        if (result == null) return NotFound();\n        return Ok(ApiResult<WeighbridgeDto>.Success(result));\n    }\n\n    [HttpPost]\n    [ProducesResponseType(typeof(ApiResult<Guid>), StatusCodes.Status201Created)]\n    public async Task<IActionResult> Create([FromBody] CreateWeighbridge.Command command, CancellationToken ct)\n    {\n        var id = await dispatcher.DispatchAsync(command, ct);\n        return StatusCode(StatusCodes.Status201Created, ApiResult<Guid>.Success(id));\n    }\n\n    [HttpPut(\"{id:guid}\")]\n    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWeighbridge.Command command, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(command with { Id = id }, ct);\n        return NoContent();\n    }\n\n    [HttpDelete(\"{id:guid}\")]\n    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(new DeleteWeighbridge.Command(id), ct);\n        return NoContent();\n    }\n}",
+    "featureApi": "// Pattern from items.ts:\nexport const weighbridgesApi = {\n    getWeighbridges: async (params: SearchParams) => {\n        const response = await apiClient.post('/weighbridges/search', {\n            ...params,\n            formCode: params.formCode || 'OPSWBDG01',\n            searchFormCode: params.searchFormCode || 'OPSWBDS01',\n            filterValues: params.filterValues || {},\n        })\n        return response.data.data\n    },\n    getWeighbridge: async (id: string) => {\n        const response = await apiClient.get(`/weighbridges/${id}`)\n        return response.data.data\n    },\n    createWeighbridge: async (data: CreateWeighbridgeCommand) => {\n        const response = await apiClient.post('/weighbridges', data)\n        return response.data.data\n    },\n    updateWeighbridge: async (id: string, data: UpdateWeighbridgeCommand) => {\n        const response = await apiClient.put(`/weighbridges/${id}`, data)\n        return response.data.data\n    },\n    deleteWeighbridge: async (id: string) => { await apiClient.delete(`/weighbridges/${id}`) },\n    getWeighbridgeLookup: async (params?: { search?: string }) => {\n        const response = await apiClient.get('/weighbridges/lookup', { params })\n        return response.data.data\n    },\n}",
+    "featureSchema": "// Pattern from schema.ts:\nimport { z } from 'zod'\n\nexport const IntegrationMode = {\n    Manual: 'Manual',\n    SemiAuto: 'SemiAuto',\n    FullAuto: 'FullAuto',\n    Api: 'Api',\n} as const\n\nexport const weighbridgeSchema = z.object({\n    id: z.string(),\n    code: z.string(),\n    name: z.string(),\n    maxCapacityKg: z.number(),\n    integrationMode: z.string(),\n    warehouseId: z.string(),\n    warehouseName: z.string().optional().nullable(),\n    isActive: z.boolean().default(true),\n    createdTime: z.string().optional().nullable(),\n    createdBy: z.string().optional().nullable(),\n    updatedTime: z.string().optional().nullable(),\n    updatedBy: z.string().optional().nullable(),\n})\n\nexport type Weighbridge = z.infer<typeof weighbridgeSchema>",
+    "serviceInterface": "// ILotService contract for Track 3B consumption:\npublic interface ILotService\n{\n    Task<Guid> GetOrCreateLotAsync(Guid itemId, Guid ownerId,\n        Dictionary<string, string?> lotAttributes, CancellationToken ct);\n    Task<Lot?> GetByHashAsync(string lotHash, CancellationToken ct);\n}\n\npublic interface IInventDimService\n{\n    Task<Guid> GetOrCreateAsync(Guid warehouseId, Guid locationId,\n        Guid ownerId, Guid statusId, Guid? lotId, CancellationToken ct);\n    Task<InventDim> GetByIdAsync(Guid inventDimId, CancellationToken ct);\n}\n\npublic interface IInventTransService\n{\n    Task PostAsync(InventTransCommand cmd, CancellationToken ct);\n    Task PostPairAsync(InventTransCommand issue, InventTransCommand receipt, CancellationToken ct);\n    Task PostBatchAsync(IEnumerable<InventTransCommand> cmds, Guid batchId, CancellationToken ct);\n}\n\npublic interface IAllocationService\n{\n    Task<List<AllocationResult>> AllocateFifoAsync(\n        Guid itemId, Guid ownerId, Guid warehouseId,\n        decimal qtyKg, Guid? preferredLotId, CancellationToken ct);\n    Task DeallocateAsync(Guid allocationId, CancellationToken ct);\n}\n\npublic interface IOnHandQueryService\n{\n    Task<List<OnHandDto>> GetAsync(OnHandFilter filter, CancellationToken ct);\n    Task<decimal> GetAvailableQtyAsync(Guid itemId, Guid inventDimId, CancellationToken ct);\n}\n\npublic interface IWeighbridgeService\n{\n    Task<WeighbridgeLogResult> ProcessLogAsync(WeighbridgeLogCommand cmd, CancellationToken ct);\n    Task<decimal> GetTotalNetWeightAsync(string documentNumber, Guid itemId, CancellationToken ct);\n}",
+    "businessRules": "// Business rule code ranges:\n// Inventory: INV-3000 to INV-3099\n// Weighbridge: WB-3100 to WB-3149\n\npublic partial class BusinessRule\n{\n    public readonly struct InventoryStatuses\n    {\n        public static readonly BusinessRule NotFound = new(\"InventoryStatus.NotFound\", \"INV-3000\");\n        public static readonly BusinessRule CodeAlreadyExists = new(\"InventoryStatus.CodeAlreadyExists\", \"INV-3001\");\n    }\n\n    public readonly struct Lots\n    {\n        public static readonly BusinessRule NotFound = new(\"Lot.NotFound\", \"INV-3010\");\n        public static readonly BusinessRule HashConflict = new(\"Lot.HashConflict\", \"INV-3011\");\n    }\n\n    public readonly struct InventDims\n    {\n        public static readonly BusinessRule NotFound = new(\"InventDim.NotFound\", \"INV-3020\");\n    }\n\n    public readonly struct InventTransactions\n    {\n        public static readonly BusinessRule InvalidStageTransition = new(\"InventTrans.InvalidStageTransition\", \"INV-3030\");\n        public static readonly BusinessRule NegativeInventory = new(\"InventTrans.NegativeInventory\", \"INV-3031\");\n        public static readonly BusinessRule DuplicateExternalId = new(\"InventTrans.DuplicateExternalId\", \"INV-3032\");\n        public static readonly BusinessRule MaterializationFailed = new(\"InventTrans.MaterializationFailed\", \"INV-3033\");\n    }\n\n    public readonly struct Allocations\n    {\n        public static readonly BusinessRule InsufficientInventory = new(\"Allocation.InsufficientInventory\", \"INV-3040\");\n        public static readonly BusinessRule NotFound = new(\"Allocation.NotFound\", \"INV-3041\");\n    }\n\n    public readonly struct InventoryAdjustments\n    {\n        public static readonly BusinessRule NotFound = new(\"InventoryAdjustment.NotFound\", \"INV-3050\");\n        public static readonly BusinessRule AlreadyProcessed = new(\"InventoryAdjustment.AlreadyProcessed\", \"INV-3051\");\n    }\n\n    public readonly struct Weighbridges\n    {\n        public static readonly BusinessRule NotFound = new(\"Weighbridge.NotFound\", \"WB-3100\");\n        public static readonly BusinessRule CodeAlreadyExists = new(\"Weighbridge.CodeAlreadyExists\", \"WB-3101\");\n    }\n\n    public readonly struct WeighbridgeLogs\n    {\n        public static readonly BusinessRule NotFound = new(\"WeighbridgeLog.NotFound\", \"WB-3110\");\n        public static readonly BusinessRule ExceedsCapacity = new(\"WeighbridgeLog.ExceedsCapacity\", \"WB-3111\");\n        public static readonly BusinessRule BelowMinWeight = new(\"WeighbridgeLog.BelowMinWeight\", \"WB-3112\");\n        public static readonly BusinessRule CascadingToleranceExceeded = new(\"WeighbridgeLog.CascadingToleranceExceeded\", \"WB-3113\");\n        public static readonly BusinessRule ToleranceExceeded = new(\"WeighbridgeLog.ToleranceExceeded\", \"WB-3114\");\n    }\n}",
+    "queryConfig": "// Pattern from Items.json — for Weighbridges:\n{\n    \"TABLE_INFO\": {\n        \"MENU_NM\": \"Weighbridge List\",\n        \"MENU_NM_VI\": \"Danh sach Can\",\n        \"DB_NM\": \"ops\",\n        \"TABLE_NM\": \"weighbridge\",\n        \"TABLE_ALIAS\": \"wb\",\n        \"DB_TYPE\": \"PG\",\n        \"GRID_FORM_CODE\": \"OPSWBDG01\",\n        \"SEARCH_FORM_CODE\": \"OPSWBDS01\"\n    },\n    \"COLUMN_INFO\": [\n        { \"COLUMN_NM\": \"id\", \"COLUMN_ALIAS\": \"id\", \"QUERY\": \"wb.id\" },\n        { \"COLUMN_NM\": \"code\", \"COLUMN_ALIAS\": \"code\", \"QUERY\": \"wb.code\" },\n        { \"COLUMN_NM\": \"name\", \"COLUMN_ALIAS\": \"name\", \"QUERY\": \"wb.name\" },\n        { \"COLUMN_NM\": \"max_capacity_kg\", \"COLUMN_ALIAS\": \"maxCapacityKg\", \"QUERY\": \"wb.max_capacity_kg\" },\n        { \"COLUMN_NM\": \"integration_mode\", \"COLUMN_ALIAS\": \"integrationMode\", \"QUERY\": \"wb.integration_mode\" },\n        { \"COLUMN_NM\": \"warehouse_name\", \"COLUMN_ALIAS\": \"warehouseName\", \"QUERY\": \"w.name\" },\n        { \"COLUMN_NM\": \"is_active\", \"COLUMN_ALIAS\": \"isActive\", \"QUERY\": \"wb.is_active\" },\n        { \"COLUMN_NM\": \"created_time\", \"COLUMN_ALIAS\": \"createdTime\", \"QUERY\": \"wb.created_time\" },\n        { \"COLUMN_NM\": \"created_by\", \"COLUMN_ALIAS\": \"createdBy\", \"QUERY\": \"wb.created_by\" }\n    ],\n    \"JOIN_INFO\": [\n        { \"SORT_SEQ\": 1, \"TABLE_NM\": \"warehouse\", \"TABLE_ALIAS\": \"w\", \"DB_NM\": \"cat\", \"JOIN_TYPE\": \"LEFT\", \"QUERY\": \"wb.warehouse_id = w.id\" }\n    ],\n    \"WHERE_INFO\": [\n        { \"SORT_SEQ\": 1, \"QUERY\": \"wb.tenant_id = @TenantId\" },\n        { \"SORT_SEQ\": 2, \"QUERY\": \"wb.is_deleted = false\" }\n    ],\n    \"ORDER_INFO\": [\n        { \"SORT_SEQ\": 1, \"QUERY\": \"wb.created_time DESC\" }\n    ]\n}"
+  },
+  "optionalSamples": {
+    "materializationWorker": "// BackgroundService pattern for MaterializationWorker:\npublic class MaterializationWorker(\n    IServiceProvider serviceProvider,\n    ILogger<MaterializationWorker> logger) : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            try\n            {\n                using var scope = serviceProvider.CreateScope();\n                var context = scope.ServiceProvider.GetRequiredService<IAppDbContext>();\n                // Poll outbox for pending events\n                var pendingEvents = await context.InventoryEventOutboxes\n                    .Where(x => x.Status == \"Pending\")\n                    .OrderBy(x => x.Id)\n                    .Take(100)\n                    .ToListAsync(stoppingToken);\n\n                foreach (var evt in pendingEvents)\n                {\n                    await ProcessEventAsync(context, evt, stoppingToken);\n                }\n            }\n            catch (Exception ex)\n            {\n                logger.LogError(ex, \"Materialization worker error\");\n            }\n            await Task.Delay(500, stoppingToken); // Poll interval\n        }\n    }\n}",
+    "lotHashComputation": "// SHA-256 lot hash with configurable attributes:\npublic async Task<string> ComputeLotHashAsync(Guid itemId, Guid ownerId, Dictionary<string, string?> attrs, CancellationToken ct)\n{\n    var hashAttrs = await _systemConfigService.GetAsync<List<string>>(\"lot_hash_attrs\", ct)\n        ?? new List<string> { \"item_id\", \"owner_id\", \"lot_attr_01\", \"lot_attr_03\", \"lot_attr_08\", \"lot_attr_09\" };\n\n    var parts = new List<string> { _currentUser.TenantId.ToString()! };\n    foreach (var attr in hashAttrs)\n    {\n        var val = attr switch\n        {\n            \"item_id\" => itemId.ToString(),\n            \"owner_id\" => ownerId.ToString(),\n            _ => attrs.GetValueOrDefault(attr)\n        };\n        parts.Add(val ?? string.Empty);\n    }\n\n    var input = string.Join(\"|\", parts);\n    var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));\n    return Convert.ToHexStringLower(bytes);\n}",
+    "stageTransitionMatrix": "// Valid stage transitions:\nprivate static readonly Dictionary<TransStage, HashSet<TransStage>> ValidTransitions = new()\n{\n    [TransStage.Expected] = new() { TransStage.Registered, TransStage.Physical },\n    [TransStage.Registered] = new() { TransStage.Allocated },\n    [TransStage.Allocated] = new() { TransStage.DeAllocated, TransStage.Physical },\n    [TransStage.DeAllocated] = new() { TransStage.Allocated },\n    [TransStage.Physical] = new() { TransStage.Deducted },\n};"
+  }
+}

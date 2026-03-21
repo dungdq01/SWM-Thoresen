@@ -19,6 +19,7 @@ import {
   X,
   ScanEye,
   Scale,
+  Split,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { useLanguage } from '@shared/i18n'
@@ -100,76 +101,65 @@ const getMenuConfig = (t) => [
       { to: '/app/outbound-operations/documents', label: 'Chứng từ xuất' },
     ],
   },
-  // HIDDEN: inventory-control (unused module)
-  // {
-  //   id: 'inventory-control',
-  //   label: t('sidebar.items.inventoryControlMenu'),
-  //   icon: ArrowRightLeft,
-  //   basePath: '/app/inventory-control',
-  //   children: [
-  //     { to: '/app/inventory-control/move-orders', label: t('sidebar.items.moveOrders') },
-  //     { to: '/app/inventory-control/transfers', label: t('sidebar.items.transfers') },
-  //     { to: '/app/inventory-control/status-change', label: t('sidebar.items.statusChange') },
-  //     { to: '/app/inventory-control/cycle-count', label: t('sidebar.items.cycleCount') },
-  //     { to: '/app/inventory-control/adjustments', label: t('sidebar.items.adjustments') },
-  //     { to: '/app/inventory-control/history', label: t('sidebar.items.history') },
-  //   ],
-  // },
-  // HIDDEN: work-execution (unused module)
-  // {
-  //   id: 'work-execution',
-  //   label: t('sidebar.items.workExecutionMenu'),
-  //   icon: ClipboardList,
-  //   basePath: '/app/work-execution',
-  //   children: [
-  //     { to: '/app/work-execution/queue', label: t('sidebar.items.workQueue') },
-  //     { to: '/app/work-execution/my-work', label: t('sidebar.items.myWork') },
-  //     { to: '/app/work-execution/execute', label: t('sidebar.items.execute') },
-  //     { to: '/app/work-execution/monitor', label: t('sidebar.items.monitor') },
-  //   ],
-  // },
+  {
+    id: 'goods-split',
+    label: 'Chia hàng đổi chủ',
+    icon: Split,
+    to: '/app/goods-split',
+  },
+  {
+    id: 'inventory-control',
+    label: t('sidebar.items.inventoryControlMenu'),
+    icon: ArrowRightLeft,
+    basePath: '/app/inventory-control',
+    children: [
+      { to: '/app/inventory-control/move-orders', label: t('sidebar.items.moveOrders') },
+      { to: '/app/inventory-control/transfers', label: t('sidebar.items.transfers') },
+      { to: '/app/inventory-control/status-change', label: t('sidebar.items.statusChange') },
+      { to: '/app/inventory-control/cycle-count', label: t('sidebar.items.cycleCount') },
+      { to: '/app/inventory-control/adjustments', label: t('sidebar.items.adjustments') },
+      { to: '/app/inventory-control/history', label: t('sidebar.items.history') },
+    ],
+  },
   { _divider: true, label: t('sidebar.sections.services') },
-  // HIDDEN: vas (unused module)
-  // {
-  //   id: 'vas',
-  //   label: t('sidebar.items.vasOperations'),
-  //   icon: Package,
-  //   basePath: '/app/vas',
-  //   children: [
-  //     { to: '/app/vas/work-orders', label: t('sidebar.items.workOrders') },
-  //     { to: '/app/vas/execution', label: t('sidebar.items.vasExecution') },
-  //     { to: '/app/vas/dashboard', label: t('sidebar.items.vasDashboard') },
-  //   ],
-  // },
-  // HIDDEN: billing (unused module)
-  // {
-  //   id: 'billing',
-  //   label: t('sidebar.items.billingInvoices'),
-  //   icon: FileText,
-  //   basePath: '/app/billing',
-  //   children: [
-  //     { to: '/app/billing/invoices', label: t('sidebar.items.invoices') },
-  //     { to: '/app/billing/rate-cards', label: t('sidebar.items.rateCards') },
-  //     { to: '/app/billing/events', label: t('sidebar.items.billableEvents') },
-  //     { to: '/app/billing/dashboard', label: t('sidebar.items.billingDashboard') },
-  //   ],
-  // },
+  {
+    id: 'vas',
+    label: t('sidebar.items.vasOperations'),
+    icon: Package,
+    basePath: '/app/vas',
+    children: [
+      { to: '/app/vas/work-orders', label: t('sidebar.items.workOrders') },
+      { to: '/app/vas/execution', label: t('sidebar.items.vasExecution') },
+      { to: '/app/vas/dashboard', label: t('sidebar.items.vasDashboard') },
+    ],
+  },
+  {
+    id: 'billing',
+    label: t('sidebar.items.billingInvoices'),
+    icon: FileText,
+    basePath: '/app/billing',
+    children: [
+      { to: '/app/billing/invoices', label: t('sidebar.items.invoices') },
+      { to: '/app/billing/rate-cards', label: t('sidebar.items.rateCards') },
+      { to: '/app/billing/events', label: t('sidebar.items.billableEvents') },
+      { to: '/app/billing/dashboard', label: t('sidebar.items.billingDashboard') },
+    ],
+  },
   { _divider: true, label: t('sidebar.sections.system') },
-  // HIDDEN: reporting (unused module)
-  // {
-  //   id: 'reporting',
-  //   label: t('sidebar.items.reportingMenu'),
-  //   icon: BarChart3,
-  //   basePath: '/app/reporting',
-  //   children: [
-  //     { to: '/app/reporting/dashboard', label: t('sidebar.items.reportingDashboard') },
-  //     { to: '/app/reporting/inventory', label: t('sidebar.items.inventoryReport') },
-  //     { to: '/app/reporting/billing', label: t('sidebar.items.billingReport') },
-  //     { to: '/app/reporting/audit', label: t('sidebar.items.auditTrail') },
-  //     { to: '/app/reporting/reconciliation', label: t('sidebar.items.reconciliation') },
-  //     { to: '/app/reporting/go-live', label: t('sidebar.items.goLiveChecklist') },
-  //   ],
-  // },
+  {
+    id: 'reporting',
+    label: t('sidebar.items.reportingMenu'),
+    icon: BarChart3,
+    basePath: '/app/reporting',
+    children: [
+      { to: '/app/reporting/dashboard', label: t('sidebar.items.reportingDashboard') },
+      { to: '/app/reporting/inventory', label: t('sidebar.items.inventoryReport') },
+      { to: '/app/reporting/billing', label: t('sidebar.items.billingReport') },
+      { to: '/app/reporting/audit', label: t('sidebar.items.auditTrail') },
+      { to: '/app/reporting/reconciliation', label: t('sidebar.items.reconciliation') },
+      { to: '/app/reporting/go-live', label: t('sidebar.items.goLiveChecklist') },
+    ],
+  },
   {
     id: 'weighbridge',
     label: t('sidebar.items.weighbridge'),
@@ -182,18 +172,17 @@ const getMenuConfig = (t) => [
     icon: ScanEye,
     to: '/app/ocr',
   },
-  // HIDDEN: integration (unused module)
-  // {
-  //   id: 'integration',
-  //   label: t('sidebar.items.integrationHub'),
-  //   icon: Waypoints,
-  //   basePath: '/app/integration',
-  //   children: [
-  //     { to: '/app/integration/monitoring', label: t('sidebar.items.monitoring') },
-  //     { to: '/app/integration/alerts', label: t('sidebar.items.alerts') },
-  //     { to: '/app/integration/channels', label: t('sidebar.items.channels') },
-  //   ],
-  // },
+  {
+    id: 'integration',
+    label: t('sidebar.items.integrationHub'),
+    icon: Waypoints,
+    basePath: '/app/integration',
+    children: [
+      { to: '/app/integration/monitoring', label: t('sidebar.items.monitoring') },
+      { to: '/app/integration/alerts', label: t('sidebar.items.alerts') },
+      { to: '/app/integration/channels', label: t('sidebar.items.channels') },
+    ],
+  },
   {
     id: 'foundation',
     label: t('sidebar.items.foundationGovernance'),

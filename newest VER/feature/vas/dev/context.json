@@ -1,0 +1,316 @@
+{
+  "feature": "vas",
+  "description": "VAS (Value-Added Services) Module — replaces legacy bagging_work_order/bagging_progress with a generalised BOM-driven BAGGING/DE_BAGGING/RE_BAGGING workflow. Adds 6 new ops-schema tables, 3 new ENUMs, 3 CQRS feature groups (Bom/WorkOrders/Sessions), and 3 new frontend feature modules.",
+  "planPath": "docs/feature/vas/dev/plan.md",
+  "tasksPath": "docs/feature/vas/dev/tasks.md",
+
+  "backendStructure": {
+    "solutionRoot": "backend/src",
+    "domainProject": "Smartlog.Domain",
+    "applicationProject": "Smartlog.Application",
+    "infrastructureProject": "Smartlog.Infrastructure",
+    "apiProject": "Smartlog.Api",
+    "schema": "ops",
+    "entitiesNamespace": "Smartlog.Domain.Entities.Vas",
+    "entitiesDir": "backend/src/Smartlog.Domain/Entities/Vas/",
+    "enumsFile": "backend/src/Smartlog.Domain/Enums/VasEnums.cs",
+    "iAppDbContextFile": "backend/src/Smartlog.Domain/IAppDbContext.cs",
+    "appDbContextFile": "backend/src/Smartlog.Infrastructure/EntityFramework/AppDbContext.cs",
+    "configurationsDir": "backend/src/Smartlog.Infrastructure/EntityFramework/Configurations/Vas/",
+    "featuresDir": "backend/src/Smartlog.Application/Features/Vas/",
+    "controllersDir": "backend/src/Smartlog.Api/Controllers/",
+    "queryConfigsDir": "backend/src/QueryConfigs/",
+    "newEntities": [
+      "VasBom",
+      "VasBomLine",
+      "VasWorkOrder",
+      "VasWorkOrderSource",
+      "VasSession",
+      "VasSessionLine"
+    ],
+    "newEnums": [
+      "VasType",
+      "VasWorkOrderStatus",
+      "VasSessionStatus"
+    ],
+    "modifiedEnums": [
+      "PackagingOwnership (rename values: Warehouse→TvlOwned, Owner→ClientOwned)"
+    ],
+    "removedEntities": [
+      "BaggingWorkOrder",
+      "BaggingProgress"
+    ],
+    "removedEnums": [
+      "BaggingStatus"
+    ],
+    "features": {
+      "Bom": {
+        "dir": "backend/src/Smartlog.Application/Features/Vas/Bom/",
+        "commands": ["CreateVasBom", "UpdateVasBom", "ToggleVasBomStatus"],
+        "queries": ["GetVasBomList", "GetVasBomById"],
+        "gridFormCode": "OPSVASBOMG01",
+        "searchFormCode": "OPSVASBOMS01",
+        "queryConfigFile": "QueryConfigs/VasBomList.json"
+      },
+      "WorkOrders": {
+        "dir": "backend/src/Smartlog.Application/Features/Vas/WorkOrders/",
+        "commands": ["CreateVasWorkOrder", "ConfirmVasWorkOrder", "CompleteVasWorkOrder", "CancelVasWorkOrder"],
+        "queries": ["GetVasWorkOrderList", "GetVasWorkOrderById"],
+        "gridFormCode": "OPSVWOG01",
+        "searchFormCode": "OPSVWOS01",
+        "queryConfigFile": "QueryConfigs/VasWorkOrderList.json"
+      },
+      "Sessions": {
+        "dir": "backend/src/Smartlog.Application/Features/Vas/Sessions/",
+        "commands": ["OpenVasSession", "ConfirmVasSession", "CancelVasSession"],
+        "queries": ["GetVasSessionList"],
+        "gridFormCode": "OPSVSLG01",
+        "searchFormCode": "OPSVSLG01",
+        "queryConfigFile": "QueryConfigs/VasSessionList.json"
+      }
+    },
+    "controllers": [
+      {
+        "file": "VasBomController.cs",
+        "route": "api/vas-bom",
+        "class": "VasBomController"
+      },
+      {
+        "file": "VasWorkOrdersController.cs",
+        "route": "api/vas-work-orders",
+        "class": "VasWorkOrdersController"
+      },
+      {
+        "file": "VasSessionsController.cs",
+        "route": "api/vas-work-orders/{vwoId}/sessions",
+        "class": "VasSessionsController"
+      }
+    ],
+    "migrationName": "AddVasModule",
+    "migrationNotes": "DROP ops.bagging_work_order, DROP ops.bagging_progress, DROP ENUM bagging_status. CREATE vas_type/vas_work_order_status/vas_session_status ENUMs. CREATE 6 new ops tables. ReferenceType on invent_trans is varchar(50) — no migration needed for VAS value.",
+    "services": {
+      "IInventTransService": "Smartlog.Application.Services.Abstractions.IInventTransService",
+      "IInventDimService": "Smartlog.Application.Services.Abstractions.IInventDimService",
+      "ILotService": "Smartlog.Application.Services.Abstractions.ILotService",
+      "IBillingCaptureService": "Smartlog.Application.Features.Billing.Services.IBillingCaptureService",
+      "INumberSequenceService": "via numberSequenceService.NextAsync('VWO', ct)"
+    },
+    "keyBusinessRules": {
+      "BR-VAS-001": "Enforce in CreateVasBom + ToggleVasBomStatus: check existing active BOM for (tenant_id, service_type, target_item_id)",
+      "BR-VAS-002": "Enforce in ToggleVasBomStatus: block deactivation if WO with status IN (CONFIRMED, IN_PROGRESS) exists for this bom_id",
+      "BR-VAS-003": "Enforce in ConfirmVasWorkOrder: check on_hand available_qty >= planned_qty per lot; skip CLIENT_OWNED packaging",
+      "BR-VAS-004": "Enforce in ConfirmVasSession: output_qty > 0, target_location_id set, all lines have consumed_qty > 0 and source_location_id",
+      "BR-VAS-005": "In ConfirmVasSession: if BOM line packaging_ownership == TvlOwned → create ISSUE trans; if ClientOwned → skip ISSUE trans entirely",
+      "BR-VAS-006": "In ConfirmVasSession: if service_type == DE_BAGGING → skip RECEIPT trans",
+      "BR-VAS-007": "In CompleteVasWorkOrder: COUNT(sessions WHERE status='OPEN') must be 0",
+      "BR-VAS-008": "In CompleteVasWorkOrder: call IBillingCaptureService.CaptureBaggingFeeAsync; catch NotFoundException, log warning, continue",
+      "BR-VAS-009": "In ConfirmVasSession: throw if session.Status != OPEN",
+      "BR-VAS-010": "In ConfirmVasSession: per session_line, check available_qty of source_lot >= consumed_qty using direct invent_trans query"
+    },
+    "inventTransPattern": {
+      "issuePerSessionLine": {
+        "transType": "TransType.Issue",
+        "stage": "TransStage.Deducted",
+        "qtySign": "negative (-consumed_qty)",
+        "referenceType": "\"VAS\"",
+        "referenceId": "session.Id",
+        "inventDimArgs": "warehouseId, sourceLocationId, ownerId, Available, sourceLotId"
+      },
+      "receiptForTargetItem": {
+        "transType": "TransType.Receipt",
+        "stage": "TransStage.Physical",
+        "qtySign": "positive (+output_qty)",
+        "referenceType": "\"VAS\"",
+        "referenceId": "session.Id",
+        "inventDimArgs": "warehouseId, targetLocationId, ownerId, Available, targetLotId",
+        "skipWhen": "service_type == DE_BAGGING"
+      },
+      "atomicity": "All trans in ConfirmVasSession must be inside a single EF SaveChangesAsync. Use IDbContextTransaction if IInventTransService calls separate SaveChangesAsync internally."
+    },
+    "lotCreationPattern": {
+      "trigger": "ConfirmVasWorkOrder",
+      "service": "ILotService.GetOrCreateLotAsync",
+      "itemId": "vwo.TargetItemId",
+      "ownerId": "vwo.OwnerId",
+      "lotAttributes": "{ \"vwo_number\": vwo.VwoNumber, \"vas_type\": vwo.ServiceType.ToString() }",
+      "sourceLotId": "primary source lot = non-packaging VasWorkOrderSource with highest planned_qty"
+    }
+  },
+
+  "frontendStructure": {
+    "srcDir": "frontend/src",
+    "featuresDir": "frontend/src/features/",
+    "routesDir": "frontend/src/routes/_authenticated/",
+    "sidebarFile": "frontend/src/components/layout/data/sidebar-data.ts",
+    "i18nDir": "frontend/src/i18n/locales/",
+    "newFeatures": [
+      {
+        "slug": "vas-bom",
+        "dir": "frontend/src/features/vas-bom/",
+        "apiBase": "/vas-bom",
+        "screens": ["BOM List", "BOM Create/Edit form with BOM lines grid"]
+      },
+      {
+        "slug": "vas-work-order",
+        "dir": "frontend/src/features/vas-work-order/",
+        "apiBase": "/vas-work-orders",
+        "screens": ["WO List", "WO Create form", "Confirm WO dialog", "WO Detail page"]
+      },
+      {
+        "slug": "vas-session",
+        "dir": "frontend/src/features/vas-session/",
+        "apiBase": "/vas-work-orders/:vwoId/sessions",
+        "screens": ["Session list (inside WO detail)", "Confirm session dialog"]
+      }
+    ],
+    "routes": [
+      { "path": "/vas/bom", "file": "vas/bom/index.tsx", "component": "VasBomListPage" },
+      { "path": "/vas/bom/$bomId", "file": "vas/bom/$bomId.tsx", "component": "VasBomDetailPage" },
+      { "path": "/vas/work-orders", "file": "vas/work-orders/index.tsx", "component": "VasWorkOrderListPage" },
+      { "path": "/vas/work-orders/$vwoId", "file": "vas/work-orders/$vwoId.tsx", "component": "VasWorkOrderDetailPage" }
+    ],
+    "sidebarUpdate": {
+      "group": "VAS",
+      "groupTitleKey": "navigation:sidebar.groups.vas",
+      "replaceItems": [
+        { "title": "BOM", "titleKey": "navigation:sidebar.items.vasBom", "url": "/vas/bom", "icon": "ListChecks" },
+        { "title": "Work Orders", "titleKey": "navigation:sidebar.items.vasWorkOrders", "url": "/vas/work-orders", "icon": "ClipboardList" }
+      ],
+      "removeItem": { "url": "/vas/bagging" }
+    },
+    "i18nKeys": {
+      "en_navigation": {
+        "sidebar.items.vasBom": "BOM",
+        "sidebar.items.vasWorkOrders": "Work Orders"
+      },
+      "vi_navigation": {
+        "sidebar.items.vasBom": "Công thức BOM",
+        "sidebar.items.vasWorkOrders": "Lệnh sản xuất"
+      }
+    },
+    "formCodes": {
+      "vasBomList": "OPSVASBOMG01",
+      "vasWorkOrderList": "OPSVWOG01",
+      "vasSessionList": "OPSVSLG01"
+    },
+    "formConfigNeeded": true,
+    "lookupPatterns": {
+      "itemLookup": "GET /api/items/lookup → { id (UUID PK), code, name } → use item.id as value",
+      "ownerLookup": "GET /api/owners/lookup → { id (UUID PK), code, name } → use owner.id as value",
+      "warehouseLookup": "GET /api/warehouses/lookup → { id (UUID PK), code, name } → use warehouse.id as value",
+      "lotLookup": "GET /api/lots/lookup → { id (UUID PK), code, name } → use lot.id as value",
+      "locationLookup": "GET /api/locations/lookup → { loc (natural string PK), code, name } → use location.loc (code) as value",
+      "note": "Location has natural string PK — use loc/code, not id. All others use UUID id."
+    }
+  },
+
+  "apiContract": {
+    "vasBom": {
+      "list": "POST /api/vas-bom/search { formCode: 'OPSVASBOMG01', searchFormCode: 'OPSVASBOMS01', page, pageSize, filterValues }",
+      "getById": "GET /api/vas-bom/{id} → VasBomDetailDto",
+      "create": "POST /api/vas-bom { bomCode, bomName, serviceType, targetItemId, notes, lines: [{sourceItemId, qtyRatio, isPackagingMaterial, packagingOwnership, sequenceNo}] }",
+      "update": "PUT /api/vas-bom/{id} { bomName, notes, lines }",
+      "toggleStatus": "POST /api/vas-bom/{id}/toggle-status → 204"
+    },
+    "vasWorkOrder": {
+      "list": "POST /api/vas-work-orders/search { formCode: 'OPSVWOG01', searchFormCode: 'OPSVWOS01', page, pageSize, filterValues }",
+      "getById": "GET /api/vas-work-orders/{id} → VasWorkOrderDetailDto",
+      "create": "POST /api/vas-work-orders { serviceType, bomId, ownerId, warehouseId, plannedQty, notes }",
+      "confirm": "POST /api/vas-work-orders/{id}/confirm { sourceLots: [{bomLineId, sourceItemId, sourceLotId, allocatedQty}] }",
+      "complete": "POST /api/vas-work-orders/{id}/complete",
+      "cancel": "POST /api/vas-work-orders/{id}/cancel"
+    },
+    "vasSession": {
+      "list": "POST /api/vas-work-orders/{vwoId}/sessions/search { formCode: 'OPSVSLG01', page, pageSize }",
+      "open": "POST /api/vas-work-orders/{vwoId}/sessions { isOvertime?, notes? }",
+      "confirm": "POST /api/vas-work-orders/{vwoId}/sessions/{id}/confirm { outputQty, targetLocationId, lines: [{vwoSourceId, sourceItemId, sourceLotId, sourceLocationId, consumedQty}] }",
+      "cancel": "POST /api/vas-work-orders/{vwoId}/sessions/{id}/cancel"
+    }
+  },
+
+  "fieldDefinitions": {
+    "VasType": ["BAGGING", "DE_BAGGING", "RE_BAGGING"],
+    "VasWorkOrderStatus": ["DRAFT", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+    "VasSessionStatus": ["OPEN", "CONFIRMED", "CANCELLED"],
+    "PackagingOwnership": ["TvlOwned", "ClientOwned"],
+    "numberSequencePrefix": "VWO",
+    "tableSchemas": {
+      "vas_bom": "ops",
+      "vas_bom_line": "ops",
+      "vas_work_order": "ops",
+      "vas_work_order_source": "ops",
+      "vas_session": "ops",
+      "vas_session_line": "ops"
+    },
+    "precisions": {
+      "qtyRatio": "decimal(18,6)",
+      "quantities": "decimal(18,3)"
+    }
+  },
+
+  "templatesNeeded": {
+    "backend": ["entity-base.md", "cqrs-command.md", "cqrs-query.md", "ef-configuration.md", "controller.md", "form-config.md"],
+    "frontend": ["feature-api.md", "feature-schema.md", "dynamic-grid.md", "dialog-form.md"]
+  },
+
+  "scriptsNeeded": {
+    "migration": "dotnet ef migrations add AddVasModule --project backend/src/Smartlog.Infrastructure --startup-project backend/src/Smartlog.Api",
+    "build": "dotnet build backend/",
+    "frontendDev": "pnpm --prefix frontend dev",
+    "frontendBuild": "pnpm --prefix frontend build"
+  },
+
+  "i18nChecklist": [
+    "frontend/src/i18n/locales/en/navigation.json — add vasBom, vasWorkOrders keys",
+    "frontend/src/i18n/locales/vi/navigation.json — add vasBom, vasWorkOrders keys",
+    "frontend/src/i18n/locales/en/vas.json — create new file with VAS screen labels",
+    "frontend/src/i18n/locales/vi/vas.json — create new file with VAS screen labels (Vietnamese)",
+    "Remove bagging navigation keys if no longer referenced"
+  ],
+
+  "requiredSamples": {
+    "entity": {
+      "description": "VasWorkOrder entity following TenantEntity base pattern",
+      "code": "using Smartlog.Domain.Entities.MasterData;\nusing Smartlog.Domain.Enums;\n\nnamespace Smartlog.Domain.Entities.Vas;\n\npublic class VasWorkOrder : TenantEntity\n{\n    public string VwoNumber { get; set; } = null!;\n    public VasType ServiceType { get; set; }\n    public Guid BomId { get; set; }\n    public Guid OwnerId { get; set; }\n    public Guid WarehouseId { get; set; }\n    public Guid TargetItemId { get; set; }\n    public Guid? TargetLotId { get; set; }\n    public decimal PlannedQty { get; set; }\n    public decimal ActualQty { get; set; }\n    public VasWorkOrderStatus Status { get; set; }\n    public string? Notes { get; set; }\n\n    public virtual VasBom Bom { get; set; } = null!;\n    public virtual Owner Owner { get; set; } = null!;\n    public virtual Warehouse Warehouse { get; set; } = null!;\n    public virtual Item TargetItem { get; set; } = null!;\n    public virtual Lot? TargetLot { get; set; }\n    public virtual ICollection<VasWorkOrderSource> Sources { get; set; } = [];\n    public virtual ICollection<VasSession> Sessions { get; set; } = [];\n}"
+    },
+    "efConfiguration": {
+      "description": "EF Configuration for VasWorkOrder following InboundReceiptConfiguration pattern",
+      "code": "using Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Metadata.Builders;\nusing Smartlog.Domain.Entities.Vas;\nusing Smartlog.Infrastructure.EntityFramework;\nusing Smartlog.Infrastructure.EntityFramework.Configurations;\n\nnamespace Smartlog.Infrastructure.EntityFramework.Configurations.Vas;\n\npublic class VasWorkOrderConfiguration : IEntityTypeConfiguration<VasWorkOrder>\n{\n    public void Configure(EntityTypeBuilder<VasWorkOrder> builder)\n    {\n        builder.ToTable(\"vas_work_order\", DatabaseConstants.Schemas.Operation);\n        builder.ConfigureTenantDefault();\n\n        builder.Property(e => e.VwoNumber).HasColumnName(\"vwo_number\").HasMaxLength(50).IsRequired();\n        builder.Property(e => e.ServiceType).HasColumnName(\"service_type\").HasConversion<string>().HasMaxLength(20);\n        builder.Property(e => e.BomId).HasColumnName(\"bom_id\").IsRequired();\n        builder.Property(e => e.OwnerId).HasColumnName(\"owner_id\").IsRequired();\n        builder.Property(e => e.WarehouseId).HasColumnName(\"warehouse_id\").IsRequired();\n        builder.Property(e => e.TargetItemId).HasColumnName(\"target_item_id\").IsRequired();\n        builder.Property(e => e.TargetLotId).HasColumnName(\"target_lot_id\");\n        builder.Property(e => e.PlannedQty).HasColumnName(\"planned_qty\").HasPrecision(18, 3);\n        builder.Property(e => e.ActualQty).HasColumnName(\"actual_qty\").HasPrecision(18, 3);\n        builder.Property(e => e.Status).HasColumnName(\"status\").HasConversion<string>().HasMaxLength(20);\n        builder.Property(e => e.Notes).HasColumnName(\"notes\").HasMaxLength(1000);\n\n        builder.HasIndex(e => new { e.TenantId, e.VwoNumber }).IsUnique();\n\n        builder.HasOne(e => e.Bom).WithMany().HasForeignKey(e => e.BomId).OnDelete(DeleteBehavior.Restrict);\n        builder.HasOne(e => e.Owner).WithMany().HasForeignKey(e => e.OwnerId).OnDelete(DeleteBehavior.Restrict);\n        builder.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);\n        builder.HasOne(e => e.TargetItem).WithMany().HasForeignKey(e => e.TargetItemId).OnDelete(DeleteBehavior.Restrict);\n        builder.HasOne(e => e.TargetLot).WithMany().HasForeignKey(e => e.TargetLotId).OnDelete(DeleteBehavior.Restrict);\n    }\n}"
+    },
+    "commandHandler": {
+      "description": "ConfirmVasSession command handler — atomic InventTrans pattern",
+      "code": "public class ConfirmVasSession\n{\n    public record Command(\n        Guid VwoId,\n        Guid SessionId,\n        decimal OutputQty,\n        Guid TargetLocationId,\n        List<SessionLineInput> Lines\n    ) : ICommand;\n\n    public record SessionLineInput(\n        Guid VwoSourceId,\n        Guid SourceItemId,\n        Guid SourceLotId,\n        Guid SourceLocationId,\n        decimal ConsumedQty\n    );\n\n    public class CommandHandler(\n        IAppDbContext context,\n        IInventTransService inventTransService,\n        IInventDimService inventDimService,\n        ILogger<CommandHandler> logger) : ICommandHandler<Command>\n    {\n        public async Task HandleAsync(Command command, CancellationToken cancellationToken = default)\n        {\n            var session = await context.VasSessions\n                .Include(s => s.VasWorkOrder)\n                    .ThenInclude(vwo => vwo.Bom)\n                        .ThenInclude(b => b.Lines)\n                .FirstOrDefaultAsync(s => s.Id == command.SessionId && s.VwoId == command.VwoId, cancellationToken)\n                ?? throw BusinessRule.VasSession.NotFound.ToBusinessException([command.SessionId]);\n\n            // BR-VAS-009\n            if (session.Status != VasSessionStatus.Open)\n                throw BusinessRule.VasSession.NotOpen.ToBusinessException();\n\n            // BR-VAS-004 — validate completeness\n            if (command.OutputQty <= 0) throw ...;\n            if (command.TargetLocationId == Guid.Empty) throw ...;\n\n            var vwo = session.VasWorkOrder;\n            var bom = vwo.Bom;\n\n            // Build InventTrans commands\n            var issueCmds = new List<InventTransCommand>();\n            foreach (var line in command.Lines)\n            {\n                // BR-VAS-010 — available qty check\n                // ... check available qty\n\n                var bomLine = bom.Lines.First(l => /* match source_item_id from vwo_source */);\n                // BR-VAS-005: skip CLIENT_OWNED\n                if (bomLine.IsPackagingMaterial && bomLine.PackagingOwnership == PackagingOwnership.ClientOwned)\n                    continue;\n\n                var dimId = await inventDimService.GetOrCreateAsync(\n                    vwo.WarehouseId, line.SourceLocationId, vwo.OwnerId,\n                    InventoryStatusCode.Available, line.SourceLotId, cancellationToken);\n\n                var item = await context.Items.FirstAsync(i => i.Id == line.SourceItemId, cancellationToken);\n                issueCmds.Add(new InventTransCommand(\n                    line.SourceItemId, dimId,\n                    TransType.Issue, TransStage.Deducted,\n                    -line.ConsumedQty, null, null, item.BaseUomId,\n                    \"VAS\", session.Id, null));\n            }\n\n            // BR-VAS-006: skip RECEIPT for DE_BAGGING\n            if (bom.ServiceType != VasType.DeBagging)\n            {\n                var receiptDimId = await inventDimService.GetOrCreateAsync(\n                    vwo.WarehouseId, command.TargetLocationId, vwo.OwnerId,\n                    InventoryStatusCode.Available, vwo.TargetLotId, cancellationToken);\n                var targetItem = await context.Items.FirstAsync(i => i.Id == vwo.TargetItemId, cancellationToken);\n                await inventTransService.PostAsync(new InventTransCommand(\n                    vwo.TargetItemId, receiptDimId,\n                    TransType.Receipt, TransStage.Physical,\n                    command.OutputQty, null, null, targetItem.BaseUomId,\n                    \"VAS\", session.Id, null), cancellationToken);\n            }\n\n            if (issueCmds.Count > 0)\n                await inventTransService.PostBatchAsync(issueCmds, Guid.NewGuid(), cancellationToken);\n\n            // Update session state\n            session.Status = VasSessionStatus.Confirmed;\n            session.OutputQty = command.OutputQty;\n            session.TargetLocationId = command.TargetLocationId;\n            session.ConfirmedAt = DateTime.UtcNow;\n            vwo.ActualQty += command.OutputQty;\n\n            await context.SaveChangesAsync(cancellationToken);\n        }\n    }\n}"
+    },
+    "queryHandler": {
+      "description": "GetVasWorkOrderList using DynamicQuery pattern",
+      "code": "public class GetVasWorkOrderList\n{\n    public class Query : DynamicGridQuery { }\n\n    public class QueryHandler(\n        IDynamicQueryService queryService,\n        ICurrentUser currentUser) : IQueryHandler<Query, DynamicGridResult>\n    {\n        public async Task<DynamicGridResult> HandleAsync(Query query, CancellationToken cancellationToken = default)\n        {\n            query.FormCode ??= \"OPSVWOG01\";\n            return await queryService.ExecuteAsync(query, currentUser.TenantId, cancellationToken);\n        }\n    }\n}"
+    },
+    "controller": {
+      "description": "VasWorkOrdersController following BaggingWorkOrdersController pattern",
+      "code": "using Smartlog.Application.Features.Vas.WorkOrders.Commands;\nusing Smartlog.Application.Features.Vas.WorkOrders.Dtos;\nusing Smartlog.Application.Features.Vas.WorkOrders.Queries;\nusing Smartlog.Application.Features.Vas.Sessions.Commands;\nusing Smartlog.Application.Features.Vas.Sessions.Queries;\n\nnamespace Smartlog.Api.Controllers;\n\n[ApiController]\n[Route(\"api/vas-work-orders\")]\n[Authorize]\npublic sealed class VasWorkOrdersController(IDispatcher dispatcher) : ControllerBase\n{\n    [HttpGet]\n    public async Task<IActionResult> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 10,\n        [FromQuery] string? formCode = \"OPSVWOG01\", CancellationToken ct = default)\n    {\n        var result = await dispatcher.QueryAsync(new GetVasWorkOrderList.Query { Page = page, PageSize = pageSize, FormCode = formCode ?? \"OPSVWOG01\" }, ct);\n        return Ok(ApiResult<DynamicGridResult>.Success(result));\n    }\n\n    [HttpPost(\"search\")]\n    public async Task<IActionResult> Search([FromBody] GetVasWorkOrderList.Query query, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(query, ct);\n        return Ok(ApiResult<DynamicGridResult>.Success(result));\n    }\n\n    [HttpGet(\"{id:guid}\")]\n    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)\n    {\n        var result = await dispatcher.QueryAsync(new GetVasWorkOrderById.Query(id), ct);\n        if (result == null) return NotFound();\n        return Ok(ApiResult<VasWorkOrderDetailDto>.Success(result));\n    }\n\n    [HttpPost]\n    public async Task<IActionResult> Create([FromBody] CreateVasWorkOrder.Command command, CancellationToken ct)\n    {\n        var id = await dispatcher.DispatchAsync(command, ct);\n        return StatusCode(StatusCodes.Status201Created, ApiResult<Guid>.Success(id));\n    }\n\n    [HttpPost(\"{id:guid}/confirm\")]\n    public async Task<IActionResult> Confirm(Guid id, [FromBody] ConfirmVasWorkOrder.Command command, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(command with { Id = id }, ct);\n        return NoContent();\n    }\n\n    [HttpPost(\"{id:guid}/complete\")]\n    public async Task<IActionResult> Complete(Guid id, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(new CompleteVasWorkOrder.Command(id), ct);\n        return NoContent();\n    }\n\n    [HttpPost(\"{id:guid}/cancel\")]\n    public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(new CancelVasWorkOrder.Command(id), ct);\n        return NoContent();\n    }\n\n    // Sessions nested under WO\n    [HttpPost(\"{vwoId:guid}/sessions\")]\n    public async Task<IActionResult> OpenSession(Guid vwoId, [FromBody] OpenVasSession.Command command, CancellationToken ct)\n    {\n        var id = await dispatcher.DispatchAsync(command with { VwoId = vwoId }, ct);\n        return StatusCode(StatusCodes.Status201Created, ApiResult<Guid>.Success(id));\n    }\n\n    [HttpPost(\"{vwoId:guid}/sessions/{id:guid}/confirm\")]\n    public async Task<IActionResult> ConfirmSession(Guid vwoId, Guid id, [FromBody] ConfirmVasSession.Command command, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(command with { VwoId = vwoId, SessionId = id }, ct);\n        return NoContent();\n    }\n\n    [HttpPost(\"{vwoId:guid}/sessions/{id:guid}/cancel\")]\n    public async Task<IActionResult> CancelSession(Guid vwoId, Guid id, CancellationToken ct)\n    {\n        await dispatcher.DispatchAsync(new CancelVasSession.Command(vwoId, id), ct);\n        return NoContent();\n    }\n}"
+    },
+    "featureApi": {
+      "description": "Frontend API client for VAS Work Orders",
+      "code": "import { apiClient } from '@/lib/api-client'\nimport type { DynamicGridResult } from '@/types/api'\n\nexport interface CreateVasWorkOrderCommand {\n  serviceType: string\n  bomId: string\n  ownerId: string\n  warehouseId: string\n  plannedQty: number\n  notes?: string | null\n}\n\nexport interface ConfirmVasWorkOrderCommand {\n  sourceLots: ConfirmSourceLot[]\n}\n\nexport interface ConfirmSourceLot {\n  bomLineId: string\n  sourceItemId: string\n  sourceLotId: string\n  allocatedQty: number\n}\n\nexport interface ConfirmVasSessionCommand {\n  outputQty: number\n  targetLocationId: string\n  lines: ConfirmSessionLine[]\n}\n\nexport interface ConfirmSessionLine {\n  vwoSourceId: string\n  sourceItemId: string\n  sourceLotId: string\n  sourceLocationId: string\n  consumedQty: number\n}\n\ninterface SearchParams {\n  formCode?: string\n  searchFormCode?: string\n  filterValues?: Record<string, unknown>\n  [key: string]: unknown\n}\n\nexport const vasWorkOrderApi = {\n  getList: async (params: SearchParams) => {\n    const response = await apiClient.post('/vas-work-orders/search', {\n      ...params,\n      formCode: params.formCode ?? 'OPSVWOG01',\n      searchFormCode: params.searchFormCode ?? 'OPSVWOS01',\n      filterValues: params.filterValues ?? {},\n    })\n    return response.data.data as DynamicGridResult\n  },\n\n  getById: async (id: string) => {\n    const response = await apiClient.get(`/vas-work-orders/${id}`)\n    return response.data.data\n  },\n\n  create: async (data: CreateVasWorkOrderCommand) => {\n    const response = await apiClient.post('/vas-work-orders', data)\n    return response.data.data as string\n  },\n\n  confirm: async (id: string, data: ConfirmVasWorkOrderCommand) => {\n    await apiClient.post(`/vas-work-orders/${id}/confirm`, data)\n  },\n\n  complete: async (id: string) => {\n    await apiClient.post(`/vas-work-orders/${id}/complete`)\n  },\n\n  cancel: async (id: string) => {\n    await apiClient.post(`/vas-work-orders/${id}/cancel`)\n  },\n\n  openSession: async (vwoId: string, data?: { isOvertime?: boolean; notes?: string }) => {\n    const response = await apiClient.post(`/vas-work-orders/${vwoId}/sessions`, data ?? {})\n    return response.data.data as string\n  },\n\n  confirmSession: async (vwoId: string, sessionId: string, data: ConfirmVasSessionCommand) => {\n    await apiClient.post(`/vas-work-orders/${vwoId}/sessions/${sessionId}/confirm`, data)\n  },\n\n  cancelSession: async (vwoId: string, sessionId: string) => {\n    await apiClient.post(`/vas-work-orders/${vwoId}/sessions/${sessionId}/cancel`)\n  },\n}"
+    },
+    "featureSchema": {
+      "description": "Zod schemas for VAS Work Order",
+      "code": "import { z } from 'zod'\n\nexport const vasWorkOrderSchema = z.object({\n  id: z.string().uuid(),\n  vwoNumber: z.string(),\n  serviceType: z.enum(['BAGGING', 'DE_BAGGING', 'RE_BAGGING']),\n  bomId: z.string().uuid(),\n  bomName: z.string().optional(),\n  ownerId: z.string().uuid(),\n  ownerName: z.string().optional(),\n  warehouseId: z.string().uuid(),\n  warehouseName: z.string().optional(),\n  targetItemId: z.string().uuid(),\n  targetItemName: z.string().optional(),\n  targetLotId: z.string().uuid().nullable().optional(),\n  plannedQty: z.number(),\n  actualQty: z.number(),\n  status: z.enum(['DRAFT', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),\n  notes: z.string().nullable().optional(),\n  createdTime: z.string().optional(),\n  createdBy: z.string().optional(),\n})\n\nexport type VasWorkOrderDto = z.infer<typeof vasWorkOrderSchema>\n\nexport const confirmSessionSchema = z.object({\n  outputQty: z.number().positive('Output quantity must be greater than 0'),\n  targetLocationId: z.string().uuid('Target location is required'),\n  lines: z.array(z.object({\n    vwoSourceId: z.string().uuid(),\n    sourceItemId: z.string().uuid(),\n    sourceLotId: z.string().uuid(),\n    sourceLocationId: z.string().uuid('Source location is required'),\n    consumedQty: z.number().positive('Consumed quantity must be greater than 0'),\n  })).min(1, 'At least one material line is required'),\n})\n\nexport type ConfirmSessionFormValues = z.infer<typeof confirmSessionSchema>"
+    },
+    "queryConfig": {
+      "description": "VasWorkOrderList.json — DynamicQuery config following BaggingWorkOrders.json pattern",
+      "code": "{\n  \"TABLE_INFO\": {\n    \"MENU_NM\": \"VAS Work Order List\",\n    \"MENU_NM_VI\": \"Danh sach Lenh san xuat VAS\",\n    \"DB_NM\": \"ops\",\n    \"TABLE_NM\": \"vas_work_order\",\n    \"TABLE_ALIAS\": \"vwo\",\n    \"DB_TYPE\": \"PG\",\n    \"GRID_FORM_CODE\": \"OPSVWOG01\",\n    \"SEARCH_FORM_CODE\": \"OPSVWOS01\"\n  },\n  \"COLUMN_INFO\": [\n    { \"COLUMN_NM\": \"id\", \"COLUMN_ALIAS\": \"id\", \"QUERY\": \"vwo.id\" },\n    { \"COLUMN_NM\": \"vwo_number\", \"COLUMN_ALIAS\": \"vwoNumber\", \"QUERY\": \"vwo.vwo_number\" },\n    { \"COLUMN_NM\": \"service_type\", \"COLUMN_ALIAS\": \"serviceType\", \"QUERY\": \"vwo.service_type\" },\n    { \"COLUMN_NM\": \"status\", \"COLUMN_ALIAS\": \"status\", \"QUERY\": \"vwo.status\" },\n    { \"COLUMN_NM\": \"planned_qty\", \"COLUMN_ALIAS\": \"plannedQty\", \"QUERY\": \"vwo.planned_qty\" },\n    { \"COLUMN_NM\": \"actual_qty\", \"COLUMN_ALIAS\": \"actualQty\", \"QUERY\": \"vwo.actual_qty\" },\n    { \"COLUMN_NM\": \"owner_name\", \"COLUMN_ALIAS\": \"ownerName\", \"QUERY\": \"o.name\" },\n    { \"COLUMN_NM\": \"warehouse_name\", \"COLUMN_ALIAS\": \"warehouseName\", \"QUERY\": \"wh.name\" },\n    { \"COLUMN_NM\": \"target_item_name\", \"COLUMN_ALIAS\": \"targetItemName\", \"QUERY\": \"ti.name\" },\n    { \"COLUMN_NM\": \"bom_name\", \"COLUMN_ALIAS\": \"bomName\", \"QUERY\": \"b.bom_name\" },\n    { \"COLUMN_NM\": \"created_time\", \"COLUMN_ALIAS\": \"createdTime\", \"QUERY\": \"vwo.created_time\" },\n    { \"COLUMN_NM\": \"created_by\", \"COLUMN_ALIAS\": \"createdBy\", \"QUERY\": \"vwo.created_by\" }\n  ],\n  \"JOIN_INFO\": [\n    { \"SORT_SEQ\": 1, \"TABLE_NM\": \"owner\", \"TABLE_ALIAS\": \"o\", \"DB_NM\": \"cat\", \"JOIN_TYPE\": \"LEFT\", \"QUERY\": \"vwo.owner_id = o.id\" },\n    { \"SORT_SEQ\": 2, \"TABLE_NM\": \"warehouse\", \"TABLE_ALIAS\": \"wh\", \"DB_NM\": \"cat\", \"JOIN_TYPE\": \"LEFT\", \"QUERY\": \"vwo.warehouse_id = wh.id\" },\n    { \"SORT_SEQ\": 3, \"TABLE_NM\": \"item\", \"TABLE_ALIAS\": \"ti\", \"DB_NM\": \"cat\", \"JOIN_TYPE\": \"LEFT\", \"QUERY\": \"vwo.target_item_id = ti.id\" },\n    { \"SORT_SEQ\": 4, \"TABLE_NM\": \"vas_bom\", \"TABLE_ALIAS\": \"b\", \"DB_NM\": \"ops\", \"JOIN_TYPE\": \"LEFT\", \"QUERY\": \"vwo.bom_id = b.id\" }\n  ],\n  \"WHERE_INFO\": [\n    { \"SORT_SEQ\": 1, \"QUERY\": \"vwo.tenant_id = @TenantId\" }\n  ],\n  \"ORDER_INFO\": [\n    { \"SORT_SEQ\": 1, \"QUERY\": \"vwo.created_time DESC\" }\n  ]\n}"
+    }
+  },
+
+  "optionalSamples": {
+    "enumsFile": {
+      "description": "Updated VasEnums.cs",
+      "code": "namespace Smartlog.Domain.Enums;\n\npublic enum VasType { Bagging, DeBagging, ReBagging }\npublic enum VasWorkOrderStatus { Draft, Confirmed, InProgress, Completed, Cancelled }\npublic enum VasSessionStatus { Open, Confirmed, Cancelled }\npublic enum PackagingOwnership { TvlOwned, ClientOwned }"
+    },
+    "sessionLineEntity": {
+      "description": "VasSessionLine entity",
+      "code": "namespace Smartlog.Domain.Entities.Vas;\n\npublic class VasSessionLine : TenantEntity\n{\n    public Guid SessionId { get; set; }\n    public Guid VwoSourceId { get; set; }\n    public Guid SourceItemId { get; set; }\n    public Guid SourceLotId { get; set; }\n    public Guid SourceLocationId { get; set; }\n    public decimal ConsumedQty { get; set; }\n    public Guid? InventTransIssueId { get; set; }\n\n    public virtual VasSession Session { get; set; } = null!;\n    public virtual VasWorkOrderSource VwoSource { get; set; } = null!;\n}"
+    }
+  }
+}
