@@ -3,9 +3,9 @@
 **Schema Location:** `prisma/schema.prisma`  
 **Module:** Outbound Operations  
 **Status:** ✅ Active (Sales Order + Shipment Management)  
-**Tables:** 13 (Sales Order + Shipment tables)  
-**Version:** 2.4.0  
-**Last Updated:** 2026-03-17  
+**Tables:** 14 (Sales Order + Shipment + Document tables)  
+**Version:** 2.5.0  
+**Last Updated:** 2026-03-22  
 
 ---
 
@@ -39,6 +39,12 @@ Module 5 sử dụng các bảng database để quản lý **luồng xuất hàn
 | **Weighing** | `shipment_weighing_attempt` | Log cân nặng | 🟡 Pending |
 | **Audit** | `shipment_status_history`, `shipment_exception_log`, `shipment_approval_decision` | Lịch sử và exceptions | 🟡 Pending |
 | **Control** | `shipment_pick_work_link`, `shipment_posting_link`, `shipment_so_link` | Liên kết với modules khác | 🟡 Pending |
+
+### 2.3 Document Tables (Đang sử dụng)
+
+| Group | Tables | Mục đích | Status |
+|-------|--------|----------|--------|
+| **Runtime** | `outbound_document` | Chứng từ xuất kho (B/L, packing list, ...) | ✅ Active |
 
 ---
 
@@ -215,7 +221,56 @@ model ShipmentLine {
 
 ---
 
-## 7. Changelog
+## 7. Outbound Document Schema Detail
+
+### 7.1 OutboundDocument (outbound_document)
+
+```prisma
+model OutboundDocument {
+  id               String                 @id @default(uuid())
+  documentCode     String                 @map("document_code")     // Mã chứng từ tự sinh
+  shipmentHeaderId String?                                          // FK -> ShipmentHeader
+  docType          OutboundDocumentType                             // Loại chứng từ
+  ownerId          String?                                          // FK -> MdOwner
+  vehicleNumber    String?                                          // Biển số xe
+  fileName         String                                           // Tên file gốc
+  filePath         String                                           // Đường dẫn lưu file
+  fileSize         Int                                              // Kích thước file (bytes)
+  mimeType         String                                           // MIME type
+  notes            String?                                          // Ghi chú
+  status           OutboundDocumentStatus @default(DRAFT)           // DRAFT, SCANNED, ERROR
+  uploadedAt       DateTime               @default(now())
+  uploadedBy       String?
+  ...
+}
+```
+
+### 7.2 OutboundDocumentType Enum
+
+```prisma
+enum OutboundDocumentType {
+  BILL_OF_LADING       // Vận đơn (B/L)
+  PACKING_LIST         // Phiếu đóng gói
+  COMMERCIAL_INVOICE   // Hóa đơn thương mại
+  DELIVERY_ORDER       // Lệnh giao hàng
+  WEIGHT_CERTIFICATE   // Phiếu cân
+  OTHER                // Khác
+}
+```
+
+### 7.3 OutboundDocumentStatus Enum
+
+```prisma
+enum OutboundDocumentStatus {
+  DRAFT    // Chờ scan (mặc định khi upload)
+  SCANNED  // Đã scan (xác nhận OK)
+  ERROR    // Lỗi (có vấn đề cần xử lý)
+}
+```
+
+---
+
+## 8. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
@@ -225,3 +280,4 @@ model ShipmentLine {
 | 2.2.0 | 2026-03-17 | **REMOVED FE Features:** Phân bổ, Cân hàng, Phê duyệt (chưa implement backend). Module 5 FE chỉ còn: Sales Order, Shipments |
 | 2.3.0 | 2026-03-17 | **Shipment Management:** Sử dụng `shipment_header`, `shipment_line` để lưu phiếu xuất từ SO |
 | 2.4.0 | 2026-03-17 | **Shipment Notes:** Thêm field `notes` cho `shipment_header` và `shipment_line` |
+| 2.5.0 | 2026-03-22 | **Outbound Document:** Thêm bảng `outbound_document` để lưu chứng từ xuất kho (B/L, packing list, ...) |

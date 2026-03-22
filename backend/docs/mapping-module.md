@@ -10,10 +10,10 @@
 | ---------------------------------| -------------| ---------------------------------| -----------| ---------------| --------|
 | Module Auth                     | ✅ Completed | `src/modules/auth`              | 7 tables  | 13 endpoints  | - |
 | Module 1 - Foundation           | ✅ Completed | `src/modules/foundation`        | 14 tables | ~25 endpoints | Nền tảng & Quản trị |
-| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 18 tables | ~68 endpoints | Dữ liệu nền |
-| Module 3 - Inventory Core       | ✅ Completed | `src/modules/inventory-core`    | 10 tables | ~13 endpoints | Tồn kho lõi |
-| Module 4 - Inbound              | ✅ Completed | `src/modules/inbound`           | 8 tables  | ~22 endpoints | Vận hành nhập |
-| Module 5 - Outbound             | ✅ Completed | `src/modules/outbound`          | 10 tables | ~18 endpoints | Vận hành xuất |
+| Module 2 - Master Data          | ✅ Completed | `src/modules/master-data`       | 23 tables | ~95 endpoints | Dữ liệu nền |
+| Module 3 - Inventory Core       | ✅ Completed | `src/modules/inventory-core`    | 10 tables | ~23 endpoints | Tồn kho lõi |
+| Module 4 - Inbound              | ✅ Completed | `src/modules/inbound`           | 10 tables | ~27 endpoints | Vận hành nhập |
+| Module 5 - Outbound             | ✅ Completed | `src/modules/outbound`          | 14 tables | ~30 endpoints | Vận hành xuất |
 | Module 6 - Inventory Control    | ✅ Completed | `src/modules/inventory-control` | 13 tables | ~39 endpoints | Kiểm soát kho |
 | Module 7 - Work Execution       | ✅ Completed | `src/modules/work-execution`    | 10 tables | ~20 endpoints | Thực thi công việc |
 | **Module 8A - Trạm cân**        | ✅ Completed | `src/modules/integration-platform` | 4 tables  | ~10 endpoints | **Trạm cân** ⭐ |
@@ -183,28 +183,33 @@
 **Documentation:** [`docs/module-2-master-data.md`](./module-2-master-data.md)  
 **Database Docs:** [`prisma/docs/module-2-master-data.md`](../prisma/docs/module-2-master-data.md)
 
-## Database Tables (18 tables)
+## Database Tables (23 tables)
 
 | Table | Description | Group |
 |-------|-------------|-------|
 | `md_owner` | Chủ hàng | Core Master |
-| `md_vendor` | Nhà cung cấp / Tàu | Core Master |
+| `md_customer` | Khách hàng | Core Master |
+| `md_vendor` | Nhà cung cấp | Core Master |
+| `md_vessel` | Tàu | Core Master |
+| `md_carrier` | Đơn vị vận chuyển | Core Master |
 | `md_item` | Mặt hàng | Core Master |
+| `md_item_group` | Nhóm mặt hàng | Core Master |
 | `md_lot` | Lô hàng (FIFO, truy vết) | Core Master |
 | `md_warehouse` | Kho | Warehouse |
 | `md_zone` | Zone trong kho | Warehouse |
 | `md_location` | Vị trí trong zone | Warehouse |
+| `md_location_type` | Loại vị trí | Warehouse |
 | `md_uom` | Đơn vị tính | UOM |
 | `md_uom_conversion` | Quy đổi đơn vị | UOM |
 | `md_vehicle_type` | Loại phương tiện | Vehicle |
 | `md_inventory_status` | Trạng thái tồn kho | Status |
 | `md_service_code` | Mã dịch vụ | Billing |
 | `md_day_type` | Loại ngày | Billing |
-| `md_owner_item` | Liên kết owner-item | Relationship |
-| `md_item_vendor` | Liên kết item-vendor | Relationship |
-| `md_import_owner` | Import owner staging | Import |
-| `md_import_item` | Import item staging | Import |
-| `md_import_vendor` | Import vendor staging | Import |
+| `md_rate_reference` | Tham chiếu giá | Billing |
+| `md_owner_item_policy` | Chính sách owner-item | Relationship |
+| `md_owner_sku_mapping` | Ánh xạ SKU theo owner | Relationship |
+| `md_import_batch` | Import batch header | Import |
+| `md_import_batch_line` | Import batch line | Import |
 
 ## API Endpoints
 
@@ -312,6 +317,59 @@
 | POST | `/api/v1/master-data/lots/:id/deactivate` | Deactivate lot |
 | POST | `/api/v1/master-data/lots/:id/reactivate` | Reactivate lot |
 
+### Carrier Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/master-data/carriers` | Create carrier |
+| GET | `/api/v1/master-data/carriers` | List carriers (paginated) |
+| GET | `/api/v1/master-data/carriers/next-code` | Get next carrier code |
+| GET | `/api/v1/master-data/carriers/:id` | Get carrier by ID |
+| PUT | `/api/v1/master-data/carriers/:id` | Update carrier |
+| POST | `/api/v1/master-data/carriers/:id/deactivate` | Deactivate carrier |
+| POST | `/api/v1/master-data/carriers/:id/reactivate` | Reactivate carrier |
+
+### Vessel Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/master-data/vessels` | Create vessel |
+| GET | `/api/v1/master-data/vessels` | List vessels (paginated) |
+| GET | `/api/v1/master-data/vessels/next-code` | Get next vessel code |
+| GET | `/api/v1/master-data/vessels/:id` | Get vessel by ID |
+| PUT | `/api/v1/master-data/vessels/:id` | Update vessel |
+| POST | `/api/v1/master-data/vessels/:id/deactivate` | Deactivate vessel |
+| POST | `/api/v1/master-data/vessels/:id/reactivate` | Reactivate vessel |
+
+### Item Group Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/master-data/item-groups` | Create item group |
+| GET | `/api/v1/master-data/item-groups` | List item groups (paginated) |
+| GET | `/api/v1/master-data/item-groups/next-code` | Get next item group code |
+| GET | `/api/v1/master-data/item-groups/:id` | Get item group by ID |
+| PUT | `/api/v1/master-data/item-groups/:id` | Update item group |
+| POST | `/api/v1/master-data/item-groups/:id/deactivate` | Deactivate item group |
+| POST | `/api/v1/master-data/item-groups/:id/reactivate` | Reactivate item group |
+
+### Location Type Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/master-data/location-types` | Create location type |
+| GET | `/api/v1/master-data/location-types` | List location types (paginated) |
+| GET | `/api/v1/master-data/location-types/next-code` | Get next location type code |
+| GET | `/api/v1/master-data/location-types/:id` | Get location type by ID |
+| PUT | `/api/v1/master-data/location-types/:id` | Update location type |
+| DELETE | `/api/v1/master-data/location-types/:id` | Delete location type |
+
+### Owner SKU Mapping Management
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/master-data/owner-sku-mappings` | Create owner SKU mapping |
+| GET | `/api/v1/master-data/owner-sku-mappings` | List mappings (paginated) |
+| GET | `/api/v1/master-data/owner-sku-mappings/next-code` | Get next mapping code |
+| GET | `/api/v1/master-data/owner-sku-mappings/:id` | Get mapping by ID |
+| PUT | `/api/v1/master-data/owner-sku-mappings/:id` | Update mapping |
+| DELETE | `/api/v1/master-data/owner-sku-mappings/:id` | Delete mapping |
+
 ### Lookup Endpoints (for dropdowns)
 | Method | Path | Description |
 |--------|------|-------------|
@@ -324,6 +382,8 @@
 | GET | `/api/v1/master-data/lookups/uoms` | Get active UOMs |
 | GET | `/api/v1/master-data/lookups/vehicle-types` | Get active vehicle types |
 | GET | `/api/v1/master-data/lookups/inventory-statuses` | Get active inventory statuses |
+| GET | `/api/v1/master-data/lookups/customers` | Get active customers |
+| GET | `/api/v1/master-data/lookups/dropdown-options` | Get dynamic dropdown options |
 
 ## Cross-Module Dependencies (Module 2)
 
@@ -400,6 +460,24 @@
 | POST | `/api/v1/inventory/holds/:holdId/release` | Release hold |
 | POST | `/api/v1/inventory/holds/:holdId/cancel` | Cancel hold |
 
+### Reconciliation APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory/reconciliation/runs` | Create reconciliation run |
+| GET | `/api/v1/inventory/reconciliation/runs` | List reconciliation runs |
+| GET | `/api/v1/inventory/reconciliation/runs/:runId` | Get reconciliation run detail |
+| POST | `/api/v1/inventory/reconciliation/results/:resultId/review` | Review result |
+| POST | `/api/v1/inventory/reconciliation/results/:resultId/resolve` | Resolve result |
+
+### Snapshot APIs
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inventory/snapshots/runs` | Create snapshot run |
+| GET | `/api/v1/inventory/snapshots/runs` | List snapshot runs |
+| GET | `/api/v1/inventory/snapshots/runs/:runId` | Get snapshot run detail |
+| GET | `/api/v1/inventory/snapshots/billing` | Query snapshots for billing |
+| GET | `/api/v1/inventory/snapshots/billing/aggregate` | Aggregate billing data |
+
 ## Cross-Module Dependencies
 
 ### Module 3 depends on:
@@ -426,7 +504,7 @@
 | Module 10     | `SnapshotService`, `DailyStorageSnapshot`        | Billing input                    |
 | Module 11     | `ReconciliationService`, `InventTrans`, `OnHand` | Reporting queries                |
 
-## Backend Services (8 services)
+## Backend Services (9 services)
 
 | Service | Description |
 |---------|-------------|
@@ -438,6 +516,7 @@
 | `InventDimService` | Dimension management with hash |
 | `ReconciliationService` | Ledger vs OnHand comparison |
 | `SnapshotService` | Daily storage snapshot for M10 Billing |
+| `LotService` | Lot management (get-or-create, FIFO query) |
 
 ## RBAC Permissions
 
@@ -476,14 +555,16 @@
 | MD-4 | Use validated value instead of req.body | ✅ Fixed |
 | HI-2 | Putaway workflow | 🔜 Pending M7 ready |
 
-## Database Tables (8 tables)
+## Database Tables (10 tables)
 
 | Table | Description | Group |
 |-------|-------------|-------|
-| `purchase_order` | Header đơn mua hàng | Runtime |
-| `purchase_order_line` | Dòng hàng trong PO | Runtime |
+| `purchase_orders` | Header đơn mua hàng | Runtime |
+| `purchase_order_lines` | Dòng hàng trong PO | Runtime |
+| `purchase_order_warehouses` | Junction PO ↔ Warehouse (multi-warehouse) | Runtime |
 | `receipt_header` | Header phiếu nhận hàng | Runtime |
 | `receipt_line` | Dòng hàng trong receipt | Runtime |
+| `inbound_document` | Chứng từ nhập kho (B/L, packing list, ...) | Runtime |
 | `receipt_weighing_log` | Log cân weigh-in/weigh-out | Audit |
 | `receipt_status_history` | Lịch sử chuyển trạng thái | Audit |
 | `receipt_exception_log` | Log exception nghiệp vụ | Audit |
@@ -515,6 +596,7 @@
 |--------|------|-------------|
 | POST | `/api/v1/inbound/receipts` | Tạo receipt mới |
 | GET | `/api/v1/inbound/receipts` | List receipts (paginated) |
+| GET | `/api/v1/inbound/receipts/next-number` | Get next ASN number |
 | GET | `/api/v1/inbound/receipts/:id` | Get receipt by ID |
 | GET | `/api/v1/inbound/receipts/:id/history` | Get status history |
 | PUT | `/api/v1/inbound/receipts/:id` | Cập nhật receipt (chỉ DRAFT) |
@@ -525,6 +607,17 @@
 | POST | `/api/v1/inbound/receipts/:id/close` | Close receipt |
 | POST | `/api/v1/inbound/receipts/:id/report-error` | Báo lỗi receipt (DRAFT → ERROR) |
 | POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing |
+| POST | `/api/v1/inbound/receipts/:id/putaway-complete` | Hoàn thành putaway |
+| POST | `/api/v1/inbound/receipts/:id/manual-weight` | Nhập cân thủ công |
+
+### Inbound Documents
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/inbound/documents/upload` | Upload chứng từ nhập |
+| GET | `/api/v1/inbound/documents` | List documents (paginated) |
+| GET | `/api/v1/inbound/documents/:id` | Get document by ID |
+| PUT | `/api/v1/inbound/documents/:id` | Update document |
+| DELETE | `/api/v1/inbound/documents/:id` | Delete document |
 
 **Receipt Status Flow:**
 ```
@@ -592,8 +685,16 @@ DRAFT ──confirm──> AWAITING_WEIGHING ──weighIn──> WEIGHED_IN
 | `INBOUND.RECEIPT.CANCEL` | Cancel receipt |
 | `INBOUND.RECEIPT.REWEIGH` | Reweigh receipt |
 | `INBOUND.RECEIPT.CLOSE` | Close receipt |
-| `INBOUND.WEIGH.RECEIVE` | Nhận weigh events |
+| `INBOUND.WEIGH.RECEIVE` | Nhận weigh events / Manual weight |
 | `INBOUND.DASHBOARD.READ` | Xem dashboard |
+
+### Document Permissions
+| Permission Code | Description |
+|-----------------|-------------|
+| `INBOUND.DOCUMENT.CREATE` | Upload chứng từ |
+| `INBOUND.DOCUMENT.READ` | Xem chứng từ |
+| `INBOUND.DOCUMENT.UPDATE` | Cập nhật chứng từ |
+| `INBOUND.DOCUMENT.DELETE` | Xóa chứng từ |
 
 ---
 
@@ -631,22 +732,48 @@ Module 5 đã được cấu trúc lại theo Clean Architecture với M3 integr
 | CR-1 | Real M3 OnHand/Hold integration | ✅ Fixed |
 | CR-2 | M3 Posting at SHIPPED | ✅ Fixed |
 
-## Database Tables
+## Database Tables (14 tables)
 
-| Table Name | Description |
-|------------|-------------|
-| `shipment_header` | Header nghiệp vụ cho trip outbound |
-| `shipment_line` | Dòng hàng trong shipment |
-| `shipment_allocation_record` | Trace allocation từ stock source |
-| `shipment_weighing_attempt` | Log tare/gross/manual override |
-| `shipment_status_history` | Lịch sử chuyển trạng thái |
-| `shipment_exception_log` | Log exception nghiệp vụ |
-| `shipment_approval_decision` | Quyết định approve/reject |
-| `shipment_pick_work_link` | Mapping với work từ M7 |
-| `shipment_posting_link` | Mapping với posting sang M3 |
-| `shipment_so_link` | Link shipment với SO |
+### Sales Order Tables (3)
+| Table Name                   | Description                        |
+| ------------------------------| ------------------------------------|
+| `sales_orders`               | Header đơn xuất hàng               |
+| `sales_order_lines`          | Dòng hàng trong SO                 |
+| `sales_order_status_history` | Lịch sử chuyển trạng thái SO       |
+
+### Shipment Tables (10)
+| Table Name                   | Description                        |
+| ------------------------------| ------------------------------------|
+| `shipment_header`            | Header nghiệp vụ cho trip outbound |
+| `shipment_line`              | Dòng hàng trong shipment           |
+| `shipment_allocation_record` | Trace allocation từ stock source   |
+| `shipment_weighing_attempt`  | Log tare/gross/manual override     |
+| `shipment_status_history`    | Lịch sử chuyển trạng thái          |
+| `shipment_exception_log`     | Log exception nghiệp vụ            |
+| `shipment_approval_decision` | Quyết định approve/reject          |
+| `shipment_pick_work_link`    | Mapping với work từ M7             |
+| `shipment_posting_link`      | Mapping với posting sang M3        |
+| `shipment_so_link`           | Link shipment với SO               |
+
+### Document Tables (1)
+| Table Name                   | Description                        |
+| ------------------------------| ------------------------------------|
+| `outbound_document`          | Chứng từ xuất kho (B/L, packing list, ...) |
 
 ## API Endpoints
+
+### Sales Order Management
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/outbound/sales-orders/next-number` | Get next SO number |
+| GET | `/api/v1/outbound/sales-orders` | List SOs (paginated) |
+| GET | `/api/v1/outbound/sales-orders/:id` | Get SO detail |
+| POST | `/api/v1/outbound/sales-orders` | Create SO |
+| PATCH | `/api/v1/outbound/sales-orders/:id` | Update SO (NEW only) |
+| POST | `/api/v1/outbound/sales-orders/:id/confirm` | Confirm SO |
+| POST | `/api/v1/outbound/sales-orders/:id/cancel` | Cancel SO |
+| POST | `/api/v1/outbound/sales-orders/:id/unconfirm` | Unconfirm SO |
+| POST | `/api/v1/outbound/sales-orders/:id/close` | Close SO |
 
 ### Shipment Management
 | Method | Path | Description |
@@ -655,8 +782,11 @@ Module 5 đã được cấu trúc lại theo Clean Architecture với M3 integr
 | GET | `/api/v1/outbound/shipments` | List shipments (paginated) |
 | GET | `/api/v1/outbound/shipments/:id` | Get shipment detail |
 | PATCH | `/api/v1/outbound/shipments/:id` | Update shipment (DRAFT only) |
+| DELETE | `/api/v1/outbound/shipments/:id` | Delete shipment (DRAFT only) |
 | POST | `/api/v1/outbound/shipments/:id/confirm` | Confirm shipment |
 | POST | `/api/v1/outbound/shipments/:id/cancel` | Cancel shipment |
+| POST | `/api/v1/outbound/shipments/:id/report-error` | Report error |
+| POST | `/api/v1/outbound/shipments/:id/ship` | Ship (post M3) |
 
 ### Allocation
 | Method | Path | Description |
@@ -686,6 +816,11 @@ Module 5 đã được cấu trúc lại theo Clean Architecture với M3 integr
 | GET | `/api/v1/outbound/shipments/:id/exceptions` | Exceptions |
 | GET | `/api/v1/outbound/dashboard/summary` | Dashboard summary |
 | GET | `/api/v1/outbound/dashboard/kpis` | KPI metrics |
+
+### Documents
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/outbound/documents` | List outbound documents |
 
 ## Code Structure
 

@@ -92,6 +92,8 @@ src/modules/inbound/
 | POST | `/api/v1/inbound/receipts/:id/close` | Close receipt | `INBOUND.RECEIPT.CLOSE` |
 | POST | `/api/v1/inbound/receipts/:id/report-error` | Báo lỗi receipt (DRAFT → ERROR) | `INBOUND.RECEIPT.CONFIRM` |
 | POST | `/api/v1/inbound/receipts/:id/start-processing` | Start processing | `INBOUND.WEIGH.RECEIVE` |
+| POST | `/api/v1/inbound/receipts/:id/putaway-complete` | Hoàn thành putaway | `INBOUND.RECEIPT.CLOSE` |
+| POST | `/api/v1/inbound/receipts/:id/manual-weight` | Nhập cân thủ công | `INBOUND.WEIGH.RECEIVE` |
 
 ### 3.3 Inbound Documents
 
@@ -510,6 +512,71 @@ src/modules/inbound/
 **Điều kiện:**
 - `status` phải trong: `DRAFT`, `AWAITING_WEIGHING`, `WEIGHED_IN`, `PROCESSING`
 - Không thể cancel nếu đã post inventory (`postedTransId != null`)
+
+---
+
+### 4.7 POST `/api/v1/inbound/receipts/:id/putaway-complete` - Hoàn thành Putaway
+
+**Mục đích:** Đánh dấu receipt đã hoàn thành putaway (chuyển RECEIVED → PUTAWAY)
+
+**Request Body:**
+```json
+{
+  "workId": "uuid-work-id",
+  "notes": "Ghi chú hoàn thành putaway"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-receipt",
+    "status": "PUTAWAY",
+    "putawayWorkId": "uuid-work-id"
+  }
+}
+```
+
+**Điều kiện:**
+- `status` phải là `RECEIVED`
+
+---
+
+### 4.8 POST `/api/v1/inbound/receipts/:id/manual-weight` - Nhập cân thủ công
+
+**Mục đích:** Cho phép nhập trọng lượng thủ công khi weighbridge gặp sự cố
+
+**Request Body:**
+```json
+{
+  "grossWeightKg": 45200,
+  "tareWeightKg": 14900,
+  "reasonCode": "WEIGHBRIDGE_ERROR",
+  "notes": "Cân bị lỗi, nhập tay theo phiếu cân tay"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-receipt",
+    "status": "RECEIVED",
+    "grossWeightKg": 45200,
+    "tareWeightKg": 14900,
+    "netWeightKg": 30300,
+    "isManualEntry": true,
+    "manualEntryReasonCode": "WEIGHBRIDGE_ERROR"
+  }
+}
+```
+
+**Điều kiện:**
+- `status` phải trong: `AWAITING_WEIGHING`, `WEIGHED_IN`, `PROCESSING`
+- `reasonCode` bắt buộc để audit
 
 ---
 

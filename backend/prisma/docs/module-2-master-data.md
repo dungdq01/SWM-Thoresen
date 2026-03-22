@@ -15,18 +15,23 @@ Thiết kế hiện tại dùng `PostgreSQL` qua Prisma và được khai báo t
 - `backend/prisma/schema.prisma`
 - `backend/prisma/seed.ts`
 
-## 2. Danh sách bảng thực tế (18 tables)
+## 2. Danh sách bảng thực tế (23 tables)
 
 ### Nhóm Core Master
 - `md_owner` - Chủ hàng
-- `md_vendor` - Nhà cung cấp / Tàu
+- `md_customer` - Khách hàng
+- `md_vendor` - Nhà cung cấp
+- `md_vessel` - Tàu
+- `md_carrier` - Đơn vị vận chuyển
 - `md_item` - Mặt hàng
+- `md_item_group` - Nhóm mặt hàng
 - `md_lot` - Lô hàng
 
 ### Nhóm Warehouse Structure
 - `md_warehouse` - Kho
 - `md_zone` - Zone trong kho
 - `md_location` - Vị trí trong zone
+- `md_location_type` - Loại vị trí
 
 ### Nhóm UOM
 - `md_uom` - Đơn vị tính
@@ -41,15 +46,16 @@ Thiết kế hiện tại dùng `PostgreSQL` qua Prisma và được khai báo t
 ### Nhóm Billing Config
 - `md_service_code` - Mã dịch vụ
 - `md_day_type` - Loại ngày (workday/weekend/holiday)
+- `md_rate_reference` - Tham chiếu giá
 
 ### Nhóm Relationship
-- `md_owner_item` - Liên kết owner với item
-- `md_item_vendor` - Liên kết item với vendor
+- `md_owner_item_policy` - Chính sách owner-item (tolerance, putaway strategy)
+- `md_owner_sku_mapping` - Ánh xạ SKU theo owner
 
 ### Nhóm Import Staging
-- `md_import_owner` - Import owner từ file
-- `md_import_item` - Import item từ file
-- `md_import_vendor` - Import vendor từ file
+- `md_import_batch` - Header batch import
+- `md_import_batch_line` - Line items của batch import
+- `md_import_error` - Lỗi import
 
 ---
 
@@ -378,14 +384,114 @@ Thiết kế hiện tại dùng `PostgreSQL` qua Prisma và được khai báo t
 
 ---
 
-### `md_owner_item`
+### `md_customer`
 - **Để làm gì**
-  - Liên kết owner với item (owner nào có thể gửi item nào).
+  - Lưu thông tin khách hàng (người nhận hàng outbound).
+- **Field chính**
+  - `id` - UUID primary key
+  - `customer_code` - Mã khách hàng (unique)
+  - `customer_name` - Tên khách hàng
+  - `short_name` - Tên viết tắt
+  - `customer_group` - Nhóm khách hàng
+  - `customer_type` - Loại (DOMESTIC / FOREIGN)
+  - `tax_code` - Mã số thuế
+  - `address` - Địa chỉ
+  - `contact_name`, `phone`, `email` - Thông tin liên hệ
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+  - `deactivated_at`, `deactivated_by`
+- **Index/constraint đáng chú ý**
+  - unique `customer_code`
+
+---
+
+### `md_vessel`
+- **Để làm gì**
+  - Lưu thông tin tàu vận chuyển.
+- **Field chính**
+  - `id` - UUID primary key
+  - `vessel_code` - Mã tàu (unique)
+  - `vessel_name` - Tên tàu
+  - `imo_number` - Số IMO
+  - `vessel_type` - Loại tàu (BULK_CARRIER, TANKER, CONTAINER, etc.)
+  - `nationality` - Quốc tịch
+  - `call_sign` - Tín hiệu gọi
+  - `dwt_ton` - Trọng tải (DWT)
+  - `loa_m`, `beam_m`, `draft_m` - Kích thước (LOA, chiều rộng, mớn nước)
+  - `year_built` - Năm đóng
+  - `owner`, `operator` - Chủ tàu, đơn vị vận hành
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+  - `deactivated_at`, `deactivated_by`
+- **Index/constraint đáng chú ý**
+  - unique `vessel_code`
+  - index `(vessel_type, is_active)`
+
+---
+
+### `md_carrier`
+- **Để làm gì**
+  - Lưu thông tin đơn vị vận chuyển (trucking, logistics).
+- **Field chính**
+  - `id` - UUID primary key
+  - `carrier_code` - Mã đơn vị (unique)
+  - `carrier_name` - Tên đơn vị
+  - `contact_name`, `phone` - Thông tin liên hệ
+  - `carrier_group` - Nhóm (TRUCKING, SHIPPING, LOGISTICS)
+  - `transport_mode` - Phương thức (ROAD, SEA, RAIL, AIR)
+  - `default_vehicle_type_code` - Mã loại xe mặc định
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+  - `deactivated_at`, `deactivated_by`
+- **Index/constraint đáng chú ý**
+  - unique `carrier_code`
+  - index `(carrier_group, transport_mode, is_active)`
+
+---
+
+### `md_item_group`
+- **Để làm gì**
+  - Lưu thông tin nhóm mặt hàng để phân loại.
+- **Field chính**
+  - `id` - UUID primary key
+  - `item_group_code` - Mã nhóm (unique)
+  - `item_group_name` - Tên nhóm
+  - `description` - Mô tả
+  - `cargo_form` - Dạng hàng mặc định
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+  - `deactivated_at`, `deactivated_by`
+- **Index/constraint đáng chú ý**
+  - unique `item_group_code`
+
+---
+
+### `md_location_type`
+- **Để làm gì**
+  - Lưu danh mục loại vị trí (FLOOR, RACK, BIN, etc.).
+- **Field chính**
+  - `id` - UUID primary key
+  - `location_type_code` - Mã loại (unique)
+  - `location_type_name` - Tên loại
+  - `description` - Mô tả
+  - `is_default` - Là loại mặc định?
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+- **Index/constraint đáng chú ý**
+  - unique `location_type_code`
+
+---
+
+### `md_owner_item_policy`
+- **Để làm gì**
+  - Lưu chính sách riêng cho từng cặp owner-item.
 - **Field chính**
   - `id` - UUID primary key
   - `owner_id` - FK đến owner
   - `item_id` - FK đến item
-  - `custom_tolerance_pct` - % dung sai riêng (override)
+  - `tolerance_pct_inbound` - % dung sai nhập riêng
+  - `tolerance_pct_outbound` - % dung sai xuất riêng
+  - `putaway_strategy` - Chiến lược putaway
   - `is_active`, `row_version`
   - `created_at`, `created_by`, `updated_at`, `updated_by`
 - **Index/constraint đáng chú ý**
@@ -393,52 +499,92 @@ Thiết kế hiện tại dùng `PostgreSQL` qua Prisma và được khai báo t
 
 ---
 
-### `md_item_vendor`
+### `md_owner_sku_mapping`
 - **Để làm gì**
-  - Liên kết item với vendor (item đến từ vendor nào).
+  - Ánh xạ SKU của owner với item trong hệ thống.
 - **Field chính**
   - `id` - UUID primary key
+  - `mapping_code` - Mã ánh xạ (unique)
+  - `owner_id` - FK đến owner
   - `item_id` - FK đến item
-  - `vendor_id` - FK đến vendor
-  - `is_preferred` - Là vendor ưu tiên?
+  - `owner_sku_code` - Mã SKU của owner
+  - `owner_sku_name` - Tên SKU của owner
+  - `billing_class` - Phân loại billing
   - `is_active`, `row_version`
   - `created_at`, `created_by`, `updated_at`, `updated_by`
 - **Index/constraint đáng chú ý**
-  - unique `(item_id, vendor_id)`
+  - unique `mapping_code`
+  - unique `(owner_id, owner_sku_code)`
 
 ---
 
-### `md_import_owner` / `md_import_item` / `md_import_vendor`
+### `md_rate_reference`
 - **Để làm gì**
-  - Staging table cho import bulk data từ Excel/CSV.
-- **Field chung**
+  - Lưu tham chiếu giá cho billing theo owner.
+- **Field chính**
   - `id` - UUID primary key
-  - `batch_id` - Batch import ID
-  - `row_number` - Số dòng trong file
-  - `status` - Trạng thái (PENDING / VALIDATED / ERROR / IMPORTED)
-  - `error_message` - Lỗi nếu có
-  - `raw_data` - JSON data thô
+  - `rate_reference_code` - Mã tham chiếu (unique)
+  - `owner_id` - FK đến owner
+  - `effective_date` - Ngày hiệu lực
+  - `expiry_date` - Ngày hết hạn
+  - `is_active`, `row_version`
+  - `created_at`, `created_by`, `updated_at`, `updated_by`
+- **Index/constraint đáng chú ý**
+  - unique `rate_reference_code`
+  - index `(owner_id, effective_date)`
+
+---
+
+### `md_import_batch` / `md_import_batch_line` / `md_import_error`
+- **Để làm gì**
+  - Staging tables cho import bulk data từ Excel/CSV.
+- **md_import_batch**
+  - `id` - UUID primary key
+  - `batch_no` - Số batch (unique)
+  - `entity_name` - Tên entity (owner, item, vendor, etc.)
+  - `status` - Trạng thái (PENDING / PROCESSING / COMPLETED / FAILED)
+  - `total_rows`, `success_rows`, `error_rows` - Thống kê
   - `created_at`, `created_by`
+- **md_import_batch_line**
+  - `id` - UUID primary key
+  - `batch_id` - FK đến batch
+  - `row_no` - Số dòng trong file
+  - `status` - Trạng thái dòng
+  - `raw_data` - JSON data thô
+  - `created_entity_id` - ID entity sau khi import
+- **md_import_error**
+  - `id` - UUID primary key
+  - `batch_id` - FK đến batch
+  - `batch_line_id` - FK đến line (optional)
+  - `error_code`, `error_message` - Chi tiết lỗi
 
 ---
 
 ## 4. Quan hệ dữ liệu tổng quát
 
 ```text
-md_owner ─────────────< md_owner_item >───────────── md_item
-                                                        │
-md_vendor ────────────< md_item_vendor >────────────────┘
-                                                        │
-                                                        ├──> md_uom (base_uom, billing_uom, catch_weight_uom)
-                                                        └──> md_zone (default_zone)
+md_owner ─────────────< md_owner_item_policy >───────── md_item
+    │                                                       │
+    ├──< md_owner_sku_mapping                               ├──> md_uom (base_uom, billing_uom)
+    │                                                       ├──> md_zone (default_zone)
+    └──< md_rate_reference                                  └──> md_item_group
+                                                        
+md_vendor    (reference by inbound)
+md_vessel    (reference by inbound/outbound)
+md_carrier   (reference by inbound/outbound)
+md_customer  (reference by outbound)
 
 md_warehouse ─────────< md_zone ─────────< md_location
-      │
-      └──> md_location (default_receiving, default_staging, default_shipping)
+      │                                        │
+      └──> md_location (defaults)              └──> md_location_type
 
 md_uom ───────────────< md_uom_conversion >───────────── md_uom
                               │
                               └──> md_item (optional item-specific conversion)
+
+md_lot ──────────────> md_item, md_owner, md_warehouse
+    │
+    └──> md_lot (source_lot_id - truy vết VAS)
 
 md_inventory_status   (standalone, reference by inventory transactions)
 md_vehicle_type       (standalone, reference by inbound/outbound)
@@ -521,13 +667,33 @@ md_day_type           (standalone, reference by billing)
 - `repositories/owner.repository.ts` → `md_owner`
 - `services/owner.service.ts`
 
+### Customer
+- `repositories/customer.repository.ts` → `md_customer`
+- `services/customer.service.ts`
+
 ### Vendor
 - `repositories/vendor.repository.ts` → `md_vendor`
 - `services/vendor.service.ts`
 
+### Vessel
+- `repositories/vessel.repository.ts` → `md_vessel`
+- `services/vessel.service.ts`
+
+### Carrier
+- `repositories/carrier.repository.ts` → `md_carrier`
+- `services/carrier.service.ts`
+
 ### Item
 - `repositories/item.repository.ts` → `md_item`
 - `services/item.service.ts`
+
+### Item Group
+- `repositories/item-group.repository.ts` → `md_item_group`
+- `services/item-group.service.ts`
+
+### Lot
+- `repositories/lot.repository.ts` → `md_lot`
+- `services/lot.service.ts`
 
 ### Warehouse
 - `repositories/warehouse.repository.ts` → `md_warehouse`
@@ -541,9 +707,16 @@ md_day_type           (standalone, reference by billing)
 - `repositories/location.repository.ts` → `md_location`
 - `services/location.service.ts`
 
+### Location Type
+- `repositories/location-type.repository.ts` → `md_location_type`
+- `services/location-type.service.ts`
+
 ### UOM
-- `repositories/uom.repository.ts` → `md_uom`, `md_uom_conversion`
+- `repositories/uom.repository.ts` → `md_uom`
 - `services/uom.service.ts`
+
+### UOM Conversion
+- `repositories/uom-conversion.repository.ts` → `md_uom_conversion`
 
 ### Vehicle Type
 - `repositories/vehicle-type.repository.ts` → `md_vehicle_type`
@@ -552,6 +725,14 @@ md_day_type           (standalone, reference by billing)
 ### Inventory Status
 - `repositories/inventory-status.repository.ts` → `md_inventory_status`
 - `services/inventory-status.service.ts`
+
+### Owner SKU Mapping
+- `repositories/owner-sku-mapping.repository.ts` → `md_owner_sku_mapping`
+- `services/owner-sku-mapping.service.ts`
+
+### Dropdown Config
+- `repositories/dropdown-config.repository.ts` → dynamic dropdown options
+- `services/dropdown-config.service.ts`
 
 ### Lookup (read-only)
 - `services/lookup.service.ts` → đọc từ tất cả bảng trên

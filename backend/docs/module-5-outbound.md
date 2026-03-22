@@ -27,15 +27,60 @@ src/modules/outbound/
 │
 ├── controllers/
 │   ├── sales-order.controller.ts         # Sales Order REST endpoints
-│   └── simple-shipment.controller.ts     # Shipment REST endpoints
+│   ├── simple-shipment.controller.ts     # Simple Shipment CRUD (từ SO)
+│   ├── shipment.controller.ts            # Full Shipment với M3 integration
+│   ├── allocation.controller.ts          # Allocation endpoints
+│   ├── weighing.controller.ts            # Weighing endpoints
+│   ├── approval.controller.ts            # Approval endpoints
+│   ├── outbound-query.controller.ts      # Query/Dashboard endpoints
+│   └── outbound-document.controller.ts   # Document list endpoint
 │
 ├── services/
 │   ├── sales-order.service.ts            # Business logic cho SO
-│   └── simple-shipment.service.ts        # Business logic cho Shipment
+│   ├── simple-shipment.service.ts        # Simple Shipment từ SO
+│   ├── shipment.service.ts               # Core shipment service
+│   ├── shipment-command.service.ts       # Shipment commands
+│   ├── shipment-query.service.ts         # Shipment queries
+│   ├── shipment-state-machine.service.ts # State machine rules
+│   ├── shipment-line-state.service.ts    # Line state management
+│   ├── allocation.service.ts             # Allocation logic
+│   ├── weighing.service.ts               # Weighing logic
+│   ├── tolerance.service.ts              # Tolerance check
+│   ├── approval.service.ts               # Approval logic
+│   ├── so-qty-rollup.service.ts          # SO quantity rollup
+│   ├── post-ship-residual.service.ts     # Post-ship residual handling
+│   └── outbound-document.service.ts      # Document service
+│
+├── application/
+│   ├── createShipment.usecase.ts         # Create shipment use case
+│   ├── allocateShipment.usecase.ts       # Allocate với M3 OnHand/Hold
+│   ├── shipShipment.usecase.ts           # Ship với M3 Posting
+│   └── receiveOutboundWeight.usecase.ts  # Receive weight use case
+│
+├── repositories/
+│   ├── shipment-header.repository.ts
+│   ├── shipment-line.repository.ts
+│   ├── allocation-record.repository.ts
+│   ├── weighing-attempt.repository.ts
+│   ├── status-history.repository.ts
+│   ├── exception-log.repository.ts
+│   ├── approval-decision.repository.ts
+│   ├── pick-work-link.repository.ts
+│   └── posting-link.repository.ts
+│
+├── domain/
+│   ├── outbound.state-machine.ts         # State machine definitions
+│   ├── outbound.policy.ts                # Business policies
+│   └── outbound.errors.ts                # Error definitions
+│
+├── infra/
+│   └── m3-adapter.service.ts             # M3 OnHand/Hold/Posting wrapper
 │
 └── dto/
     ├── sales-order.dto.ts                # DTOs cho SO
-    └── shipment.dto.ts                   # DTOs cho Shipment
+    ├── shipment.dto.ts                   # DTOs cho Shipment
+    ├── create-shipment.dto.ts            # Create shipment DTO
+    └── shipment-response.dto.ts          # Response DTOs
 ```
 
 ---
@@ -293,6 +338,197 @@ src/modules/outbound/
 
 ---
 
+#### POST /api/v1/outbound/shipments/:id/ship
+**Mục đích:** Xuất hàng và post inventory sang M3
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "status": "SHIPPED",
+    "postedTransIds": ["TRX-001", "TRX-002"]
+  }
+}
+```
+
+**Note:** Chỉ ship được khi shipment ở trạng thái ALLOCATED hoặc ALL_WEIGHED với ít nhất 1 line PASSED.
+
+---
+
+### 3.3 Allocation Management
+
+#### POST /api/v1/outbound/shipments/:id/allocate
+**Mục đích:** Phân bổ tồn kho cho shipment lines
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "allocations": [
+    {
+      "lineId": "uuid",
+      "allocatedQty": 500,
+      "holdId": "HLD-001",
+      "sources": [{ "onHandId": "uuid", "qty": 500 }]
+    }
+  ]
+}
+```
+
+**M3 Integration:** Gọi `OnHandService.queryAvailable()` (FIFO) và `HoldService.createHold()`
+
+---
+
+#### POST /api/v1/outbound/shipments/:id/unallocate
+**Mục đích:** Giải phóng phân bổ cho shipment
+
+**Response:** `200 OK`
+
+**M3 Integration:** Gọi `HoldService.releaseHold()`
+
+---
+
+#### GET /api/v1/outbound/shipments/:id/allocations
+**Mục đích:** Xem danh sách phân bổ của shipment
+
+**Response:** `200 OK`
+
+---
+
+### 3.4 Weighing Management
+
+#### POST /api/v1/outbound/shipments/:id/weigh/tare
+**Mục đích:** Ghi nhận trọng lượng tare (xe không)
+
+**Request Body:**
+```json
+{
+  "rawWeightKg": 14500,
+  "sourceMode": "SCALE_AGENT",
+  "scaleTicketNo": "TICKET-001",
+  "externalEventId": "evt-001"
+}
+```
+
+---
+
+#### POST /api/v1/outbound/shipments/:id/weigh/gross
+**Mục đích:** Ghi nhận trọng lượng gross (xe có hàng), tính net và check tolerance
+
+**Request Body:**
+```json
+{
+  "lineId": "uuid",
+  "rawWeightKg": 45200,
+  "sourceMode": "SCALE_AGENT",
+  "scaleTicketNo": "TICKET-002",
+  "externalEventId": "evt-002"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "netWeightKg": 30700,
+    "variancePct": 2.3,
+    "tolerancePct": 3.0,
+    "result": "PASSED"
+  }
+}
+```
+
+---
+
+#### GET /api/v1/outbound/shipments/:id/weighing-history
+**Mục đích:** Xem lịch sử cân của shipment
+
+---
+
+### 3.5 Approval Management
+
+#### GET /api/v1/outbound/approvals/pending
+**Mục đích:** Danh sách shipments đang chờ phê duyệt
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| warehouseId | uuid | Filter theo kho |
+
+---
+
+#### POST /api/v1/outbound/shipments/:id/approve
+**Mục đích:** Phê duyệt shipment hoặc line (khi tolerance fail)
+
+**Request Body:**
+```json
+{
+  "lineId": "uuid",
+  "reasonCode": "MANAGER_OVERRIDE",
+  "note": "Approved by manager"
+}
+```
+
+---
+
+#### POST /api/v1/outbound/shipments/:id/reject
+**Mục đích:** Từ chối shipment hoặc line
+
+**Request Body:**
+```json
+{
+  "lineId": "uuid",
+  "reasonCode": "EXCESS_VARIANCE",
+  "note": "Variance quá lớn"
+}
+```
+
+---
+
+### 3.6 Query & Dashboard
+
+#### GET /api/v1/outbound/shipments/:id/history
+**Mục đích:** Lịch sử thay đổi trạng thái shipment
+
+---
+
+#### GET /api/v1/outbound/shipments/:id/exceptions
+**Mục đích:** Danh sách exceptions của shipment
+
+---
+
+#### GET /api/v1/outbound/dashboard/summary
+**Mục đích:** Tổng hợp dashboard
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| warehouseId | uuid | Filter theo kho |
+
+---
+
+#### GET /api/v1/outbound/dashboard/kpis
+**Mục đích:** KPI metrics
+
+---
+
+### 3.7 Outbound Documents
+
+#### GET /api/v1/outbound/documents
+**Mục đích:** Danh sách chứng từ xuất kho
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| shipmentHeaderId | uuid | Filter theo shipment |
+| ownerId | uuid | Filter theo chủ hàng |
+| status | string | Filter theo trạng thái |
+
+---
+
 ## 4. State Machine
 
 ### Sales Order Status Flow
@@ -353,14 +589,66 @@ Tạo mới (NEW) → Đã xác nhận (CONFIRMED) → ... → Đã xuất (SHIP
 
 ## 6. Dependencies
 
-| Module | Usage |
-|--------|-------|
-| M2 Master Data | Owner, Item, Warehouse, UOM |
-| Infrastructure | PrismaService |
+### Module 5 phụ thuộc
+
+| Module | Service/Data | Usage |
+|--------|--------------|-------|
+| M1 - Foundation | `NumberSequence` | Sinh SO number (SO-*), shipment number (SHP-*) |
+| M1 - Foundation | `ReasonCode` | Validate reason codes |
+| M1 - Foundation | `AuditLog` | Audit trail |
+| M1 - Foundation | `Idempotency` | External ID check |
+| M2 - Master Data | `MdOwner` | Owner validation |
+| M2 - Master Data | `MdItem` | Item validation + tolerance |
+| M2 - Master Data | `MdWarehouse` | Warehouse validation |
+| M2 - Master Data | `MdLocation` | Location validation |
+| M2 - Master Data | `MdInventoryStatus` | Status check (AVAILABLE) |
+| M2 - Master Data | `MdVehicleType` | Vehicle type lookup |
+| **M3 - Inventory Core** | **`OnHandService`** | **Query available stock (FIFO)** |
+| **M3 - Inventory Core** | **`HoldService`** | **Create/release allocation holds** |
+| **M3 - Inventory Core** | **`PostingEngine`** | **Post outbound transaction** |
+
+### M3 Integration (✅ Implemented)
+
+| Use Case | M3 Service | Event Code |
+|----------|------------|------------|
+| Allocate | `OnHandService.queryAvailable()` + `HoldService.createHold()` | - |
+| Unallocate | `HoldService.releaseHold()` | - |
+| Ship | `PostingEngineService.postInventory()` | `SHIPMENT_SHIPPED` |
 
 ---
 
-## 7. Changelog
+## 7. RBAC Permissions
+
+### Sales Order Permissions
+| Permission Code | Description |
+|-----------------|-------------|
+| `OUTBOUND.SO.CREATE` | Tạo Sales Order |
+| `OUTBOUND.SO.READ` | Xem Sales Order |
+| `OUTBOUND.SO.UPDATE` | Cập nhật Sales Order |
+| `OUTBOUND.SO.CONFIRM` | Xác nhận Sales Order |
+| `OUTBOUND.SO.CANCEL` | Hủy Sales Order |
+| `OUTBOUND.SO.CLOSE` | Đóng Sales Order |
+
+### Shipment Permissions
+| Permission Code | Description |
+|-----------------|-------------|
+| `OUTBOUND.SHIPMENT.CREATE` | Tạo Shipment |
+| `OUTBOUND.SHIPMENT.READ` | Xem Shipment |
+| `OUTBOUND.SHIPMENT.CONFIRM` | Xác nhận Shipment |
+| `OUTBOUND.SHIPMENT.CANCEL` | Hủy Shipment |
+| `OUTBOUND.SHIPMENT.SHIP` | Xuất hàng (post M3) |
+
+### Allocation & Weighing Permissions
+| Permission Code | Description |
+|-----------------|-------------|
+| `OUTBOUND.ALLOCATION.EXECUTE` | Phân bổ / giải phóng |
+| `OUTBOUND.WEIGH.RECEIVE` | Nhận sự kiện cân |
+| `OUTBOUND.APPROVAL.DECIDE` | Phê duyệt / từ chối |
+| `OUTBOUND.DASHBOARD.READ` | Xem dashboard |
+
+---
+
+## 8. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|

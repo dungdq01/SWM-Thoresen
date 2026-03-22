@@ -5,69 +5,105 @@
 
 Module này cung cấp các năng lực:
 - Quản lý Owner (chủ hàng)
-- Quản lý Vendor (nhà cung cấp / tàu)
+- Quản lý Customer (khách hàng)
+- Quản lý Vendor (nhà cung cấp)
+- Quản lý Vessel (tàu)
+- Quản lý Carrier (đơn vị vận chuyển)
 - Quản lý Item (mặt hàng)
+- Quản lý Item Group (nhóm mặt hàng)
+- Quản lý Lot (lô hàng)
 - Quản lý Warehouse (kho)
 - Quản lý Zone (vùng trong kho)
 - Quản lý Location (vị trí trong zone)
+- Quản lý Location Type (loại vị trí)
 - Quản lý UOM (đơn vị tính) và quy đổi
 - Quản lý Vehicle Type (loại phương tiện)
 - Quản lý Inventory Status (trạng thái tồn kho)
+- Quản lý Owner SKU Mapping (ánh xạ SKU theo owner)
 - Cung cấp Lookup endpoints cho dropdown UI
+- Cung cấp Dropdown Config cho dynamic options
 
 ## 2. Folder code chính của module
 ```text
 backend/src/modules/master-data/
 ├── controllers/
-│   ├── owner.controller.ts
-│   ├── vendor.controller.ts
-│   ├── item.controller.ts
-│   ├── warehouse.controller.ts
-│   ├── zone.controller.ts
-│   ├── location.controller.ts
-│   ├── uom.controller.ts
-│   ├── uom-conversion.controller.ts
-│   ├── vehicle-type.controller.ts
-│   ├── inventory-status.controller.ts
+│   ├── carrier.controller.ts
 │   ├── customer.controller.ts
 │   ├── dropdown-config.controller.ts
+│   ├── inventory-status.controller.ts
+│   ├── item-group.controller.ts
+│   ├── item.controller.ts
+│   ├── location-type.controller.ts
+│   ├── location.controller.ts
+│   ├── lookup.controller.ts
 │   ├── lot.controller.ts
-│   └── lookup.controller.ts
+│   ├── owner-sku-mapping.controller.ts
+│   ├── owner.controller.ts
+│   ├── uom-conversion.controller.ts
+│   ├── uom.controller.ts
+│   ├── vehicle-type.controller.ts
+│   ├── vendor.controller.ts
+│   ├── vessel.controller.ts
+│   ├── warehouse.controller.ts
+│   └── zone.controller.ts
 ├── dto/
+│   ├── carrier.dto.ts
 │   ├── common.dto.ts
-│   ├── owner.dto.ts
-│   ├── vendor.dto.ts
+│   ├── customer.dto.ts
+│   ├── dropdown-config.dto.ts
+│   ├── inventory-status.dto.ts
+│   ├── item-group.dto.ts
 │   ├── item.dto.ts
-│   ├── warehouse.dto.ts
-│   ├── zone.dto.ts
+│   ├── location-type.dto.ts
 │   ├── location.dto.ts
+│   ├── lot.dto.ts
+│   ├── owner-sku-mapping.dto.ts
+│   ├── owner.dto.ts
+│   ├── uom-conversion.dto.ts
 │   ├── uom.dto.ts
 │   ├── vehicle-type.dto.ts
-│   ├── inventory-status.dto.ts
-│   └── lot.dto.ts
+│   ├── vendor.dto.ts
+│   ├── vessel.dto.ts
+│   ├── warehouse.dto.ts
+│   └── zone.dto.ts
 ├── repositories/
-│   ├── owner.repository.ts
-│   ├── vendor.repository.ts
+│   ├── carrier.repository.ts
+│   ├── customer.repository.ts
+│   ├── dropdown-config.repository.ts
+│   ├── inventory-status.repository.ts
+│   ├── item-group.repository.ts
 │   ├── item.repository.ts
-│   ├── warehouse.repository.ts
-│   ├── zone.repository.ts
+│   ├── location-type.repository.ts
 │   ├── location.repository.ts
+│   ├── lot.repository.ts
+│   ├── owner-sku-mapping.repository.ts
+│   ├── owner.repository.ts
+│   ├── uom-conversion.repository.ts
 │   ├── uom.repository.ts
 │   ├── vehicle-type.repository.ts
-│   ├── inventory-status.repository.ts
-│   └── lot.repository.ts
+│   ├── vendor.repository.ts
+│   ├── vessel.repository.ts
+│   ├── warehouse.repository.ts
+│   └── zone.repository.ts
 ├── services/
-│   ├── owner.service.ts
-│   ├── vendor.service.ts
+│   ├── carrier.service.ts
+│   ├── customer.service.ts
+│   ├── dropdown-config.service.ts
+│   ├── inventory-status.service.ts
+│   ├── item-group.service.ts
 │   ├── item.service.ts
-│   ├── warehouse.service.ts
-│   ├── zone.service.ts
+│   ├── location-type.service.ts
 │   ├── location.service.ts
+│   ├── lookup.service.ts
+│   ├── lot.service.ts
+│   ├── owner-sku-mapping.service.ts
+│   ├── owner.service.ts
 │   ├── uom.service.ts
 │   ├── vehicle-type.service.ts
-│   ├── inventory-status.service.ts
-│   ├── lot.service.ts
-│   └── lookup.service.ts
+│   ├── vendor.service.ts
+│   ├── vessel.service.ts
+│   ├── warehouse.service.ts
+│   └── zone.service.ts
 └── master-data.module.ts
 ```
 
@@ -108,19 +144,24 @@ export class OwnerController {
 ### Permission Codes
 | Entity | CREATE | READ | UPDATE | DEACTIVATE | REACTIVATE |
 |--------|--------|------|--------|------------|------------|
-| Owner | MASTER_DATA.OWNER.CREATE | MASTER_DATA.OWNER.READ | MASTER_DATA.OWNER.UPDATE | MASTER_DATA.OWNER.DEACTIVATE | MASTER_DATA.OWNER.REACTIVATE |
-| Item | MASTER_DATA.ITEM.CREATE | MASTER_DATA.ITEM.READ | MASTER_DATA.ITEM.UPDATE | MASTER_DATA.ITEM.DEACTIVATE | MASTER_DATA.ITEM.REACTIVATE |
-| Warehouse | MASTER_DATA.WAREHOUSE.CREATE | MASTER_DATA.WAREHOUSE.READ | MASTER_DATA.WAREHOUSE.UPDATE | MASTER_DATA.WAREHOUSE.DEACTIVATE | MASTER_DATA.WAREHOUSE.REACTIVATE |
-| Zone | MASTER_DATA.ZONE.CREATE | MASTER_DATA.ZONE.READ | MASTER_DATA.ZONE.UPDATE | MASTER_DATA.ZONE.DEACTIVATE | MASTER_DATA.ZONE.REACTIVATE |
-| Location | MASTER_DATA.LOCATION.CREATE | MASTER_DATA.LOCATION.READ | MASTER_DATA.LOCATION.UPDATE | MASTER_DATA.LOCATION.DEACTIVATE | MASTER_DATA.LOCATION.REACTIVATE |
-| UOM | MASTER_DATA.UOM.CREATE | MASTER_DATA.UOM.READ | MASTER_DATA.UOM.UPDATE | MASTER_DATA.UOM.DEACTIVATE | MASTER_DATA.UOM.REACTIVATE |
-| VehicleType | MASTER_DATA.VEHICLE_TYPE.CREATE | MASTER_DATA.VEHICLE_TYPE.READ | MASTER_DATA.VEHICLE_TYPE.UPDATE | MASTER_DATA.VEHICLE_TYPE.DEACTIVATE | MASTER_DATA.VEHICLE_TYPE.REACTIVATE |
-| Vendor | MASTER_DATA.VENDOR.CREATE | MASTER_DATA.VENDOR.READ | MASTER_DATA.VENDOR.UPDATE | MASTER_DATA.VENDOR.DEACTIVATE | MASTER_DATA.VENDOR.REACTIVATE |
+| Owner | master_data.owner.create | master_data.owner.view | master_data.owner.update | master_data.owner.deactivate | master_data.owner.reactivate |
 | Customer | master_data.customer.create | master_data.customer.view | master_data.customer.update | master_data.customer.deactivate | master_data.customer.reactivate |
-| UomConversion | master_data.uom.create | master_data.uom.view | master_data.uom.update | - | - |
-| InventoryStatus | - | MASTER_DATA.INVENTORY_STATUS.READ | MASTER_DATA.INVENTORY_STATUS.UPDATE | - | - |
-| Lookup | - | MASTER_DATA.LOOKUP.READ | - | - | - |
+| Vendor | master_data.owner.create | master_data.owner.view | master_data.owner.update | master_data.owner.deactivate | master_data.owner.reactivate |
+| Vessel | master_data.owner.create | master_data.owner.view | master_data.owner.update | master_data.owner.deactivate | master_data.owner.reactivate |
+| Carrier | master_data.owner.create | master_data.owner.view | master_data.owner.update | master_data.owner.deactivate | master_data.owner.reactivate |
+| Item | master_data.item.create | master_data.item.view | master_data.item.update | master_data.item.deactivate | master_data.item.reactivate |
+| ItemGroup | master_data.item.create | master_data.item.view | master_data.item.update | master_data.item.deactivate | master_data.item.reactivate |
 | Lot | master_data.lot.create | master_data.lot.view | master_data.lot.update | master_data.lot.deactivate | master_data.lot.reactivate |
+| Warehouse | master_data.warehouse.create | master_data.warehouse.view | master_data.warehouse.update | master_data.warehouse.deactivate | master_data.warehouse.reactivate |
+| Zone | master_data.zone.create | master_data.zone.view | master_data.zone.update | master_data.zone.deactivate | master_data.zone.reactivate |
+| Location | master_data.location.create | master_data.location.view | master_data.location.update | master_data.location.deactivate | master_data.location.reactivate |
+| LocationType | master_data.location.create | master_data.location.view | master_data.location.update | master_data.location.deactivate | - |
+| UOM | master_data.uom.create | master_data.uom.view | master_data.uom.update | master_data.uom.deactivate | master_data.uom.reactivate |
+| UomConversion | master_data.uom.create | master_data.uom.view | master_data.uom.update | - | - |
+| VehicleType | master_data.vehicle_type.create | master_data.vehicle_type.view | master_data.vehicle_type.update | master_data.vehicle_type.deactivate | master_data.vehicle_type.reactivate |
+| InventoryStatus | - | master_data.inventory_status.view | master_data.inventory_status.update | - | - |
+| OwnerSkuMapping | master_data.owner.create | master_data.owner.view | master_data.owner.update | master_data.owner.deactivate | - |
+| Lookup | - | master_data.lookup.view | - | - | - |
 
 ## 3.2 Audit Trail Integration
 
@@ -557,6 +598,14 @@ Các endpoint này trả về dữ liệu đơn giản cho dropdown/autocomplete
 ### `GET /api/v1/master-data/lookups/uoms`
 ### `GET /api/v1/master-data/lookups/vehicle-types`
 ### `GET /api/v1/master-data/lookups/inventory-statuses`
+### `GET /api/v1/master-data/lookups/customers`
+
+### `GET /api/v1/master-data/lookups/dropdown-options`
+- **Để làm gì**
+  - Lấy danh sách options động cho dropdown theo entity và field.
+- **Query params** (required)
+  - `entity` - Tên entity (e.g., "item", "owner")
+  - `fieldName` - Tên field (e.g., "cargoForm", "ownerType")
 
 **Response format chung:**
 ```json
@@ -647,6 +696,196 @@ Các endpoint này trả về dữ liệu đơn giản cho dropdown/autocomplete
 - **File code tham gia**
   - `controllers/uom-conversion.controller.ts`
   - `repositories/uom-conversion.repository.ts`
+
+---
+
+## 6.14 Carrier APIs
+
+### `GET /api/v1/master-data/carriers/next-code`
+- **Để làm gì**
+  - Lấy mã đơn vị vận chuyển tiếp theo (auto-generate).
+
+### `POST /api/v1/master-data/carriers`
+- **Để làm gì**
+  - Tạo đơn vị vận chuyển mới.
+- **Body**
+```json
+{
+  "carrierCode": "CARRIER-001",
+  "carrierName": "Công ty vận tải ABC",
+  "contactName": "Nguyễn Văn A",
+  "phone": "0901234567",
+  "carrierGroup": "TRUCKING",
+  "transportMode": "ROAD",
+  "defaultVehicleTypeCode": "TRUCK-20T"
+}
+```
+
+### `GET /api/v1/master-data/carriers`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `carrierGroup`, `transportMode`
+
+### `GET /api/v1/master-data/carriers/:id`
+### `PUT /api/v1/master-data/carriers/:id`
+### `POST /api/v1/master-data/carriers/:id/deactivate`
+### `POST /api/v1/master-data/carriers/:id/reactivate`
+
+- **File code tham gia**
+  - `controllers/carrier.controller.ts`
+  - `services/carrier.service.ts`
+  - `repositories/carrier.repository.ts`
+
+---
+
+## 6.15 Vessel APIs
+
+### `GET /api/v1/master-data/vessels/next-code`
+- **Để làm gì**
+  - Lấy mã tàu tiếp theo (auto-generate).
+
+### `POST /api/v1/master-data/vessels`
+- **Để làm gì**
+  - Tạo tàu mới.
+- **Body**
+```json
+{
+  "vesselCode": "VSL-001",
+  "vesselName": "MV Thoresen Star",
+  "imoNumber": "IMO1234567",
+  "vesselType": "BULK_CARRIER",
+  "nationality": "VN",
+  "callSign": "3WXY",
+  "dwtTon": 50000,
+  "loaM": 190,
+  "beamM": 32,
+  "draftM": 12.5,
+  "yearBuilt": 2015,
+  "owner": "Thoresen Shipping",
+  "operator": "TVL"
+}
+```
+
+### `GET /api/v1/master-data/vessels`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `vesselType`
+
+### `GET /api/v1/master-data/vessels/:id`
+### `PUT /api/v1/master-data/vessels/:id`
+### `POST /api/v1/master-data/vessels/:id/deactivate`
+### `POST /api/v1/master-data/vessels/:id/reactivate`
+
+- **File code tham gia**
+  - `controllers/vessel.controller.ts`
+  - `services/vessel.service.ts`
+  - `repositories/vessel.repository.ts`
+
+---
+
+## 6.16 Item Group APIs
+
+### `GET /api/v1/master-data/item-groups/next-code`
+- **Để làm gì**
+  - Lấy mã nhóm mặt hàng tiếp theo (auto-generate).
+
+### `POST /api/v1/master-data/item-groups`
+- **Để làm gì**
+  - Tạo nhóm mặt hàng mới.
+- **Body**
+```json
+{
+  "itemGroupCode": "GRAINS",
+  "itemGroupName": "Ngũ cốc",
+  "description": "Nhóm hàng ngũ cốc",
+  "cargoForm": "BULK"
+}
+```
+
+### `GET /api/v1/master-data/item-groups`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `cargoForm`
+
+### `GET /api/v1/master-data/item-groups/:id`
+### `PUT /api/v1/master-data/item-groups/:id`
+### `POST /api/v1/master-data/item-groups/:id/deactivate`
+### `POST /api/v1/master-data/item-groups/:id/reactivate`
+
+- **File code tham gia**
+  - `controllers/item-group.controller.ts`
+  - `services/item-group.service.ts`
+  - `repositories/item-group.repository.ts`
+
+---
+
+## 6.17 Location Type APIs
+
+### `GET /api/v1/master-data/location-types/next-code`
+- **Để làm gì**
+  - Lấy mã loại vị trí tiếp theo (auto-generate).
+
+### `POST /api/v1/master-data/location-types`
+- **Để làm gì**
+  - Tạo loại vị trí mới.
+- **Body**
+```json
+{
+  "locationTypeCode": "FLOOR",
+  "locationTypeName": "Sàn kho",
+  "description": "Vị trí trên sàn",
+  "isDefault": false
+}
+```
+
+### `GET /api/v1/master-data/location-types`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`
+
+### `GET /api/v1/master-data/location-types/:id`
+### `PUT /api/v1/master-data/location-types/:id`
+### `DELETE /api/v1/master-data/location-types/:id`
+- **Để làm gì**
+  - Xóa loại vị trí (hard delete).
+
+- **File code tham gia**
+  - `controllers/location-type.controller.ts`
+  - `services/location-type.service.ts`
+  - `repositories/location-type.repository.ts`
+
+---
+
+## 6.18 Owner SKU Mapping APIs
+
+### `GET /api/v1/master-data/owner-sku-mappings/next-code`
+- **Để làm gì**
+  - Lấy mã ánh xạ tiếp theo (auto-generate).
+
+### `POST /api/v1/master-data/owner-sku-mappings`
+- **Để làm gì**
+  - Tạo ánh xạ SKU của owner.
+- **Body**
+```json
+{
+  "ownerId": "uuid",
+  "itemId": "uuid",
+  "ownerSkuCode": "CARGILL-RICE-001",
+  "ownerSkuName": "Gạo ST25 (Cargill)",
+  "billingClass": "PREMIUM"
+}
+```
+
+### `GET /api/v1/master-data/owner-sku-mappings`
+- **Query params**
+  - `page`, `pageSize`, `keyword`, `isActive`, `ownerId`, `itemId`
+
+### `GET /api/v1/master-data/owner-sku-mappings/:id`
+### `PUT /api/v1/master-data/owner-sku-mappings/:id`
+### `DELETE /api/v1/master-data/owner-sku-mappings/:id`
+- **Để làm gì**
+  - Xóa ánh xạ SKU (hard delete).
+
+- **File code tham gia**
+  - `controllers/owner-sku-mapping.controller.ts`
+  - `services/owner-sku-mapping.service.ts`
+  - `repositories/owner-sku-mapping.repository.ts`
 
 ---
 
@@ -984,3 +1223,17 @@ curl "http://localhost:3000/api/v1/master-data/lookups/zones?warehouseId=<uuid>"
 | Docs 6.13 Lot | Thêm toàn bộ Lot Management APIs vào docs: CRUD, get-or-create, fifo, traceability |
 | Folder structure | Cập nhật folder structure thêm `customer.controller.ts`, `uom-conversion.controller.ts`, `dropdown-config.controller.ts`, `lot.controller.ts` |
 | Permission Codes | Thêm Customer, UomConversion và Lot vào bảng Permission Codes |
+
+## 12. Changelog — Module Sync (2026-03-22)
+
+| Fix | Mô tả |
+|-----|-------|
+| Docs 6.14 Carrier | Thêm toàn bộ Carrier APIs: next-code, CRUD, deactivate, reactivate |
+| Docs 6.15 Vessel | Thêm toàn bộ Vessel APIs: next-code, CRUD, deactivate, reactivate |
+| Docs 6.16 ItemGroup | Thêm toàn bộ Item Group APIs: next-code, CRUD, deactivate, reactivate |
+| Docs 6.17 LocationType | Thêm toàn bộ Location Type APIs: next-code, CRUD, DELETE |
+| Docs 6.18 OwnerSkuMapping | Thêm toàn bộ Owner SKU Mapping APIs: next-code, CRUD, DELETE |
+| Lookup endpoints | Thêm `customers` và `dropdown-options` endpoints |
+| Folder structure | Cập nhật folder structure thêm tất cả controllers, services, repositories, DTOs mới |
+| Permission Codes | Cập nhật và chuẩn hóa permission codes cho tất cả entities |
+| Module capabilities | Cập nhật danh sách năng lực module bao gồm tất cả entities |

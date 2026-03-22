@@ -3,8 +3,8 @@
 **Module:** Inventory Core Engine  
 **Database:** PostgreSQL  
 **Total Tables:** 10  
-**Total Services:** 8  
-**Last Updated:** 2026-03-09
+**Total Services:** 9  
+**Last Updated:** 2026-03-22
 
 ---
 
@@ -20,7 +20,7 @@ Module 3 quản lý inventory backbone của hệ thống SWM với các bảng 
 | Snapshot | `inventory_snapshot_run`, `daily_storage_snapshot` |
 | Config | `inventory_event_mapping` |
 
-### Backend Services (8 services)
+### Backend Services (9 services)
 
 | Service | File | Description |
 |---------|------|-------------|
@@ -32,6 +32,7 @@ Module 3 quản lý inventory backbone của hệ thống SWM với các bảng 
 | InventDimService | `invent-dim.service.js` | Dimension management |
 | ReconciliationService | `reconciliation.service.js` | Ledger vs OnHand comparison |
 | SnapshotService | `snapshot.service.js` | Daily storage snapshot for M10 |
+| LotService | `lot.service.js` | Lot management (get-or-create, FIFO) |
 
 ### Infrastructure (7 components)
 

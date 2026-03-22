@@ -50,7 +50,8 @@ src/modules/inventory-core/
 │   ├── transaction-query.service.js  # Transaction query service
 │   ├── invent-dim.service.js         # Dimension service
 │   ├── reconciliation.service.js     # Reconciliation service (HI-1 fix)
-│   └── snapshot.service.js           # Daily snapshot service (HI-1 fix)
+│   ├── snapshot.service.js           # Daily snapshot service (HI-1 fix)
+│   └── lot.service.js                # Lot management service
 └── infra/
     ├── invent-dim.repository.js      # InventDim data access
     ├── invent-trans.repository.js    # InventTrans data access
@@ -447,6 +448,164 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
   "correlationId": "corr-cancel-001"
 }
 ```
+
+---
+
+### 3.11 Reconciliation APIs
+
+#### POST /api/v1/inventory/reconciliation/runs
+
+**Mục đích:** Tạo reconciliation run mới để so sánh ledger vs on-hand.
+
+**Request Body:**
+```json
+{
+  "runType": "ON_DEMAND",
+  "scopeType": "WAREHOUSE",
+  "warehouseId": "uuid",
+  "correlationId": "corr-recon-001"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "runNo": "RECON-20260309-001",
+    "status": "RUNNING",
+    "startedAt": "2026-03-09T10:00:00Z"
+  }
+}
+```
+
+---
+
+#### GET /api/v1/inventory/reconciliation/runs
+
+**Mục đích:** List reconciliation runs.
+
+**Query Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| status | string | No | RUNNING, COMPLETED, FAILED |
+| warehouseId | uuid | No | Filter by warehouse |
+| fromDate | date | No | From started date |
+| toDate | date | No | To started date |
+
+---
+
+#### GET /api/v1/inventory/reconciliation/runs/:runId
+
+**Mục đích:** Get chi tiết reconciliation run với results.
+
+---
+
+#### POST /api/v1/inventory/reconciliation/results/:resultId/review
+
+**Mục đích:** Mark reconciliation result as reviewed.
+
+---
+
+#### POST /api/v1/inventory/reconciliation/results/:resultId/resolve
+
+**Mục đích:** Resolve reconciliation result (tạo adjustment posting nếu cần).
+
+---
+
+### 3.12 Snapshot APIs
+
+#### POST /api/v1/inventory/snapshots/runs
+
+**Mục đích:** Tạo snapshot run để capture daily storage.
+
+**Request Body:**
+```json
+{
+  "snapshotDate": "2026-03-09",
+  "warehouseId": "uuid",
+  "runMode": "MANUAL",
+  "correlationId": "corr-snap-001"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "runNo": "SNAP-20260309-001",
+    "status": "RUNNING",
+    "snapshotDate": "2026-03-09"
+  }
+}
+```
+
+---
+
+#### GET /api/v1/inventory/snapshots/runs
+
+**Mục đích:** List snapshot runs.
+
+**Query Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| status | string | No | RUNNING, COMPLETED, FAILED |
+| warehouseId | uuid | No | Filter by warehouse |
+| snapshotDate | date | No | Filter by snapshot date |
+
+---
+
+#### GET /api/v1/inventory/snapshots/runs/:runId
+
+**Mục đích:** Get chi tiết snapshot run.
+
+---
+
+#### GET /api/v1/inventory/snapshots/billing
+
+**Mục đích:** Query snapshot data cho M10 Billing.
+
+**Query Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| ownerId | uuid | Yes | Owner ID |
+| fromDate | date | Yes | From date |
+| toDate | date | Yes | To date |
+| warehouseId | uuid | No | Filter by warehouse |
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "snapshotDate": "2026-03-09",
+      "ownerId": "uuid",
+      "itemId": "uuid",
+      "warehouseId": "uuid",
+      "openingQty": "10000.000",
+      "inboundTodayQty": "5000.000",
+      "outboundTodayQty": "2000.000",
+      "closingQty": "13000.000"
+    }
+  ]
+}
+```
+
+---
+
+#### GET /api/v1/inventory/snapshots/billing/aggregate
+
+**Mục đích:** Aggregate snapshot data theo owner/warehouse cho billing period.
+
+**Query Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| ownerId | uuid | Yes | Owner ID |
+| fromDate | date | Yes | From date |
+| toDate | date | Yes | To date |
+| groupBy | string | No | warehouse, item (default: warehouse) |
 
 ---
 
