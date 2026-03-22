@@ -333,7 +333,7 @@ export class OutboundBridgeAdapter {
               await this.postingEngine.postInventory({
                 externalId: `SHP-AUTO-${shipmentWithLines.id}-${line.id}-${Date.now()}`,
                 correlationId: shipmentWithLines.correlationId || log.id,
-                eventCode: 'SHIPMENT_SHIPPED',
+                eventCode: 'SHIP_CONFIRMED',
                 refType: 'SHIPMENT',
                 refId: shipmentWithLines.id,
                 refLineId: line.id,

@@ -113,6 +113,17 @@ const BUSINESS_ERRORS = {
   'location occupied': 'Vị trí đã được sử dụng',
   'location blocked': 'Vị trí đang bị khóa',
   'system locked': 'Dữ liệu đã bị khóa bởi hệ thống',
+  // Deactivate guard — inventory still exists
+  'cannot deactivate owner because inventory still exists': 'Không thể ngừng hoạt động chủ hàng vì vẫn còn tồn kho',
+  'cannot deactivate item because inventory still exists': 'Không thể ngừng hoạt động mặt hàng vì vẫn còn tồn kho',
+  'cannot deactivate location because stock still exists': 'Không thể ngừng hoạt động vị trí vì vẫn còn hàng tồn',
+  'cannot deactivate zone because inventory still exists': 'Không thể ngừng hoạt động zone vì vẫn còn tồn kho tại các vị trí bên trong',
+  'cannot deactivate warehouse because inventory still exists': 'Không thể ngừng hoạt động kho vì vẫn còn tồn kho tại các vị trí bên trong',
+  // Deactivate guard — active children
+  'cannot deactivate zone with active locations': 'Không thể ngừng hoạt động zone vì vẫn còn vị trí đang hoạt động',
+  'cannot deactivate warehouse with active zones': 'Không thể ngừng hoạt động kho vì vẫn còn zone đang hoạt động',
+  // Owner-Warehouse Access
+  'owner does not have access': 'Chủ hàng không có quyền truy cập kho này',
 }
 
 // ── Validation pattern translators ───────────────────────────────────────────

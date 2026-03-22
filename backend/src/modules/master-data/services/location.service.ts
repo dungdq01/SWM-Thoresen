@@ -104,20 +104,43 @@ export class LocationService {
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdLocation> {
-    const location = await this.findById(id);
-    if (!location.isActive) throw new BadRequestException('Location is already inactive');
-    const result = await this.locationRepository.deactivate(id, ctx.userId!, location.rowVersion);
+    return this.prisma.$transaction(async (tx) => {
+      const location = await tx.mdLocation.findUnique({ where: { id } });
+      if (!location) throw new NotFoundException(`Location ${id} not found`);
+      if (!location.isActive) throw new BadRequestException('Location is already inactive');
 
-    await this.logService.createAuditLog({
-      entityType: 'LOCATION',
-      entityId: id,
-      action: 'DEACTIVATE',
-      userId: ctx.userId,
-      oldValue: location,
-      newValue: result,
+      // Check on-hand inventory at this location via InventDim
+      const stockRecord = await tx.onHand.findFirst({
+        where: {
+          physicalQty: { gt: 0 },
+          inventDim: { locationId: id },
+        },
+      });
+      if (stockRecord) {
+        throw new BadRequestException('Cannot deactivate location because stock still exists in this location');
+      }
+
+      const result = await tx.mdLocation.update({
+        where: { id, rowVersion: location.rowVersion },
+        data: {
+          isActive: false,
+          deactivatedAt: new Date(),
+          deactivatedBy: ctx.userId,
+          rowVersion: { increment: 1 },
+        },
+      });
+
+      await this.logService.createAuditLog({
+        entityType: 'LOCATION',
+        entityId: id,
+        action: 'DEACTIVATE',
+        userId: ctx.userId,
+        oldValue: location,
+        newValue: result,
+      });
+
+      return result;
     });
-
-    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdLocation> {

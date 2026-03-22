@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Plus, Package, Layers, ShieldCheck, Lock, RotateCw } from 'lucide-react'
+import { Plus, Package, Layers, ShieldCheck, Lock, RotateCw, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 import { useOnHandList } from '@domains/inventory-core'
 import { useLookupInventoryStatuses, useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { InventoryStatusBadge } from '@domains/master-data/components/StatusBadge'
 import { Button, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
 import { InventoryPostingDrawer } from '@features/inventory-core'
 
-const TOTAL_COLS = 11
+const TOTAL_COLS = 13
 
 function formatKg(value) {
   const num = Number(value)
@@ -14,11 +14,12 @@ function formatKg(value) {
   return num.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' kg'
 }
 
-function formatQty(value, uomCode) {
+function formatQty(value) {
   const num = Number(value)
-  if (isNaN(num)) return '—'
-  if (uomCode === 'KG') return num.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-  return num.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+  if (isNaN(num) || num === 0) return '0'
+  // Nếu là số nguyên thì không hiện decimal, nếu có lẻ thì hiện tối đa 3
+  const decimals = num % 1 === 0 ? 0 : 3
+  return num.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: decimals })
 }
 
 function KpiCard({ icon: Icon, label, value, color = 'ice', subtext }) {
@@ -74,15 +75,19 @@ export function InventoryOnHandPage() {
   const kpiSummary = useMemo(() => {
     let totalPhysical = 0
     let totalAvailable = 0
-    let totalReserved = 0
+    let totalAllocated = 0
+    let totalInboundOrdered = 0
+    let totalOutboundOrdered = 0
     const uniqueItems = new Set()
     for (const row of rows) {
       totalPhysical += Number(row.physicalQty) || 0
       totalAvailable += Number(row.availableQty) || 0
-      totalReserved += Number(row.reservedQty) || 0
+      totalAllocated += Number(row.allocatedQty) || 0
+      totalInboundOrdered += Number(row.inboundOrderedQty) || 0
+      totalOutboundOrdered += Number(row.outboundOrderedQty) || 0
       if (row.item?.itemCode) uniqueItems.add(row.item.itemCode)
     }
-    return { totalPhysical, totalAvailable, totalReserved, uniqueItems: uniqueItems.size }
+    return { totalPhysical, totalAvailable, totalAllocated, totalInboundOrdered, totalOutboundOrdered, uniqueItems: uniqueItems.size }
   }, [rows])
 
   const handleChange = useCallback((key, value) => {
@@ -106,11 +111,13 @@ export function InventoryOnHandPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
-        <KpiCard icon={Package} label="Tổng tồn kho" value={formatKg(kpiSummary.totalPhysical)} color="ice" subtext={`${pagination.total || rows.length} dòng`} />
-        <KpiCard icon={Layers} label="Mặt hàng" value={kpiSummary.uniqueItems} color="navy" subtext="loại hàng hóa" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6 mb-4">
+        <KpiCard icon={Package} label="Tồn vật lý" value={formatKg(kpiSummary.totalPhysical)} color="ice" subtext={`${pagination.total || rows.length} dòng`} />
         <KpiCard icon={ShieldCheck} label="Khả dụng" value={formatKg(kpiSummary.totalAvailable)} color="emerald" />
-        <KpiCard icon={Lock} label="Đã giữ" value={formatKg(kpiSummary.totalReserved)} color="amber" />
+        <KpiCard icon={Lock} label="Đã giữ chỗ" value={formatKg(kpiSummary.totalAllocated)} color="amber" />
+        <KpiCard icon={ArrowDownCircle} label="Sắp nhập" value={formatKg(kpiSummary.totalInboundOrdered)} color="ice" subtext="inbound ordered" />
+        <KpiCard icon={ArrowUpCircle} label="Nhu cầu xuất" value={formatKg(kpiSummary.totalOutboundOrdered)} color="amber" subtext="outbound ordered" />
+        <KpiCard icon={Layers} label="Mặt hàng" value={kpiSummary.uniqueItems} color="navy" subtext="loại hàng hóa" />
       </div>
 
       <div className="wrs-card p-5 space-y-4">
@@ -160,9 +167,11 @@ export function InventoryOnHandPage() {
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Lô</TableHead>
                   <TableHead>Vị trí</TableHead>
-                  <TableHead align="right">Thực tế (kg)</TableHead>
-                  <TableHead align="right">Đã giữ (kg)</TableHead>
-                  <TableHead align="right">Khả dụng (kg)</TableHead>
+                  <TableHead align="right">Thực tế</TableHead>
+                  <TableHead align="right">Đã giữ</TableHead>
+                  <TableHead align="right">Khả dụng</TableHead>
+                  <TableHead align="right">Sắp nhập</TableHead>
+                  <TableHead align="right">Nhu cầu xuất</TableHead>
                   <TableHead>ĐVT</TableHead>
                 </TableRow>
               </TableHeader>
@@ -170,7 +179,6 @@ export function InventoryOnHandPage() {
                 {isLoading ? <TableLoading colSpan={TOTAL_COLS} /> : null}
                 {!isLoading && rows.length === 0 ? <TableEmpty colSpan={TOTAL_COLS} message="Không có dữ liệu tồn kho phù hợp" /> : null}
                 {!isLoading ? rows.map((row) => {
-                  const uomCode = row.uom?.uomCode || ''
                   return (
                     <TableRow key={row.id}>
                       <TableCell>
@@ -193,16 +201,22 @@ export function InventoryOnHandPage() {
                         </span>
                       </TableCell>
                       <TableCell align="right">
-                        <span className="font-semibold text-navy-900">{formatQty(row.physicalQty, uomCode)}</span>
+                        <span className="font-semibold text-navy-900">{formatQty(row.physicalQty)}</span>
                       </TableCell>
                       <TableCell align="right">
-                        <span className="text-navy-600">{formatQty(row.reservedQty, uomCode)}</span>
+                        <span className="text-navy-600">{formatQty(row.allocatedQty)}</span>
                       </TableCell>
                       <TableCell align="right">
-                        <span className="font-semibold text-emerald-600">{formatQty(row.availableQty, uomCode)}</span>
+                        <span className="font-semibold text-emerald-600">{formatQty(row.availableQty)}</span>
+                      </TableCell>
+                      <TableCell align="right">
+                        <span className="text-ice">{formatQty(row.inboundOrderedQty)}</span>
+                      </TableCell>
+                      <TableCell align="right">
+                        <span className="text-amber-600">{formatQty(row.outboundOrderedQty)}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-sm font-medium text-navy-700">{uomCode || '—'}</span>
+                        <span className="font-mono text-sm font-medium text-navy-700">KG</span>
                       </TableCell>
                     </TableRow>
                   )

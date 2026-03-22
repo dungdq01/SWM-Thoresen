@@ -14,46 +14,46 @@ export class CarrierController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('master_data.owner.create')
+  @Permission('master_data.carrier.create')
   async create(@Body() dto: CreateCarrierDto, @CurrentUser() user: RequestUser) {
     return this.carrierService.create(dto, { userId: user.id });
   }
 
   @Get('next-code')
-  @Permission('master_data.owner.view')
+  @Permission('master_data.carrier.view')
   async getNextCode() {
     const code = await this.carrierService.getNextCode();
     return { data: { code } };
   }
 
   @Get()
-  @Permission('master_data.owner.view')
+  @Permission('master_data.carrier.view')
   async findMany(@Query() dto: ListCarrierDto) {
     return this.carrierService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('master_data.owner.view')
+  @Permission('master_data.carrier.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.carrierService.findById(id);
   }
 
   @Put(':id')
-  @Permission('master_data.owner.update')
+  @Permission('master_data.carrier.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCarrierDto, @CurrentUser() user: RequestUser) {
     return this.carrierService.update(id, dto, { userId: user.id });
   }
 
   @Post(':id/deactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('master_data.owner.deactivate')
+  @Permission('master_data.carrier.deactivate')
   async deactivate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
     return this.carrierService.deactivate(id, { userId: user.id });
   }
 
   @Post(':id/reactivate')
   @HttpCode(HttpStatus.OK)
-  @Permission('master_data.owner.reactivate')
+  @Permission('master_data.carrier.reactivate')
   async reactivate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
     return this.carrierService.reactivate(id, { userId: user.id });
   }

@@ -21,6 +21,10 @@ export class CreateOwnerSkuMappingDto {
   @IsOptional()
   @IsString()
   billingClass?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateOwnerSkuMappingDto {

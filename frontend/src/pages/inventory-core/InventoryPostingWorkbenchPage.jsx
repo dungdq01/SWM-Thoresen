@@ -5,9 +5,23 @@ import { useLookupItems, useLookupWarehouses, useLookupLocations, useLookupOwner
 import { Button, Input, Textarea } from '@shared/ui'
 
 const EVENT_CODE_OPTIONS = [
-  { value: 'RECEIPT_RECEIVED', label: 'Nhập kho từ phiếu nhận', refType: 'RECEIPT' },
+  // Inbound
+  { value: 'PO_CONFIRMED', label: 'Xác nhận PO (dự kiến nhập)', refType: 'PURCHASE_ORDER' },
+  { value: 'RECEIPT_CREATED', label: 'Tạo phiếu nhận', refType: 'RECEIPT' },
+  { value: 'GOODS_RECEIVED', label: 'Nhận hàng thực tế', refType: 'RECEIPT' },
   { value: 'PUTAWAY_COMPLETED', label: 'Hoàn tất cất hàng', refType: 'WORK' },
-  { value: 'SHIPMENT_SHIPPED', label: 'Xuất kho từ phiếu xuất', refType: 'SHIPMENT' },
+  // Outbound
+  { value: 'SO_CONFIRMED', label: 'Xác nhận SO (dự kiến xuất)', refType: 'SALES_ORDER' },
+  { value: 'SHIP_CONFIRMED', label: 'Xác nhận xuất hàng', refType: 'SHIPMENT' },
+  // Transfer
+  { value: 'TRANSFER_ORDER_CONFIRMED', label: 'Xác nhận lệnh chuyển kho', refType: 'TRANSFER' },
+  { value: 'TRANSFER_ISSUED', label: 'Xuất chuyển kho', refType: 'TRANSFER' },
+  { value: 'TRANSFER_RECEIVED', label: 'Nhận chuyển kho', refType: 'TRANSFER' },
+  // VAS
+  { value: 'VAS_CONSUMED', label: 'VAS tiêu thụ nguyên liệu', refType: 'VAS_ORDER' },
+  { value: 'VAS_PRODUCED', label: 'VAS sản xuất thành phẩm', refType: 'VAS_ORDER' },
+  { value: 'VAS_WASTE', label: 'VAS hao hụt', refType: 'VAS_ORDER' },
+  // Inventory Control
   { value: 'MOVE_COMPLETED', label: 'Hoàn tất di chuyển', refType: 'MOVE' },
   { value: 'STATUS_CHANGE_CONFIRMED', label: 'Thay đổi trạng thái', refType: 'STATUS_CHANGE' },
   { value: 'ADJUSTMENT_APPROVED', label: 'Điều chỉnh tồn kho', refType: 'ADJUSTMENT' },
@@ -16,7 +30,9 @@ const EVENT_CODE_OPTIONS = [
 ]
 
 const REF_TYPE_OPTIONS = [
+  { value: 'PURCHASE_ORDER', label: 'Đơn mua hàng' },
   { value: 'RECEIPT', label: 'Phiếu nhận hàng' },
+  { value: 'SALES_ORDER', label: 'Đơn bán hàng' },
   { value: 'SHIPMENT', label: 'Phiếu xuất hàng' },
   { value: 'WORK', label: 'Lệnh công việc' },
   { value: 'MOVE', label: 'Lệnh di chuyển' },
@@ -24,7 +40,7 @@ const REF_TYPE_OPTIONS = [
   { value: 'ADJUSTMENT', label: 'Phiếu điều chỉnh' },
   { value: 'CYCLE_COUNT', label: 'Phiếu kiểm kê' },
   { value: 'STATUS_CHANGE', label: 'Thay đổi trạng thái' },
-  { value: 'VAS', label: 'Lệnh VAS' },
+  { value: 'VAS_ORDER', label: 'Lệnh VAS' },
 ]
 
 const REASON_CODE_OPTIONS = [
@@ -38,7 +54,7 @@ const REASON_CODE_OPTIONS = [
 ]
 
 const initialPosting = {
-  eventCode: 'RECEIPT_RECEIVED',
+  eventCode: 'GOODS_RECEIVED',
   refType: 'RECEIPT',
   refId: '',
   refLineId: '',

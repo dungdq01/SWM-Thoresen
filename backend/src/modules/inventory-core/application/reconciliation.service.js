@@ -100,8 +100,8 @@ class ReconciliationService {
       },
     });
 
-    // Include reservedQty for reconciliation result
-    // onHandRecords already has physicalQty and reservedQty from OnHand model
+    // Include allocatedQty for reconciliation result
+    // onHandRecords already has physicalQty and allocatedQty from OnHand model
 
     const ledgerAggregates = await this.calculateLedgerAggregates(whereClause);
     const results = [];
@@ -116,8 +116,8 @@ class ReconciliationService {
       if (!variance.isZero()) {
         mismatchCount++;
         const severity = this.calculateSeverity(variance, onHandQty);
-        const reservedQty = new Decimal(onHand.reservedQty || 0);
-        const availableQty = onHandQty.minus(reservedQty);
+        const allocatedQty = new Decimal(onHand.allocatedQty || 0);
+        const availableQty = onHandQty.minus(allocatedQty);
 
         const result = await this.prisma.inventoryReconciliationResult.create({
           data: {
@@ -126,7 +126,7 @@ class ReconciliationService {
             inventDimId: onHand.inventDimId,
             onhandPhysicalQty: onHandQty.toFixed(3),
             ledgerQty: ledgerQty.toFixed(3),
-            reservedQty: reservedQty.toFixed(3),
+            allocatedQty: allocatedQty.toFixed(3),
             availableQty: availableQty.toFixed(3),
             diffQty: variance.toFixed(3),
             severity,

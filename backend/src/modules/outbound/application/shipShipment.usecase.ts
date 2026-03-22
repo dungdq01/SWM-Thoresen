@@ -122,7 +122,7 @@ export class ShipShipmentUseCase {
                   postingAction: 'POST',
                   m3ExternalId: postingResult.transId,
                   requestPayload: {
-                    eventCode: 'SHIPMENT_SHIPPED',
+                    eventCode: 'SHIP_CONFIRMED',
                     qtyPosted: -Number(alloc.allocatedQty),
                     transDbId: postingResult.transDbId,
                   },

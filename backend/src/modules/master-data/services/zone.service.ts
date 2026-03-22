@@ -101,6 +101,17 @@ export class ZoneService {
         throw new BadRequestException('Cannot deactivate zone with active locations');
       }
 
+      // Check on-hand inventory at locations belonging to this zone
+      const stockRecord = await tx.onHand.findFirst({
+        where: {
+          physicalQty: { gt: 0 },
+          inventDim: { location: { zoneId: id } },
+        },
+      });
+      if (stockRecord) {
+        throw new BadRequestException('Cannot deactivate zone because inventory still exists in its locations');
+      }
+
       const result = await tx.mdZone.update({
         where: { id, rowVersion: zone.rowVersion },
         data: {

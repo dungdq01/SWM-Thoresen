@@ -14,39 +14,39 @@ export class OwnerSkuMappingController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Permission('master_data.owner.create')
+  @Permission('master_data.owner_sku_mapping.create')
   async create(@Body() dto: CreateOwnerSkuMappingDto, @CurrentUser() user: RequestUser) {
     return this.ownerSkuMappingService.create(dto, { userId: user.id });
   }
 
   @Get('next-code')
-  @Permission('master_data.owner.view')
+  @Permission('master_data.owner_sku_mapping.view')
   async getNextCode() {
     const code = await this.ownerSkuMappingService.getNextCode();
     return { data: { code } };
   }
 
   @Get()
-  @Permission('master_data.owner.view')
+  @Permission('master_data.owner_sku_mapping.view')
   async findMany(@Query() dto: ListOwnerSkuMappingDto) {
     return this.ownerSkuMappingService.findMany(dto);
   }
 
   @Get(':id')
-  @Permission('master_data.owner.view')
+  @Permission('master_data.owner_sku_mapping.view')
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.ownerSkuMappingService.findById(id);
   }
 
   @Put(':id')
-  @Permission('master_data.owner.update')
+  @Permission('master_data.owner_sku_mapping.update')
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateOwnerSkuMappingDto, @CurrentUser() user: RequestUser) {
     return this.ownerSkuMappingService.update(id, dto, { userId: user.id });
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @Permission('master_data.owner.deactivate')
+  @Permission('master_data.owner_sku_mapping.delete')
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: RequestUser) {
     return this.ownerSkuMappingService.delete(id, { userId: user.id });
   }

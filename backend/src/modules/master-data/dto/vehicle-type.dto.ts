@@ -48,6 +48,10 @@ export class CreateVehicleTypeDto {
   @IsOptional()
   @IsString()
   handlingFeeGroup?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateVehicleTypeDto {

@@ -4,18 +4,23 @@ import { useLookupItems, useLookupOwners } from '@domains/master-data'
 import { Badge, Button, Input, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
 
 const transTypeTone = (type) => {
-  if (['RECEIPT_IN', 'COUNT_GAIN', 'VAS_PRODUCE', 'TRANSFER_IN'].includes(type)) return 'success'
-  if (['SHIPMENT_OUT', 'COUNT_LOSS', 'VAS_CONSUME', 'TRANSFER_OUT'].includes(type)) return 'warning'
+  if (['RECEIPT', 'RECEIPT_IN', 'TRANSFER_RECEIPT', 'TRANSFER_IN'].includes(type)) return 'success'
+  if (['ISSUE', 'SHIPMENT_OUT', 'TRANSFER_ISSUE', 'TRANSFER_OUT'].includes(type)) return 'warning'
   if (['MOVE', 'STATUS_CHANGE', 'ADJUSTMENT'].includes(type)) return 'info'
   return 'default'
 }
 
 const TRANS_TYPE_LABELS = {
-  RECEIPT_IN: 'Nhập kho',
-  SHIPMENT_OUT: 'Xuất kho',
+  RECEIPT: 'Nhập kho',
+  ISSUE: 'Xuất kho',
   MOVE: 'Di chuyển',
   STATUS_CHANGE: 'Đổi trạng thái',
   ADJUSTMENT: 'Điều chỉnh',
+  TRANSFER_ISSUE: 'Chuyển kho xuất',
+  TRANSFER_RECEIPT: 'Chuyển kho nhập',
+  // Backward compat
+  RECEIPT_IN: 'Nhập kho',
+  SHIPMENT_OUT: 'Xuất kho',
   COUNT_GAIN: 'Kiểm kê tăng',
   COUNT_LOSS: 'Kiểm kê giảm',
   VAS_CONSUME: 'VAS tiêu thụ',

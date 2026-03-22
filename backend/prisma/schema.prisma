@@ -610,6 +610,7 @@ model MdWarehouse {
   salesOrders             SalesOrder[]
   lots                     MdLot[]
   GoodsSplitHeader        GoodsSplitHeader[]
+  ownerAccess             MdOwnerWarehouseAccess[]
 
   @@map("md_warehouse")
 }
@@ -690,9 +691,10 @@ model MdOwner {
   billingEmail        String?   @map("billing_email") @db.VarChar(255)
   billingContact      String?   @map("billing_contact") @db.VarChar(255)
   paymentTerms        String?   @map("payment_terms") @db.VarChar(30)
-  defaultTolerancePct Decimal?  @map("default_tolerance_pct") @db.Decimal(8, 4)
-  defaultWarehouseId  String?   @map("default_warehouse_id") @db.Uuid
-  isActive            Boolean   @default(true) @map("is_active")
+  defaultTolerancePct   Decimal?  @map("default_tolerance_pct") @db.Decimal(8, 4)
+  dualTrackingEnabled   Boolean   @default(false) @map("dual_tracking_enabled")
+  defaultWarehouseId    String?   @map("default_warehouse_id") @db.Uuid
+  isActive              Boolean   @default(true) @map("is_active")
   rowVersion          BigInt    @default(0) @map("row_version")
   createdAt           DateTime  @default(now()) @map("created_at")
   createdBy           String?   @map("created_by") @db.Uuid
@@ -728,9 +730,66 @@ model MdOwner {
   lotsV2             Lot[]
   splitOriginalOwner  GoodsSplitHeader[]           @relation("SplitOriginalOwner")
   splitTargetOwner    GoodsSplitDetail[]           @relation("SplitTargetOwner")
+  warehouseAccess     MdOwnerWarehouseAccess[]
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
+}
+
+enum IncompatibilityRuleType {
+  ITEM_TO_ITEM
+  ITEM_TO_GROUP
+  GROUP_TO_GROUP
+}
+
+model MdItemIncompatibility {
+  id                       String                  @id @default(uuid()) @db.Uuid
+  ruleType                 IncompatibilityRuleType @map("rule_type")
+  itemId                   String?                 @map("item_id") @db.Uuid
+  itemGroupId              String?                 @map("item_group_id") @db.Uuid
+  incompatibleWithItemId   String?                 @map("incompatible_with_item_id") @db.Uuid
+  incompatibleWithGroupId  String?                 @map("incompatible_with_group_id") @db.Uuid
+  reason                   String?                 @db.VarChar(500)
+  isActive                 Boolean                 @default(true) @map("is_active")
+  rowVersion               BigInt                  @default(0) @map("row_version")
+  createdAt                DateTime                @default(now()) @map("created_at")
+  createdBy                String?                 @map("created_by") @db.Uuid
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+  updatedBy                String?                 @map("updated_by") @db.Uuid
+  deactivatedAt            DateTime?               @map("deactivated_at")
+  deactivatedBy            String?                 @map("deactivated_by") @db.Uuid
+
+  item                   MdItem?      @relation("IncompatibilityItem", fields: [itemId], references: [id])
+  itemGroup              MdItemGroup? @relation("IncompatibilityItemGroup", fields: [itemGroupId], references: [id])
+  incompatibleWithItem   MdItem?      @relation("IncompatibleWithItem", fields: [incompatibleWithItemId], references: [id])
+  incompatibleWithGroup  MdItemGroup? @relation("IncompatibleWithGroup", fields: [incompatibleWithGroupId], references: [id])
+
+  @@index([itemId, isActive])
+  @@index([itemGroupId, isActive])
+  @@index([incompatibleWithItemId, isActive])
+  @@index([incompatibleWithGroupId, isActive])
+  @@map("md_item_incompatibility")
+}
+
+model MdOwnerWarehouseAccess {
+  id            String    @id @default(uuid()) @db.Uuid
+  ownerId       String    @map("owner_id") @db.Uuid
+  warehouseId   String    @map("warehouse_id") @db.Uuid
+  isActive      Boolean   @default(true) @map("is_active")
+  rowVersion    BigInt    @default(0) @map("row_version")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  createdBy     String?   @map("created_by") @db.Uuid
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  updatedBy     String?   @map("updated_by") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at")
+  deactivatedBy String?   @map("deactivated_by") @db.Uuid
+
+  owner     MdOwner     @relation(fields: [ownerId], references: [id])
+  warehouse MdWarehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([ownerId, warehouseId])
+  @@index([warehouseId, isActive])
+  @@map("md_owner_warehouse_access")
 }
 
 model MdVendor {
@@ -861,6 +920,8 @@ model MdItem {
   lots                  MdLot[]
   lotsV2                Lot[]
   goodsSplitHeaders     GoodsSplitHeader[]
+  incompatibilityRules        MdItemIncompatibility[] @relation("IncompatibilityItem")
+  incompatibleWithRules       MdItemIncompatibility[] @relation("IncompatibleWithItem")
 
   @@index([cargoForm, isActive])
   @@index([productGroup, isActive])
@@ -1117,11 +1178,17 @@ model MdImportError {
 // ========== Module 3: Inventory Core Engine Enums ==========
 
 enum InventoryTransType {
-  RECEIPT_IN
-  SHIPMENT_OUT
+  RECEIPT
+  ISSUE
   MOVE
   STATUS_CHANGE
   ADJUSTMENT
+  TRANSFER_ISSUE
+  TRANSFER_RECEIPT
+
+  // Deprecated aliases — kept for migration compatibility
+  RECEIPT_IN
+  SHIPMENT_OUT
   COUNT_GAIN
   COUNT_LOSS
   VAS_CONSUME
@@ -1132,9 +1199,12 @@ enum InventoryTransType {
 }
 
 enum InventoryStage {
-  PHYSICAL
   EXPECTED
-  ORDERED
+  REGISTERED
+  ALLOCATED
+  DE_ALLOCATED
+  PHYSICAL
+  DEDUCTED
 }
 
 enum HoldStatus {
@@ -1319,10 +1389,11 @@ model OnHand {
   id             String    @id @default(uuid()) @db.Uuid
   itemId         String    @map("item_id") @db.Uuid
   inventDimId    String    @map("invent_dim_id") @db.Uuid
-  physicalQty    Decimal   @default(0) @map("physical_qty") @db.Decimal(18, 3)
-  reservedQty    Decimal   @default(0) @map("reserved_qty") @db.Decimal(18, 3)
-  availableQty   Decimal   @default(0) @map("available_qty") @db.Decimal(18, 3)
-  orderedQty     Decimal   @default(0) @map("ordered_qty") @db.Decimal(18, 3)
+  physicalQty        Decimal   @default(0) @map("physical_qty") @db.Decimal(18, 3)
+  allocatedQty       Decimal   @default(0) @map("allocated_qty") @db.Decimal(18, 3)
+  availableQty       Decimal   @default(0) @map("available_qty") @db.Decimal(18, 3)
+  inboundOrderedQty  Decimal   @default(0) @map("inbound_ordered_qty") @db.Decimal(18, 3)
+  outboundOrderedQty Decimal   @default(0) @map("outbound_ordered_qty") @db.Decimal(18, 3)
   lotNumber      String?   @map("lot_number") @db.VarChar(50)
   lotId          String?   @map("lot_id") @db.Uuid
   uomId          String    @map("uom_id") @db.Uuid
@@ -1425,7 +1496,7 @@ model InventoryReconciliationResult {
   inventDimId       String                     @map("invent_dim_id") @db.Uuid
   ledgerQty         Decimal                    @map("ledger_qty") @db.Decimal(18, 3)
   onhandPhysicalQty Decimal                    @map("onhand_physical_qty") @db.Decimal(18, 3)
-  reservedQty       Decimal                    @map("reserved_qty") @db.Decimal(18, 3)
+  allocatedQty      Decimal                    @map("allocated_qty") @db.Decimal(18, 3)
   availableQty      Decimal                    @map("available_qty") @db.Decimal(18, 3)
   diffQty           Decimal                    @map("diff_qty") @db.Decimal(18, 3)
   severity          ReconciliationSeverity
@@ -1502,7 +1573,9 @@ model InventoryEventMapping {
   sourceObject   String             @map("source_object") @db.VarChar(40)
   triggerState   String             @map("trigger_state") @db.VarChar(40)
   transType      InventoryTransType @map("trans_type")
+  stage          InventoryStage     @default(PHYSICAL)
   affectPhysical Boolean            @map("affect_physical")
+  affectOrdered  Boolean            @default(false) @map("affect_ordered")
   affectHold     Boolean            @map("affect_hold")
   reversible     Boolean
   activeFlag     Boolean            @default(true) @map("active_flag")
@@ -5190,6 +5263,8 @@ model MdItemGroup {
 
   weighbridgeQtyUom MdUom?   @relation("ItemGroupWeighbridgeUom", fields: [weighbridgeQtyUomId], references: [id])
   items             MdItem[]
+  incompatibilityRules        MdItemIncompatibility[] @relation("IncompatibilityItemGroup")
+  incompatibleWithRules       MdItemIncompatibility[] @relation("IncompatibleWithGroup")
 
   @@map("md_item_groups")
 }

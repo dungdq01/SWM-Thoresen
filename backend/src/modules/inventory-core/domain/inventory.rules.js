@@ -22,12 +22,13 @@ function wouldResultInNegativeStock(currentPhysicalQty, changeQty) {
 }
 
 /**
- * Calculate available qty from physical and reserved
+ * Calculate available qty from physical and allocated
+ * availableQty is a computed value, not a stored bucket
  */
-function calculateAvailableQty(physicalQty, reservedQty) {
+function calculateAvailableQty(physicalQty, allocatedQty) {
   const physical = new Decimal(physicalQty || 0);
-  const reserved = new Decimal(reservedQty || 0);
-  return physical.minus(reserved);
+  const allocated = new Decimal(allocatedQty || 0);
+  return physical.minus(allocated);
 }
 
 /**
@@ -40,7 +41,7 @@ function canAllocateQty(availableQty, requestedQty) {
 }
 
 /**
- * Get the on-hand impact for a trans type
+ * Get the on-hand impact for a trans type (legacy — only physicalQty)
  */
 function getOnHandImpact(transType, qty) {
   const impact = TRANS_TYPE_IMPACT[transType];
@@ -65,6 +66,74 @@ function getOnHandImpact(transType, qty) {
   }
 
   return { fromImpact: new Decimal(0), toImpact: new Decimal(0) };
+}
+
+/**
+ * Stage-based inventory delta — returns deltas for all 4 buckets
+ * This is the core business rule mapping (transType + stage) → bucket effects.
+ *
+ * @param {string} transType - RECEIPT, ISSUE, MOVE, ADJUSTMENT, TRANSFER_ISSUE, TRANSFER_RECEIPT, STATUS_CHANGE
+ * @param {string} stage - EXPECTED, REGISTERED, ALLOCATED, DE_ALLOCATED, PHYSICAL, DEDUCTED
+ * @param {number|string} qty - absolute quantity (always positive)
+ * @returns {{ physicalDelta, allocatedDelta, inboundOrderedDelta, outboundOrderedDelta }}
+ */
+function getInventoryDelta(transType, stage, qty) {
+  const q = new Decimal(qty || 0).abs();
+  const zero = new Decimal(0);
+
+  // --- INBOUND: RECEIPT ---
+  if (transType === InventoryTransType.RECEIPT && stage === 'EXPECTED') {
+    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: q, outboundOrderedDelta: zero };
+  }
+  if (transType === InventoryTransType.RECEIPT && stage === 'REGISTERED') {
+    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+  if (transType === InventoryTransType.RECEIPT && stage === 'PHYSICAL') {
+    return { physicalDelta: q, allocatedDelta: zero, inboundOrderedDelta: q.negated(), outboundOrderedDelta: zero };
+  }
+
+  // --- OUTBOUND: ISSUE ---
+  if (transType === InventoryTransType.ISSUE && stage === 'EXPECTED') {
+    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: q };
+  }
+  if (transType === InventoryTransType.ISSUE && stage === 'ALLOCATED') {
+    return { physicalDelta: zero, allocatedDelta: q, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+  if (transType === InventoryTransType.ISSUE && stage === 'DE_ALLOCATED') {
+    return { physicalDelta: zero, allocatedDelta: q.negated(), inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+  if (transType === InventoryTransType.ISSUE && stage === 'PHYSICAL') {
+    // Pick/Load — internal move, physicalQty handled by MOVE-like dim from/to logic
+    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+  if (transType === InventoryTransType.ISSUE && stage === 'DEDUCTED') {
+    return { physicalDelta: q.negated(), allocatedDelta: q.negated(), inboundOrderedDelta: zero, outboundOrderedDelta: q.negated() };
+  }
+
+  // --- TRANSFER ---
+  if (transType === InventoryTransType.TRANSFER_ISSUE && stage === 'EXPECTED') {
+    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: q };
+  }
+  if (transType === InventoryTransType.TRANSFER_ISSUE && stage === 'DEDUCTED') {
+    return { physicalDelta: q.negated(), allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: q.negated() };
+  }
+  if (transType === InventoryTransType.TRANSFER_RECEIPT && stage === 'PHYSICAL') {
+    return { physicalDelta: q, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+
+  // --- MOVE / STATUS_CHANGE — handled separately via dim from/to ---
+  if (transType === InventoryTransType.MOVE || transType === InventoryTransType.STATUS_CHANGE) {
+    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+
+  // --- ADJUSTMENT (count gain/loss, VAS waste, manual) — always PHYSICAL stage ---
+  if (transType === InventoryTransType.ADJUSTMENT && stage === 'PHYSICAL') {
+    // qty sign determined by caller; for gain use +qty, for loss use -qty
+    return { physicalDelta: q, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  }
+
+  // Default: no effect
+  return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
 }
 
 /**
@@ -150,6 +219,7 @@ module.exports = {
   calculateAvailableQty,
   canAllocateQty,
   getOnHandImpact,
+  getInventoryDelta,
   validateDimensionRequirements,
   canReverseTrans,
   calculateReconciliationDiff,

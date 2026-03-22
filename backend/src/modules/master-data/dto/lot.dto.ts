@@ -34,6 +34,10 @@ export class CreateLotDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class GetOrCreateLotDto {

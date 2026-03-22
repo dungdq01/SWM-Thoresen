@@ -347,7 +347,7 @@ export class InboundBridgeAdapter {
               await this.postingEngine.postInventory({
                 externalId: `RCPT-AUTO-${receipt.id}-${line.id}-${Date.now()}`,
                 correlationId: receipt.correlationId || log.id,
-                eventCode: 'RECEIPT_RECEIVED',
+                eventCode: 'GOODS_RECEIVED',
                 refType: 'RECEIPT',
                 refId: receipt.id,
                 refLineId: line.id,

@@ -466,7 +466,7 @@ class ReceiptService {
           lastPostingResult = await this.postingEngine.postInventory({
             externalId: `RCPT-${receipt.id}-${line.id}`,
             correlationId: receipt.correlationId,
-            eventCode: 'RECEIPT_RECEIVED',
+            eventCode: 'GOODS_RECEIVED',
             refType: 'RECEIPT',
             refId: receipt.id,
             refLineId: line.id,

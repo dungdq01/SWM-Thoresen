@@ -35,6 +35,10 @@ export class CreateVendorDto {
   @IsOptional()
   @IsString()
   taxCode?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateVendorDto {

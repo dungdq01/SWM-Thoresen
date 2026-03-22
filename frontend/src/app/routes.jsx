@@ -37,6 +37,8 @@ const VesselsPage = lazy(() => import('@pages/master-data').then(m => ({ default
 const OwnerSkuMappingsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerSkuMappingsPage })))
 const LocationTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationTypesPage })))
 const LotsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LotsPage })))
+const OwnerWarehouseAccessPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerWarehouseAccessPage })))
+const ItemIncompatibilitiesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemIncompatibilitiesPage })))
 
 // Inventory Core Pages
 const InventoryCoreLayout = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryCoreLayout })))
@@ -275,6 +277,14 @@ export const router = createBrowserRouter([
           {
             path: 'lots',
             element: withSuspense(LotsPage),
+          },
+          {
+            path: 'owner-warehouse-access',
+            element: withSuspense(OwnerWarehouseAccessPage),
+          },
+          {
+            path: 'item-incompatibilities',
+            element: withSuspense(ItemIncompatibilitiesPage),
           },
         ],
       },

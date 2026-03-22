@@ -387,6 +387,11 @@
 
 ## Cross-Module Dependencies (Module 2)
 
+### Module 2 depends on:
+| Source Module | Dependency | Usage |
+|---------------|------------|-------|
+| Module 3 | `OnHand`, `InventDim` | **Inventory Guard** — check `physicalQty > 0` trước khi deactivate Owner, Item, Location, Zone, Warehouse. Query trực tiếp qua Prisma transaction trong service layer. |
+
 ### Module 2 is used by:
 | Target Module | Entity/Service | Usage |
 |---------------|----------------|-------|
@@ -411,50 +416,66 @@
 
 # Module 3: Inventory Core Engine
 
-**Status:** ✅ Completed  
-**Code Path:** `src/modules/inventory-core`  
-**Documentation:** [`docs/module-3-inventory-core.md`](./module-3-inventory-core.md)  
+**Status:** ✅ Completed (v2.1 — Stage-based delta logic)
+**Code Path:** `src/modules/inventory-core`
+**Documentation:** [`docs/module-3-inventory-core.md`](./module-3-inventory-core.md)
 **Database Docs:** [`prisma/docs/module-3-inventory-core.md`](../prisma/docs/module-3-inventory-core.md)
+**Last Updated:** 2026-03-23
 
 ## Database Tables (10 tables)
 
 | Table | Description | Group |
 |-------|-------------|-------|
 | `invent_dim` | Dimension combination registry | Core |
-| `invent_trans` | Immutable ledger transactions | Core |
-| `on_hand` | Current balance projection | Core |
-| `inventory_hold` | Allocation-based holds | Core |
+| `invent_trans` | Immutable ledger transactions (với `stage` field) | Core |
+| `on_hand` | Current balance — 4 bucket: `physical_qty`, `allocated_qty`, `inbound_ordered_qty`, `outbound_ordered_qty` + computed `available_qty` | Core |
+| `inventory_hold` | Allocation-based holds (internal capability cho M5) | Core |
 | `inventory_reversal_link` | Link original ↔ reversal trans | Core |
 | `inventory_reconciliation_run` | Reconciliation run header | Control |
 | `inventory_reconciliation_result` | Reconciliation mismatch details | Control |
 | `inventory_snapshot_run` | Snapshot run header | Control |
 | `daily_storage_snapshot` | Daily snapshot data | Control |
-| `inventory_event_mapping` | Event-to-transaction mapping | Config |
+| `inventory_event_mapping` | Event → transType + stage mapping (29 event codes) | Config |
+
+## Inventory Stages & Transaction Types
+
+### 6 Stages
+| Stage | Ý nghĩa |
+|-------|---------|
+| `EXPECTED` | Kế hoạch/demand — ảnh hưởng `inboundOrderedQty` hoặc `outboundOrderedQty` |
+| `REGISTERED` | Tạo chứng từ — chưa thay đổi bucket |
+| `ALLOCATED` | Giữ chỗ — +`allocatedQty` |
+| `DE_ALLOCATED` | Bỏ giữ chỗ — -`allocatedQty` |
+| `PHYSICAL` | Thay đổi vật lý — ±`physicalQty` |
+| `DEDUCTED` | Hoàn tất xuất — -`physicalQty`, -`allocatedQty`, -`outboundOrderedQty` |
+
+### 7 Transaction Types
+`RECEIPT`, `ISSUE`, `MOVE`, `STATUS_CHANGE`, `ADJUSTMENT`, `TRANSFER_ISSUE`, `TRANSFER_RECEIPT`
 
 ## API Endpoints
 
 ### Posting APIs
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/v1/inventory/postings` | Create inventory transaction |
-| POST | `/api/v1/inventory/postings/reverse` | Reverse a transaction |
+| POST | `/api/v1/inventory/postings` | Create inventory transaction (stage-based delta) |
+| POST | `/api/v1/inventory/postings/reverse` | Reverse a transaction (negate all 4 bucket deltas) |
 
 ### On-Hand Query APIs
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/inventory/onhand` | Query current stock |
-| GET | `/api/v1/inventory/onhand/availability` | Check stock availability |
+| GET | `/api/v1/inventory/onhand` | Query current stock (4 bucket + availableQty computed) |
+| GET | `/api/v1/inventory/onhand/availability` | Check stock availability (ledger + pessimistic lock) |
 
 ### Transaction Query APIs
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/inventory/transactions` | Query transaction history |
-| GET | `/api/v1/inventory/transactions/:transId` | Get transaction detail |
+| GET | `/api/v1/inventory/transactions/:transId` | Get transaction detail (incl. stage) |
 
-### Hold APIs
+### Hold APIs (internal capability cho M5 Outbound)
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/v1/inventory/holds` | Create hold/allocation |
+| POST | `/api/v1/inventory/holds` | Create allocation hold |
 | GET | `/api/v1/inventory/holds` | List holds |
 | GET | `/api/v1/inventory/holds/:holdId` | Get hold detail |
 | POST | `/api/v1/inventory/holds/:holdId/release` | Release hold |
@@ -492,40 +513,107 @@
 | Module 2 | `MdInventoryStatus` | Dimension + allocatable check |
 | Module 2 | `MdItem` | Item validation |
 | Module 2 | `MdUom` | UOM validation |
+| Module 2 | `LotService` | Lot lifecycle (M3 chỉ nhận `lotId` reference) |
 
-### Modules that depend on Module 3:
-| Target Module | Dependency                                       | Usage                            |
-| ---------------| --------------------------------------------------| ----------------------------------|
-| Module 4      | `PostingEngineService`                           | Post receipt inbound             |
-| Module 5      | `PostingEngineService`, `HoldService`            | Allocate + ship outbound         |
-| Module 6      | `PostingEngineService`                           | Adjustment, status change, count |
-| Module 7      | `PostingEngineService`                           | Putaway, pick movement           |
-| Module 9      | `PostingEngineService`                           | VAS consume/produce              |
-| Module 10     | `SnapshotService`, `DailyStorageSnapshot`        | Billing input                    |
-| Module 11     | `ReconciliationService`, `InventTrans`, `OnHand` | Reporting queries                |
+### Modules that call M3 Posting Engine — Event Codes thực tế:
+| Module | Service gọi M3 | Event Codes gửi | File |
+|--------|----------------|-----------------|------|
+| **M4 Inbound** | `purchase-order.service.js` | `PO_CONFIRMED` | `src/modules/inbound/application/purchase-order.service.js` |
+| **M4 Inbound** | `receipt.service.js` | `GOODS_RECEIVED` | `src/modules/inbound/application/receipt.service.js` |
+| **M5 Outbound** | `sales-order.service.ts` | `SO_CONFIRMED` | `src/modules/outbound/services/sales-order.service.ts` |
+| **M5 Outbound** | `shipShipment.usecase.ts` | `SHIP_CONFIRMED` | `src/modules/outbound/application/shipShipment.usecase.ts` |
+| **M5 Outbound** | `m3-adapter.service.ts` | `SHIP_CONFIRMED` | `src/modules/outbound/infra/m3-adapter.service.ts` |
+| **M5 Outbound** | `HoldService` (direct) | allocation via hold API | `src/modules/inventory-core/application/hold.service.js` |
+| **M7 Work Exec** | via posting API | `PUTAWAY_COMPLETED`, `PICK_CONFIRMED` | posting API call |
+| **M8 Integration** | `inbound-bridge.adapter_draft.ts` | `GOODS_RECEIVED` | `src/modules/integration-platform/adapters/` |
+| **M8 Integration** | `outbound-bridge.adapter_draft.ts` | `SHIP_CONFIRMED` | `src/modules/integration-platform/adapters/` |
+| **M9 VAS** | `vas-inventory.facade.ts` | reads `allocatedQty` | `src/modules/vas/facades/vas-inventory.facade.ts` |
+| **M11 Reporting** | `dashboard.service.ts` | queries `RECEIPT`/`ISSUE` transType | `src/modules/reporting/services/dashboard.service.ts` |
 
-## Backend Services (9 services)
+### Modules that read M3 data:
+| Module | What they read | Usage |
+|--------|---------------|-------|
+| Module 2 | `OnHand`, `InventDim` | **Inventory Guard** — check stock trước khi deactivate master data |
+| Module 5 | `OnHand.allocatedQty` | Availability check trước khi allocate |
+| Module 9 | `OnHand.physicalQty`, `OnHand.allocatedQty` | VAS availability check |
+| Module 10 | `DailyStorageSnapshot` | Billing input — tính phí lưu kho |
+| Module 11 | `InventTrans`, `OnHand`, `ReconciliationResult` | Dashboard, audit trail, reconciliation report |
+
+## Event Mapping — Full Stage-based (29 event codes in DB)
+
+### Inbound (M4 → M3)
+| Event Code | Stage | Trans Type | Bucket Effect |
+|------------|-------|------------|---------------|
+| `PO_CONFIRMED` | EXPECTED | RECEIPT | +inboundOrderedQty |
+| `RECEIPT_CREATED` | REGISTERED | RECEIPT | (audit only) |
+| `GOODS_RECEIVED` | PHYSICAL | RECEIPT | +physicalQty, -inboundOrderedQty |
+| `PUTAWAY_COMPLETED` | PHYSICAL | MOVE | move location |
+
+### Outbound (M5 → M3)
+| Event Code | Stage | Trans Type | Bucket Effect |
+|------------|-------|------------|---------------|
+| `SO_CONFIRMED` | EXPECTED | ISSUE | +outboundOrderedQty |
+| `ALLOCATION_CREATED` | ALLOCATED | ISSUE | +allocatedQty |
+| `ALLOCATION_RELEASED` | DE_ALLOCATED | ISSUE | -allocatedQty |
+| `PICK_CONFIRMED` | PHYSICAL | ISSUE | internal move |
+| `LOAD_CONFIRMED` | PHYSICAL | ISSUE | internal move |
+| `SHIP_CONFIRMED` | DEDUCTED | ISSUE | -physicalQty, -allocatedQty, -outboundOrderedQty |
+
+### Transfer (M6 → M3)
+| Event Code | Stage | Trans Type | Bucket Effect |
+|------------|-------|------------|---------------|
+| `TRANSFER_ORDER_CONFIRMED` | EXPECTED | TRANSFER_ISSUE | +outboundOrderedQty (source) |
+| `TRANSFER_ISSUED` | DEDUCTED | TRANSFER_ISSUE | -physicalQty, -outboundOrderedQty (source) |
+| `TRANSFER_RECEIVED` | PHYSICAL | TRANSFER_RECEIPT | +physicalQty (destination) |
+
+### VAS (M9 → M3)
+| Event Code | Stage | Trans Type | Bucket Effect |
+|------------|-------|------------|---------------|
+| `VAS_ORDER_CONFIRMED` | EXPECTED | ISSUE | +outboundOrderedQty (raw material) |
+| `VAS_CONSUMED` | DEDUCTED | ISSUE | -physicalQty, -outboundOrderedQty |
+| `VAS_PRODUCED` | PHYSICAL | RECEIPT | +physicalQty (finished goods) |
+| `VAS_WASTE` | PHYSICAL | ADJUSTMENT | -physicalQty (loss) |
+
+### Inventory Control (M6 → M3)
+| Event Code | Stage | Trans Type | Bucket Effect |
+|------------|-------|------------|---------------|
+| `MOVE_COMPLETED` | PHYSICAL | MOVE | move location |
+| `STATUS_CHANGE_CONFIRMED` | PHYSICAL | STATUS_CHANGE | change dim |
+| `ADJUSTMENT_APPROVED` | PHYSICAL | ADJUSTMENT | ±physicalQty |
+| `COUNT_GAIN_RECONCILED` | PHYSICAL | ADJUSTMENT | +physicalQty |
+| `COUNT_LOSS_RECONCILED` | PHYSICAL | ADJUSTMENT | -physicalQty |
+
+### Backward Compat (deprecated)
+| Event Code | Maps to | Note |
+|------------|---------|------|
+| `RECEIPT_RECEIVED` | RECEIPT + PHYSICAL | use `GOODS_RECEIVED` |
+| `SHIPMENT_SHIPPED` | ISSUE + DEDUCTED | use `SHIP_CONFIRMED` |
+| `DIRECT_ADJUSTMENT` | ADJUSTMENT + PHYSICAL | testing only |
+
+## Backend Services (8 services)
 
 | Service | Description |
 |---------|-------------|
-| `PostingEngineService` | Core posting logic with idempotency |
-| `ReversalEngineService` | Reversal with externalId idempotency check |
-| `HoldService` | Hold/allocation management |
-| `OnHandService` | OnHand query with Decimal.js + DB GROUP BY |
+| `PostingEngineService` | Core posting — uses `getInventoryDelta(transType, stage, qty)` for all 4 bucket deltas |
+| `ReversalEngineService` | Reversal — negates original delta across all 4 buckets |
+| `HoldService` | Allocation hold — internal capability for M5 outbound |
+| `OnHandService` | OnHand query with Decimal.js + aggregation |
 | `TransactionQueryService` | Transaction history queries |
-| `InventDimService` | Dimension management with hash |
+| `InventDimService` | Dimension management with SHA-256 hash |
 | `ReconciliationService` | Ledger vs OnHand comparison |
 | `SnapshotService` | Daily storage snapshot for M10 Billing |
-| `LotService` | Lot management (get-or-create, FIFO query) |
+
+> **LotService** không thuộc M3 — đã chuyển sang Module 2 (Master Data). M3 chỉ nhận `lotId` như dimension/reference.
 
 ## RBAC Permissions
 
 | Permission Code | Description |
 |-----------------|-------------|
 | `INVENTORY.POSTING.CREATE` | Tạo inventory transaction |
+| `INVENTORY.POSTING.READ` | Xem inventory transaction |
 | `INVENTORY.REVERSAL.CREATE` | Reverse transaction |
 | `INVENTORY.ONHAND.READ` | Query on-hand |
-| `INVENTORY.HOLD.CREATE` | Tạo hold |
+| `INVENTORY.HOLD.CREATE` | Tạo hold (internal, called by M5) |
 | `INVENTORY.HOLD.READ` | Xem hold |
 | `INVENTORY.HOLD.RELEASE` | Release hold |
 | `INVENTORY.HOLD.CANCEL` | Cancel hold |

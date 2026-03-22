@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreateSalesOrderDto, UpdateSalesOrderDto, SalesOrderQueryDto } from '../dto/sales-order.dto';
 import { v4 as uuidv4 } from 'uuid';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
 
 // Map frontend soType to schema orderType
 const SO_TYPE_MAP: Record<string, string> = {
@@ -262,6 +264,40 @@ export class SalesOrderService {
       data: { status: 'CONFIRMED', updatedBy: userId },
       include: { owner: true, lines: { include: { item: true, uom: true } } },
     });
+
+    // Post SO_CONFIRMED to M3 for each line → increases outboundOrderedQty
+    try {
+      const postingEngine = new PostingEngineService(this.prisma);
+      const warehouse = await this.prisma.mdWarehouse.findUnique({ where: { id: existing.warehouseId } });
+      const owner = await this.prisma.mdOwner.findUnique({ where: { id: existing.ownerId } });
+      const firstLocation = await this.prisma.mdLocation.findFirst({ where: { warehouseId: existing.warehouseId, isActive: true }, orderBy: { locationCode: 'asc' } });
+
+      for (const line of (updated as any).lines || []) {
+        const uomCode = line.uom?.uomCode || 'KG';
+
+        await postingEngine.postInventory({
+          externalId: `SO-CONFIRM-${id}-${line.id}`,
+          correlationId: `corr-so-confirm-${id}`,
+          eventCode: 'SO_CONFIRMED',
+          refType: 'SALES_ORDER',
+          refId: id,
+          refLineId: line.id,
+          itemId: line.itemId,
+          qty: String(line.expectedQtyKg || line.expectedQty || 0),
+          uomCode,
+          dimFrom: {
+            warehouseCode: warehouse?.warehouseCode,
+            locationCode: firstLocation?.locationCode || 'SHIPPING',
+            ownerCode: owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: 'SYSTEM',
+          postedBy: userId,
+        });
+      }
+    } catch (err: any) {
+      console.error(`[M5→M3] SO_CONFIRMED posting failed for SO ${id} (non-blocking):`, err.message);
+    }
 
     return this.transformSalesOrder(updated);
   }

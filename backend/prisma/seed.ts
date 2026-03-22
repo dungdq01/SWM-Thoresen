@@ -141,6 +141,21 @@ const permissionSeeds: Array<[string, string, string, string, boolean]> = [
   ['master_data.lot.update', 'MASTER_DATA', 'LOT', 'UPDATE', true],
   ['master_data.lot.deactivate', 'MASTER_DATA', 'LOT', 'DEACTIVATE', true],
   ['master_data.lot.reactivate', 'MASTER_DATA', 'LOT', 'REACTIVATE', true],
+  // Owner SKU Mapping
+  ['master_data.owner_sku_mapping.view', 'MASTER_DATA', 'OWNER_SKU_MAPPING', 'VIEW', false],
+  ['master_data.owner_sku_mapping.create', 'MASTER_DATA', 'OWNER_SKU_MAPPING', 'CREATE', true],
+  ['master_data.owner_sku_mapping.update', 'MASTER_DATA', 'OWNER_SKU_MAPPING', 'UPDATE', true],
+  ['master_data.owner_sku_mapping.delete', 'MASTER_DATA', 'OWNER_SKU_MAPPING', 'DELETE', true],
+  // Owner Warehouse Access
+  ['master_data.owner_warehouse_access.view', 'MASTER_DATA', 'OWNER_WAREHOUSE_ACCESS', 'VIEW', false],
+  ['master_data.owner_warehouse_access.create', 'MASTER_DATA', 'OWNER_WAREHOUSE_ACCESS', 'CREATE', true],
+  ['master_data.owner_warehouse_access.delete', 'MASTER_DATA', 'OWNER_WAREHOUSE_ACCESS', 'DELETE', true],
+  // Item Incompatibility
+  ['master_data.item_incompatibility.view', 'MASTER_DATA', 'ITEM_INCOMPATIBILITY', 'VIEW', false],
+  ['master_data.item_incompatibility.create', 'MASTER_DATA', 'ITEM_INCOMPATIBILITY', 'CREATE', true],
+  ['master_data.item_incompatibility.update', 'MASTER_DATA', 'ITEM_INCOMPATIBILITY', 'UPDATE', true],
+  ['master_data.item_incompatibility.deactivate', 'MASTER_DATA', 'ITEM_INCOMPATIBILITY', 'DEACTIVATE', true],
+  ['master_data.item_incompatibility.reactivate', 'MASTER_DATA', 'ITEM_INCOMPATIBILITY', 'REACTIVATE', true],
   // Inbound: Purchase Orders
   ['inbound.po.view', 'INBOUND', 'PO', 'VIEW', false],
   ['inbound.po.create', 'INBOUND', 'PO', 'CREATE', true],
@@ -1369,9 +1384,10 @@ async function main() {
           itemId: ohItemId,
           inventDimId: ohDimId,
           physicalQty: oh.qty,
-          reservedQty: 0,
+          allocatedQty: 0,
           availableQty: oh.qty,
-          orderedQty: 0,
+          inboundOrderedQty: 0,
+          outboundOrderedQty: 0,
           uomId: uomKgId,
           lastMovementAt: new Date(),
         },
@@ -1391,31 +1407,51 @@ async function main() {
   // ========== Master Data Sample (expanded) ==========
   await seedMasterDataSample(prisma);
 
-  // ========== Module 3: Inventory Event Mapping ==========
+  // ========== Module 3: Inventory Event Mapping (stage-based) ==========
   const eventMappingSeeds: Array<{
     eventCode: string;
     sourceModule: string;
     sourceObject: string;
     triggerState: string;
     transType: InventoryTransType;
+    stage: InventoryStage;
     affectPhysical: boolean;
+    affectOrdered: boolean;
     affectHold: boolean;
     reversible: boolean;
   }> = [
-    { eventCode: 'RECEIPT_RECEIVED', sourceModule: 'INBOUND', sourceObject: 'Receipt', triggerState: 'RECEIVED', transType: InventoryTransType.RECEIPT_IN, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'PUTAWAY_COMPLETED', sourceModule: 'WORK_EXEC', sourceObject: 'WorkLine', triggerState: 'COMPLETED', transType: InventoryTransType.MOVE, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'SHIPMENT_SHIPPED', sourceModule: 'OUTBOUND', sourceObject: 'Shipment', triggerState: 'SHIPPED', transType: InventoryTransType.SHIPMENT_OUT, affectPhysical: true, affectHold: true, reversible: true },
-    { eventCode: 'MOVE_COMPLETED', sourceModule: 'INV_CTRL', sourceObject: 'MoveOrder', triggerState: 'COMPLETED', transType: InventoryTransType.MOVE, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'STATUS_CHANGE_CONFIRMED', sourceModule: 'INV_CTRL', sourceObject: 'StatusChange', triggerState: 'CONFIRMED', transType: InventoryTransType.STATUS_CHANGE, affectPhysical: false, affectHold: false, reversible: true },
-    { eventCode: 'ADJUSTMENT_APPROVED', sourceModule: 'INV_CTRL', sourceObject: 'Adjustment', triggerState: 'APPROVED', transType: InventoryTransType.ADJUSTMENT, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'COUNT_GAIN_RECONCILED', sourceModule: 'INV_CTRL', sourceObject: 'CycleCount', triggerState: 'RECONCILED', transType: InventoryTransType.COUNT_GAIN, affectPhysical: true, affectHold: false, reversible: false },
-    { eventCode: 'COUNT_LOSS_RECONCILED', sourceModule: 'INV_CTRL', sourceObject: 'CycleCount', triggerState: 'RECONCILED', transType: InventoryTransType.COUNT_LOSS, affectPhysical: true, affectHold: false, reversible: false },
-    { eventCode: 'VAS_CONSUME', sourceModule: 'VAS', sourceObject: 'VasWorkOrder', triggerState: 'COMPLETED', transType: InventoryTransType.VAS_CONSUME, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'VAS_PRODUCE', sourceModule: 'VAS', sourceObject: 'VasWorkOrder', triggerState: 'COMPLETED', transType: InventoryTransType.VAS_PRODUCE, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'TRANSFER_OUT', sourceModule: 'INV_CTRL', sourceObject: 'TransferOrder', triggerState: 'SHIPPED', transType: InventoryTransType.TRANSFER_OUT, affectPhysical: true, affectHold: false, reversible: true },
-    { eventCode: 'TRANSFER_IN', sourceModule: 'INV_CTRL', sourceObject: 'TransferOrder', triggerState: 'RECEIVED', transType: InventoryTransType.TRANSFER_IN, affectPhysical: true, affectHold: false, reversible: true },
-    // Direct adjustment for testing/seeding
-    { eventCode: 'DIRECT_ADJUSTMENT', sourceModule: 'FOUNDATION', sourceObject: 'Manual', triggerState: 'APPROVED', transType: InventoryTransType.ADJUSTMENT, affectPhysical: true, affectHold: false, reversible: true },
+    // Inbound
+    { eventCode: 'PO_CONFIRMED', sourceModule: 'M4', sourceObject: 'PURCHASE_ORDER', triggerState: 'CONFIRMED', transType: InventoryTransType.RECEIPT, stage: InventoryStage.EXPECTED, affectPhysical: false, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'RECEIPT_CREATED', sourceModule: 'M4', sourceObject: 'RECEIPT', triggerState: 'CREATED', transType: InventoryTransType.RECEIPT, stage: InventoryStage.REGISTERED, affectPhysical: false, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'GOODS_RECEIVED', sourceModule: 'M4', sourceObject: 'RECEIPT', triggerState: 'RECEIVED', transType: InventoryTransType.RECEIPT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'PUTAWAY_COMPLETED', sourceModule: 'M7', sourceObject: 'WORK_LINE', triggerState: 'COMPLETED', transType: InventoryTransType.MOVE, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    // Outbound
+    { eventCode: 'SO_CONFIRMED', sourceModule: 'M5', sourceObject: 'SALES_ORDER', triggerState: 'CONFIRMED', transType: InventoryTransType.ISSUE, stage: InventoryStage.EXPECTED, affectPhysical: false, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'ALLOCATION_CREATED', sourceModule: 'M5', sourceObject: 'SHIPMENT', triggerState: 'ALLOCATED', transType: InventoryTransType.ISSUE, stage: InventoryStage.ALLOCATED, affectPhysical: false, affectOrdered: false, affectHold: true, reversible: true },
+    { eventCode: 'ALLOCATION_RELEASED', sourceModule: 'M5', sourceObject: 'SHIPMENT', triggerState: 'DEALLOCATED', transType: InventoryTransType.ISSUE, stage: InventoryStage.DE_ALLOCATED, affectPhysical: false, affectOrdered: false, affectHold: true, reversible: false },
+    { eventCode: 'PICK_CONFIRMED', sourceModule: 'M7', sourceObject: 'WORK_LINE', triggerState: 'COMPLETED', transType: InventoryTransType.ISSUE, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'LOAD_CONFIRMED', sourceModule: 'M5', sourceObject: 'SHIPMENT', triggerState: 'LOADED', transType: InventoryTransType.ISSUE, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'SHIP_CONFIRMED', sourceModule: 'M5', sourceObject: 'SHIPMENT', triggerState: 'SHIPPED', transType: InventoryTransType.ISSUE, stage: InventoryStage.DEDUCTED, affectPhysical: true, affectOrdered: true, affectHold: true, reversible: true },
+    // Transfer
+    { eventCode: 'TRANSFER_ORDER_CONFIRMED', sourceModule: 'M6', sourceObject: 'TRANSFER', triggerState: 'CONFIRMED', transType: InventoryTransType.TRANSFER_ISSUE, stage: InventoryStage.EXPECTED, affectPhysical: false, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'TRANSFER_ISSUED', sourceModule: 'M6', sourceObject: 'TRANSFER', triggerState: 'SHIPPED', transType: InventoryTransType.TRANSFER_ISSUE, stage: InventoryStage.DEDUCTED, affectPhysical: true, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'TRANSFER_RECEIVED', sourceModule: 'M6', sourceObject: 'TRANSFER', triggerState: 'RECEIVED', transType: InventoryTransType.TRANSFER_RECEIPT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    // VAS
+    { eventCode: 'VAS_ORDER_CONFIRMED', sourceModule: 'M9', sourceObject: 'VAS_ORDER', triggerState: 'CONFIRMED', transType: InventoryTransType.ISSUE, stage: InventoryStage.EXPECTED, affectPhysical: false, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'VAS_CONSUMED', sourceModule: 'M9', sourceObject: 'VAS_ORDER', triggerState: 'COMPLETED', transType: InventoryTransType.ISSUE, stage: InventoryStage.DEDUCTED, affectPhysical: true, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'VAS_PRODUCED', sourceModule: 'M9', sourceObject: 'VAS_ORDER', triggerState: 'COMPLETED', transType: InventoryTransType.RECEIPT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'VAS_WASTE', sourceModule: 'M9', sourceObject: 'VAS_ORDER', triggerState: 'COMPLETED', transType: InventoryTransType.ADJUSTMENT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    // Inventory Control
+    { eventCode: 'MOVE_COMPLETED', sourceModule: 'M6', sourceObject: 'INVENTORY_CONTROL', triggerState: 'COMPLETED', transType: InventoryTransType.MOVE, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'STATUS_CHANGE_CONFIRMED', sourceModule: 'M6', sourceObject: 'INVENTORY_CONTROL', triggerState: 'CONFIRMED', transType: InventoryTransType.STATUS_CHANGE, stage: InventoryStage.PHYSICAL, affectPhysical: false, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'ADJUSTMENT_APPROVED', sourceModule: 'M6', sourceObject: 'INVENTORY_CONTROL', triggerState: 'APPROVED', transType: InventoryTransType.ADJUSTMENT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'COUNT_GAIN_RECONCILED', sourceModule: 'M6', sourceObject: 'CYCLE_COUNT', triggerState: 'RECONCILED', transType: InventoryTransType.ADJUSTMENT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    { eventCode: 'COUNT_LOSS_RECONCILED', sourceModule: 'M6', sourceObject: 'CYCLE_COUNT', triggerState: 'RECONCILED', transType: InventoryTransType.ADJUSTMENT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
+    // Backward compat (deprecated)
+    { eventCode: 'RECEIPT_RECEIVED', sourceModule: 'M4', sourceObject: 'RECEIPT', triggerState: 'RECEIVED', transType: InventoryTransType.RECEIPT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: true, affectHold: false, reversible: true },
+    { eventCode: 'SHIPMENT_SHIPPED', sourceModule: 'M5', sourceObject: 'SHIPMENT', triggerState: 'SHIPPED', transType: InventoryTransType.ISSUE, stage: InventoryStage.DEDUCTED, affectPhysical: true, affectOrdered: true, affectHold: true, reversible: true },
+    // Direct adjustment for testing
+    { eventCode: 'DIRECT_ADJUSTMENT', sourceModule: 'FOUNDATION', sourceObject: 'Manual', triggerState: 'APPROVED', transType: InventoryTransType.ADJUSTMENT, stage: InventoryStage.PHYSICAL, affectPhysical: true, affectOrdered: false, affectHold: false, reversible: true },
   ];
 
   for (const em of eventMappingSeeds) {

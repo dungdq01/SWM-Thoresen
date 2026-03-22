@@ -6,7 +6,7 @@ const { Decimal } = require('decimal.js');
 const { InventTransRepository } = require('../infra/invent-trans.repository');
 const { OnHandRepository } = require('../infra/onhand.repository');
 const { ReversalLinkRepository } = require('../infra/reversal-link.repository');
-const { getOnHandImpact, canReverseTrans } = require('../domain/inventory.rules');
+const { getOnHandImpact, getInventoryDelta, canReverseTrans } = require('../domain/inventory.rules');
 const {
   transNotFoundError,
   alreadyReversedError,
@@ -128,24 +128,34 @@ class ReversalEngineService {
       );
 
       const originalQty = new Decimal(originalTrans.qty);
-      const { fromImpact, toImpact } = getOnHandImpact(originalTrans.transType, originalQty.abs());
+      const isMoveLike = originalTrans.transType === 'MOVE' || originalTrans.transType === 'STATUS_CHANGE';
 
-      if (originalTrans.dimToId && !toImpact.equals(0)) {
-        await this.updateOnHandReverse(
-          originalTrans.itemId,
-          originalTrans.dimToId,
-          toImpact.negated(),
-          tx
-        );
-      }
-
-      if (originalTrans.dimFromId && !fromImpact.equals(0)) {
-        await this.updateOnHandReverse(
-          originalTrans.itemId,
-          originalTrans.dimFromId,
-          fromImpact.negated(),
-          tx
-        );
+      if (isMoveLike) {
+        // MOVE/STATUS_CHANGE: reverse physical dim from/to
+        const { fromImpact, toImpact } = getOnHandImpact(originalTrans.transType, originalQty.abs());
+        if (originalTrans.dimToId && !toImpact.equals(0)) {
+          await this.updateOnHandReverse(originalTrans.itemId, originalTrans.dimToId, {
+            physicalDelta: toImpact.negated().toFixed(3),
+          }, tx);
+        }
+        if (originalTrans.dimFromId && !fromImpact.equals(0)) {
+          await this.updateOnHandReverse(originalTrans.itemId, originalTrans.dimFromId, {
+            physicalDelta: fromImpact.negated().toFixed(3),
+          }, tx);
+        }
+      } else {
+        // Stage-based: negate the original delta
+        const originalDelta = getInventoryDelta(originalTrans.transType, originalTrans.stage, originalQty.abs());
+        const reversedDelta = {
+          physicalDelta: originalDelta.physicalDelta.negated().toFixed(3),
+          allocatedDelta: originalDelta.allocatedDelta.negated().toFixed(3),
+          inboundOrderedDelta: originalDelta.inboundOrderedDelta.negated().toFixed(3),
+          outboundOrderedDelta: originalDelta.outboundOrderedDelta.negated().toFixed(3),
+        };
+        const targetDimId = originalTrans.dimToId || originalTrans.dimFromId;
+        if (targetDimId) {
+          await this.updateOnHandReverse(originalTrans.itemId, targetDimId, reversedDelta, tx);
+        }
       }
 
       return {
@@ -180,9 +190,9 @@ class ReversalEngineService {
   }
 
   /**
-   * Update on-hand for reversal
+   * Update on-hand for reversal — accepts full delta object
    */
-  async updateOnHandReverse(itemId, inventDimId, qtyChange, tx) {
+  async updateOnHandReverse(itemId, inventDimId, deltaChanges, tx) {
     const onHand = await this.onHandRepo.findByItemAndDim(itemId, inventDimId, tx);
     if (!onHand) {
       return null;
@@ -190,7 +200,7 @@ class ReversalEngineService {
 
     return this.onHandRepo.updateQty(
       onHand.id,
-      { physicalDelta: qtyChange.toFixed(3), isMovement: true },
+      { ...deltaChanges, isMovement: true },
       tx
     );
   }

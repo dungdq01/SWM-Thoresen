@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-17 (Multi-warehouse PO, Multi-line ASN, Sequential ASN numbers)
+> **Last Updated:** 2026-03-22 (Module 2 DB changes: Owner-Warehouse Access, Item Incompatibility, Dual Tracking)
 
 ---
 

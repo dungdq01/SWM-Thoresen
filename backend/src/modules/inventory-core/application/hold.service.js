@@ -99,7 +99,7 @@ class HoldService {
 
       await this.onHandRepo.updateQty(
         onHandRecord.id,
-        { reservedDelta: requestedQty.toFixed(3), isMovement: false },
+        { allocatedDelta: requestedQty.toFixed(3), isMovement: false },
         tx
       );
 
@@ -159,7 +159,7 @@ class HoldService {
 
       await this.onHandRepo.updateQty(
         hold.onHandId,
-        { reservedDelta: releaseAmount.negated().toFixed(3), isMovement: false },
+        { allocatedDelta: releaseAmount.negated().toFixed(3), isMovement: false },
         tx
       );
 
@@ -198,7 +198,7 @@ class HoldService {
       if (remainingHoldQty.greaterThan(0)) {
         await this.onHandRepo.updateQty(
           hold.onHandId,
-          { reservedDelta: remainingHoldQty.negated().toFixed(3), isMovement: false },
+          { allocatedDelta: remainingHoldQty.negated().toFixed(3), isMovement: false },
           tx
         );
       }

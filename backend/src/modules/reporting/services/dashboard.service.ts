@@ -291,19 +291,19 @@ export class DashboardService {
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
 
-      // Get inbound for this day (using correct enum: RECEIPT_IN)
+      // Get inbound for this day
       const inboundResult = await this.prisma.inventTrans.aggregate({
         where: {
-          transType: 'RECEIPT_IN',
+          transType: { in: ['RECEIPT', 'RECEIPT_IN'] as any },
           postedAt: { gte: date, lt: nextDate },
         },
         _sum: { qty: true },
       });
 
-      // Get outbound for this day (using correct enum: SHIPMENT_OUT)
+      // Get outbound for this day
       const outboundResult = await this.prisma.inventTrans.aggregate({
         where: {
-          transType: 'SHIPMENT_OUT',
+          transType: { in: ['ISSUE', 'SHIPMENT_OUT'] as any },
           postedAt: { gte: date, lt: nextDate },
         },
         _sum: { qty: true },

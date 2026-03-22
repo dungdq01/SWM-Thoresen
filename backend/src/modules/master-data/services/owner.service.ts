@@ -137,20 +137,43 @@ export class OwnerService {
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdOwner> {
-    const owner = await this.findById(id);
-    if (!owner.isActive) throw new BadRequestException('Owner is already inactive');
-    const result = await this.ownerRepository.deactivate(id, ctx.userId!, owner.rowVersion);
+    return this.prisma.$transaction(async (tx) => {
+      const owner = await tx.mdOwner.findUnique({ where: { id } });
+      if (!owner) throw new NotFoundException(`Owner ${id} not found`);
+      if (!owner.isActive) throw new BadRequestException('Owner is already inactive');
 
-    await this.logService.createAuditLog({
-      entityType: 'OWNER',
-      entityId: id,
-      action: 'DEACTIVATE',
-      userId: ctx.userId,
-      oldValue: owner,
-      newValue: result,
+      // Check on-hand inventory linked to this owner via InventDim
+      const stockRecord = await tx.onHand.findFirst({
+        where: {
+          physicalQty: { gt: 0 },
+          inventDim: { ownerId: id },
+        },
+      });
+      if (stockRecord) {
+        throw new BadRequestException('Cannot deactivate owner because inventory still exists');
+      }
+
+      const result = await tx.mdOwner.update({
+        where: { id, rowVersion: owner.rowVersion },
+        data: {
+          isActive: false,
+          deactivatedAt: new Date(),
+          deactivatedBy: ctx.userId,
+          rowVersion: { increment: 1 },
+        },
+      });
+
+      await this.logService.createAuditLog({
+        entityType: 'OWNER',
+        entityId: id,
+        action: 'DEACTIVATE',
+        userId: ctx.userId,
+        oldValue: owner,
+        newValue: result,
+      });
+
+      return result;
     });
-
-    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdOwner> {

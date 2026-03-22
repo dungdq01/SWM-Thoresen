@@ -136,6 +136,17 @@ export class WarehouseService {
         throw new BadRequestException('Cannot deactivate warehouse with active zones');
       }
 
+      // Check on-hand inventory in this warehouse via InventDim
+      const stockRecord = await tx.onHand.findFirst({
+        where: {
+          physicalQty: { gt: 0 },
+          inventDim: { warehouseId: id },
+        },
+      });
+      if (stockRecord) {
+        throw new BadRequestException('Cannot deactivate warehouse because inventory still exists in child locations');
+      }
+
       const result = await tx.mdWarehouse.update({
         where: { id, rowVersion: warehouse.rowVersion },
         data: {

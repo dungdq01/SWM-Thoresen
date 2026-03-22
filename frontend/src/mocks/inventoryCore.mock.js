@@ -6,8 +6,8 @@ const db = masterDataMockApi.__db
 const inventoryDb = {
   reconciliationRuns: [
     { id: 'recon-001', runNo: 'RECON-20260310-A1B2C3', runType: 'ON_DEMAND', scopeType: 'FULL', warehouseId: null, ownerId: null, itemId: null, startedAt: '2026-03-10T08:00:00Z', completedAt: '2026-03-10T08:02:30Z', status: 'COMPLETED', mismatchCount: 2, requestedBy: 'admin', correlationId: 'corr-recon-001', results: [
-      { id: 'res-001', runId: 'recon-001', itemId: 'item-001', inventDimId: 'dim-001', ledgerQty: '30500.000', onhandPhysicalQty: '30000.000', reservedQty: '10000.000', availableQty: '20000.000', diffQty: '500.000', severity: 'MEDIUM', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'MISMATCH' },
-      { id: 'res-002', runId: 'recon-001', itemId: 'item-002', inventDimId: 'dim-002', ledgerQty: '12000.000', onhandPhysicalQty: '12000.000', reservedQty: '0.000', availableQty: '12000.000', diffQty: '0.000', severity: 'INFO', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'OK' },
+      { id: 'res-001', runId: 'recon-001', itemId: 'item-001', inventDimId: 'dim-001', ledgerQty: '30500.000', onhandPhysicalQty: '30000.000', allocatedQty: '10000.000', availableQty: '20000.000', diffQty: '500.000', severity: 'MEDIUM', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'MISMATCH' },
+      { id: 'res-002', runId: 'recon-001', itemId: 'item-002', inventDimId: 'dim-002', ledgerQty: '12000.000', onhandPhysicalQty: '12000.000', allocatedQty: '0.000', availableQty: '12000.000', diffQty: '0.000', severity: 'INFO', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'OK' },
     ] },
     { id: 'recon-002', runNo: 'RECON-20260308-X9Y8Z7', runType: 'SCHEDULED', scopeType: 'WAREHOUSE', warehouseId: 'wh-001', ownerId: null, itemId: null, startedAt: '2026-03-08T00:00:00Z', completedAt: '2026-03-08T00:01:15Z', status: 'COMPLETED', mismatchCount: 0, requestedBy: 'system', correlationId: 'corr-recon-002', results: [] },
   ],
@@ -21,14 +21,14 @@ const inventoryDb = {
     { id: 'sb-003', snapshotRunId: 'snap-002', snapshotDate: '2026-03-09', warehouseId: 'wh-001', locationId: 'loc-001', ownerId: 'owner-001', itemId: 'item-001', inventDimId: 'dim-001', openingQty: '25000.000', inboundTodayQty: '5000.000', outboundTodayQty: '2000.000', closingQty: '28000.000', cutOffTime: '2026-03-09T23:59:59Z', snapshotSource: 'ONHAND_CAPTURE' },
   ],
   transactions: [
-    { id: 'trans-001', transId: 'TRX-20260308-000123', transType: 'RECEIPT_IN', qty: '25000.000', refType: 'RECEIPT', refId: 'RCV-20260308-001', correlationId: 'corr-20260308-001', postedAt: '2026-03-08T08:30:00Z', sourceApp: 'API', isReversal: false, itemId: 'item-001', ownerId: 'owner-001' },
-    { id: 'trans-002', transId: 'TRX-20260308-000124', transType: 'SHIPMENT_OUT', qty: '-5000.000', refType: 'SHIPMENT', refId: 'SHP-20260308-017', correlationId: 'corr-20260308-002', postedAt: '2026-03-08T09:10:00Z', sourceApp: 'API', isReversal: false, itemId: 'item-001', ownerId: 'owner-001' },
+    { id: 'trans-001', transId: 'TRX-20260308-000123', transType: 'RECEIPT', qty: '25000.000', refType: 'RECEIPT', refId: 'RCV-20260308-001', correlationId: 'corr-20260308-001', postedAt: '2026-03-08T08:30:00Z', sourceApp: 'API', isReversal: false, itemId: 'item-001', ownerId: 'owner-001' },
+    { id: 'trans-002', transId: 'TRX-20260308-000124', transType: 'ISSUE', qty: '-5000.000', refType: 'SHIPMENT', refId: 'SHP-20260308-017', correlationId: 'corr-20260308-002', postedAt: '2026-03-08T09:10:00Z', sourceApp: 'API', isReversal: false, itemId: 'item-001', ownerId: 'owner-001' },
     { id: 'trans-003', transId: 'TRX-20260308-000125', transType: 'ADJUSTMENT', qty: '1000.000', refType: 'COUNT', refId: 'CNT-20260308-003', correlationId: 'corr-20260308-003', postedAt: '2026-03-08T10:45:00Z', sourceApp: 'FRONTEND', isReversal: false, itemId: 'item-002', ownerId: 'owner-002' },
   ],
   onHand: [
-    { id: 'oh-001', itemId: 'item-001', physicalQty: '30000', reservedQty: '10000', availableQty: '20000', uomId: 'uom-001', lotNumber: 'LOT-2026-001', inventDim: { warehouseId: 'wh-001', locationId: 'loc-001', ownerId: 'owner-001', inventoryStatusId: 'st-001' } },
-    { id: 'oh-002', itemId: 'item-002', physicalQty: '12000', reservedQty: '0', availableQty: '12000', uomId: 'uom-001', lotNumber: 'LOT-2026-002', inventDim: { warehouseId: 'wh-001', locationId: 'loc-002', ownerId: 'owner-002', inventoryStatusId: 'st-001' } },
-    { id: 'oh-003', itemId: 'item-001', physicalQty: '5500.500', reservedQty: '500.500', availableQty: '5000', uomId: 'uom-002', lotNumber: 'LOT-2026-003', inventDim: { warehouseId: 'wh-002', locationId: 'loc-001', ownerId: 'owner-001', inventoryStatusId: 'st-002' } },
+    { id: 'oh-001', itemId: 'item-001', physicalQty: '30000', allocatedQty: '10000', availableQty: '20000', uomId: 'uom-001', lotNumber: 'LOT-2026-001', inventDim: { warehouseId: 'wh-001', locationId: 'loc-001', ownerId: 'owner-001', inventoryStatusId: 'st-001' } },
+    { id: 'oh-002', itemId: 'item-002', physicalQty: '12000', allocatedQty: '0', availableQty: '12000', uomId: 'uom-001', lotNumber: 'LOT-2026-002', inventDim: { warehouseId: 'wh-001', locationId: 'loc-002', ownerId: 'owner-002', inventoryStatusId: 'st-001' } },
+    { id: 'oh-003', itemId: 'item-001', physicalQty: '5500.500', allocatedQty: '500.500', availableQty: '5000', uomId: 'uom-002', lotNumber: 'LOT-2026-003', inventDim: { warehouseId: 'wh-002', locationId: 'loc-001', ownerId: 'owner-001', inventoryStatusId: 'st-002' } },
   ],
   holds: [
     { id: 'hold-001', holdNo: 'HLD-0001024', shipmentId: 'SHP-20260308-017', shipmentLineId: 'LINE-01', itemId: 'item-001', ownerId: 'owner-001', holdQty: '10000.000', qty: '10000.000', status: 'ACTIVE', correlationId: 'corr-hold-001', dim: { ownerCode: 'CUST001' }, createdAt: '2026-03-08T09:00:00Z' },
@@ -74,8 +74,9 @@ export const inventoryCoreMockApi = {
   },
   getTransactionById: (transId) => delay({ data: inventoryDb.transactions.find((item) => item.transId === transId || item.id === transId) }),
   createPosting: (data) => {
-    const isOutbound = data.eventCode?.includes('SHIPMENT') || data.eventCode?.includes('OUT')
-    const transType = isOutbound ? 'SHIPMENT_OUT' : 'RECEIPT_IN'
+    const outboundEvents = ['SO_CONFIRMED', 'ALLOCATION_CREATED', 'ALLOCATION_RELEASED', 'PICK_CONFIRMED', 'LOAD_CONFIRMED', 'SHIP_CONFIRMED', 'VAS_CONSUMED', 'TRANSFER_ISSUED']
+    const isOutbound = outboundEvents.includes(data.eventCode) || data.eventCode?.includes('SHIP') || data.eventCode?.includes('ISSUE')
+    const transType = isOutbound ? 'ISSUE' : 'RECEIPT'
     const qtyNum = Number(data.qty) || 0
     const signedQty = isOutbound ? -Math.abs(qtyNum) : Math.abs(qtyNum)
 
@@ -102,7 +103,7 @@ export const inventoryCoreMockApi = {
 
     if (onHand) {
       const newPhysical = Number(onHand.physicalQty) + signedQty
-      const newReserved = Number(onHand.reservedQty)
+      const newReserved = Number(onHand.allocatedQty)
       onHand.physicalQty = String(Math.max(0, newPhysical))
       onHand.availableQty = String(Math.max(0, newPhysical - newReserved))
     } else {
@@ -110,7 +111,7 @@ export const inventoryCoreMockApi = {
         id: `oh-${Date.now()}`,
         itemId,
         physicalQty: String(Math.max(0, signedQty)),
-        reservedQty: '0',
+        allocatedQty: '0',
         availableQty: String(Math.max(0, signedQty)),
         uomId,
         lotNumber: data.lotNumber || `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(inventoryDb.onHand.length + 1).padStart(3, '0')}`,
@@ -119,7 +120,7 @@ export const inventoryCoreMockApi = {
       inventoryDb.onHand.push(onHand)
     }
 
-    return delay({ data: { trans_id: record.transId, trans_type: record.transType, idempotent_replay: false, on_hand_after: { physical_qty: onHand.physicalQty, reserved_qty: onHand.reservedQty, available_qty: onHand.availableQty } } })
+    return delay({ data: { trans_id: record.transId, trans_type: record.transType, idempotent_replay: false, on_hand_after: { physical_qty: onHand.physicalQty, allocated_qty: onHand.allocatedQty, available_qty: onHand.availableQty } } })
   },
   reversePosting: (data) => {
     // Find original transaction and reverse its qty from on-hand
@@ -129,7 +130,7 @@ export const inventoryCoreMockApi = {
       const onHand = inventoryDb.onHand.find((oh) => oh.itemId === original.itemId && oh.inventDim.ownerId === original.ownerId)
       if (onHand) {
         const newPhysical = Number(onHand.physicalQty) + reverseQty
-        const newReserved = Number(onHand.reservedQty)
+        const newReserved = Number(onHand.allocatedQty)
         onHand.physicalQty = String(Math.max(0, newPhysical))
         onHand.availableQty = String(Math.max(0, newPhysical - newReserved))
       }
@@ -160,7 +161,7 @@ export const inventoryCoreMockApi = {
 
   // Reconciliation
   createReconciliationRun: (data) => {
-    const run = { id: `recon-${Date.now()}`, runNo: `RECON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, runType: data.runType || 'ON_DEMAND', scopeType: data.scopeType || 'FULL', warehouseId: data.warehouseId || null, ownerId: data.ownerId || null, itemId: data.itemId || null, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), status: 'COMPLETED', mismatchCount: 1, requestedBy: 'admin', correlationId: data.correlationId, results: [{ id: `res-${Date.now()}`, runId: `recon-${Date.now()}`, itemId: 'item-001', inventDimId: 'dim-001', ledgerQty: '30500.000', onhandPhysicalQty: '30000.000', reservedQty: '10000.000', availableQty: '20000.000', diffQty: '500.000', severity: 'MEDIUM', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'MISMATCH' }] }
+    const run = { id: `recon-${Date.now()}`, runNo: `RECON-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, runType: data.runType || 'ON_DEMAND', scopeType: data.scopeType || 'FULL', warehouseId: data.warehouseId || null, ownerId: data.ownerId || null, itemId: data.itemId || null, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), status: 'COMPLETED', mismatchCount: 1, requestedBy: 'admin', correlationId: data.correlationId, results: [{ id: `res-${Date.now()}`, runId: `recon-${Date.now()}`, itemId: 'item-001', inventDimId: 'dim-001', ledgerQty: '30500.000', onhandPhysicalQty: '30000.000', allocatedQty: '10000.000', availableQty: '20000.000', diffQty: '500.000', severity: 'MEDIUM', ruleCode: 'LEDGER_VS_ONHAND', resultStatus: 'MISMATCH' }] }
     inventoryDb.reconciliationRuns.unshift(run)
     return delay({ data: run })
   },

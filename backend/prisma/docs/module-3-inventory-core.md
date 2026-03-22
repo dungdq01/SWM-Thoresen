@@ -1,10 +1,10 @@
 # Module 3: Inventory Core Engine - Database Documentation
 
-**Module:** Inventory Core Engine  
-**Database:** PostgreSQL  
-**Total Tables:** 10  
-**Total Services:** 9  
-**Last Updated:** 2026-03-22
+**Module:** Inventory Core Engine
+**Database:** PostgreSQL
+**Total Tables:** 10
+**Total Services:** 8
+**Last Updated:** 2026-03-23 (v2.1 — stage-based delta logic)
 
 ---
 
@@ -20,19 +20,20 @@ Module 3 quản lý inventory backbone của hệ thống SWM với các bảng 
 | Snapshot | `inventory_snapshot_run`, `daily_storage_snapshot` |
 | Config | `inventory_event_mapping` |
 
-### Backend Services (9 services)
+### Backend Services (8 services)
 
 | Service | File | Description |
 |---------|------|-------------|
-| PostingEngineService | `posting-engine.service.js` | Core posting logic |
+| PostingEngineService | `posting-engine.service.js` | Core posting logic — map eventCode → transType + stage |
 | ReversalEngineService | `reversal-engine.service.js` | Reversal with idempotency |
-| HoldService | `hold.service.js` | Hold/allocation management |
+| HoldService | `hold.service.js` | Allocation/hold — capability nội bộ phục vụ outbound |
 | OnHandService | `onhand.service.js` | OnHand query with Decimal.js |
 | TransactionQueryService | `transaction-query.service.js` | Transaction history |
 | InventDimService | `invent-dim.service.js` | Dimension management |
 | ReconciliationService | `reconciliation.service.js` | Ledger vs OnHand comparison |
 | SnapshotService | `snapshot.service.js` | Daily storage snapshot for M10 |
-| LotService | `lot.service.js` | Lot management (get-or-create, FIFO) |
+
+> **Lưu ý:** LotService **không thuộc M3** — đã chuyển sang Module 2 (Master Data). M3 chỉ nhận `lotId` như dimension/reference.
 
 ### Infrastructure (7 components)
 
@@ -109,13 +110,13 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 
 ### 3.2 `invent_trans` - Inventory Transaction Ledger
 
-**Purpose:** Ledger bất biến của mọi biến động tồn kho.
+**Purpose:** Ledger bất biến của mọi biến động tồn kho. Mỗi record gắn `trans_type` + `stage`.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PK | Technical key |
 | trans_id | VARCHAR(40) | UNIQUE NOT NULL | Business key `TRX-YYYYMMDD-SEQ` |
-| ref_type | VARCHAR(40) | NOT NULL | RECEIPT/SHIPMENT/TRANSFER/... |
+| ref_type | VARCHAR(40) | NOT NULL | PURCHASE_ORDER/RECEIPT/SALES_ORDER/SHIPMENT/TRANSFER/VAS_ORDER/... |
 | ref_id | VARCHAR(50) | NOT NULL | Source header ID |
 | ref_line_id | VARCHAR(50) | NULL | Source line ID |
 | trans_type | ENUM | NOT NULL | InventoryTransType enum |
@@ -126,7 +127,7 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 | dim_to_id | UUID | FK NULL | → invent_dim (destination) |
 | status_from_code | VARCHAR(30) | NULL | Denorm status from |
 | status_to_code | VARCHAR(30) | NULL | Denorm status to |
-| stage | ENUM | NOT NULL DEFAULT PHYSICAL | InventoryStage enum |
+| stage | ENUM | NOT NULL | InventoryStage enum (EXPECTED/REGISTERED/ALLOCATED/DE_ALLOCATED/PHYSICAL/DEDUCTED) |
 | external_id | VARCHAR(120) | NOT NULL | Idempotency key |
 | correlation_id | VARCHAR(120) | NOT NULL | Trace correlation |
 | reason_code | VARCHAR(50) | NULL | → reason_code.code |
@@ -157,17 +158,20 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 
 ### 3.3 `on_hand` - Current Stock Balance
 
-**Purpose:** Current balance dùng cho query vận hành.
+**Purpose:** Current balance dùng cho query vận hành. Có 4 bucket gốc + 1 computed value.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PK | Technical key |
 | item_id | UUID | FK NOT NULL | → md_item |
 | invent_dim_id | UUID | FK NOT NULL | → invent_dim |
-| physical_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Physical stock |
-| reserved_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Reserved/held |
-| available_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Physical - reserved |
-| ordered_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Expected inbound |
+| physical_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Physical stock — hàng thực có |
+| allocated_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Allocated/held — hàng đã giữ chỗ |
+| available_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Computed: physical - allocated |
+| inbound_ordered_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Dự kiến nhập (PO confirmed chưa receive) |
+| outbound_ordered_qty | DECIMAL(18,3) | NOT NULL DEFAULT 0 | Nhu cầu xuất (SO confirmed chưa ship) |
+| lot_number | VARCHAR(50) | NULL | Lot number reference |
+| lot_id | UUID | FK NULL | → md_lot (M2 master data) |
 | uom_id | UUID | FK NOT NULL | → md_uom |
 | last_movement_at | TIMESTAMP | NULL | Last movement time |
 | last_count_at | TIMESTAMP | NULL | Last cycle count time |
@@ -176,20 +180,23 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 
 **Indexes:**
 - `UNIQUE (item_id, invent_dim_id)`
+- `INDEX (lot_id)`
 
 **Invariants:**
-- `available_qty = physical_qty - reserved_qty`
+- `available_qty = physical_qty - allocated_qty`
 - `physical_qty >= 0` (Phase 1 không cho âm tồn)
+- `availableQty` **không phải bucket gốc** — chỉ là giá trị tính ra khi query
 
 **Update Rules:**
-- Chỉ update qua posting/hold service
+- Chỉ update qua posting engine hoặc hold service
 - Không cho API CRUD trực tiếp
+- Không tạo bucket reserve riêng theo module (không có `reserved_qty_vas`, `reserved_qty_outbound`...)
 
 ---
 
 ### 3.4 `inventory_hold` - Stock Allocation/Hold
 
-**Purpose:** Lưu chi tiết allocation-based hold cho outbound.
+**Purpose:** Lưu chi tiết allocation-based hold cho outbound. Đây là **capability nội bộ** phục vụ M5 outbound — không phải nghiệp vụ public độc lập.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -284,8 +291,8 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 | invent_dim_id | UUID | FK NOT NULL | → invent_dim |
 | ledger_qty | DECIMAL(18,3) | NOT NULL | Sum from ledger |
 | onhand_physical_qty | DECIMAL(18,3) | NOT NULL | OnHand physical |
-| reserved_qty | DECIMAL(18,3) | NOT NULL | OnHand reserved |
-| available_qty | DECIMAL(18,3) | NOT NULL | OnHand available |
+| allocated_qty | DECIMAL(18,3) | NOT NULL | OnHand allocated |
+| available_qty | DECIMAL(18,3) | NOT NULL | OnHand available (computed) |
 | diff_qty | DECIMAL(18,3) | NOT NULL | Difference |
 | severity | ENUM | NOT NULL | ReconciliationSeverity |
 | rule_code | VARCHAR(40) | NOT NULL | Rule that triggered |
@@ -349,21 +356,52 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 
 ### 3.10 `inventory_event_mapping` - Event to Transaction Mapping
 
-**Purpose:** Chuẩn hóa event-to-transaction mapping.
+**Purpose:** Chuẩn hóa event-to-transaction mapping theo stage-based approach.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PK | Technical key |
 | event_code | VARCHAR(50) | UNIQUE NOT NULL | Event identifier |
 | source_module | VARCHAR(20) | NOT NULL | M4, M5, M6, M7, M9 |
-| source_object | VARCHAR(40) | NOT NULL | RECEIPT, SHIPMENT, etc. |
-| trigger_state | VARCHAR(40) | NOT NULL | RECEIVED, SHIPPED, etc. |
+| source_object | VARCHAR(40) | NOT NULL | PURCHASE_ORDER, RECEIPT, SHIPMENT, etc. |
+| trigger_state | VARCHAR(40) | NOT NULL | CONFIRMED, RECEIVED, SHIPPED, etc. |
 | trans_type | ENUM | NOT NULL | InventoryTransType |
+| stage | ENUM | NOT NULL DEFAULT PHYSICAL | InventoryStage — stage trong lifecycle |
 | affect_physical | BOOLEAN | NOT NULL | Affects physical qty |
-| affect_hold | BOOLEAN | NOT NULL | Affects hold/reserved |
+| affect_ordered | BOOLEAN | NOT NULL DEFAULT false | Affects inbound/outbound ordered qty |
+| affect_hold | BOOLEAN | NOT NULL | Affects allocated qty |
 | reversible | BOOLEAN | NOT NULL | Can be reversed |
 | active_flag | BOOLEAN | NOT NULL DEFAULT true | Active flag |
 | notes | TEXT | NULL | Additional notes |
+
+**Seeded Event Codes (29 total):**
+
+| Event Code | Module | Stage | Trans Type | Auto-called by |
+|------------|--------|-------|------------|----------------|
+| `PO_CONFIRMED` | M4 | EXPECTED | RECEIPT | ✅ `purchase-order.service.js` → confirmPO |
+| `RECEIPT_CREATED` | M4 | REGISTERED | RECEIPT | — (chưa integrate) |
+| `GOODS_RECEIVED` | M4 | PHYSICAL | RECEIPT | ✅ `receipt.service.js` → receiveGoods |
+| `PUTAWAY_COMPLETED` | M7 | PHYSICAL | MOVE |
+| `SO_CONFIRMED` | M5 | EXPECTED | ISSUE | ✅ `sales-order.service.ts` → confirm |
+| `ALLOCATION_CREATED` | M5 | ALLOCATED | ISSUE |
+| `ALLOCATION_RELEASED` | M5 | DE_ALLOCATED | ISSUE |
+| `PICK_CONFIRMED` | M7 | PHYSICAL | ISSUE |
+| `LOAD_CONFIRMED` | M5 | PHYSICAL | ISSUE |
+| `SHIP_CONFIRMED` | M5 | DEDUCTED | ISSUE |
+| `TRANSFER_ORDER_CONFIRMED` | M6 | EXPECTED | TRANSFER_ISSUE |
+| `TRANSFER_ISSUED` | M6 | DEDUCTED | TRANSFER_ISSUE |
+| `TRANSFER_RECEIVED` | M6 | PHYSICAL | TRANSFER_RECEIPT |
+| `VAS_ORDER_CONFIRMED` | M9 | EXPECTED | ISSUE |
+| `VAS_CONSUMED` | M9 | DEDUCTED | ISSUE |
+| `VAS_PRODUCED` | M9 | PHYSICAL | RECEIPT |
+| `VAS_WASTE` | M9 | PHYSICAL | ADJUSTMENT |
+| `MOVE_COMPLETED` | M6 | PHYSICAL | MOVE |
+| `STATUS_CHANGE_CONFIRMED` | M6 | PHYSICAL | STATUS_CHANGE |
+| `ADJUSTMENT_APPROVED` | M6 | PHYSICAL | ADJUSTMENT |
+| `COUNT_GAIN_RECONCILED` | M6 | PHYSICAL | ADJUSTMENT |
+| `COUNT_LOSS_RECONCILED` | M6 | PHYSICAL | ADJUSTMENT |
+| `RECEIPT_RECEIVED` | M4 | PHYSICAL | RECEIPT | *(deprecated → use GOODS_RECEIVED)* |
+| `SHIPMENT_SHIPPED` | M5 | DEDUCTED | ISSUE | *(deprecated → use SHIP_CONFIRMED)* |
 
 ---
 
@@ -371,13 +409,17 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 
 ### InventoryTransType
 ```sql
-RECEIPT_IN, SHIPMENT_OUT, MOVE, STATUS_CHANGE, ADJUSTMENT,
-COUNT_GAIN, COUNT_LOSS, VAS_CONSUME, VAS_PRODUCE, TRANSFER_OUT, TRANSFER_IN
+-- Primary (active)
+RECEIPT, ISSUE, MOVE, STATUS_CHANGE, ADJUSTMENT, TRANSFER_ISSUE, TRANSFER_RECEIPT
+
+-- Deprecated (backward compat, sẽ remove)
+RECEIPT_IN, SHIPMENT_OUT, COUNT_GAIN, COUNT_LOSS, VAS_CONSUME, VAS_PRODUCE,
+TRANSFER_OUT, TRANSFER_IN, RESIDUAL_RETURN
 ```
 
 ### InventoryStage
 ```sql
-PHYSICAL, EXPECTED, ORDERED
+EXPECTED, REGISTERED, ALLOCATED, DE_ALLOCATED, PHYSICAL, DEDUCTED
 ```
 
 ### HoldStatus
@@ -438,6 +480,7 @@ RUNNING, COMPLETED, FAILED
 | on_hand | item_id | md_item | id |
 | on_hand | invent_dim_id | invent_dim | id |
 | on_hand | uom_id | md_uom | id |
+| on_hand | lot_id | md_lot | id |
 | inventory_hold | item_id | md_item | id |
 | inventory_hold | invent_dim_id | invent_dim | id |
 | inventory_hold | on_hand_id | on_hand | id |
@@ -449,8 +492,57 @@ RUNNING, COMPLETED, FAILED
 ## 6. Data Integrity Rules
 
 1. **Ledger Immutability**: `invent_trans` không được UPDATE/DELETE sau insert
-2. **On-Hand Formula**: `available_qty = physical_qty - reserved_qty`
+2. **On-Hand Formula**: `available_qty = physical_qty - allocated_qty` (computed, not stored independently)
 3. **No Negative Stock**: `physical_qty >= 0` (Phase 1)
-4. **Hold Integrity**: Tổng active holds không vượt quá reserved_qty
-5. **Dimension Uniqueness**: Mỗi combination dim chỉ có 1 record trong `invent_dim`
+4. **Ordered Qty Floor**: `inbound_ordered_qty >= 0` và `outbound_ordered_qty >= 0` (floor to 0 khi update)
+5. **Hold Integrity**: Tổng active holds không vượt quá `allocated_qty`
+6. **Dimension Uniqueness**: Mỗi combination dim chỉ có 1 record trong `invent_dim`
+7. **No module-specific reserve buckets**: Không có `reserved_qty_vas`, `reserved_qty_outbound`...
+8. **Stage from mapping**: Posting engine lấy stage từ `inventory_event_mapping`, không hardcode
+9. **Delta-based update**: Mọi on-hand update đi qua `getInventoryDelta(transType, stage, qty)` → 4 bucket deltas
+10. **Lot belongs to M2**: M3 chỉ nhận `lot_id` như dimension reference, không quản lý lot lifecycle
 
+---
+
+## 7. Stage-based Delta Logic
+
+Posting engine sử dụng hàm `getInventoryDelta(transType, stage, qty)` để xác định ảnh hưởng lên 4 bucket gốc của `on_hand`.
+
+### Delta Matrix
+
+| trans_type + stage | physical_qty | allocated_qty | inbound_ordered_qty | outbound_ordered_qty |
+|---|:---:|:---:|:---:|:---:|
+| RECEIPT + EXPECTED | 0 | 0 | +qty | 0 |
+| RECEIPT + REGISTERED | 0 | 0 | 0 | 0 |
+| RECEIPT + PHYSICAL | +qty | 0 | -qty | 0 |
+| ISSUE + EXPECTED | 0 | 0 | 0 | +qty |
+| ISSUE + ALLOCATED | 0 | +qty | 0 | 0 |
+| ISSUE + DE_ALLOCATED | 0 | -qty | 0 | 0 |
+| ISSUE + PHYSICAL | 0 | 0 | 0 | 0 |
+| ISSUE + DEDUCTED | -qty | -qty | 0 | -qty |
+| TRANSFER_ISSUE + EXPECTED | 0 | 0 | 0 | +qty |
+| TRANSFER_ISSUE + DEDUCTED | -qty | 0 | 0 | -qty |
+| TRANSFER_RECEIPT + PHYSICAL | +qty | 0 | 0 | 0 |
+| ADJUSTMENT + PHYSICAL | ±qty | 0 | 0 | 0 |
+| MOVE + * | dim from/to | 0 | 0 | 0 |
+| STATUS_CHANGE + * | dim from/to | 0 | 0 | 0 |
+
+### Update Flow
+
+```
+POST /inventory/postings { eventCode, qty, dims }
+  → EventMapping lookup → { transType, stage }
+  → getInventoryDelta(transType, stage, qty) → 4 deltas
+  → onHand.updateQty(id, { physicalDelta, allocatedDelta, inboundOrderedDelta, outboundOrderedDelta })
+  → available_qty = physical_qty - allocated_qty (recalculated)
+  → inbound_ordered_qty = max(0, current + delta) (floored)
+  → outbound_ordered_qty = max(0, current + delta) (floored)
+```
+
+### Reversal
+
+Reversal = negate delta gốc:
+```
+original: getInventoryDelta(transType, stage, qty) → { +100, 0, -100, 0 }
+reversal: { -100, 0, +100, 0 }
+```

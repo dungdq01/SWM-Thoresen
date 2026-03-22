@@ -3,23 +3,32 @@
  */
 
 const InventoryTransType = {
-  RECEIPT_IN: 'RECEIPT_IN',
-  SHIPMENT_OUT: 'SHIPMENT_OUT',
+  RECEIPT: 'RECEIPT',
+  ISSUE: 'ISSUE',
   MOVE: 'MOVE',
   STATUS_CHANGE: 'STATUS_CHANGE',
   ADJUSTMENT: 'ADJUSTMENT',
-  COUNT_GAIN: 'COUNT_GAIN',
-  COUNT_LOSS: 'COUNT_LOSS',
-  VAS_CONSUME: 'VAS_CONSUME',
-  VAS_PRODUCE: 'VAS_PRODUCE',
-  TRANSFER_OUT: 'TRANSFER_OUT',
-  TRANSFER_IN: 'TRANSFER_IN',
+  TRANSFER_ISSUE: 'TRANSFER_ISSUE',
+  TRANSFER_RECEIPT: 'TRANSFER_RECEIPT',
+
+  // --- Backward-compatible aliases (deprecated, remove after full migration) ---
+  RECEIPT_IN: 'RECEIPT',
+  SHIPMENT_OUT: 'ISSUE',
+  COUNT_GAIN: 'ADJUSTMENT',
+  COUNT_LOSS: 'ADJUSTMENT',
+  VAS_CONSUME: 'ISSUE',
+  VAS_PRODUCE: 'RECEIPT',
+  TRANSFER_OUT: 'TRANSFER_ISSUE',
+  TRANSFER_IN: 'TRANSFER_RECEIPT',
 };
 
 const InventoryStage = {
-  PHYSICAL: 'PHYSICAL',
   EXPECTED: 'EXPECTED',
-  ORDERED: 'ORDERED',
+  REGISTERED: 'REGISTERED',
+  ALLOCATED: 'ALLOCATED',
+  DE_ALLOCATED: 'DE_ALLOCATED',
+  PHYSICAL: 'PHYSICAL',
+  DEDUCTED: 'DEDUCTED',
 };
 
 const HoldStatus = {
@@ -78,23 +87,17 @@ const SnapshotRunStatus = {
 };
 
 const TRANS_TYPE_IMPACT = {
-  [InventoryTransType.RECEIPT_IN]: { dimFrom: false, dimTo: true, sign: 1 },
-  [InventoryTransType.SHIPMENT_OUT]: { dimFrom: true, dimTo: false, sign: -1 },
+  [InventoryTransType.RECEIPT]: { dimFrom: false, dimTo: true, sign: 1 },
+  [InventoryTransType.ISSUE]: { dimFrom: true, dimTo: false, sign: -1 },
   [InventoryTransType.MOVE]: { dimFrom: true, dimTo: true, sign: 0 },
   [InventoryTransType.STATUS_CHANGE]: { dimFrom: true, dimTo: true, sign: 0 },
   [InventoryTransType.ADJUSTMENT]: { dimFrom: false, dimTo: true, sign: 1 },
-  [InventoryTransType.COUNT_GAIN]: { dimFrom: false, dimTo: true, sign: 1 },
-  [InventoryTransType.COUNT_LOSS]: { dimFrom: true, dimTo: false, sign: -1 },
-  [InventoryTransType.VAS_CONSUME]: { dimFrom: true, dimTo: false, sign: -1 },
-  [InventoryTransType.VAS_PRODUCE]: { dimFrom: false, dimTo: true, sign: 1 },
-  [InventoryTransType.TRANSFER_OUT]: { dimFrom: true, dimTo: false, sign: -1 },
-  [InventoryTransType.TRANSFER_IN]: { dimFrom: false, dimTo: true, sign: 1 },
+  [InventoryTransType.TRANSFER_ISSUE]: { dimFrom: true, dimTo: false, sign: -1 },
+  [InventoryTransType.TRANSFER_RECEIPT]: { dimFrom: false, dimTo: true, sign: 1 },
 };
 
 const REASON_REQUIRED_TRANS_TYPES = [
   InventoryTransType.ADJUSTMENT,
-  InventoryTransType.COUNT_GAIN,
-  InventoryTransType.COUNT_LOSS,
   InventoryTransType.STATUS_CHANGE,
 ];
 

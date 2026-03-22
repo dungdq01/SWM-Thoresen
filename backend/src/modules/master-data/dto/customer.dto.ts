@@ -44,6 +44,10 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateCustomerDto {

@@ -26,6 +26,10 @@ export class CreateCarrierDto {
   @IsOptional()
   @IsString()
   defaultVehicleTypeCode?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateCarrierDto {

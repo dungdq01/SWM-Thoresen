@@ -62,6 +62,10 @@ export class CreateLocationDto {
   @IsNumber()
   @Type(() => Number)
   yCoord?: number;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateLocationDto {

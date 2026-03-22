@@ -18,7 +18,7 @@ const {
   reasonCodeRequiredError,
   masterInactiveError,
 } = require('../domain/inventory.errors');
-const { requiresReasonCode, getOnHandImpact } = require('../domain/inventory.rules');
+const { requiresReasonCode, getOnHandImpact, getInventoryDelta } = require('../domain/inventory.rules');
 
 class PostingEngineService {
   constructor(prisma, auditLogAdapter = null) {
@@ -62,6 +62,7 @@ class PostingEngineService {
       }
 
       const transType = eventMapping.transType;
+      const stage = eventMapping.stage || 'PHYSICAL';
 
       const existingTrans = await this.inventTransRepo.findByExternalIdAndType(
         externalId,
@@ -119,14 +120,29 @@ class PostingEngineService {
         }
       }
 
-      const { fromImpact, toImpact } = getOnHandImpact(transType, qty);
+      // Stage-based delta — determines which buckets to update
+      const delta = getInventoryDelta(transType, stage, qty);
 
-      if (dimFromResolved && fromImpact.lessThan(0)) {
-        const onHandFrom = await this.onHandRepo.findByItemAndDim(
-          itemId,
-          dimFromResolved.id,
-          tx
-        );
+      // For MOVE/STATUS_CHANGE, use legacy dim from/to physical impact
+      const isMoveLike = transType === 'MOVE' || transType === 'STATUS_CHANGE';
+      const { fromImpact, toImpact } = isMoveLike
+        ? getOnHandImpact(transType, qty)
+        : { fromImpact: new Decimal(0), toImpact: new Decimal(0) };
+
+      // Negative stock check — only when physical decreases
+      if (delta.physicalDelta.lessThan(0)) {
+        const targetDimId = dimFromResolved?.id || dimToResolved?.id;
+        if (targetDimId) {
+          const onHandCheck = await this.onHandRepo.findByItemAndDim(itemId, targetDimId, tx);
+          const currentPhysical = onHandCheck ? new Decimal(onHandCheck.physicalQty) : new Decimal(0);
+          if (currentPhysical.plus(delta.physicalDelta).lessThan(0)) {
+            throw negativeStockBlockedError(itemId, currentPhysical.toString(), delta.physicalDelta.toString());
+          }
+        }
+      }
+      // Also check negative for MOVE from-side
+      if (isMoveLike && dimFromResolved && fromImpact.lessThan(0)) {
+        const onHandFrom = await this.onHandRepo.findByItemAndDim(itemId, dimFromResolved.id, tx);
         const currentPhysical = onHandFrom ? new Decimal(onHandFrom.physicalQty) : new Decimal(0);
         if (currentPhysical.plus(fromImpact).lessThan(0)) {
           throw negativeStockBlockedError(itemId, currentPhysical.toString(), fromImpact.toString());
@@ -149,7 +165,7 @@ class PostingEngineService {
           dimToId: dimToResolved?.id,
           statusFromCode: dimFrom?.statusCode,
           statusToCode: dimTo?.statusCode,
-          stage: 'PHYSICAL',
+          stage,
           externalId,
           correlationId,
           reasonCode,
@@ -165,17 +181,28 @@ class PostingEngineService {
 
       let onHandAfter = null;
 
-      if (dimFromResolved && !fromImpact.equals(0)) {
-        await this.updateOnHand(itemId, dimFromResolved.id, uom.id, fromImpact, tx);
-      }
-
-      if (dimToResolved && !toImpact.equals(0)) {
-        const updatedOnHand = await this.updateOnHand(itemId, dimToResolved.id, uom.id, toImpact, tx);
-        onHandAfter = {
-          physicalQty: String(updatedOnHand.physicalQty),
-          reservedQty: String(updatedOnHand.reservedQty),
-          availableQty: String(updatedOnHand.availableQty),
-        };
+      if (isMoveLike) {
+        // MOVE/STATUS_CHANGE: subtract from source dim, add to target dim (physical only)
+        if (dimFromResolved && !fromImpact.equals(0)) {
+          await this.updateOnHandDelta(itemId, dimFromResolved.id, uom.id, {
+            physicalDelta: fromImpact, allocatedDelta: new Decimal(0),
+            inboundOrderedDelta: new Decimal(0), outboundOrderedDelta: new Decimal(0),
+          }, tx);
+        }
+        if (dimToResolved && !toImpact.equals(0)) {
+          const updated = await this.updateOnHandDelta(itemId, dimToResolved.id, uom.id, {
+            physicalDelta: toImpact, allocatedDelta: new Decimal(0),
+            inboundOrderedDelta: new Decimal(0), outboundOrderedDelta: new Decimal(0),
+          }, tx);
+          onHandAfter = this.formatOnHandAfter(updated);
+        }
+      } else {
+        // Stage-based: apply delta to the relevant dimension
+        const targetDimId = dimToResolved?.id || dimFromResolved?.id;
+        if (targetDimId && this.hasDeltaEffect(delta)) {
+          const updated = await this.updateOnHandDelta(itemId, targetDimId, uom.id, delta, tx);
+          onHandAfter = this.formatOnHandAfter(updated);
+        }
       }
 
       const result = {
@@ -225,27 +252,58 @@ class PostingEngineService {
   }
 
   /**
-   * Update on-hand record
-   * MD-1 Fix: Removed redundant if/else condition
+   * Update on-hand with stage-based delta (all 4 buckets)
    */
-  async updateOnHand(itemId, inventDimId, uomId, qtyChange, tx) {
+  async updateOnHandDelta(itemId, inventDimId, uomId, delta, tx) {
     const { onHand } = await this.onHandRepo.getOrCreate(
       {
         itemId,
         inventDimId,
         uomId,
         physicalQty: 0,
-        reservedQty: 0,
+        allocatedQty: 0,
         availableQty: 0,
+        inboundOrderedQty: 0,
+        outboundOrderedQty: 0,
       },
       tx
     );
 
     return this.onHandRepo.updateQty(
       onHand.id,
-      { physicalDelta: qtyChange.toFixed(3), isMovement: true },
+      {
+        physicalDelta: delta.physicalDelta.toFixed(3),
+        allocatedDelta: delta.allocatedDelta.toFixed(3),
+        inboundOrderedDelta: delta.inboundOrderedDelta.toFixed(3),
+        outboundOrderedDelta: delta.outboundOrderedDelta.toFixed(3),
+        isMovement: true,
+      },
       tx
     );
+  }
+
+  /**
+   * Check if delta has any non-zero effect
+   */
+  hasDeltaEffect(delta) {
+    return !delta.physicalDelta.equals(0) ||
+      !delta.allocatedDelta.equals(0) ||
+      !delta.inboundOrderedDelta.equals(0) ||
+      !delta.outboundOrderedDelta.equals(0);
+  }
+
+  /**
+   * Format onHandAfter response with all buckets
+   */
+  formatOnHandAfter(onHand) {
+    if (!onHand) return null;
+    return {
+      physicalQty: String(onHand.physicalQty),
+      allocatedQty: String(onHand.allocatedQty),
+      inboundOrderedQty: String(onHand.inboundOrderedQty),
+      outboundOrderedQty: String(onHand.outboundOrderedQty),
+      availableQty: String(onHand.availableQty),
+    };
   }
 
   /**

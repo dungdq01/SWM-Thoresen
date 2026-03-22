@@ -21,6 +21,8 @@ import { LocationTypeController } from './controllers/location-type.controller';
 import { OwnerSkuMappingController } from './controllers/owner-sku-mapping.controller';
 import { ItemGroupController } from './controllers/item-group.controller';
 import { LotController } from './controllers/lot.controller';
+import { OwnerWarehouseAccessController } from './controllers/owner-warehouse-access.controller';
+import { ItemIncompatibilityController } from './controllers/item-incompatibility.controller';
 
 import { OwnerRepository } from './repositories/owner.repository';
 import { VendorRepository } from './repositories/vendor.repository';
@@ -40,6 +42,8 @@ import { LocationTypeRepository } from './repositories/location-type.repository'
 import { OwnerSkuMappingRepository } from './repositories/owner-sku-mapping.repository';
 import { ItemGroupRepository } from './repositories/item-group.repository';
 import { LotRepository } from './repositories/lot.repository';
+import { OwnerWarehouseAccessRepository } from './repositories/owner-warehouse-access.repository';
+import { ItemIncompatibilityRepository } from './repositories/item-incompatibility.repository';
 
 import { OwnerService } from './services/owner.service';
 import { VendorService } from './services/vendor.service';
@@ -59,6 +63,8 @@ import { LocationTypeService } from './services/location-type.service';
 import { OwnerSkuMappingService } from './services/owner-sku-mapping.service';
 import { ItemGroupService } from './services/item-group.service';
 import { LotService } from './services/lot.service';
+import { OwnerWarehouseAccessService } from './services/owner-warehouse-access.service';
+import { ItemIncompatibilityService } from './services/item-incompatibility.service';
 
 @Module({
   imports: [PrismaModule, FoundationModule],
@@ -82,6 +88,8 @@ import { LotService } from './services/lot.service';
     OwnerSkuMappingController,
     ItemGroupController,
     LotController,
+    OwnerWarehouseAccessController,
+    ItemIncompatibilityController,
   ],
   providers: [
     OwnerRepository,
@@ -102,6 +110,8 @@ import { LotService } from './services/lot.service';
     OwnerSkuMappingRepository,
     ItemGroupRepository,
     LotRepository,
+    OwnerWarehouseAccessRepository,
+    ItemIncompatibilityRepository,
     OwnerService,
     VendorService,
     ItemService,
@@ -120,6 +130,8 @@ import { LotService } from './services/lot.service';
     OwnerSkuMappingService,
     ItemGroupService,
     LotService,
+    OwnerWarehouseAccessService,
+    ItemIncompatibilityService,
   ],
   exports: [
     OwnerService,
@@ -140,6 +152,8 @@ import { LotService } from './services/lot.service';
     OwnerSkuMappingService,
     ItemGroupService,
     LotService,
+    OwnerWarehouseAccessService,
+    ItemIncompatibilityService,
   ],
 })
 export class MasterDataModule {}

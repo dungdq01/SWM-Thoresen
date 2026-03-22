@@ -38,7 +38,7 @@ class OnHandService {
       return {
         available: false,
         physicalQty: '0',
-        reservedQty: '0',
+        allocatedQty: '0',
         availableQty: '0',
         requestedQty: String(requestedQty),
         shortfall: String(requestedQty),
@@ -52,7 +52,7 @@ class OnHandService {
     return {
       available: availableQty.gte(requested),
       physicalQty: String(onHand.physicalQty),
-      reservedQty: String(onHand.reservedQty),
+      allocatedQty: String(onHand.allocatedQty),
       availableQty: String(onHand.availableQty),
       requestedQty: requested.toString(),
       shortfall: shortfall.toString(),
@@ -91,7 +91,7 @@ class OnHandService {
       SELECT 
         ${groupByColumn} as group_key,
         SUM(oh.physical_qty) as physical_qty,
-        SUM(oh.reserved_qty) as reserved_qty,
+        SUM(oh.allocated_qty) as allocated_qty,
         SUM(oh.available_qty) as available_qty,
         COUNT(*) as record_count
       FROM on_hand oh
@@ -108,7 +108,7 @@ class OnHandService {
     return results.map(row => ({
       key: row.group_key,
       physicalQty: new Decimal(row.physical_qty || 0).toString(),
-      reservedQty: new Decimal(row.reserved_qty || 0).toString(),
+      allocatedQty: new Decimal(row.allocated_qty || 0).toString(),
       availableQty: new Decimal(row.available_qty || 0).toString(),
       recordCount: Number(row.record_count),
     }));

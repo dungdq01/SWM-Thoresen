@@ -501,7 +501,7 @@ export const TOUR_FLOWS = [
         route: '/app/inventory-core/on-hand',
         target: '.section-title',
         title: '① Xem tồn kho hiện tại (On-Hand)',
-        description: '📦 Tồn kho = SUM(InventTrans).\n\nFilter theo: Item, Owner, Warehouse, Location, Status.\navailable_qty = physical_qty − reserved_qty.',
+        description: '📦 Tồn kho = SUM(InventTrans).\n\nFilter theo: Item, Owner, Warehouse, Location, Status.\navailable_qty = physical_qty − allocated_qty.',
         placement: 'bottom',
       },
       {

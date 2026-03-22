@@ -1,10 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Building2, Database, LayoutGrid, Link2, Package, MapPin, Scale, Ship, Tags, Truck, Warehouse, Grid3X3, Users, ArrowRightLeft, FileText, Layers, Boxes } from 'lucide-react'
+import { Building2, Database, LayoutGrid, Link2, Package, MapPin, Scale, Ship, Tags, Truck, Warehouse, Grid3X3, Users, ArrowRightLeft, FileText, Layers, Boxes, ShieldAlert, KeyRound } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 
 const navGroups = [
   {
-    label: 'Dữ liệu quản lý',
+    label: 'Đối tác & Hàng hóa',
     items: [
       { to: '/app/master-data/owners', label: 'Chủ hàng', icon: Building2 },
       { to: '/app/master-data/vendors', label: 'Nhà cung cấp', icon: Ship },
@@ -12,20 +12,28 @@ const navGroups = [
       { to: '/app/master-data/item-groups', label: 'Nhóm hàng hóa', icon: Layers },
       { to: '/app/master-data/carriers', label: 'Nhà vận chuyển', icon: Truck },
       { to: '/app/master-data/vessels', label: 'Tên tàu', icon: Ship },
-      { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU', icon: Link2 },
       { to: '/app/master-data/items', label: 'Mặt hàng', icon: Package },
       { to: '/app/master-data/lots', label: 'Lô hàng', icon: Boxes },
-      { to: '/app/master-data/warehouses', label: 'Kho', icon: Warehouse },
-      { to: '/app/master-data/zones', label: 'Khu vực', icon: Grid3X3 },
-      { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },
     ],
   },
   {
-    label: 'Dữ liệu cấu hình',
+    label: 'Kho & Vị trí',
+    items: [
+      { to: '/app/master-data/warehouses', label: 'Kho', icon: Warehouse },
+      { to: '/app/master-data/zones', label: 'Zone', icon: Grid3X3 },
+      { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },
+      { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU', icon: Link2 },
+      { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner', icon: KeyRound },
+      { to: '/app/master-data/item-incompatibilities', label: 'Không tương thích', icon: ShieldAlert },
+    ],
+  },
+  {
+    label: 'Cấu hình',
     items: [
       { to: '/app/master-data/uoms', label: 'Đơn vị tính', icon: Scale },
       { to: '/app/master-data/uom-conversions', label: 'Quy đổi ĐVT', icon: ArrowRightLeft },
       { to: '/app/master-data/inventory-statuses', label: 'Trạng thái tồn kho', icon: Tags },
+      { to: '/app/master-data/vehicle-types', label: 'Loại phương tiện', icon: Truck },
       { to: '/app/master-data/location-types', label: 'Loại vị trí', icon: LayoutGrid },
       { to: '/app/master-data/reason-codes', label: 'Mã lý do', icon: FileText },
     ],

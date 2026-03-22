@@ -529,6 +529,25 @@ export const lotApi = {
   getDerivedLots: (id) => httpClient.get(`${BASE_URL}/lots/${id}/derived-lots`),
 }
 
+// ==================== OWNER-WAREHOUSE ACCESS APIs ====================
+export const ownerWarehouseAccessApi = {
+  getList: (ownerId) => httpClient.get(`${BASE_URL}/owners/${ownerId}/warehouses`),
+  create: (ownerId, data) => httpClient.post(`${BASE_URL}/owners/${ownerId}/warehouses`, data),
+  delete: (ownerId, warehouseId) => httpClient.delete(`${BASE_URL}/owners/${ownerId}/warehouses/${warehouseId}`),
+  checkAccess: (ownerId, warehouseId) => httpClient.get(`${BASE_URL}/owners/${ownerId}/warehouses/${warehouseId}/check`),
+}
+
+// ==================== ITEM INCOMPATIBILITY APIs ====================
+export const itemIncompatibilityApi = {
+  getList: (params) => httpClient.get(`${BASE_URL}/item-incompatibilities`, { params }),
+  getById: (id) => httpClient.get(`${BASE_URL}/item-incompatibilities/${id}`),
+  create: (data) => httpClient.post(`${BASE_URL}/item-incompatibilities`, data),
+  update: (id, data) => httpClient.put(`${BASE_URL}/item-incompatibilities/${id}`, data),
+  deactivate: (id, reason) => httpClient.post(`${BASE_URL}/item-incompatibilities/${id}/deactivate`, { note: reason }),
+  reactivate: (id) => httpClient.post(`${BASE_URL}/item-incompatibilities/${id}/reactivate`),
+  checkIncompatibility: (itemId1, itemId2) => httpClient.get(`${BASE_URL}/item-incompatibilities/check`, { params: { itemId1, itemId2 } }),
+}
+
 // ==================== DROPDOWN CONFIG APIs ====================
 export const dropdownConfigApi = {
   getList: withDataSource(

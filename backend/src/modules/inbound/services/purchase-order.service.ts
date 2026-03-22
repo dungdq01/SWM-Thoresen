@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CancelPurchaseOrderDto, PurchaseOrderQueryDto } from '../dto/purchase-order.dto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
 
 enum PoStatus {
   NEW = 'NEW',
@@ -299,11 +301,47 @@ export class PurchaseOrderService {
       throw new BadRequestException(`Cannot confirm PO in status ${po.status}`);
     }
 
-    return this.prisma.purchaseOrder.update({
+    const result = await this.prisma.purchaseOrder.update({
       where: { id },
       data: { status: PoStatus.CONFIRMED, rowVersion: { increment: 1 }, updatedBy: userId || null },
       include: this.includeDetail(),
     });
+
+    // Post PO_CONFIRMED to M3 for each line → increases inboundOrderedQty
+    try {
+      const postingEngine = new PostingEngineService(this.prisma);
+      const firstLocation = await this.prisma.mdLocation.findFirst({
+        where: { warehouseId: po.warehouseId!, isActive: true },
+        orderBy: { locationCode: 'asc' },
+      });
+
+      for (const line of (po as any).lines || []) {
+        const uomCode = line.uom?.uomCode || 'KG';
+        await postingEngine.postInventory({
+          externalId: `PO-CONFIRM-${id}-${line.id}`,
+          correlationId: `corr-po-confirm-${id}`,
+          eventCode: 'PO_CONFIRMED',
+          refType: 'PURCHASE_ORDER',
+          refId: id,
+          refLineId: line.id,
+          itemId: line.itemId,
+          qty: String(line.expectedQty),
+          uomCode,
+          dimTo: {
+            warehouseCode: (po as any).warehouse?.warehouseCode,
+            locationCode: firstLocation?.locationCode || 'STR-A-001',
+            ownerCode: (po as any).owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: 'SYSTEM',
+          postedBy: userId,
+        });
+      }
+    } catch (err: any) {
+      console.error(`[M4→M3] PO_CONFIRMED posting failed for PO ${id}:`, err.message, err.code);
+    }
+
+    return result;
   }
 
   async close(id: string, userId?: string) {

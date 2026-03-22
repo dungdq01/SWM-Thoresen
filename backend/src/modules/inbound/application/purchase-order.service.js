@@ -3,6 +3,7 @@
  */
 
 const { PurchaseOrderRepository } = require('../infra/purchase-order.repository');
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
 
 const PO_STATUS = {
   DRAFT: 'DRAFT',
@@ -24,6 +25,7 @@ class PurchaseOrderService {
   constructor(prisma) {
     this.prisma = prisma;
     this.poRepo = new PurchaseOrderRepository(prisma);
+    this.postingEngine = new PostingEngineService(prisma);
   }
 
   async getNextPoNumber() {
@@ -109,7 +111,48 @@ class PurchaseOrderService {
     if (!VALID_TRANSITIONS[po.status]?.includes(PO_STATUS.CONFIRMED)) {
       throw Object.assign(new Error(`Cannot confirm PO in status ${po.status}`), { statusCode: 400 });
     }
-    return this.poRepo.updateStatus(id, PO_STATUS.CONFIRMED, { updatedBy: context.userId || null });
+
+    const result = await this.poRepo.updateStatus(id, PO_STATUS.CONFIRMED, { updatedBy: context.userId || null });
+
+    // Post PO_CONFIRMED to M3 for each line → increases inboundOrderedQty
+    try {
+      const warehouse = po.warehouse || await this.prisma.mdWarehouse.findUnique({ where: { id: po.warehouseId } });
+      const owner = po.owner || await this.prisma.mdOwner.findUnique({ where: { id: po.ownerId } });
+      const firstLocation = await this.prisma.mdLocation.findFirst({
+        where: { warehouseId: po.warehouseId, isActive: true },
+        orderBy: { locationCode: 'asc' },
+      });
+      const lines = po.lines || [];
+
+      for (const line of lines) {
+        const item = line.item || await this.prisma.mdItem.findUnique({ where: { id: line.itemId } });
+        const uom = line.uom || await this.prisma.mdUom.findUnique({ where: { id: line.uomId } });
+
+        await this.postingEngine.postInventory({
+          externalId: `PO-CONFIRM-${po.id}-${line.id}`,
+          correlationId: `corr-po-confirm-${po.id}`,
+          eventCode: 'PO_CONFIRMED',
+          refType: 'PURCHASE_ORDER',
+          refId: po.id,
+          refLineId: line.id,
+          itemId: line.itemId,
+          qty: String(line.expectedQty),
+          uomCode: uom?.uomCode || 'KG',
+          dimTo: {
+            warehouseCode: warehouse?.warehouseCode,
+            locationCode: firstLocation?.locationCode || 'RECEIVING',
+            ownerCode: owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: 'SYSTEM',
+          postedBy: context.userId,
+        });
+      }
+    } catch (err) {
+      console.error(`[M4→M3] PO_CONFIRMED posting failed for PO ${id}:`, err.message, err.code, err.details, err.stack?.split('\n').slice(0, 3).join('\n'));
+    }
+
+    return result;
   }
 
   async closePurchaseOrder(id, context = {}) {

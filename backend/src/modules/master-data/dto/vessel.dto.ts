@@ -59,6 +59,10 @@ export class CreateVesselDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateVesselDto {

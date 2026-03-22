@@ -73,17 +73,17 @@ export class VasInventoryFacade {
     }
 
     let totalPhysical = new Prisma.Decimal(0);
-    let totalReserved = new Prisma.Decimal(0);
+    let totalAllocated = new Prisma.Decimal(0);
     for (const oh of onHandRecords) {
       totalPhysical = totalPhysical.plus(oh.physicalQty);
-      totalReserved = totalReserved.plus(oh.reservedQty);
+      totalAllocated = totalAllocated.plus(oh.allocatedQty);
     }
 
-    const availableQty = totalPhysical.minus(totalReserved);
+    const availableQty = totalPhysical.minus(totalAllocated);
 
     return {
       physicalQty: totalPhysical,
-      reservedQtyShipment: totalReserved,
+      reservedQtyShipment: totalAllocated,
       reservedQtyVas: new Prisma.Decimal(0),
       availableQty: availableQty.greaterThan(0) ? availableQty : new Prisma.Decimal(0),
     };
@@ -113,7 +113,7 @@ export class VasInventoryFacade {
 
     let available = new Prisma.Decimal(0);
     for (const oh of onHandRecords) {
-      available = available.plus(oh.physicalQty.minus(oh.reservedQty));
+      available = available.plus(oh.physicalQty.minus(oh.allocatedQty));
     }
 
     return available.greaterThan(0) ? available.toNumber() : 0;

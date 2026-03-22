@@ -293,7 +293,7 @@ export class M3AdapterService implements OnModuleInit {
     return this.postingEngineService.postInventory({
       externalId: params.externalId,
       correlationId: params.correlationId,
-      eventCode: 'SHIPMENT_SHIPPED',
+      eventCode: 'SHIP_CONFIRMED',
       refType: 'SHIPMENT',
       refId: params.shipmentId,
       refLineId: params.lineId,

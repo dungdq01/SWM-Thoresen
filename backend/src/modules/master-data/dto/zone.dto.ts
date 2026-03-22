@@ -27,6 +27,10 @@ export class CreateZoneDto {
   @IsNumber()
   @Type(() => Number)
   maxCapacityMt?: number;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateZoneDto {

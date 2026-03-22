@@ -158,21 +158,43 @@ export class ItemService {
   }
 
   async deactivate(id: string, dto: DeactivateDto, ctx: RequestContext): Promise<MdItem> {
-    const item = await this.findById(id);
-    if (!item.isActive) throw new BadRequestException('Item is already inactive');
-    
-    const result = await this.itemRepository.deactivate(id, ctx.userId!, item.rowVersion);
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.mdItem.findUnique({ where: { id } });
+      if (!item) throw new NotFoundException(`Item ${id} not found`);
+      if (!item.isActive) throw new BadRequestException('Item is already inactive');
 
-    await this.logService.createAuditLog({
-      entityType: 'ITEM',
-      entityId: id,
-      action: 'DEACTIVATE',
-      userId: ctx.userId,
-      oldValue: item,
-      newValue: result,
+      // Check on-hand inventory for this item
+      const stockRecord = await tx.onHand.findFirst({
+        where: {
+          itemId: id,
+          physicalQty: { gt: 0 },
+        },
+      });
+      if (stockRecord) {
+        throw new BadRequestException('Cannot deactivate item because inventory still exists');
+      }
+
+      const result = await tx.mdItem.update({
+        where: { id, rowVersion: item.rowVersion },
+        data: {
+          isActive: false,
+          deactivatedAt: new Date(),
+          deactivatedBy: ctx.userId,
+          rowVersion: { increment: 1 },
+        },
+      });
+
+      await this.logService.createAuditLog({
+        entityType: 'ITEM',
+        entityId: id,
+        action: 'DEACTIVATE',
+        userId: ctx.userId,
+        oldValue: item,
+        newValue: result,
+      });
+
+      return result;
     });
-
-    return result;
   }
 
   async reactivate(id: string, dto: ReactivateDto, ctx: RequestContext): Promise<MdItem> {

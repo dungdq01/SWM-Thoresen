@@ -749,9 +749,19 @@ md_day_type           (standalone, reference by billing)
 - Tất cả bảng có `row_version` (BigInt).
 - Update phải gửi `rowVersion` hiện tại, nếu không khớp sẽ conflict.
 
-### Cascade Hierarchy
+### Cascade Hierarchy & Inventory Guard
 - Warehouse → Zone → Location có quan hệ cha con.
-- Khi deactivate warehouse, cần check xem có zone/location active không.
+- Khi deactivate warehouse, check cả zone active lẫn stock thực tế.
+- **Inventory Guard (2026-03-22)**: Tất cả 5 entity chính (Owner, Item, Location, Zone, Warehouse) bắt buộc check tồn kho trong bảng `on_hand` (qua `invent_dim`) trước khi cho phép deactivate. Nếu `physicalQty > 0` → chặn deactivate, trả lỗi 400.
+
+### Cross-module dependency khi deactivate
+- `md_owner` → check `on_hand` qua `invent_dim.owner_id`
+- `md_item` → check `on_hand` qua `on_hand.item_id`
+- `md_location` → check `on_hand` qua `invent_dim.location_id`
+- `md_zone` → check `on_hand` qua `invent_dim.location.zone_id` + check `md_location.is_active`
+- `md_warehouse` → check `on_hand` qua `invent_dim.warehouse_id` + check `md_zone.is_active`
+
+Các bảng `on_hand` và `invent_dim` thuộc Module 3 (Inventory Core) nhưng được query trực tiếp từ Module 2 service qua Prisma transaction.
 
 ### UOM Conversion
 - Conversion có thể global (`item_id = null`) hoặc item-specific.
@@ -764,3 +774,167 @@ md_day_type           (standalone, reference by billing)
 ### Import Tables
 - Dùng cho bulk import từ file.
 - Flow: Upload → Parse to staging → Validate → Import to main table.
+
+---
+
+## 8. Database Changes (2026-03-22)
+
+### 8.1 Owner-Warehouse Access
+
+**New Table:** `md_owner_warehouse_access`
+
+| Column         | Type    | Description          |
+|----------------|---------|----------------------|
+| `id`           | UUID    | Primary key          |
+| `owner_id`     | UUID    | FK → md_owner        |
+| `warehouse_id` | UUID    | FK → md_warehouse    |
+| `is_active`    | BOOLEAN | Trạng thái hoạt động |
+| `row_version`  | BIGINT  | Optimistic locking   |
+| `created_at`   | TIMESTAMP | Ngày tạo           |
+| `created_by`   | UUID    | Người tạo            |
+| `updated_at`   | TIMESTAMP | Ngày cập nhật       |
+| `updated_by`   | UUID    | Người cập nhật       |
+
+**Unique Constraint:** `(owner_id, warehouse_id)`
+
+**Mục đích:**
+- Quản lý quyền truy cập warehouse của owner
+- Owner chỉ có thể tạo PO/Receipt tại các warehouse đã được gán quyền
+- Dropdown warehouse trong form PO/Receipt chỉ hiển thị warehouse owner có quyền
+
+**File code:**
+- `repositories/owner-warehouse-access.repository.ts` → `md_owner_warehouse_access`
+- `services/owner-warehouse-access.service.ts`
+- `controllers/owner-warehouse-access.controller.ts`
+
+---
+
+### 8.2 Item Incompatibility
+
+**New Table:** `md_item_incompatibility`
+
+| Column                       | Type         | Description                                       |
+|------------------------------|--------------|---------------------------------------------------|
+| `id`                         | UUID         | Primary key                                       |
+| `rule_type`                  | ENUM         | `ITEM_TO_ITEM`, `ITEM_TO_GROUP`, `GROUP_TO_GROUP` |
+| `item_id`                    | UUID         | FK → md_item (nullable)                           |
+| `item_group_id`              | UUID         | FK → md_item_group (nullable)                     |
+| `incompatible_with_item_id`  | UUID         | FK → md_item (nullable)                           |
+| `incompatible_with_group_id` | UUID         | FK → md_item_group (nullable)                     |
+| `reason`                     | VARCHAR(500) | Lý do không tương thích                           |
+| `is_active`                  | BOOLEAN      | Trạng thái hoạt động                              |
+| `row_version`                | BIGINT       | Optimistic locking                                |
+| `created_at`                 | TIMESTAMP    | Ngày tạo                                          |
+| `created_by`                 | UUID         | Người tạo                                         |
+| `updated_at`                 | TIMESTAMP    | Ngày cập nhật                                     |
+| `updated_by`                 | UUID         | Người cập nhật                                    |
+| `deactivated_at`             | TIMESTAMP    | Ngày vô hiệu hóa                                  |
+| `deactivated_by`             | UUID         | Người vô hiệu hóa                                 |
+
+**New Enum:** `IncompatibilityRuleType`
+```
+ITEM_TO_ITEM    - Không tương thích giữa 2 items cụ thể
+ITEM_TO_GROUP   - Item không tương thích với nhóm hàng
+GROUP_TO_GROUP  - Nhóm hàng không tương thích với nhau
+```
+
+**Mục đích:**
+- Quản lý quy tắc không tương thích giữa các item/item group
+- Ngăn việc xếp hàng không tương thích chung location
+- Dùng trong Putaway suggestion (M7)
+
+**File code:**
+- `repositories/item-incompatibility.repository.ts` → `md_item_incompatibility`
+- `services/item-incompatibility.service.ts`
+- `controllers/item-incompatibility.controller.ts`
+
+---
+
+### 8.3 Owner Dual Tracking Mode
+
+**Schema Change:** `md_owner.dual_tracking_enabled`
+
+| Column                 | Type    | Default | Description                          |
+|------------------------|---------|---------|--------------------------------------|
+| `dual_tracking_enabled`| BOOLEAN | false   | Cho phép tracking cả units và weight |
+
+**Mục đích:**
+- Khi `dualTrackingEnabled = true`, tracking cả số lượng bags VÀ trọng lượng
+- Inventory posting ghi cả `qtyUnits` và `qtyKg`
+- Tolerance check áp dụng cho cả units và weight
+
+**Ảnh hưởng đến Receipt:**
+```typescript
+// Khi owner.dualTrackingEnabled = true
+{
+  receivedQty: 5000,       // KG (weight)
+  bagCount: 100,           // Units (bags)
+  nominalWeightPerBag: 50  // KG/bag
+}
+```
+
+---
+
+### 8.4 Updated Data Model
+
+```text
+md_owner ─────────────< md_owner_warehouse_access >───────── md_warehouse
+    │
+    ├── dual_tracking_enabled (new field)
+    │
+    └──< md_owner_item_policy >───────── md_item
+                                              │
+                                              └──< md_item_incompatibility
+                                                        │
+                                                        └──> md_item_group
+```
+
+---
+
+### 8.5 Migration Notes
+
+**Required before using new features:**
+```bash
+# Generate Prisma client with new models
+npx prisma generate
+
+# Run migration
+npx prisma migrate dev --name add_owner_warehouse_access_and_item_incompatibility
+```
+
+**Backward Compatibility:**
+- `dual_tracking_enabled` defaults to `false` → Existing owners không bị ảnh hưởng
+- `md_owner_warehouse_access` mặc định rỗng → Cần seed data hoặc UI để assign
+- `md_item_incompatibility` mặc định rỗng → Không có rules = không block
+
+---
+
+### 8.6 Inventory Guard trước khi Deactivate (2026-03-22)
+
+**Thay đổi:** Không thêm bảng mới — thay đổi logic ở tầng service.
+
+**Mô tả:**
+Tất cả 5 entity chính (Owner, Item, Location, Zone, Warehouse) bắt buộc kiểm tra bảng `on_hand` (qua relation `invent_dim`) trước khi cho phép deactivate. Nếu còn tồn kho (`physical_qty > 0`), hệ thống chặn deactivate và trả lỗi 400.
+
+**Bảng liên quan (thuộc Module 3 - Inventory Core):**
+
+| Bảng | Vai trò trong check |
+|------|---------------------|
+| `on_hand` | Chứa `physical_qty` — nguồn dữ liệu tồn kho hiện tại |
+| `invent_dim` | Link stock đến `owner_id`, `location_id`, `warehouse_id` |
+| `md_location` | Link `zone_id` — dùng cho Zone check qua `invent_dim.location.zone_id` |
+
+**Query pattern cho từng entity:**
+
+| Entity | Prisma where clause |
+|--------|---------------------|
+| Owner | `onHand.findFirst({ where: { physicalQty: { gt: 0 }, inventDim: { ownerId: id } } })` |
+| Item | `onHand.findFirst({ where: { itemId: id, physicalQty: { gt: 0 } } })` |
+| Location | `onHand.findFirst({ where: { physicalQty: { gt: 0 }, inventDim: { locationId: id } } })` |
+| Zone | `onHand.findFirst({ where: { physicalQty: { gt: 0 }, inventDim: { location: { zoneId: id } } } })` |
+| Warehouse | `onHand.findFirst({ where: { physicalQty: { gt: 0 }, inventDim: { warehouseId: id } } })` |
+
+**Lưu ý:**
+- Không cần migration database — chỉ thay đổi logic ở service layer
+- Tất cả deactivate đều wrap trong `$transaction` để tránh race condition
+- Zone/Warehouse giữ cả check entity con active (locations/zones) lẫn check stock thực tế

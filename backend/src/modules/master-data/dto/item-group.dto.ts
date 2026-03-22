@@ -15,6 +15,10 @@ export class CreateItemGroupDto {
   @IsOptional()
   @IsString()
   cargoForm?: string;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateItemGroupDto {

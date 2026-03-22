@@ -2,8 +2,8 @@
 
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/inventory-core`  
-**Version:** 1.2  
-**Last Updated:** 2026-03-09
+**Version:** 2.1
+**Last Updated:** 2026-03-23
 
 ---
 
@@ -12,11 +12,11 @@
 Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhiệm quản lý toàn bộ inventory backbone:
 
 - **InventDim**: Dimension tồn kho (site, warehouse, location, owner, status)
-- **InventTrans**: Ledger bất biến ghi nhận mọi biến động tồn kho
-- **OnHand**: Current balance projection
-- **Posting Engine**: Cổng vào duy nhất để các module khác ghi nhận tồn kho
+- **InventTrans**: Ledger bất biến ghi nhận mọi biến động tồn kho theo **stage** (EXPECTED → REGISTERED → ALLOCATED → DE_ALLOCATED → PHYSICAL → DEDUCTED)
+- **OnHand**: Current balance projection với 4 bucket gốc: `physicalQty`, `allocatedQty`, `inboundOrderedQty`, `outboundOrderedQty`
+- **Posting Engine**: Cổng vào duy nhất để các module khác ghi nhận tồn kho — mỗi event được map sang `transType + stage`
 - **Reversal Engine**: Đảo chiều transaction khi cần correction
-- **Hold/Allocation**: Giữ hàng cho outbound
+- **Allocation**: Capability nội bộ phục vụ outbound — không phải nghiệp vụ public độc lập
 - **Reconciliation**: So sánh ledger vs on-hand để phát hiện bất thường
 - **Snapshot**: Chụp daily storage snapshot cho M10 Billing
 
@@ -24,7 +24,11 @@ Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhi�
 - Mọi thay đổi tồn kho **PHẢI** đi qua Posting Engine
 - Ledger (`invent_trans`) là **bất biến** - không UPDATE/DELETE
 - Correction phải dùng **reversal transaction**
-- `OnHand` chỉ được update qua posting/hold service
+- `OnHand` chỉ được update qua posting engine (materialize từ ledger)
+- `availableQty` **không phải bucket gốc** — chỉ là giá trị tính ra khi query: `available = physical - allocated`
+- Allocation/hold là capability nội bộ, không expose như nghiệp vụ public độc lập
+- Không tạo bucket reserve riêng theo module (không có `reserved_qty_vas`, `reserved_qty_outbound`...)
+- Lot lifecycle **không thuộc M3** — M3 chỉ nhận `lotId` như dimension/reference
 
 ---
 
@@ -50,8 +54,7 @@ src/modules/inventory-core/
 │   ├── transaction-query.service.js  # Transaction query service
 │   ├── invent-dim.service.js         # Dimension service
 │   ├── reconciliation.service.js     # Reconciliation service (HI-1 fix)
-│   ├── snapshot.service.js           # Daily snapshot service (HI-1 fix)
-│   └── lot.service.js                # Lot management service
+│   └── snapshot.service.js           # Daily snapshot service (HI-1 fix)
 └── infra/
     ├── invent-dim.repository.js      # InventDim data access
     ├── invent-trans.repository.js    # InventTrans data access
@@ -110,7 +113,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 {
   "externalId": "evt-ship-001-line-01",
   "correlationId": "corr-20260308-001",
-  "eventCode": "SHIPMENT_SHIPPED",
+  "eventCode": "SHIP_CONFIRMED",
   "refType": "SHIPMENT",
   "refId": "SHP-20260308-000001",
   "refLineId": "LINE-01",
@@ -136,12 +139,15 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
   "data": {
     "transId": "TRX-20260308-000123",
     "transDbId": "uuid",
-    "transType": "SHIPMENT_OUT",
+    "transType": "ISSUE",
+    "stage": "DEDUCTED",
     "itemId": "uuid-item-1",
     "qty": "25000.000",
     "onHandAfter": {
       "physicalQty": "5000.000",
-      "reservedQty": "0.000",
+      "allocatedQty": "0.000",
+      "inboundOrderedQty": "0.000",
+      "outboundOrderedQty": "0.000",
       "availableQty": "5000.000"
     },
     "idempotentReplay": false
@@ -232,7 +238,9 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
         "inventoryStatus": { "statusCode": "AVAILABLE", "isAllocatable": true }
       },
       "physicalQty": "30000.000",
-      "reservedQty": "10000.000",
+      "allocatedQty": "10000.000",
+      "inboundOrderedQty": "5000.000",
+      "outboundOrderedQty": "3000.000",
       "availableQty": "20000.000",
       "uom": { "uomCode": "KG" }
     }
@@ -250,7 +258,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ### 3.4 GET /api/v1/inventory/onhand/availability
 
-**Mục đích:** Check available stock cho allocation.
+**Mục đích:** Check available stock cho allocation. Internally sử dụng **ledger-based calculation + pessimistic lock** theo item + dim để tránh oversell khi concurrent request.
 
 **Query Parameters:**
 | Param | Type | Required | Description |
@@ -266,7 +274,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
   "data": {
     "available": true,
     "physicalQty": "30000.000",
-    "reservedQty": "10000.000",
+    "allocatedQty": "10000.000",
     "availableQty": "20000.000",
     "requestedQty": "15000.000",
     "shortfall": "0"
@@ -304,7 +312,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
       "transId": "TRX-20260308-000123",
       "refType": "SHIPMENT",
       "refId": "SHP-20260308-000001",
-      "transType": "SHIPMENT_OUT",
+      "transType": "ISSUE",
       "qty": "-25000.000",
       "postedAt": "2026-03-08T10:30:00Z",
       "item": { "itemCode": "ITEM001" },
@@ -332,9 +340,9 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
     "transId": "TRX-20260308-000123",
     "refType": "SHIPMENT",
     "refId": "SHP-20260308-000001",
-    "transType": "SHIPMENT_OUT",
+    "transType": "ISSUE",
     "qty": "-25000.000",
-    "stage": "PHYSICAL",
+    "stage": "DEDUCTED",
     "correlationId": "corr-001",
     "reasonCode": null,
     "sourceApp": "API",
@@ -354,7 +362,9 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ### 3.7 POST /api/v1/inventory/holds
 
-**Mục đích:** Tạo hold/reserve stock cho outbound allocation.
+> **Lưu ý:** Hold/Allocation là **capability nội bộ** phục vụ outbound flow (M5). Không phải nghiệp vụ public độc lập. Caller chính là M5 Outbound khi xử lý `ALLOCATION_CREATED` event.
+
+**Mục đích:** Tạo allocation (giữ chỗ) stock cho outbound.
 
 **Request Body:**
 ```json
@@ -440,7 +450,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ### 3.10 POST /api/v1/inventory/holds/:holdId/cancel
 
-**Mục đích:** Cancel hold và release toàn bộ reserved qty.
+**Mục đích:** Cancel hold và release toàn bộ allocated qty.
 
 **Request Body:**
 ```json
@@ -609,40 +619,154 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ---
 
-## 4. Transaction Types
+## 4. Inventory Stages
+
+Mỗi transaction được gắn một `stage` thể hiện bước nào trong lifecycle nghiệp vụ:
+
+| Stage | Ý nghĩa | Ảnh hưởng bucket |
+|-------|---------|-------------------|
+| `EXPECTED` | Có kế hoạch/demand, chưa tác động vật lý | Inbound: +`inboundOrderedQty`; Outbound: +`outboundOrderedQty` |
+| `REGISTERED` | Đã tạo chứng từ, chưa thay đổi tồn thực | Chưa thay đổi bucket chính |
+| `ALLOCATED` | Giữ chỗ hàng cho nhu cầu đã commit | +`allocatedQty` (giảm available) |
+| `DE_ALLOCATED` | Giải phóng phần đã allocate | -`allocatedQty` (tăng available) |
+| `PHYSICAL` | Thay đổi vật lý thật trên hàng | ±`physicalQty` |
+| `DEDUCTED` | Hoàn tất trừ tồn logic cuối cùng | -`physicalQty`, -`allocatedQty`, -`outboundOrderedQty` |
+
+---
+
+## 5. Transaction Types
 
 | Trans Type | Description | Qty Sign | Dim From | Dim To |
 |------------|-------------|----------|----------|--------|
-| RECEIPT_IN | Nhập kho từ receipt | + | No | Yes |
-| SHIPMENT_OUT | Xuất kho từ shipment | - | Yes | No |
+| RECEIPT | Nhập kho (dùng cho mọi stage inbound) | + | No | Yes |
+| ISSUE | Xuất kho (dùng cho mọi stage outbound) | - | Yes | No |
 | MOVE | Di chuyển nội bộ | ±0 | Yes | Yes |
 | STATUS_CHANGE | Thay đổi status | ±0 | Yes | Yes |
-| ADJUSTMENT | Điều chỉnh manual | ± | Yes/No | Yes/No |
-| COUNT_GAIN | Kiểm kê thừa | + | No | Yes |
-| COUNT_LOSS | Kiểm kê thiếu | - | Yes | No |
-| VAS_CONSUME | VAS tiêu thụ | - | Yes | No |
-| VAS_PRODUCE | VAS sản xuất | + | No | Yes |
-| TRANSFER_OUT | Chuyển kho xuất | - | Yes | No |
-| TRANSFER_IN | Chuyển kho nhập | + | No | Yes |
+| ADJUSTMENT | Điều chỉnh manual / count / waste | ± | Yes/No | Yes/No |
+| TRANSFER_ISSUE | Chuyển kho xuất (phía kho nguồn) | - | Yes | No |
+| TRANSFER_RECEIPT | Chuyển kho nhập (phía kho đích) | + | No | Yes |
 
 ---
 
-## 5. Event Codes (Mapping)
+## 6. Event Codes – Stage-based Mapping
 
-| Event Code | Source Module | Trigger State | Trans Type |
-|------------|---------------|---------------|------------|
-| RECEIPT_RECEIVED | M4 | RECEIVED | RECEIPT_IN |
-| PUTAWAY_COMPLETED | M7 | COMPLETED | MOVE |
-| SHIPMENT_SHIPPED | M5 | SHIPPED | SHIPMENT_OUT |
-| MOVE_COMPLETED | M6 | COMPLETED | MOVE |
-| STATUS_CHANGE_CONFIRMED | M6 | CONFIRMED | STATUS_CHANGE |
-| ADJUSTMENT_APPROVED | M6 | APPROVED | ADJUSTMENT |
-| COUNT_GAIN_RECONCILED | M6 | RECONCILED | COUNT_GAIN |
-| COUNT_LOSS_RECONCILED | M6 | RECONCILED | COUNT_LOSS |
+### 6.1 Inbound Postings (M4 → M3)
+
+| Event Code | Source | Stage | Trans Type | Bucket Effect |
+|------------|--------|-------|------------|---------------|
+| `PO_CONFIRMED` | M4 | EXPECTED | RECEIPT | +`inboundOrderedQty` |
+| `RECEIPT_CREATED` | M4 | REGISTERED | RECEIPT | (ghi nhận chứng từ, chưa thay đổi bucket) |
+| `GOODS_RECEIVED` | M4 | PHYSICAL | RECEIPT | +`physicalQty`, -`inboundOrderedQty` |
+| `PUTAWAY_COMPLETED` | M7 | PHYSICAL | MOVE | move location (tổng physicalQty không đổi) |
+
+### 6.2 Outbound Postings (M5 → M3)
+
+| Event Code | Source | Stage | Trans Type | Bucket Effect |
+|------------|--------|-------|------------|---------------|
+| `SO_CONFIRMED` | M5 | EXPECTED | ISSUE | +`outboundOrderedQty` |
+| `ALLOCATION_CREATED` | M5 | ALLOCATED | ISSUE | +`allocatedQty` |
+| `ALLOCATION_RELEASED` | M5 | DE_ALLOCATED | ISSUE | -`allocatedQty` |
+| `PICK_CONFIRMED` | M7 | PHYSICAL | ISSUE | move nội bộ (storage → staging/picking zone) |
+| `LOAD_CONFIRMED` | M5 | PHYSICAL | ISSUE | move nội bộ (staging → dock/vehicle) |
+| `SHIP_CONFIRMED` | M5 | DEDUCTED | ISSUE | -`physicalQty`, -`allocatedQty`, -`outboundOrderedQty` |
+
+### 6.3 Transfer Postings (M6 → M3)
+
+| Event Code | Source | Stage | Trans Type | Bucket Effect |
+|------------|--------|-------|------------|---------------|
+| `TRANSFER_ORDER_CONFIRMED` | M6 | EXPECTED | TRANSFER_ISSUE | +`outboundOrderedQty` (kho nguồn) |
+| `TRANSFER_ISSUED` | M6 | DEDUCTED | TRANSFER_ISSUE | -`physicalQty` (kho nguồn), -`outboundOrderedQty` |
+| `TRANSFER_RECEIVED` | M6 | PHYSICAL | TRANSFER_RECEIPT | +`physicalQty` (kho đích) |
+
+### 6.4 VAS Postings (M9 → M3)
+
+| Event Code | Source | Stage | Trans Type | Bucket Effect |
+|------------|--------|-------|------------|---------------|
+| `VAS_ORDER_CONFIRMED` | M9 | EXPECTED | ISSUE | +`outboundOrderedQty` (nguyên liệu) |
+| `VAS_CONSUMED` | M9 | DEDUCTED | ISSUE | -`physicalQty` (nguyên liệu), -`outboundOrderedQty` |
+| `VAS_PRODUCED` | M9 | PHYSICAL | RECEIPT | +`physicalQty` (thành phẩm) |
+| `VAS_WASTE` | M9 | PHYSICAL | ADJUSTMENT | -`physicalQty` (hao hụt) |
+
+### 6.5 Inventory Control Postings (M6 → M3)
+
+| Event Code | Source | Stage | Trans Type | Bucket Effect |
+|------------|--------|-------|------------|---------------|
+| `MOVE_COMPLETED` | M6 | PHYSICAL | MOVE | move location |
+| `STATUS_CHANGE_CONFIRMED` | M6 | PHYSICAL | STATUS_CHANGE | change dim status |
+| `ADJUSTMENT_APPROVED` | M6 | PHYSICAL | ADJUSTMENT | ±`physicalQty` |
+| `COUNT_GAIN_RECONCILED` | M6 | PHYSICAL | ADJUSTMENT | +`physicalQty` |
+| `COUNT_LOSS_RECONCILED` | M6 | PHYSICAL | ADJUSTMENT | -`physicalQty` |
 
 ---
 
-## 6. Error Codes
+## 7. Stage-based Delta Logic (`getInventoryDelta`)
+
+Posting Engine sử dụng hàm `getInventoryDelta(transType, stage, qty)` trong `inventory.rules.js` để tính delta cho **tất cả 4 bucket** khi post transaction. Đây là core business rule.
+
+### 7.1 Delta Matrix — `(transType + stage) → bucket effects`
+
+| transType | stage | physicalDelta | allocatedDelta | inboundOrderedDelta | outboundOrderedDelta |
+|-----------|-------|:---:|:---:|:---:|:---:|
+| RECEIPT | EXPECTED | 0 | 0 | **+qty** | 0 |
+| RECEIPT | REGISTERED | 0 | 0 | 0 | 0 |
+| RECEIPT | PHYSICAL | **+qty** | 0 | **-qty** | 0 |
+| ISSUE | EXPECTED | 0 | 0 | 0 | **+qty** |
+| ISSUE | ALLOCATED | 0 | **+qty** | 0 | 0 |
+| ISSUE | DE_ALLOCATED | 0 | **-qty** | 0 | 0 |
+| ISSUE | PHYSICAL | 0 | 0 | 0 | 0 |
+| ISSUE | DEDUCTED | **-qty** | **-qty** | 0 | **-qty** |
+| TRANSFER_ISSUE | EXPECTED | 0 | 0 | 0 | **+qty** |
+| TRANSFER_ISSUE | DEDUCTED | **-qty** | 0 | 0 | **-qty** |
+| TRANSFER_RECEIPT | PHYSICAL | **+qty** | 0 | 0 | 0 |
+| ADJUSTMENT | PHYSICAL | **+qty** | 0 | 0 | 0 |
+| MOVE | * | 0 | 0 | 0 | 0 |
+| STATUS_CHANGE | * | 0 | 0 | 0 | 0 |
+
+> **MOVE/STATUS_CHANGE** không dùng delta matrix — chúng dùng legacy dim from/to logic (trừ physicalQty ở source dim, cộng ở target dim).
+
+> **ISSUE + PHYSICAL** (pick/load) trả delta = 0 vì pick/load là internal move giữa locations, xử lý bằng dim from/to riêng.
+
+### 7.2 On-Hand Update Flow
+
+```
+eventCode → EventMapping → { transType, stage }
+                              ↓
+                     getInventoryDelta(transType, stage, qty)
+                              ↓
+                   { physicalDelta, allocatedDelta, inboundOrderedDelta, outboundOrderedDelta }
+                              ↓
+                     onHandRepo.updateQty(id, deltas)
+                              ↓
+                   physicalQty += physicalDelta
+                   allocatedQty += allocatedDelta
+                   inboundOrderedQty += inboundOrderedDelta  (floor 0)
+                   outboundOrderedQty += outboundOrderedDelta (floor 0)
+                   availableQty = physicalQty - allocatedQty
+```
+
+### 7.3 Reversal Logic
+
+Reversal negate toàn bộ delta gốc của transaction:
+- Lấy `transType` + `stage` từ original transaction
+- Gọi `getInventoryDelta(transType, stage, qty)` → lấy delta gốc
+- Negate tất cả: `{ -physicalDelta, -allocatedDelta, -inboundOrderedDelta, -outboundOrderedDelta }`
+- Apply vào on-hand
+
+### 7.4 `availableQty` luôn là computed
+
+```
+availableQty = physicalQty - allocatedQty
+```
+
+Không bao giờ update `availableQty` trực tiếp. Nó được tính lại mỗi khi `physicalQty` hoặc `allocatedQty` thay đổi.
+
+### 7.5 Ordered qty floor = 0
+
+`inboundOrderedQty` và `outboundOrderedQty` được floor về 0 khi update — không cho phép giá trị âm. Điều này xử lý trường hợp short receive hoặc partial cancel.
+
+---
+
+## 8. Error Codes
 
 | Error Code | HTTP Status | Description |
 |------------|-------------|-------------|
@@ -663,7 +787,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ---
 
-## 7. Dependencies
+## 9. Dependencies
 
 ### Module 1 - Foundation
 - **RBAC**: Permission check (inventory.post, inventory.reverse, etc.)
@@ -681,17 +805,40 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ---
 
-## 8. Usage Examples
+## 10. Usage Examples
 
-### Example 1: Post Receipt Inbound
+### Example 1: Inbound – PO Confirmed (stage EXPECTED)
 ```javascript
-const response = await fetch('/api/v1/inventory/postings', {
+await fetch('/api/v1/inventory/postings', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    externalId: `po-${poId}-${lineId}`,
+    correlationId: requestId,
+    eventCode: 'PO_CONFIRMED',
+    refType: 'PURCHASE_ORDER',
+    refId: poId,
+    refLineId: lineId,
+    itemId: item.id,
+    qty: '50000.000',
+    uomCode: 'KG',
+    dimTo: {
+      warehouseCode: 'WH5.1',
+      ownerCode: 'CUST001'
+    },
+    sourceApp: 'API'
+  })
+});
+// → stage=EXPECTED, transType=RECEIPT, +inboundOrderedQty
+```
+
+### Example 2: Inbound – Goods Received (stage PHYSICAL)
+```javascript
+await fetch('/api/v1/inventory/postings', {
+  method: 'POST',
   body: JSON.stringify({
     externalId: `rcpt-${receiptId}-${lineId}`,
     correlationId: requestId,
-    eventCode: 'RECEIPT_RECEIVED',
+    eventCode: 'GOODS_RECEIVED',
     refType: 'RECEIPT',
     refId: receiptId,
     refLineId: lineId,
@@ -707,13 +854,38 @@ const response = await fetch('/api/v1/inventory/postings', {
     sourceApp: 'API'
   })
 });
+// → stage=PHYSICAL, transType=RECEIPT, +physicalQty, -inboundOrderedQty
 ```
 
-### Example 2: Create Hold for Allocation
+### Example 3: Outbound – SO Confirmed (stage EXPECTED)
 ```javascript
-const response = await fetch('/api/v1/inventory/holds', {
+await fetch('/api/v1/inventory/postings', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    externalId: `so-${soId}-${lineId}`,
+    correlationId: requestId,
+    eventCode: 'SO_CONFIRMED',
+    refType: 'SALES_ORDER',
+    refId: soId,
+    refLineId: lineId,
+    itemId: item.id,
+    qty: '10000.000',
+    uomCode: 'KG',
+    dimFrom: {
+      warehouseCode: 'WH5.1',
+      ownerCode: 'CUST001'
+    },
+    sourceApp: 'API'
+  })
+});
+// → stage=EXPECTED, transType=ISSUE, +outboundOrderedQty
+```
+
+### Example 4: Outbound – Allocation (stage ALLOCATED, internal)
+```javascript
+// Thường được gọi bởi M5 outbound service, không phải user trực tiếp
+await fetch('/api/v1/inventory/holds', {
+  method: 'POST',
   body: JSON.stringify({
     externalId: `alloc-${shipmentId}-${lineId}`,
     correlationId: requestId,
@@ -729,14 +901,41 @@ const response = await fetch('/api/v1/inventory/holds', {
     }
   })
 });
+// → stage=ALLOCATED, +allocatedQty
 ```
 
-### Example 3: Query Available Stock
+### Example 5: Outbound – Ship Confirmed (stage DEDUCTED)
 ```javascript
-const response = await fetch(
+await fetch('/api/v1/inventory/postings', {
+  method: 'POST',
+  body: JSON.stringify({
+    externalId: `ship-${shipmentId}-${lineId}`,
+    correlationId: requestId,
+    eventCode: 'SHIP_CONFIRMED',
+    refType: 'SHIPMENT',
+    refId: shipmentId,
+    refLineId: lineId,
+    itemId: item.id,
+    qty: '10000.000',
+    uomCode: 'KG',
+    dimFrom: {
+      warehouseCode: 'WH5.1',
+      locationCode: 'DOCK-01',
+      ownerCode: 'CUST001',
+      statusCode: 'AVAILABLE'
+    },
+    sourceApp: 'API'
+  })
+});
+// → stage=DEDUCTED, transType=ISSUE, -physicalQty, -allocatedQty, -outboundOrderedQty
+```
+
+### Example 6: Query Available Stock
+```javascript
+const { data } = await fetch(
   `/api/v1/inventory/onhand/availability?itemId=${itemId}&inventDimId=${dimId}&qty=10000`
-);
-const { data } = await response.json();
+).then(r => r.json());
+// data.availableQty = physicalQty - allocatedQty (computed, not stored as bucket)
 if (data.available) {
   // Proceed with allocation
 }

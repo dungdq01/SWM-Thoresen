@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsUUID, Min, Max, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsUUID, Min, Max, IsEmail, IsBoolean } from 'class-validator';
 import { OwnerType } from '@prisma/client';
 import { PaginationDto } from './common.dto';
 
@@ -47,6 +47,10 @@ export class CreateOwnerDto {
   @Min(0)
   @Max(100)
   defaultTolerancePct?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  dualTrackingEnabled?: boolean;
 
   @IsOptional()
   @IsUUID()
@@ -99,6 +103,10 @@ export class UpdateOwnerDto {
   @Min(0)
   @Max(100)
   defaultTolerancePct?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  dualTrackingEnabled?: boolean;
 
   @IsOptional()
   @IsUUID()

@@ -69,9 +69,10 @@ class OnHandRepository {
         itemId: data.itemId,
         inventDimId: data.inventDimId,
         physicalQty: data.physicalQty || 0,
-        reservedQty: data.reservedQty || 0,
+        allocatedQty: data.allocatedQty || 0,
         availableQty: data.availableQty || 0,
-        orderedQty: data.orderedQty || 0,
+        inboundOrderedQty: data.inboundOrderedQty || 0,
+        outboundOrderedQty: data.outboundOrderedQty || 0,
         uomId: data.uomId,
         lastMovementAt: data.lastMovementAt,
         lastCountAt: data.lastCountAt,
@@ -93,17 +94,21 @@ class OnHandRepository {
     }
 
     const physicalQty = new Decimal(current.physicalQty).plus(qtyChanges.physicalDelta || 0);
-    const reservedQty = new Decimal(current.reservedQty).plus(qtyChanges.reservedDelta || 0);
-    const availableQty = physicalQty.minus(reservedQty);
+    const allocatedQty = new Decimal(current.allocatedQty).plus(qtyChanges.allocatedDelta || 0);
+    const inboundOrderedQty = new Decimal(current.inboundOrderedQty).plus(qtyChanges.inboundOrderedDelta || 0);
+    const outboundOrderedQty = new Decimal(current.outboundOrderedQty).plus(qtyChanges.outboundOrderedDelta || 0);
+    const availableQty = physicalQty.minus(allocatedQty);
 
     const updated = await client.onHand.updateMany({
-      where: { 
+      where: {
         id,
         rowVersion: current.rowVersion,
       },
       data: {
         physicalQty: physicalQty.toFixed(3),
-        reservedQty: reservedQty.toFixed(3),
+        allocatedQty: allocatedQty.toFixed(3),
+        inboundOrderedQty: Decimal.max(0, inboundOrderedQty).toFixed(3),
+        outboundOrderedQty: Decimal.max(0, outboundOrderedQty).toFixed(3),
         availableQty: availableQty.toFixed(3),
         lastMovementAt: qtyChanges.isMovement ? new Date() : current.lastMovementAt,
         lastCountAt: qtyChanges.isCount ? new Date() : current.lastCountAt,
@@ -168,7 +173,16 @@ class OnHandRepository {
       where.inventDim = { ...where.inventDim, inventoryStatusId: filters.inventoryStatusId };
     }
     if (filters.hasStock !== undefined) {
-      where.physicalQty = filters.hasStock ? { gt: 0 } : { lte: 0 };
+      if (filters.hasStock) {
+        // Show records that have physical stock OR pending ordered qty
+        where.OR = [
+          { physicalQty: { gt: 0 } },
+          { inboundOrderedQty: { gt: 0 } },
+          { outboundOrderedQty: { gt: 0 } },
+        ];
+      } else {
+        where.physicalQty = { lte: 0 };
+      }
     }
 
     const [items, total] = await Promise.all([
@@ -221,7 +235,7 @@ class OnHandRepository {
         itemId: true,
         inventDimId: true,
         physicalQty: true,
-        reservedQty: true,
+        allocatedQty: true,
         availableQty: true,
       },
     });

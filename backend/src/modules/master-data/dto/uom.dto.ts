@@ -22,6 +22,10 @@ export class CreateUomDto {
   @Max(12)
   @Type(() => Number)
   decimalPrecision?: number;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateUomDto {

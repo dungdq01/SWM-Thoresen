@@ -215,6 +215,11 @@ export const MASTER_DATA_QUERY_KEYS = {
   lookupUoms: ['master-data', 'lookups', 'uoms'],
   lookupVehicleTypes: ['master-data', 'lookups', 'vehicle-types'],
   lookupInventoryStatuses: ['master-data', 'lookups', 'inventory-statuses'],
+  // Owner-Warehouse Access
+  ownerWarehouseAccess: (ownerId) => ['master-data', 'owner-warehouse-access', ownerId],
+  // Item Incompatibility
+  itemIncompatibilities: ['master-data', 'item-incompatibilities'],
+  itemIncompatibilityDetail: (id) => ['master-data', 'item-incompatibilities', id],
   // Lots
   lots: ['master-data', 'lots'],
   lotDetail: (id) => ['master-data', 'lots', id],
@@ -222,6 +227,13 @@ export const MASTER_DATA_QUERY_KEYS = {
   lotDerivedLots: (id) => ['master-data', 'lots', id, 'derived-lots'],
   lotFifo: (itemId, ownerId, warehouseId) => ['master-data', 'lots', 'fifo', itemId, ownerId, warehouseId],
 }
+
+// Item Incompatibility constants
+export const INCOMPATIBILITY_RULE_TYPES = [
+  { value: 'ITEM_TO_ITEM', label: 'Item ↔ Item' },
+  { value: 'ITEM_TO_GROUP', label: 'Item ↔ Nhóm hàng' },
+  { value: 'GROUP_TO_GROUP', label: 'Nhóm hàng ↔ Nhóm hàng' },
+]
 
 // Lot constants
 export const LOT_STATUSES = [

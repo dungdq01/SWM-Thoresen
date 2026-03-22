@@ -129,6 +129,10 @@ export class CreateItemDto {
   @IsOptional()
   @IsBoolean()
   isStorageBillable?: boolean;
+
+  @IsOptional()
+  @IsString()
+  externalId?: string;
 }
 
 export class UpdateItemDto {
