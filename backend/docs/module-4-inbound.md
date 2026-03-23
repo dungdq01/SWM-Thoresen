@@ -4,7 +4,7 @@
 > **Status:** ✅ Implemented (Feedback Fixed v4 - Multi-line ASN + Multi-warehouse PO)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-17 (Multi-line ASN, Multi-warehouse PO, Sequential ASN numbers)
+> **Last Updated:** 2026-03-23 (M3 stage-based integration: PO_CONFIRMED + GOODS_RECEIVED, removed unused Express files)
 
 ---
 
@@ -19,13 +19,14 @@ Module 4 quản lý toàn bộ **lifecycle của Receipt** (phiếu nhận hàng
 - **Weighing Flow**: Nhận dữ liệu cân gross/tare từ weighbridge
 - **Tolerance Check**: Tự động kiểm tra variance so với expected quantity
 - **State Machine**: Quản lý trạng thái receipt theo business rules
-- **M3 Integration**: Gọi PostingEngine khi RECEIVED để tạo InventTrans và tăng OnHand
+- **M3 Integration**: Gọi PostingEngine ở 2 điểm: PO confirm (`PO_CONFIRMED` → +inboundOrderedQty) và Receipt received (`GOODS_RECEIVED` → +physicalQty, -inboundOrderedQty)
 - **Integration Ready**: Interface để gọi M7 (putaway work)
 
 ### 1.2 Nguyên tắc quan trọng
 
 - **Không tự update inventory** - Chỉ gọi M3 Posting Engine
-- **Post inventory tại state RECEIVED** - Không post ở state khác
+- **Post PO_CONFIRMED khi confirm PO** - Tăng inboundOrderedQty (stage EXPECTED)
+- **Post GOODS_RECEIVED khi receive** - Tăng physicalQty, giảm inboundOrderedQty (stage PHYSICAL)
 - **Weigh event phải idempotent** - Dedupe theo event_id/ticket_id
 - **State machine enforce ở backend** - Không dựa vào UI
 
@@ -35,26 +36,31 @@ Module 4 quản lý toàn bộ **lifecycle của Receipt** (phiếu nhận hàng
 
 ```
 src/modules/inbound/
+├── inbound.module.ts                   # NestJS module registration
 ├── controllers/
-│   └── purchase-order.controller.ts    # PO NestJS controller
+│   ├── purchase-order.controller.ts    # PO NestJS controller
+│   ├── receipt.controller.ts           # Receipt NestJS controller
+│   └── inbound-document.controller.ts  # Inbound document controller
 ├── services/
-│   └── purchase-order.service.ts       # PO business logic
+│   ├── purchase-order.service.ts       # PO business logic (+ M3 PO_CONFIRMED integration)
+│   ├── receipt.service.ts              # Receipt NestJS service
+│   └── inbound-document.service.ts     # Inbound document service
 ├── dto/
-│   └── purchase-order.dto.ts           # PO DTOs & validation
+│   ├── purchase-order.dto.ts           # PO DTOs & validation
+│   ├── receipt.dto.ts                  # Receipt DTOs
+│   └── inbound-document.dto.ts         # Document DTOs
 ├── application/
-│   └── receipt.service.js              # Receipt business logic
+│   └── receipt.service.js              # Receipt core logic (+ M3 GOODS_RECEIVED integration)
 ├── domain/
 │   ├── inbound.errors.js               # Error definitions
 │   ├── inbound.policy.js               # Business policies
 │   └── inbound.state-machine.js        # State machine rules
 ├── infra/
 │   ├── receipt.repository.js           # Receipt CRUD
+│   ├── purchase-order.repository.js    # PO CRUD
 │   ├── receipt-weighing.repository.js  # Weighing logs
 │   └── receipt-status-history.repository.js # Status history
-├── inbound.controller.js               # Receipt HTTP handlers (Express)
-├── inbound.routes.js                   # Route definitions (Express)
-├── inbound.schema.js                   # Validation schemas
-└── index.js                            # Module exports
+└── inbound.schema.js                   # Validation schemas
 ```
 
 ---
@@ -836,22 +842,45 @@ Any cancellable state ──cancel──> CANCELLED
 | M2 - Master Data | `MdOwner`, `MdVendor`, `MdItem`, `MdWarehouse`, `MdLocation` | Validate master references |
 | M2 - Master Data | `MdOwnerItemPolicy` | Lookup tolerance |
 
-### 7.2 M3 Integration (✅ Implemented - FB-v3)
+### 7.2 M3 Integration (✅ Stage-based — 4 integration points)
 
-| Target | Event/Command | Description | Status |
-|--------|---------------|-------------|--------|
-| M3 - Inventory Core | `postInventory()` | Post inventory khi RECEIVED | ✅ Done |
-| M3 - Inventory Core | `RECEIPT_RECEIVED` event | Event code cho inbound | ✅ Done |
+| Target | Event Code | Stage | Trigger | Bucket Effect | Status |
+|--------|-----------|-------|---------|---------------|--------|
+| M3 | `PO_CONFIRMED` | EXPECTED | PO confirm | +`inboundOrderedQty` | ✅ Done |
+| M3 | `GOODS_RECEIVED` | PHYSICAL | Receipt received | +`physicalQty`, -`inboundOrderedQty` | ✅ Done |
+| M3 | Reversal of `PO_CONFIRMED` | — | PO cancel / unconfirm | -`inboundOrderedQty` | ✅ Done |
+| M3 | (qty converted to KG) | — | All postings | UOM conversion via `mdUomConversion` | ✅ Done |
 
-**Flow:**
+**Flow 1: PO Confirm → M3 PO_CONFIRMED**
+1. `PurchaseOrderService.confirm()` update PO status → CONFIRMED
+2. Cho mỗi PO line: convert qty sang KG via `mdUomConversion`
+3. Gọi `PostingEngineService.postInventory()` với:
+   - `externalId: PO-CONFIRM-{poId}-{lineId}-{timestamp}` (unique mỗi lần confirm)
+   - `eventCode: 'PO_CONFIRMED'`, `uomCode: 'KG'`
+   - `refType: 'PURCHASE_ORDER'`
+   - `dimTo: { warehouseCode, locationCode (first active), ownerCode, statusCode: 'AVAILABLE' }`
+   - `sourceApp: 'SYSTEM'`
+4. M3 tạo `InventTrans` stage=EXPECTED, tăng `inboundOrderedQty` trên `OnHand`
+5. Non-blocking: nếu M3 fail, PO vẫn confirm thành công (error logged)
+
+> **Lưu ý idempotency:** `externalId` chứa timestamp để hỗ trợ re-confirm sau khi unconfirm. Nếu dùng externalId cố định, M3 sẽ trả `idempotentReplay=true` khi confirm lại cùng PO và không tạo transaction mới.
+
+**Flow 2: Receipt Received → M3 GOODS_RECEIVED**
 1. `receiveWeighOut()` tính net weight và check tolerance
 2. Nếu tolerance pass → status = RECEIVED
-3. Gọi `PostingEngineService.postInventory()` với:
-   - `eventCode: 'RECEIPT_RECEIVED'`
+3. Gọi `PostingEngineService.postInventory()` cho mỗi receipt line với:
+   - `eventCode: 'GOODS_RECEIVED'`
    - `refType: 'RECEIPT'`
    - `dimTo: { warehouseCode, locationCode, ownerCode, statusCode: 'AVAILABLE' }`
-4. Lưu `postedTransId` vào `receipt_header`
-5. Kết quả: `InventTrans` được tạo, `OnHand` tăng
+4. M3 tạo `InventTrans` stage=PHYSICAL, tăng `physicalQty`, giảm `inboundOrderedQty`
+5. Lưu `postedTransId` vào `receipt_header`
+
+**Flow 3: PO Cancel / Unconfirm → M3 Reversal**
+1. `cancel()` hoặc `unconfirm()` update PO status
+2. Gọi `reversePoConfirmedPostings()` — tìm tất cả `InventTrans` có `refId=poId`, `stage=EXPECTED`, `isReversal=false`
+3. Cho mỗi trans: gọi `ReversalEngineService.reverseTransaction()` với `reasonCode: 'PO_CANCELLED'` hoặc `'PO_UNCONFIRMED'`
+4. M3 tạo reversal trans, giảm `inboundOrderedQty` trên `OnHand`
+5. Non-blocking + skip nếu đã reversed
 
 ### 7.3 Integration Points (Future)
 
@@ -864,21 +893,26 @@ Any cancellable state ──cancel──> CANCELLED
 
 ## 8. Files Code
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `application/receipt.service.js` | ~500 | Core business logic |
-| `domain/inbound.state-machine.js` | ~170 | State machine rules |
-| `domain/inbound.policy.js` | ~180 | Business policies |
-| `domain/inbound.errors.js` | ~130 | Error definitions |
-| `infra/receipt.repository.js` | ~180 | Receipt CRUD |
-| `infra/receipt-weighing.repository.js` | ~70 | Weighing logs |
-| `infra/receipt-status-history.repository.js` | ~50 | Status history |
-| `inbound.controller.js` | ~320 | HTTP handlers |
-| `inbound.routes.js` | ~90 | Route definitions |
-| `inbound.schema.js` | ~100 | Validation schemas |
-| `index.js` | ~40 | Module exports |
+| File | Description |
+|------|-------------|
+| `inbound.module.ts` | NestJS module registration |
+| `controllers/purchase-order.controller.ts` | PO NestJS controller |
+| `controllers/receipt.controller.ts` | Receipt NestJS controller |
+| `controllers/inbound-document.controller.ts` | Inbound document controller |
+| `services/purchase-order.service.ts` | PO business logic + M3 PO_CONFIRMED integration |
+| `services/receipt.service.ts` | Receipt NestJS service |
+| `services/inbound-document.service.ts` | Inbound document service |
+| `application/receipt.service.js` | Receipt core logic + M3 GOODS_RECEIVED integration |
+| `domain/inbound.state-machine.js` | State machine rules |
+| `domain/inbound.policy.js` | Business policies |
+| `domain/inbound.errors.js` | Error definitions |
+| `infra/receipt.repository.js` | Receipt CRUD |
+| `infra/purchase-order.repository.js` | PO CRUD |
+| `infra/receipt-weighing.repository.js` | Weighing logs |
+| `infra/receipt-status-history.repository.js` | Status history |
+| `inbound.schema.js` | Validation schemas |
 
-**Total:** ~1,900 lines (tất cả files < 800 lines)
+> **Removed:** `inbound.controller.js`, `inbound.routes.js`, `index.js`, `application/purchase-order.service.js` — Express legacy files, không còn dùng. Toàn bộ traffic đi qua NestJS controllers.
 
 ---
 

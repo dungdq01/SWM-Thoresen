@@ -3,8 +3,8 @@
 **Module:** Inventory Core Engine
 **Database:** PostgreSQL
 **Total Tables:** 10
-**Total Services:** 8
-**Last Updated:** 2026-03-23 (v2.1 — stage-based delta logic)
+**Total Services:** 9
+**Last Updated:** 2026-03-23 (v3.1 — receipt/SHP-based ordered qty posting)
 
 ---
 
@@ -32,8 +32,9 @@ Module 3 quản lý inventory backbone của hệ thống SWM với các bảng 
 | InventDimService | `invent-dim.service.js` | Dimension management |
 | ReconciliationService | `reconciliation.service.js` | Ledger vs OnHand comparison |
 | SnapshotService | `snapshot.service.js` | Daily storage snapshot for M10 |
+| **MaterializationService** | `materialization.service.js` | **ONLY component that updates on_hand** — read model projection from ledger + rebuild utility |
 
-> **Lưu ý:** LotService **không thuộc M3** — đã chuyển sang Module 2 (Master Data). M3 chỉ nhận `lotId` như dimension/reference.
+> **Lưu ý:** `lot.service.js` tồn tại trong M3 nhưng chỉ là **thin wrapper** gọi M2 Master Data. Lot lifecycle (tạo/sửa/xóa) thuộc M2. M3 chỉ nhận `lotId` như dimension/reference.
 
 ### Infrastructure (7 components)
 
@@ -378,11 +379,11 @@ SHA-256(site_id|warehouse_code|location_code|owner_code|status_code)
 
 | Event Code | Module | Stage | Trans Type | Auto-called by |
 |------------|--------|-------|------------|----------------|
-| `PO_CONFIRMED` | M4 | EXPECTED | RECEIPT | ✅ `purchase-order.service.js` → confirmPO |
+| `PO_CONFIRMED` | M4 | EXPECTED | RECEIPT | ✅ `receipt.service.js` → createReceipt() (v3.1: post at Receipt, not PO) |
 | `RECEIPT_CREATED` | M4 | REGISTERED | RECEIPT | — (chưa integrate) |
 | `GOODS_RECEIVED` | M4 | PHYSICAL | RECEIPT | ✅ `receipt.service.js` → receiveGoods |
 | `PUTAWAY_COMPLETED` | M7 | PHYSICAL | MOVE |
-| `SO_CONFIRMED` | M5 | EXPECTED | ISSUE | ✅ `sales-order.service.ts` → confirm |
+| `SO_CONFIRMED` | M5 | EXPECTED | ISSUE | ✅ `simple-shipment.service.ts` → create (v3.1: post at SHP, not SO) |
 | `ALLOCATION_CREATED` | M5 | ALLOCATED | ISSUE |
 | `ALLOCATION_RELEASED` | M5 | DE_ALLOCATED | ISSUE |
 | `PICK_CONFIRMED` | M7 | PHYSICAL | ISSUE |
@@ -501,6 +502,14 @@ RUNNING, COMPLETED, FAILED
 8. **Stage from mapping**: Posting engine lấy stage từ `inventory_event_mapping`, không hardcode
 9. **Delta-based update**: Mọi on-hand update đi qua `getInventoryDelta(transType, stage, qty)` → 4 bucket deltas
 10. **Lot belongs to M2**: M3 chỉ nhận `lot_id` như dimension reference, không quản lý lot lifecycle
+11. **Optimistic Lock**: `on_hand.row_version` dùng cho concurrent update defense
+12. **Advisory Lock**: `pg_advisory_xact_lock(hashtext(item_id|invent_dim_id))` via `$executeRawUnsafe` khi create/release/cancel hold — prevent concurrent allocation, auto-release on commit/rollback
+13. **Ledger-based Availability**: `calculateAvailableFromLedger()` — physical = MAX(SUM(invent_trans), on_hand.physical_qty), allocated = SUM(active holds). Fallback to on_hand cho seeded data chưa có ledger entries
+14. **Idempotency**: `invent_trans.external_id + trans_type` UNIQUE constraint — prevent duplicate postings
+15. **Decimal Precision**: Tất cả qty columns dùng `DECIMAL(18,3)` — calculations dùng Decimal.js
+16. **Hold posts ledger**: Create hold → `ALLOCATION_CREATED` invent_trans; Release/Cancel → `ALLOCATION_RELEASED` invent_trans
+17. **on_hand is read model**: Chỉ `MaterializationService` được update `on_hand`. Posting engine và hold service KHÔNG update trực tiếp
+18. **Rebuildable**: `on_hand` có thể rebuild từ `invent_trans` via `POST /materialization/rebuild`
 
 ---
 
@@ -538,6 +547,27 @@ POST /inventory/postings { eventCode, qty, dims }
   → inbound_ordered_qty = max(0, current + delta) (floored)
   → outbound_ordered_qty = max(0, current + delta) (floored)
 ```
+
+### Ordered Qty Lifecycle
+
+**Inbound (`inbound_ordered_qty`):**
+```
+Receipt Create    → PO_CONFIRMED (EXPECTED)  → +qty   (hàng sắp nhập tại warehouse receipt)
+Receipt Complete  → GOODS_RECEIVED (PHYSICAL) → -qty   (hàng đã vào kho)
+Receipt Cancel    → Reverse PO_CONFIRMED      → -remaining (floor 0)
+```
+
+**Outbound (`outbound_ordered_qty`) — v3.1:**
+```
+SHP Create       → SO_CONFIRMED (EXPECTED)   → +qty   (nhu cầu xuất tại warehouse SHP)
+Ship Confirm     → SHIP_CONFIRMED (DEDUCTED)  → -qty   (hàng đã xuất)
+SHP Cancel       → Reverse SO_CONFIRMED       → -remaining (floor 0)
+```
+
+> **v3.1:** SO confirm KHÔNG post M3. `outbound_ordered_qty` post ở level SHP (phiếu xuất) vì SHP mới biết warehouse cụ thể.
+
+> **Floor to 0:** Nếu nhận quá (over-receive) hoặc xuất hơn ordered, ordered qty floor về 0, không bao giờ âm.
+> **Partial:** 1 PO có thể tạo nhiều phiếu nhập — mỗi receipt giảm `inbound_ordered_qty` một phần.
 
 ### Reversal
 

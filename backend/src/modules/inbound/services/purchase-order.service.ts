@@ -3,6 +3,8 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CancelPurchaseOrderDto, PurchaseOrderQueryDto } from '../dto/purchase-order.dto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { ReversalEngineService } = require('../../inventory-core/application/reversal-engine.service');
 
 enum PoStatus {
   NEW = 'NEW',
@@ -301,45 +303,13 @@ export class PurchaseOrderService {
       throw new BadRequestException(`Cannot confirm PO in status ${po.status}`);
     }
 
+    // PO confirm = chỉ đổi status, KHÔNG post M3 tại đây.
+    // inboundOrderedQty sẽ được post khi tạo Receipt (phiếu nhập) — vì Receipt mới biết kho cụ thể nhận hàng.
     const result = await this.prisma.purchaseOrder.update({
       where: { id },
       data: { status: PoStatus.CONFIRMED, rowVersion: { increment: 1 }, updatedBy: userId || null },
       include: this.includeDetail(),
     });
-
-    // Post PO_CONFIRMED to M3 for each line → increases inboundOrderedQty
-    try {
-      const postingEngine = new PostingEngineService(this.prisma);
-      const firstLocation = await this.prisma.mdLocation.findFirst({
-        where: { warehouseId: po.warehouseId!, isActive: true },
-        orderBy: { locationCode: 'asc' },
-      });
-
-      for (const line of (po as any).lines || []) {
-        const uomCode = line.uom?.uomCode || 'KG';
-        await postingEngine.postInventory({
-          externalId: `PO-CONFIRM-${id}-${line.id}`,
-          correlationId: `corr-po-confirm-${id}`,
-          eventCode: 'PO_CONFIRMED',
-          refType: 'PURCHASE_ORDER',
-          refId: id,
-          refLineId: line.id,
-          itemId: line.itemId,
-          qty: String(line.expectedQty),
-          uomCode,
-          dimTo: {
-            warehouseCode: (po as any).warehouse?.warehouseCode,
-            locationCode: firstLocation?.locationCode || 'STR-A-001',
-            ownerCode: (po as any).owner?.ownerCode,
-            statusCode: 'AVAILABLE',
-          },
-          sourceApp: 'SYSTEM',
-          postedBy: userId,
-        });
-      }
-    } catch (err: any) {
-      console.error(`[M4→M3] PO_CONFIRMED posting failed for PO ${id}:`, err.message, err.code);
-    }
 
     return result;
   }
@@ -363,7 +333,7 @@ export class PurchaseOrderService {
       throw new BadRequestException(`Cannot cancel PO in status ${po.status}`);
     }
 
-    return this.prisma.purchaseOrder.update({
+    const result = await this.prisma.purchaseOrder.update({
       where: { id },
       data: {
         status: PoStatus.CANCELLED,
@@ -373,6 +343,11 @@ export class PurchaseOrderService {
       },
       include: this.includeDetail(),
     });
+
+    // M3 inboundOrderedQty is posted at Receipt level, not PO level.
+    // Receipt cancel handles its own reversal.
+
+    return result;
   }
 
   async unconfirm(id: string, userId?: string) {
@@ -389,10 +364,53 @@ export class PurchaseOrderService {
       throw new BadRequestException('Cannot unconfirm PO that already has receipts');
     }
 
-    return this.prisma.purchaseOrder.update({
+    const result = await this.prisma.purchaseOrder.update({
       where: { id },
       data: { status: PoStatus.NEW, rowVersion: { increment: 1 }, updatedBy: userId || null },
       include: this.includeDetail(),
     });
+
+    // M3 inboundOrderedQty is posted at Receipt level, not PO level.
+
+    return result;
+  }
+
+  /**
+   * Reverse all PO_CONFIRMED M3 postings for a PO.
+   * Called when PO is cancelled or unconfirmed.
+   */
+  private async reversePoConfirmedPostings(poId: string, reasonCode: string, userId?: string) {
+    try {
+      const reversalEngine = new ReversalEngineService(this.prisma);
+
+      // Find all EXPECTED transactions posted for this PO
+      const poTransactions = await this.prisma.inventTrans.findMany({
+        where: { refId: poId, stage: 'EXPECTED', isReversal: false },
+        select: { transId: true, id: true },
+      });
+
+      for (const trans of poTransactions) {
+        // Check if already reversed
+        const existingReversal = await this.prisma.inventoryReversalLink.findFirst({
+          where: { originalTransId: trans.id },
+        });
+        if (existingReversal) continue;
+
+        try {
+          await reversalEngine.reverseTransaction({
+            externalId: `PO-CANCEL-REV-${poId}-${trans.transId}`,
+            correlationId: `corr-po-cancel-${poId}`,
+            originalTransId: trans.transId,
+            reasonCode,
+            note: `Auto-reversal: PO ${poId} cancelled/unconfirmed`,
+            reversedBy: userId,
+          });
+        } catch (err: any) {
+          console.error(`[M4→M3] Reversal failed for trans ${trans.transId}:`, err.message);
+        }
+      }
+    } catch (err: any) {
+      console.error(`[M4→M3] PO reversal failed for PO ${poId} (non-blocking):`, err.message);
+    }
   }
 }

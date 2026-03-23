@@ -9,6 +9,7 @@ const { ReceiptWeighingRepository } = require('../infra/receipt-weighing.reposit
 const { ReceiptStateMachine, RECEIPT_STATUS, RECEIPT_ACTIONS } = require('../domain/inbound.state-machine');
 // CR-1 FIX: Import M3 PostingEngine for inventory posting
 const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+const { ReversalEngineService } = require('../../inventory-core/application/reversal-engine.service');
 const { TolerancePolicy, WeightValidationPolicy, CancelPolicy, BaggedPolicy } = require('../domain/inbound.policy');
 const {
   InboundError,
@@ -34,8 +35,9 @@ class ReceiptService {
     this.receiptRepo = new ReceiptRepository(prisma);
     this.historyRepo = new ReceiptStatusHistoryRepository(prisma);
     this.weighingRepo = new ReceiptWeighingRepository(prisma);
-    // CR-1 FIX: Inject M3 PostingEngine
+    // CR-1 FIX: Inject M3 PostingEngine + ReversalEngine
     this.postingEngine = postingEngine || new PostingEngineService(prisma);
+    this.reversalEngine = new ReversalEngineService(prisma);
   }
 
   /**
@@ -160,6 +162,7 @@ class ReceiptService {
         },
       });
 
+      // M3 PO_CONFIRMED posting moved to confirmReceipt() — only post after confirm, not on draft create
       return { receipt, idempotentReplay: false };
     });
   }
@@ -222,6 +225,42 @@ class ReceiptService {
           correlationId: receipt.correlationId,
         },
       });
+
+      // Post PO_CONFIRMED to M3 for each line → increases inboundOrderedQty at receipt warehouse
+      try {
+        const warehouse = await tx.mdWarehouse.findUnique({ where: { id: receipt.warehouseId } });
+        const owner = await tx.mdOwner.findUnique({ where: { id: receipt.ownerId } });
+        const firstLocation = await tx.mdLocation.findFirst({
+          where: { warehouseId: receipt.warehouseId, isActive: true },
+          orderBy: { locationCode: 'asc' },
+        });
+
+        for (const line of (receipt.lines || updated.lines || [])) {
+          const qtyKg = Number(line.expectedQty || 0);
+
+          await this.postingEngine.postInventory({
+            externalId: `RCV-CONFIRM-${receiptId}-${line.id}-${Date.now()}`,
+            correlationId: receipt.correlationId,
+            eventCode: 'PO_CONFIRMED',
+            refType: 'RECEIPT',
+            refId: receiptId,
+            refLineId: line.id,
+            itemId: line.itemId,
+            qty: String(qtyKg),
+            uomCode: 'KG',
+            dimTo: {
+              warehouseCode: warehouse?.warehouseCode,
+              locationCode: firstLocation?.locationCode || 'RCV-01',
+              ownerCode: owner?.ownerCode,
+              statusCode: 'AVAILABLE',
+            },
+            sourceApp: 'SYSTEM',
+            postedBy: context.userId,
+          }, tx);
+        }
+      } catch (err) {
+        console.error(`[M4→M3] Receipt PO_CONFIRMED posting failed for ${receiptId} (non-blocking):`, err.message);
+      }
 
       return { receipt: updated, idempotentReplay: false };
     });
@@ -647,6 +686,30 @@ class ReceiptService {
           correlationId: receipt.correlationId,
         },
       });
+
+      // Reverse M3 PO_CONFIRMED postings for this receipt → decreases inboundOrderedQty
+      try {
+        const transactions = await tx.inventTrans.findMany({
+          where: { refId: receiptId, stage: 'EXPECTED', isReversal: false },
+        });
+        for (const trans of transactions) {
+          const existingReversal = await tx.inventoryReversalLink.findFirst({
+            where: { originalTransId: trans.id },
+          });
+          if (existingReversal) continue;
+
+          await this.reversalEngine.reverseTransaction({
+            externalId: `RCV-CANCEL-REV-${receiptId}-${trans.transId}-${Date.now()}`,
+            correlationId: receipt.correlationId,
+            originalTransId: trans.transId,
+            reasonCode: reasonCode || 'RECEIPT_CANCELLED',
+            note: 'Receipt cancelled',
+            reversedBy: context.userId,
+          }, tx);
+        }
+      } catch (err) {
+        console.error(`[M4→M3] Receipt cancel reversal failed for ${receiptId} (non-blocking):`, err.message);
+      }
 
       return { receipt: updated };
     });

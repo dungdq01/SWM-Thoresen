@@ -12,6 +12,7 @@ const { TransactionQueryService } = require('./application/transaction-query.ser
 const { InventDimService } = require('./application/invent-dim.service');
 const { ReconciliationService } = require('./application/reconciliation.service');
 const { SnapshotService } = require('./application/snapshot.service');
+const { MaterializationService } = require('./application/materialization.service');
 
 const { InventDimRepository } = require('./infra/invent-dim.repository');
 const { InventTransRepository } = require('./infra/invent-trans.repository');
@@ -48,6 +49,7 @@ module.exports = {
   InventDimService,
   ReconciliationService,
   SnapshotService,
+  MaterializationService,
   InventDimRepository,
   InventTransRepository,
   OnHandRepository,

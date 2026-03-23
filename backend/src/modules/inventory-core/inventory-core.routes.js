@@ -144,6 +144,13 @@ function createInventoryCoreRoutes(prisma, authorizationService, configService, 
     (req, res) => controller.aggregateSnapshotsForBilling(req, res)
   );
 
+  // Materialization / Rebuild
+  router.post('/materialization/rebuild',
+    ...auth,
+    ...perm(PERMISSION_CODES.POSTING_CREATE),
+    (req, res) => controller.rebuildOnHand(req, res)
+  );
+
   return router;
 }
 

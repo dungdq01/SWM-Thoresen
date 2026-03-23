@@ -69,7 +69,7 @@ export function OutboundShipmentFormDrawer({
             itemId: l.itemId || '',
             cargoForm: l.cargoForm || 'BULK',
             uomId: l.uomId || '',
-            expectedQty: String(Number(l.expectedQtyKg || l.expectedQty || 0)),
+            expectedQty: String(Number(l.expectedQty || l.expectedQtyKg || 0)),
             bagCount: l.bagCount ? String(l.bagCount) : '',
             nominalWeightPerBag: l.nominalWeightPerBag ? String(l.nominalWeightPerBag) : '',
           }))
@@ -259,7 +259,7 @@ export function OutboundShipmentFormDrawer({
                       <Select label="Hình thức hàng" value={line.cargoForm} onChange={(e) => updateLine(idx, 'cargoForm', e.target.value)} options={CARGO_FORMS} />
                     </div>
                     <div className="grid grid-cols-3 gap-3 mt-3">
-                      <Input label="Số lượng (kg) *" type="number" value={line.expectedQty} onChange={(e) => updateLine(idx, 'expectedQty', e.target.value)} placeholder="0" />
+                      <Input label="SL xuất *" type="number" value={line.expectedQty} onChange={(e) => updateLine(idx, 'expectedQty', e.target.value)} placeholder="0" />
                       <Input label="Số bao" type="number" value={line.bagCount} onChange={(e) => updateLine(idx, 'bagCount', e.target.value)} placeholder="0" />
                       <Input label="Trọng lượng/bao (kg)" type="number" value={line.nominalWeightPerBag} onChange={(e) => updateLine(idx, 'nominalWeightPerBag', e.target.value)} placeholder="0" />
                     </div>

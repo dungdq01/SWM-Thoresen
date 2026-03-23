@@ -111,12 +111,15 @@ export function OutboundShipmentsPage() {
   const handleOpenDeleteConfirm = (shp) => setDeleteConfirm({ isOpen: true, shipment: shp })
   const handleCloseDeleteConfirm = () => setDeleteConfirm({ isOpen: false, shipment: null })
 
+  const [shipmentError, setShipmentError] = useState('')
   const handleCreateShipment = async (payload) => {
+    setShipmentError('')
     try {
       await createShipment.mutateAsync(payload)
       handleCloseShipmentModal()
-    } catch {
-      // Error handled by mutation
+    } catch (err) {
+      const msg = err?.response?.data?.error?.message || err?.error?.message || err?.response?.data?.message || err?.message || 'Lỗi tạo phiếu xuất'
+      setShipmentError(msg)
     }
   }
 
@@ -405,6 +408,7 @@ export function OutboundShipmentsPage() {
         items={items}
         uoms={uoms}
         isLoading={createShipment.isPending}
+        errorMessage={shipmentError}
       />
 
       {/* Modal — View Shipment */}

@@ -91,7 +91,7 @@ export function InventoryOnHandPage() {
   }, [rows])
 
   const handleChange = useCallback((key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }))
+    setFilters((prev) => ({ ...prev, [key]: value, ...(key !== 'page' ? { page: 1 } : {}) }))
   }, [])
 
   return (
@@ -193,12 +193,11 @@ export function InventoryOnHandPage() {
                         <InventoryStatusBadge statusCode={row.inventDim?.inventoryStatus?.statusCode} />
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-sm text-navy-600">{row.inventDim?.location?.locationCode || '—'}</span>
+                        <span className="font-mono text-sm text-navy-600">{row.lot?.lotNumber || row.inventDim?.lot?.lotNumber || '—'}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-navy-600">
-                          {row.inventDim?.warehouse?.warehouseName || row.inventDim?.zone?.zoneName || '—'}
-                        </span>
+                        <span className="font-mono text-sm text-navy-600">{row.inventDim?.location?.locationCode || '—'}</span>
+                        <p className="text-xs text-navy-400">{row.inventDim?.warehouse?.warehouseName || '—'}</p>
                       </TableCell>
                       <TableCell align="right">
                         <span className="font-semibold text-navy-900">{formatQty(row.physicalQty)}</span>

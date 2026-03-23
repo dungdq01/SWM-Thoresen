@@ -25,6 +25,7 @@ export function CreateShipmentModal({
   warehouses = [],
   items = [],
   uoms = [],
+  errorMessage = '',
 }) {
   const isEditMode = !!shipmentToEdit
   const [selectedSoId, setSelectedSoId] = useState('')
@@ -766,6 +767,12 @@ export function CreateShipmentModal({
                       : '* Kho, biển số xe và ít nhất 1 dòng hàng hóa với ĐVT và số lượng > 0 là bắt buộc'
                   )}
                 </p>
+                {errorMessage && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-300 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700">{errorMessage}</p>
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={onClose} disabled={isLoading}>
                     Hủy

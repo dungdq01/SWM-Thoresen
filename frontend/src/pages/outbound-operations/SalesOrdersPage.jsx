@@ -69,12 +69,15 @@ export function SalesOrdersPage() {
   const [shipmentModalState, setShipmentModalState] = useState({ isOpen: false, so: null })
   const handleOpenShipmentModal = (so) => setShipmentModalState({ isOpen: true, so })
   const handleCloseShipmentModal = () => setShipmentModalState({ isOpen: false, so: null })
+  const [shipmentError, setShipmentError] = useState('')
   const handleCreateShipment = async (payload) => {
+    setShipmentError('')
     try {
       await createShipment.mutateAsync(payload)
       handleCloseShipmentModal()
-    } catch {
-      // Error handled by mutation
+    } catch (err) {
+      const msg = err?.response?.data?.error?.message || err?.error?.message || err?.response?.data?.message || err?.message || 'Lỗi tạo phiếu xuất'
+      setShipmentError(msg)
     }
   }
 
@@ -182,8 +185,8 @@ export function SalesOrdersPage() {
             )}
             {!isLoading && rows.map((so) => {
               const isExpanded = expandedId === so.id
-              const totalExpectedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.expectedQty || 0), 0)
-              const totalShippedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.shippedQty || 0), 0)
+              const totalExpectedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.expectedQtyKg || l.expectedQty || 0), 0)
+              const totalShippedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.shippedQtyKg || l.shippedQty || 0), 0)
               return (
                 <React.Fragment key={so.id}>
                   <TableRow>
@@ -296,10 +299,10 @@ export function SalesOrdersPage() {
                                     <p className="text-xs text-navy-400">{line.item?.itemCode || line.itemId?.slice(0, 8)}</p>
                                   </td>
                                   <td className="py-2 pr-3 text-navy-600">{line.uom?.uomCode || 'kg'}</td>
-                                  <td className="py-2 pr-3 text-right font-medium text-navy-900">{Number(line.expectedQty || 0).toLocaleString()}</td>
+                                  <td className="py-2 pr-3 text-right font-medium text-navy-900">{Number(line.expectedQtyKg || line.expectedQty || 0).toLocaleString()} kg</td>
                                   <td className="py-2 pr-3 text-right">
-                                    <span className={Number(line.shippedQty || 0) > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
-                                      {Number(line.shippedQty || 0).toLocaleString()}
+                                    <span className={Number(line.shippedQtyKg || line.shippedQty || 0) > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                                      {Number(line.shippedQtyKg || line.shippedQty || 0).toLocaleString()} kg
                                     </span>
                                   </td>
                                   <td className="py-2 text-center">
@@ -357,13 +360,14 @@ export function SalesOrdersPage() {
       {/* Modal — Create Shipment */}
       <CreateShipmentModal
         isOpen={shipmentModalState.isOpen}
-        onClose={handleCloseShipmentModal}
+        onClose={() => { handleCloseShipmentModal(); setShipmentError(''); }}
         onSubmit={handleCreateShipment}
         salesOrder={shipmentModalState.so}
         warehouses={warehouses}
         items={items}
         uoms={uoms}
         isLoading={createShipment.isPending}
+        errorMessage={shipmentError}
       />
     </>
   )

@@ -160,8 +160,8 @@ export function useCreateShipment() {
       qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.salesOrders })
       toast.success('Tạo phiếu xuất thành công')
     },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi tạo phiếu xuất')
+    onError: () => {
+      // Error displayed inline in form via errorMessage prop
     },
   })
 }

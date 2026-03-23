@@ -6,6 +6,7 @@ const { Decimal } = require('decimal.js');
 const { InventTransRepository } = require('../infra/invent-trans.repository');
 const { OnHandRepository } = require('../infra/onhand.repository');
 const { ReversalLinkRepository } = require('../infra/reversal-link.repository');
+const { MaterializationService } = require('./materialization.service');
 const { getOnHandImpact, getInventoryDelta, canReverseTrans } = require('../domain/inventory.rules');
 const {
   transNotFoundError,
@@ -21,6 +22,7 @@ class ReversalEngineService {
     this.inventTransRepo = new InventTransRepository(prisma);
     this.onHandRepo = new OnHandRepository(prisma);
     this.reversalLinkRepo = new ReversalLinkRepository(prisma);
+    this.materializer = new MaterializationService(prisma);
     this.auditLogAdapter = auditLogAdapter;
   }
 
@@ -127,36 +129,12 @@ class ReversalEngineService {
         tx
       );
 
-      const originalQty = new Decimal(originalTrans.qty);
-      const isMoveLike = originalTrans.transType === 'MOVE' || originalTrans.transType === 'STATUS_CHANGE';
-
-      if (isMoveLike) {
-        // MOVE/STATUS_CHANGE: reverse physical dim from/to
-        const { fromImpact, toImpact } = getOnHandImpact(originalTrans.transType, originalQty.abs());
-        if (originalTrans.dimToId && !toImpact.equals(0)) {
-          await this.updateOnHandReverse(originalTrans.itemId, originalTrans.dimToId, {
-            physicalDelta: toImpact.negated().toFixed(3),
-          }, tx);
-        }
-        if (originalTrans.dimFromId && !fromImpact.equals(0)) {
-          await this.updateOnHandReverse(originalTrans.itemId, originalTrans.dimFromId, {
-            physicalDelta: fromImpact.negated().toFixed(3),
-          }, tx);
-        }
-      } else {
-        // Stage-based: negate the original delta
-        const originalDelta = getInventoryDelta(originalTrans.transType, originalTrans.stage, originalQty.abs());
-        const reversedDelta = {
-          physicalDelta: originalDelta.physicalDelta.negated().toFixed(3),
-          allocatedDelta: originalDelta.allocatedDelta.negated().toFixed(3),
-          inboundOrderedDelta: originalDelta.inboundOrderedDelta.negated().toFixed(3),
-          outboundOrderedDelta: originalDelta.outboundOrderedDelta.negated().toFixed(3),
-        };
-        const targetDimId = originalTrans.dimToId || originalTrans.dimFromId;
-        if (targetDimId) {
-          await this.updateOnHandReverse(originalTrans.itemId, targetDimId, reversedDelta, tx);
-        }
-      }
+      // === MATERIALIZATION ===
+      // Per guide: reversal engine does NOT update on_hand directly.
+      // Materializer handles the reversal transaction just like any other transaction.
+      await this.materializer.materializeTransaction(
+        reversalTrans, originalTrans.uomId, tx
+      );
 
       return {
         originalTransId: originalTrans.transId,
@@ -189,21 +167,7 @@ class ReversalEngineService {
     }
   }
 
-  /**
-   * Update on-hand for reversal — accepts full delta object
-   */
-  async updateOnHandReverse(itemId, inventDimId, deltaChanges, tx) {
-    const onHand = await this.onHandRepo.findByItemAndDim(itemId, inventDimId, tx);
-    if (!onHand) {
-      return null;
-    }
-
-    return this.onHandRepo.updateQty(
-      onHand.id,
-      { ...deltaChanges, isMovement: true },
-      tx
-    );
-  }
+  // NOTE: updateOnHandReverse removed — materialization service handles on_hand updates
 
   /**
    * Generate reversal transaction ID

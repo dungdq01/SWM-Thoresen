@@ -33,6 +33,8 @@ class InventoryCoreController {
     this.transactionQueryService = new TransactionQueryService(prisma);
     this.reconciliationService = new ReconciliationService(prisma);
     this.snapshotService = new SnapshotService(prisma);
+    const { MaterializationService } = require('./application/materialization.service');
+    this.materializationService = new MaterializationService(prisma);
     this.auditLogAdapter = auditLogAdapter;
   }
 
@@ -682,6 +684,23 @@ class InventoryCoreController {
       return res.status(200).json({
         success: true,
         data: result,
+      });
+    } catch (err) {
+      return this.handleError(err, res);
+    }
+  }
+
+  /**
+   * POST /api/v1/inventory/materialization/rebuild
+   * Rebuild on_hand from ledger for all records
+   */
+  async rebuildOnHand(req, res) {
+    try {
+      const result = await this.materializationService.rebuildAll();
+      return res.status(200).json({
+        success: true,
+        data: result,
+        message: `Rebuilt ${result.rebuilt}/${result.total} on_hand records from ledger`,
       });
     } catch (err) {
       return this.handleError(err, res);

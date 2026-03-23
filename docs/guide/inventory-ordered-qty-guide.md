@@ -579,21 +579,21 @@ Nó cũng phải giảm khi:
 # 13. Checklist dev cần implement
 
 ## Bắt buộc
-- [ ] Thêm field `inboundOrderedQty` vào `on_hand`
-- [ ] Thêm field `outboundOrderedQty` vào `on_hand`
-- [ ] Đổi `reservedQty` thành `allocatedQty`
-- [ ] Giữ `availableQty` là computed field
-- [ ] Map stage `EXPECTED` vào ordered qty
-- [ ] Khi inbound physical xảy ra, giảm `inboundOrderedQty`
-- [ ] Khi outbound deducted xảy ra, giảm `outboundOrderedQty`
-- [ ] Xử lý cancel / reduce / close để ordered qty không bị treo
+- [x] Thêm field `inboundOrderedQty` vào `on_hand` — ✅ schema + migration `20260323000000`
+- [x] Thêm field `outboundOrderedQty` vào `on_hand` — ✅ schema + migration `20260323000000`
+- [x] Đổi `reservedQty` thành `allocatedQty` — ✅ schema + code + frontend
+- [x] Giữ `availableQty` là computed field — ✅ `physical - allocated` in onhand.repository.js
+- [x] Map stage `EXPECTED` vào ordered qty — ✅ `getInventoryDelta()` in inventory.rules.js
+- [x] Khi inbound physical xảy ra, giảm `inboundOrderedQty` — ✅ `RECEIPT+PHYSICAL → inboundOrderedDelta: -qty`
+- [x] Khi outbound deducted xảy ra, giảm `outboundOrderedQty` — ✅ `ISSUE+DEDUCTED → outboundOrderedDelta: -qty`
+- [x] Xử lý cancel / reduce / close để ordered qty không bị treo — ✅ PO cancel/unconfirm → reverse PO_CONFIRMED, SO cancel/unconfirm → reverse SO_CONFIRMED
 
 ---
 
 ## Nên có
-- [ ] Có inventory delta function thống nhất
-- [ ] Có reversal logic cho ordered qty
-- [ ] Có reconciliation check giữa ordered state và transaction history
+- [x] Có inventory delta function thống nhất — ✅ `getInventoryDelta(transType, stage, qty)` in inventory.rules.js
+- [x] Có reversal logic cho ordered qty — ✅ reversal-engine.service.js negate tất cả 4 bucket deltas
+- [ ] Có reconciliation check giữa ordered state và transaction history — 🔜 chưa implement
 
 ---
 

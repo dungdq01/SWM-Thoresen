@@ -190,6 +190,7 @@ class OnHandRepository {
         where,
         include: {
           item: { select: { itemCode: true, itemName: true, cargoForm: true } },
+          lot: { select: { lotNumber: true, expiryDate: true } },
           inventDim: {
             include: {
               warehouse: { select: { warehouseCode: true, warehouseName: true } },

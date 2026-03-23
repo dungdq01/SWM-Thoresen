@@ -2,7 +2,7 @@
 
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/inventory-core`  
-**Version:** 2.1
+**Version:** 3.1
 **Last Updated:** 2026-03-23
 
 ---
@@ -14,9 +14,10 @@ Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhi�
 - **InventDim**: Dimension tồn kho (site, warehouse, location, owner, status)
 - **InventTrans**: Ledger bất biến ghi nhận mọi biến động tồn kho theo **stage** (EXPECTED → REGISTERED → ALLOCATED → DE_ALLOCATED → PHYSICAL → DEDUCTED)
 - **OnHand**: Current balance projection với 4 bucket gốc: `physicalQty`, `allocatedQty`, `inboundOrderedQty`, `outboundOrderedQty`
-- **Posting Engine**: Cổng vào duy nhất để các module khác ghi nhận tồn kho — mỗi event được map sang `transType + stage`
-- **Reversal Engine**: Đảo chiều transaction khi cần correction
-- **Allocation**: Capability nội bộ phục vụ outbound — không phải nghiệp vụ public độc lập
+- **Posting Engine**: Cổng vào duy nhất — ghi ledger (`invent_trans`) ONLY, không update `on_hand` trực tiếp
+- **Materialization Service**: Thành phần DUY NHẤT update `on_hand` — đọc delta từ ledger, apply vào read model
+- **Reversal Engine**: Đảo chiều transaction — ghi reversal ledger, materializer update on_hand
+- **Allocation**: Capability nội bộ — advisory lock + ledger-based check + post ledger
 - **Reconciliation**: So sánh ledger vs on-hand để phát hiện bất thường
 - **Snapshot**: Chụp daily storage snapshot cho M10 Billing
 
@@ -24,11 +25,11 @@ Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhi�
 - Mọi thay đổi tồn kho **PHẢI** đi qua Posting Engine
 - Ledger (`invent_trans`) là **bất biến** - không UPDATE/DELETE
 - Correction phải dùng **reversal transaction**
-- `OnHand` chỉ được update qua posting engine (materialize từ ledger)
+- `OnHand` là **read model** — chỉ được update bởi `MaterializationService`, không bao giờ bởi posting engine hoặc hold service trực tiếp
 - `availableQty` **không phải bucket gốc** — chỉ là giá trị tính ra khi query: `available = physical - allocated`
 - Allocation/hold là capability nội bộ, không expose như nghiệp vụ public độc lập
 - Không tạo bucket reserve riêng theo module (không có `reserved_qty_vas`, `reserved_qty_outbound`...)
-- Lot lifecycle **không thuộc M3** — M3 chỉ nhận `lotId` như dimension/reference
+- `lot.service.js` tồn tại trong M3 nhưng chỉ là thin wrapper gọi M2. Lot lifecycle thuộc M2
 
 ---
 
@@ -53,6 +54,7 @@ src/modules/inventory-core/
 │   ├── onhand.service.js             # OnHand query service (Decimal.js)
 │   ├── transaction-query.service.js  # Transaction query service
 │   ├── invent-dim.service.js         # Dimension service
+│   ├── materialization.service.js    # ONLY component that updates on_hand (read model)
 │   ├── reconciliation.service.js     # Reconciliation service (HI-1 fix)
 │   └── snapshot.service.js           # Daily snapshot service (HI-1 fix)
 └── infra/
@@ -362,9 +364,29 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ### 3.7 POST /api/v1/inventory/holds
 
-> **Lưu ý:** Hold/Allocation là **capability nội bộ** phục vụ outbound flow (M5). Không phải nghiệp vụ public độc lập. Caller chính là M5 Outbound khi xử lý `ALLOCATION_CREATED` event.
+> **Lưu ý:** Hold/Allocation là **capability nội bộ** phục vụ outbound flow (M5). Không phải nghiệp vụ public độc lập.
 
 **Mục đích:** Tạo allocation (giữ chỗ) stock cho outbound.
+
+**Allocation Flow (per customer guide):**
+1. **Advisory lock** — `pg_advisory_xact_lock(hashtext(item_id|invent_dim_id))` via `$executeRawUnsafe` — chặn concurrent allocation, auto-release on commit/rollback
+2. **Tính available từ LEDGER** — `calculateAvailableFromLedger()`:
+   - `ledgerPhysical` = SUM(invent_trans) cho item+dim với stage IN (PHYSICAL, DEDUCTED)
+   - `onHandPhysical` = on_hand.physical_qty (fallback cho seeded data chưa có ledger entries)
+   - `physical` = MAX(ledgerPhysical, onHandPhysical)
+   - `allocated` = SUM(active inventory_hold.hold_qty - released_qty)
+   - `available` = physical - allocated
+3. **Validate** available >= requested
+4. **Insert** `inventory_hold`
+5. **Post ledger** `ALLOCATION_CREATED` → tạo `invent_trans` stage=ALLOCATED → posting engine update on_hand allocatedQty += qty
+6. **Commit** — advisory lock tự release
+
+**Release/Cancel Flow:**
+1. **Advisory lock** — cùng key (item_id|invent_dim_id)
+2. **Post ledger** `ALLOCATION_RELEASED` → tạo `invent_trans` stage=DE_ALLOCATED → posting engine update on_hand allocatedQty -= qty
+3. **Update hold status** → PARTIALLY_RELEASED / RELEASED / CANCELLED
+
+> **Fallback logic:** `physical = MAX(ledger, on_hand)` — đảm bảo seeded data (chỉ có on_hand, chưa có invent_trans) vẫn có thể allocate. Khi hệ thống chạy lâu, tất cả data đều đi qua posting engine nên ledger = on_hand.
 
 **Request Body:**
 ```json
@@ -523,7 +545,27 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ---
 
-### 3.12 Snapshot APIs
+### 3.12 POST /api/v1/inventory/materialization/rebuild
+
+**Mục đích:** Rebuild toàn bộ `on_hand` từ `invent_trans` ledger. Dùng khi nghi ngờ on_hand bị lệch hoặc sau migration.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "rebuilt": 32,
+    "total": 32,
+    "message": "Rebuilt 32/32 on_hand records from ledger"
+  }
+}
+```
+
+> **Cảnh báo:** Rebuild lock toàn bộ on_hand records — chỉ chạy khi không có posting đang xử lý.
+
+---
+
+### 3.13 Snapshot APIs
 
 #### POST /api/v1/inventory/snapshots/runs
 
@@ -619,7 +661,7 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
 
 ---
 
-## 4. Inventory Stages
+## 5. Inventory Stages
 
 Mỗi transaction được gắn một `stage` thể hiện bước nào trong lifecycle nghiệp vụ:
 
@@ -634,7 +676,7 @@ Mỗi transaction được gắn một `stage` thể hiện bước nào trong l
 
 ---
 
-## 5. Transaction Types
+## 6. Transaction Types
 
 | Trans Type | Description | Qty Sign | Dim From | Dim To |
 |------------|-------------|----------|----------|--------|
@@ -648,27 +690,75 @@ Mỗi transaction được gắn một `stage` thể hiện bước nào trong l
 
 ---
 
-## 6. Event Codes – Stage-based Mapping
+## 7. Event Codes – Stage-based Mapping
 
 ### 6.1 Inbound Postings (M4 → M3)
 
 | Event Code | Source | Stage | Trans Type | Bucket Effect |
 |------------|--------|-------|------------|---------------|
-| `PO_CONFIRMED` | M4 | EXPECTED | RECEIPT | +`inboundOrderedQty` |
+| `PO_CONFIRMED` | M4 (Receipt create) | EXPECTED | RECEIPT | +`inboundOrderedQty` — posted khi tạo phiếu nhập (Receipt), không phải khi confirm PO |
 | `RECEIPT_CREATED` | M4 | REGISTERED | RECEIPT | (ghi nhận chứng từ, chưa thay đổi bucket) |
 | `GOODS_RECEIVED` | M4 | PHYSICAL | RECEIPT | +`physicalQty`, -`inboundOrderedQty` |
 | `PUTAWAY_COMPLETED` | M7 | PHYSICAL | MOVE | move location (tổng physicalQty không đổi) |
+
+**Inbound Lifecycle Example (v3.1):**
+```
+PO-001: đặt mua 500 KG WHEAT-SOFT (Cargill)
+  ┌─ PO Confirm         → chỉ đổi status PO → CONFIRMED
+  │                        (KHÔNG post M3 — PO "kho phân phối" là planning)
+  │
+  ├─ Receipt-001 (phiếu nhập 1, chọn kho WH5.1)
+  │  ├─ Create           → PO_CONFIRMED (EXPECTED)    → inboundOrderedQty += 200 tại WH5.1
+  │  └─ Nhận hàng 200kg → GOODS_RECEIVED (PHYSICAL)   → physicalQty += 200, inboundOrderedQty -= 200
+  │
+  ├─ Receipt-002 (phiếu nhập 2, chọn kho WH-02)
+  │  ├─ Create           → PO_CONFIRMED (EXPECTED)    → inboundOrderedQty += 300 tại WH-02
+  │  └─ Nhận hàng 300kg → GOODS_RECEIVED (PHYSICAL)   → physicalQty += 300, inboundOrderedQty -= 300
+  │
+  └─ Receipt Cancel:
+     → Reverse PO_CONFIRMED → inboundOrderedQty -= reversed qty (floor 0)
+```
+
+> **v3.1:** `inboundOrderedQty` post ở level Receipt (phiếu nhập), không phải PO. Receipt mới biết kho cụ thể nhận hàng.
+> **Floor to 0:** Nếu nhận quá (over-receive), inboundOrdered không bao giờ âm.
 
 ### 6.2 Outbound Postings (M5 → M3)
 
 | Event Code | Source | Stage | Trans Type | Bucket Effect |
 |------------|--------|-------|------------|---------------|
-| `SO_CONFIRMED` | M5 | EXPECTED | ISSUE | +`outboundOrderedQty` |
+| `SO_CONFIRMED` | M5 (SHP create) | EXPECTED | ISSUE | +`outboundOrderedQty` — posted khi tạo phiếu xuất (SHP), không phải khi confirm SO |
 | `ALLOCATION_CREATED` | M5 | ALLOCATED | ISSUE | +`allocatedQty` |
 | `ALLOCATION_RELEASED` | M5 | DE_ALLOCATED | ISSUE | -`allocatedQty` |
 | `PICK_CONFIRMED` | M7 | PHYSICAL | ISSUE | move nội bộ (storage → staging/picking zone) |
 | `LOAD_CONFIRMED` | M5 | PHYSICAL | ISSUE | move nội bộ (staging → dock/vehicle) |
 | `SHIP_CONFIRMED` | M5 | DEDUCTED | ISSUE | -`physicalQty`, -`allocatedQty`, -`outboundOrderedQty` |
+
+**Outbound Lifecycle Example (v3.1):**
+```
+SO-001: xuất 1000 KG RICE-5T (OWN-001)
+  ┌─ SO Confirm         → chỉ đổi status SO → CONFIRMED
+  │                        (KHÔNG post M3 — SO không biết kho cụ thể)
+  │
+  ├─ SHP Create (chọn kho WH-01)
+  │   → SO_CONFIRMED (EXPECTED) → outboundOrderedQty += 1000 tại WH-01
+  │   → Availability check: nếu kho thiếu tồn → block + báo lỗi
+  │
+  ├─ Allocate 1000      → ALLOCATION_CREATED (ALLOCATED) → allocatedQty += 1000
+  │                                                        → availableQty -= 1000
+  │
+  ├─ Pick (nếu có)      → PICK_CONFIRMED (PHYSICAL)     → move location (storage → staging)
+  │
+  ├─ Load (nếu có)      → LOAD_CONFIRMED (PHYSICAL)     → move location (staging → dock)
+  │
+  ├─ Ship Confirm       → SHIP_CONFIRMED (DEDUCTED)     → physicalQty -= 1000
+  │                                                       → allocatedQty -= 1000
+  │                                                       → outboundOrderedQty -= 1000
+  │
+  └─ SHP Cancel         → Reverse SO_CONFIRMED           → outboundOrderedQty -= 1000
+```
+
+> **v3.1:** `outboundOrderedQty` post ở level SHP (phiếu xuất), không phải SO (đơn bán hàng). SHP mới biết kho cụ thể → nhu cầu xuất hiện đúng warehouse trên tồn kho.
+> **Availability check:** Khi tạo SHP, check tồn kho tại warehouse đó. Nếu không đủ → block + hiện lỗi chi tiết trong form.
 
 ### 6.3 Transfer Postings (M6 → M3)
 
@@ -699,7 +789,7 @@ Mỗi transaction được gắn một `stage` thể hiện bước nào trong l
 
 ---
 
-## 7. Stage-based Delta Logic (`getInventoryDelta`)
+## 8. Stage-based Delta Logic (`getInventoryDelta`)
 
 Posting Engine sử dụng hàm `getInventoryDelta(transType, stage, qty)` trong `inventory.rules.js` để tính delta cho **tất cả 4 bucket** khi post transaction. Đây là core business rule.
 
@@ -752,6 +842,25 @@ Reversal negate toàn bộ delta gốc của transaction:
 - Negate tất cả: `{ -physicalDelta, -allocatedDelta, -inboundOrderedDelta, -outboundOrderedDelta }`
 - Apply vào on-hand
 
+**Auto-reversal khi cancel:**
+| Module | Action | Reversal target | Effect |
+|--------|--------|----------------|--------|
+| M4 | Receipt cancel | Reverse `PO_CONFIRMED` (stage=EXPECTED) refId=receiptId | -`inboundOrderedQty` |
+| M5 | SHP cancel | Reverse `SO_CONFIRMED` (stage=EXPECTED) refId=shipmentId | -`outboundOrderedQty` |
+
+> **v3.1:** SO cancel/unconfirm KHÔNG reverse M3 (vì SO không post M3). SHP cancel mới reverse.
+
+Logic: tìm tất cả `InventTrans` có `refId=entityId`, `stage=EXPECTED`, `isReversal=false` → reverse từng trans. Skip nếu đã reversed.
+
+### 7.3.1 Idempotency khi re-confirm
+
+Khi PO/SO được unconfirm rồi confirm lại, caller **phải dùng externalId unique mỗi lần** (ví dụ chứa timestamp). Nếu dùng externalId cố định:
+- M3 idempotency check tìm thấy transaction cũ (đã bị reversed)
+- Trả `idempotentReplay: true` → không tạo transaction mới
+- `inboundOrderedQty` / `outboundOrderedQty` không tăng lại
+
+Pattern đúng: `externalId: PO-CONFIRM-{poId}-{lineId}-{Date.now()}`
+
 ### 7.4 `availableQty` luôn là computed
 
 ```
@@ -766,7 +875,41 @@ Không bao giờ update `availableQty` trực tiếp. Nó được tính lại m
 
 ---
 
-## 8. Error Codes
+## 8.5 Architecture: Write Path vs Read Model (per customer guide)
+
+```
+                    ┌─────────────────────────────┐
+ Business Module    │  postInventory(eventCode)    │
+ (M4/M5/M6/M7/M9)  └──────────────┬──────────────┘
+                                   │
+                    ┌──────────────▼──────────────┐
+ Posting Engine     │  1. Validate event mapping   │
+ (WRITE PATH)       │  2. Resolve dimensions       │
+                    │  3. INSERT invent_trans       │  ← LEDGER (source of truth)
+                    │  4. Call materializer         │
+                    └──────────────┬──────────────┘
+                                   │
+                    ┌──────────────▼──────────────┐
+ Materializer       │  5. Read delta from trans     │
+ (READ MODEL SYNC)  │  6. UPDATE on_hand           │  ← READ MODEL (projection)
+                    └─────────────────────────────┘
+```
+
+**Key rules:**
+- Posting engine **KHÔNG** update `on_hand` trực tiếp
+- Hold service **KHÔNG** update `on_hand` trực tiếp
+- `MaterializationService` là thành phần **DUY NHẤT** update `on_hand`
+- `on_hand` có thể **rebuild** từ `invent_trans` bất kỳ lúc nào via `POST /materialization/rebuild`
+
+**Rebuild API:**
+```
+POST /api/v1/inventory/materialization/rebuild
+→ { rebuilt: 32, total: 32, message: "Rebuilt 32/32 on_hand records from ledger" }
+```
+
+---
+
+## 9. Error Codes (24 total)
 
 | Error Code | HTTP Status | Description |
 |------------|-------------|-------------|
@@ -781,13 +924,106 @@ Không bao giờ update `availableQty` trực tiếp. Nó được tính lại m
 | INV_ALREADY_REVERSED | 409 | Transaction already reversed |
 | INV_HOLD_NOT_FOUND | 404 | Hold not found |
 | INV_HOLD_INSUFFICIENT_QTY | 422 | Release qty exceeds hold qty |
+| INV_LOCK_TIMEOUT | 503 | Optimistic lock failed (concurrent update) |
 | INV_TRANS_NOT_FOUND | 404 | Transaction not found |
 | INV_REASON_CODE_REQUIRED | 400 | Reason code required |
+| INV_ONHAND_NOT_FOUND | 404 | On-hand record not found |
+| INV_ITEM_NOT_FOUND | 404 | Item not found or inactive |
+| INV_UOM_NOT_FOUND | 404 | UOM not found or inactive |
+| INV_WAREHOUSE_NOT_FOUND | 404 | Warehouse not found or inactive |
+| INV_LOCATION_NOT_FOUND | 404 | Location not found or inactive |
+| INV_OWNER_NOT_FOUND | 404 | Owner not found or inactive |
+| INV_STATUS_NOT_FOUND | 404 | Inventory status not found or inactive |
 | INV_STATUS_NOT_ALLOCATABLE | 422 | Status is not allocatable |
+| INV_RECON_SCOPE_INVALID | 422 | Invalid reconciliation scope |
+| INV_SNAPSHOT_VERSION_CONFLICT | 409 | Snapshot already exists for this date |
 
 ---
 
-## 9. Dependencies
+## 10. Concurrency & Idempotency Patterns
+
+### 9.1 Idempotency
+
+| Operation | Dedup Key | Behavior |
+|-----------|----------|----------|
+| Posting | `externalId + transType` | Returns existing result with `idempotentReplay: true` |
+| Reversal | `externalId` | Returns existing reversal with `idempotentReplay: true` |
+| Hold | `externalId` | Returns existing hold with `idempotentReplay: true` |
+| Snapshot | `snapshotDate + warehouseId` | Returns ALREADY_EXISTS (unless RERUN mode) |
+
+> **Re-confirm pattern**: callers phải dùng `externalId` chứa timestamp (ví dụ `PO-CONFIRM-{id}-{lineId}-{Date.now()}`) để tránh idempotent replay khi confirm lại sau unconfirm.
+
+### 9.2 Concurrency Control
+
+| Pattern | Location | Description |
+|---------|----------|-------------|
+| **Advisory Lock** | `hold.service.js` | `pg_advisory_xact_lock(hashtext(item\|dim))` via `$executeRawUnsafe` — chặn concurrent allocation, auto-release on commit |
+| **Ledger-based Check** | `hold.service.js` | `calculateAvailableFromLedger()` — physical từ MAX(ledger, on_hand), allocated từ active holds |
+| Optimistic Locking | `onhand.repository.js` | `rowVersion` WHERE clause — throw error nếu concurrent update |
+| Transaction Wrapping | All services | Prisma `$transaction()` cho atomic operations |
+| External Transaction | `posting-engine.service.js` | `externalTx` param cho caller's transaction participation |
+
+### 9.3 Decimal Precision
+
+Tất cả quantity calculations dùng `Decimal.js` — tránh floating-point rounding errors. Quantities lưu DB dạng `DECIMAL(18,3)`, truyền qua API dạng string.
+
+---
+
+## 11. Audit Log Actions
+
+M3 ghi audit log qua `AuditLogAdapter` (fire-and-forget, non-blocking):
+
+| Action | Entity | Trigger |
+|--------|--------|---------|
+| `INVENTORY_POSTING` | `INVENT_TRANS` | postInventory thành công |
+| `INVENTORY_REVERSAL` | `INVENT_TRANS` | reverseTransaction thành công |
+| `HOLD_CREATE` | `INVENTORY_HOLD` | createHold thành công |
+| `HOLD_RELEASE` | `INVENTORY_HOLD` | releaseHold thành công |
+| `HOLD_CANCEL` | `INVENTORY_HOLD` | cancelHold thành công |
+| `RECONCILIATION_EXECUTE` | `RECONCILIATION_RUN` | createReconciliationRun |
+| `SNAPSHOT_EXECUTE` | `SNAPSHOT_RUN` | createSnapshotRun |
+
+---
+
+## 12. Validation Schemas (Joi)
+
+Defined in `inventory-core.schema.js`. Key schemas:
+
+### postingSchema
+```
+externalId: string(120) required
+correlationId: string(120) required
+eventCode: string(50) required
+refType: string(40) required
+refId: string(50) required
+refLineId: string(50) optional
+itemId: uuid required
+qty: string required
+uomCode: string(20) required
+dimFrom: { warehouseCode, locationCode, ownerCode, statusCode } optional
+dimTo: { warehouseCode, locationCode, ownerCode, statusCode } optional
+reasonCode: string(50) optional
+sourceApp: enum(WEB|MOBILE|API|INTEGRATION|SYSTEM) required
+postedBy: uuid optional
+weighbridgeTicketId: string(50) optional
+```
+
+### holdCreateSchema
+```
+externalId: string(120) optional
+correlationId: string(120) required
+shipmentId: string(50) optional
+shipmentLineId: string(50) optional
+workHeaderId: string(50) optional
+itemId: uuid required
+qty: string required
+dim: { warehouseCode, locationCode, ownerCode, statusCode } required
+reasonCode: string(50) optional
+```
+
+---
+
+## 13. Dependencies
 
 ### Module 1 - Foundation
 - **RBAC**: Permission check (inventory.post, inventory.reverse, etc.)
@@ -805,7 +1041,7 @@ Không bao giờ update `availableQty` trực tiếp. Nó được tính lại m
 
 ---
 
-## 10. Usage Examples
+## 14. Usage Examples
 
 ### Example 1: Inbound – PO Confirmed (stage EXPECTED)
 ```javascript

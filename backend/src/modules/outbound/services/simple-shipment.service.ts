@@ -2,6 +2,11 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { ReversalEngineService } = require('../../inventory-core/application/reversal-engine.service');
+
 export interface CreateShipmentFromSoDto {
   salesOrderId: string;
   warehouseId: string;
@@ -88,6 +93,35 @@ export class SimpleShipmentService {
       }),
     );
 
+    // --- Availability check: block SHP create if warehouse stock insufficient ---
+    for (const line of linesWithConversion) {
+      const qtyKg = Number(line.expectedQtyKg || line.expectedQty || 0);
+
+      const availableStock = await this.prisma.onHand.aggregate({
+        where: {
+          itemId: line.itemId,
+          inventDim: {
+            warehouseId: dto.warehouseId,
+            ownerId: so.ownerId,
+          },
+        },
+        _sum: { physicalQty: true, allocatedQty: true },
+      });
+
+      const physical = Number(availableStock._sum.physicalQty || 0);
+      const allocated = Number(availableStock._sum.allocatedQty || 0);
+      const available = physical - allocated;
+
+      if (qtyKg > available) {
+        const item = await this.prisma.mdItem.findUnique({ where: { id: line.itemId } });
+        const warehouse = await this.prisma.mdWarehouse.findUnique({ where: { id: dto.warehouseId } });
+        throw new BadRequestException(
+          `Kho không đủ tồn để xuất. ${item?.itemCode || ''} (${item?.itemName || ''}) tại kho ${warehouse?.warehouseCode || ''} — ${warehouse?.warehouseName || ''}: ` +
+          `cần xuất ${qtyKg.toLocaleString('vi-VN')} KG, chỉ còn ${available.toLocaleString('vi-VN')} KG khả dụng`
+        );
+      }
+    }
+
     const shipment = await this.prisma.shipmentHeader.create({
       data: {
         shipmentNumber,
@@ -125,6 +159,61 @@ export class SimpleShipmentService {
         lines: { include: { item: true, uom: true } },
       },
     });
+
+    // Post SO_CONFIRMED to M3 for each line → increases outboundOrderedQty at SHP warehouse
+    // Use the location where item has stock (not first location alphabetically)
+    try {
+      const postingEngine = new PostingEngineService(this.prisma);
+      const warehouse = await this.prisma.mdWarehouse.findUnique({ where: { id: dto.warehouseId } });
+      const owner = await this.prisma.mdOwner.findUnique({ where: { id: so.ownerId } });
+
+      for (const line of linesWithConversion) {
+        const qtyKg = Number(line.expectedQtyKg || line.expectedQty || 0);
+
+        // Find location with existing stock for this item at this warehouse+owner
+        const existingOnHand = await this.prisma.onHand.findFirst({
+          where: {
+            itemId: line.itemId,
+            physicalQty: { gt: 0 },
+            inventDim: {
+              warehouseId: dto.warehouseId,
+              ownerId: so.ownerId,
+            },
+          },
+          include: { inventDim: { include: { location: true } } },
+          orderBy: { physicalQty: 'desc' },
+        });
+
+        const locationCode = existingOnHand?.inventDim?.location?.locationCode
+          || (await this.prisma.mdLocation.findFirst({
+              where: { warehouseId: dto.warehouseId, isActive: true },
+              orderBy: { locationCode: 'asc' },
+            }))?.locationCode
+          || 'SHIPPING';
+
+        await postingEngine.postInventory({
+          externalId: `SHP-CREATE-${shipment.id}-${line.itemId}-${Date.now()}`,
+          correlationId,
+          eventCode: 'SO_CONFIRMED',
+          refType: 'SHIPMENT',
+          refId: shipment.id,
+          refLineId: line.soLineId || line.itemId,
+          itemId: line.itemId,
+          qty: String(qtyKg),
+          uomCode: 'KG',
+          dimFrom: {
+            warehouseCode: warehouse?.warehouseCode,
+            locationCode,
+            ownerCode: owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: 'SYSTEM',
+          postedBy: userId,
+        });
+      }
+    } catch (err: any) {
+      console.error(`[M5→M3] SHP SO_CONFIRMED posting failed for SHP ${shipment.id} (non-blocking):`, err.message);
+    }
 
     return this.transformShipment(shipment);
   }
@@ -238,8 +327,8 @@ export class SimpleShipmentService {
 
     const updated = await this.prisma.shipmentHeader.update({
       where: { id },
-      data: { 
-        status: 'CANCELLED', 
+      data: {
+        status: 'CANCELLED',
         cancelReasonCode: reasonCode,
         updatedBy: userId,
       },
@@ -250,6 +339,32 @@ export class SimpleShipmentService {
         lines: { include: { item: true, uom: true } },
       },
     });
+
+    // Reverse M3 SO_CONFIRMED postings for this SHP → decreases outboundOrderedQty
+    try {
+      const reversalEngine = new ReversalEngineService(this.prisma);
+      const transactions = await this.prisma.inventTrans.findMany({
+        where: { refId: id, stage: 'EXPECTED', isReversal: false },
+      });
+      for (const trans of transactions) {
+        const existingReversal = await this.prisma.inventoryReversalLink.findFirst({
+          where: { originalTransId: trans.id },
+        });
+        if (existingReversal) continue;
+
+        await reversalEngine.reverse({
+          externalId: `SHP-CANCEL-REV-${id}-${trans.transId}-${Date.now()}`,
+          correlationId: uuidv4(),
+          originalTransId: trans.transId,
+          reasonCode: reasonCode || 'SHIPMENT_CANCELLED',
+          note: 'SHP cancelled',
+          sourceApp: 'SYSTEM',
+          postedBy: userId,
+        });
+      }
+    } catch (err: any) {
+      console.error(`[M5→M3] SHP cancel reversal failed for SHP ${id} (non-blocking):`, err.message);
+    }
 
     return this.transformShipment(updated);
   }

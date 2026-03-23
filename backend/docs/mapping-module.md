@@ -518,9 +518,11 @@
 ### Modules that call M3 Posting Engine — Event Codes thực tế:
 | Module | Service gọi M3 | Event Codes gửi | File |
 |--------|----------------|-----------------|------|
-| **M4 Inbound** | `purchase-order.service.js` | `PO_CONFIRMED` | `src/modules/inbound/application/purchase-order.service.js` |
+| **M4 Inbound** | `receipt.service.js` | `PO_CONFIRMED` | `src/modules/inbound/application/receipt.service.js` — createReceipt() (v3.1: post at Receipt, not PO confirm) |
+| **M4 Inbound** | `receipt.service.js` | Reversal `PO_CONFIRMED` | `src/modules/inbound/application/receipt.service.js` — cancelReceipt() |
 | **M4 Inbound** | `receipt.service.js` | `GOODS_RECEIVED` | `src/modules/inbound/application/receipt.service.js` |
-| **M5 Outbound** | `sales-order.service.ts` | `SO_CONFIRMED` | `src/modules/outbound/services/sales-order.service.ts` |
+| **M5 Outbound** | `simple-shipment.service.ts` | `SO_CONFIRMED` | `src/modules/outbound/services/simple-shipment.service.ts` — create() (v3.1: post at SHP create, not SO confirm) |
+| **M5 Outbound** | `simple-shipment.service.ts` | Reversal `SO_CONFIRMED` | `src/modules/outbound/services/simple-shipment.service.ts` — reportError() / cancel SHP |
 | **M5 Outbound** | `shipShipment.usecase.ts` | `SHIP_CONFIRMED` | `src/modules/outbound/application/shipShipment.usecase.ts` |
 | **M5 Outbound** | `m3-adapter.service.ts` | `SHIP_CONFIRMED` | `src/modules/outbound/infra/m3-adapter.service.ts` |
 | **M5 Outbound** | `HoldService` (direct) | allocation via hold API | `src/modules/inventory-core/application/hold.service.js` |
@@ -605,6 +607,95 @@
 
 > **LotService** không thuộc M3 — đã chuyển sang Module 2 (Master Data). M3 chỉ nhận `lotId` như dimension/reference.
 
+## Idempotency & Re-confirm Pattern
+
+M3 Posting Engine sử dụng `externalId` để deduplicate. Callers phải tuân thủ:
+
+| Scenario | externalId pattern | Lý do |
+|----------|-------------------|-------|
+| Confirm lần đầu | `PO-CONFIRM-{poId}-{lineId}-{timestamp}` | Unique per confirm attempt |
+| Confirm lại sau unconfirm | Phải có timestamp khác | Nếu trùng externalId → idempotent replay, không tạo trans mới |
+| Cancel/Unconfirm | Reverse externalId: `PO-CANCEL-REV-{poId}-{transId}` | Dùng transId gốc để đảm bảo không reverse 2 lần |
+
+> Tương tự cho SO: `SO-CONFIRM-{soId}-{lineId}-{timestamp}` và `SO-CANCEL-REV-{soId}-{transId}`
+
+## Integration Flow Detail — Ordered Qty Lifecycle
+
+### Inbound: PO → Receipt → physicalQty (M4 → M3) — v3.1
+
+```
+┌─ PO Confirm (purchase-order.service.ts)
+│   → chỉ đổi status PO → CONFIRMED
+│   → KHÔNG post M3 (PO có "kho phân phối" = planning, Receipt mới biết kho thật)
+│
+├─ Receipt Create (receipt.service.js) — tạo phiếu nhập, chọn kho cụ thể
+│   eventCode: PO_CONFIRMED → RECEIPT + EXPECTED
+│   qty: receipt line expectedQtyKg (KG quy đổi)
+│   dimTo: { warehouseCode từ receipt, locationCode, ownerCode, statusCode: AVAILABLE }
+│   → inboundOrderedQty += qty tại warehouse receipt
+│
+├─ Receipt Complete (receipt.service.js) — nhận hàng thực tế
+│   eventCode: GOODS_RECEIVED → RECEIPT + PHYSICAL
+│   qty: net weight (KG) từ cân
+│   → physicalQty += qty
+│   → inboundOrderedQty -= qty (floor 0)
+│
+└─ Receipt Cancel (receipt.service.js)
+    → Reverse tất cả invent_trans có refId=receiptId, stage=EXPECTED
+    → inboundOrderedQty -= reversed qty (floor 0)
+```
+
+> **v3.1:** PO confirm/cancel/unconfirm KHÔNG post M3. `inboundOrderedQty` post ở level Receipt vì Receipt mới biết warehouse cụ thể nhận hàng.
+
+### Outbound: SO → SHP → Allocate → Ship (M5 → M3)
+
+```
+┌─ SO Confirm (sales-order.service.ts)
+│   → KHÔNG post M3 — chỉ đổi status SO → CONFIRMED
+│   → SO không biết kho cụ thể, outboundOrderedQty chưa thay đổi
+│
+├─ SHP Create (simple-shipment.service.ts)
+│   eventCode: SO_CONFIRMED → ISSUE + EXPECTED
+│   refType: SHIPMENT, refId: shipmentId
+│   dimFrom: { warehouse từ SHP, location, owner, status }
+│   → outboundOrderedQty += qty (tại warehouse SHP chọn)
+│
+├─ Allocate (hold.service.js)
+│   eventCode: ALLOCATION_CREATED → ISSUE + ALLOCATED
+│   → allocatedQty += qty
+│   → availableQty giảm
+│
+├─ Ship Confirm (shipShipment.usecase.ts / m3-adapter.service.ts)
+│   eventCode: SHIP_CONFIRMED → ISSUE + DEDUCTED
+│   → physicalQty -= qty
+│   → allocatedQty -= qty
+│   → outboundOrderedQty -= qty (floor 0)
+│
+└─ SHP Cancel (simple-shipment.service.ts)
+    → Reverse tất cả invent_trans có refId=shipmentId, stage=EXPECTED
+    → outboundOrderedQty -= reversed qty (floor 0)
+```
+
+> **Thay đổi v3.1:** outboundOrderedQty được post ở level SHP (không phải SO) vì SHP mới biết kho cụ thể. SO confirm chỉ đổi status, không post M3.
+
+### Architecture: Write Path → Read Model
+
+```
+Business Module (M4/M5/M6/M7/M9)
+        │
+        ▼
+ PostingEngineService         ← WRITE: ghi invent_trans (ledger) ONLY
+        │
+        ▼
+ MaterializationService       ← READ MODEL: update on_hand (projection)
+        │
+        ▼
+ on_hand table                ← Queryable by all modules
+```
+
+> **Quan trọng:** Posting engine KHÔNG update on_hand trực tiếp. MaterializationService là thành phần DUY NHẤT update on_hand.
+> **Rebuild:** on_hand có thể rebuild từ invent_trans bất kỳ lúc nào via `POST /api/v1/inventory/materialization/rebuild`
+
 ## RBAC Permissions
 
 | Permission Code | Description |
@@ -668,10 +759,10 @@
 | GET | `/api/v1/inbound/purchase-orders/:id` | Get PO by ID |
 | GET | `/api/v1/inbound/purchase-orders/next-number` | Get next PO number |
 | PUT | `/api/v1/inbound/purchase-orders/:id` | Update PO |
-| POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO |
-| POST | `/api/v1/inbound/purchase-orders/:id/unconfirm` | Hủy xác nhận PO (về NEW) |
+| POST | `/api/v1/inbound/purchase-orders/:id/confirm` | Confirm PO (chỉ đổi status, **không post M3** — inboundOrdered post ở Receipt) |
+| POST | `/api/v1/inbound/purchase-orders/:id/unconfirm` | Hủy xác nhận PO (chỉ đổi status) |
 | POST | `/api/v1/inbound/purchase-orders/:id/close` | Close PO |
-| POST | `/api/v1/inbound/purchase-orders/:id/cancel` | Cancel PO |
+| POST | `/api/v1/inbound/purchase-orders/:id/cancel` | Cancel PO → **reverse M3 PO_CONFIRMED** → -inboundOrderedQty |
 
 **PO Status Flow:**
 - `NEW` → `CONFIRMED` → `RECEIVING` → `CLOSED`
@@ -744,7 +835,9 @@ DRAFT ──confirm──> AWAITING_WEIGHING ──weighIn──> WEIGHED_IN
 | Module 2 | `MdWarehouse` | Warehouse validation |
 | Module 2 | `MdLocation` | Location validation (type=RECEIVING) |
 | Module 2 | `MdOwnerItemPolicy` | Tolerance lookup priority |
-| **Module 3** | **`PostingEngineService`** | **Post inventory khi RECEIVED (✅ v3)** |
+| **Module 3** | **`PostingEngineService`** | **Receipt create → PO_CONFIRMED (+inboundOrderedQty) — posted at Receipt level with warehouse** |
+| **Module 3** | **`ReversalEngineService`** | **Receipt cancel → Reverse PO_CONFIRMED (-inboundOrderedQty)** |
+| **Module 3** | **`PostingEngineService`** | **Receipt complete → GOODS_RECEIVED (+physicalQty, -inboundOrderedQty)** |
 
 ### Modules that depend on Module 4:
 | Target Module | Dependency | Usage |
@@ -858,7 +951,7 @@ Module 5 đã được cấu trúc lại theo Clean Architecture với M3 integr
 | GET | `/api/v1/outbound/sales-orders/:id` | Get SO detail |
 | POST | `/api/v1/outbound/sales-orders` | Create SO |
 | PATCH | `/api/v1/outbound/sales-orders/:id` | Update SO (NEW only) |
-| POST | `/api/v1/outbound/sales-orders/:id/confirm` | Confirm SO |
+| POST | `/api/v1/outbound/sales-orders/:id/confirm` | Confirm SO (chỉ đổi status, **không post M3** — outboundOrdered post ở SHP) |
 | POST | `/api/v1/outbound/sales-orders/:id/cancel` | Cancel SO |
 | POST | `/api/v1/outbound/sales-orders/:id/unconfirm` | Unconfirm SO |
 | POST | `/api/v1/outbound/sales-orders/:id/close` | Close SO |
@@ -866,14 +959,14 @@ Module 5 đã được cấu trúc lại theo Clean Architecture với M3 integr
 ### Shipment Management
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/v1/outbound/shipments` | Tạo shipment mới |
+| POST | `/api/v1/outbound/shipments` | Tạo shipment mới → **gọi M3 SO_CONFIRMED** → +outboundOrderedQty + availability check |
 | GET | `/api/v1/outbound/shipments` | List shipments (paginated) |
 | GET | `/api/v1/outbound/shipments/:id` | Get shipment detail |
 | PATCH | `/api/v1/outbound/shipments/:id` | Update shipment (DRAFT only) |
 | DELETE | `/api/v1/outbound/shipments/:id` | Delete shipment (DRAFT only) |
 | POST | `/api/v1/outbound/shipments/:id/confirm` | Confirm shipment |
 | POST | `/api/v1/outbound/shipments/:id/cancel` | Cancel shipment |
-| POST | `/api/v1/outbound/shipments/:id/report-error` | Report error |
+| POST | `/api/v1/outbound/shipments/:id/report-error` | Cancel SHP → **reverse M3 SO_CONFIRMED** → -outboundOrderedQty |
 | POST | `/api/v1/outbound/shipments/:id/ship` | Ship (post M3) |
 
 ### Allocation
@@ -963,7 +1056,9 @@ src/modules/outbound/
 | Module 2 | `MdVehicleType` | Vehicle type lookup |
 | Module 3 | `OnHandService` | Query available stock |
 | Module 3 | `HoldService` | Create/release allocation holds |
-| Module 3 | `PostingEngine` | Post outbound transaction |
+| **Module 3** | **`PostingEngineService`** | **SHP create → SO_CONFIRMED (+outboundOrderedQty) — posted at SHP level with warehouse** |
+| **Module 3** | **`ReversalEngineService`** | **SHP cancel → Reverse SO_CONFIRMED (-outboundOrderedQty)** |
+| **Module 3** | **`PostingEngineService`** | **Ship confirm → SHIP_CONFIRMED (-physicalQty, -allocatedQty, -outboundOrderedQty)** |
 
 ### Modules that depend on Module 5:
 | Target Module | Dependency | Usage |

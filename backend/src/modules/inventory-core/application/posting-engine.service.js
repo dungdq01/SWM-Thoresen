@@ -7,6 +7,7 @@
 
 const { Decimal } = require('decimal.js');
 const { InventDimService } = require('./invent-dim.service');
+const { MaterializationService } = require('./materialization.service');
 const { InventTransRepository } = require('../infra/invent-trans.repository');
 const { OnHandRepository } = require('../infra/onhand.repository');
 const { EventMappingRepository } = require('../infra/event-mapping.repository');
@@ -27,6 +28,7 @@ class PostingEngineService {
     this.inventTransRepo = new InventTransRepository(prisma);
     this.onHandRepo = new OnHandRepository(prisma);
     this.eventMappingRepo = new EventMappingRepository(prisma);
+    this.materializer = new MaterializationService(prisma);
     this.auditLogAdapter = auditLogAdapter;
   }
 
@@ -179,31 +181,13 @@ class PostingEngineService {
         tx
       );
 
-      let onHandAfter = null;
-
-      if (isMoveLike) {
-        // MOVE/STATUS_CHANGE: subtract from source dim, add to target dim (physical only)
-        if (dimFromResolved && !fromImpact.equals(0)) {
-          await this.updateOnHandDelta(itemId, dimFromResolved.id, uom.id, {
-            physicalDelta: fromImpact, allocatedDelta: new Decimal(0),
-            inboundOrderedDelta: new Decimal(0), outboundOrderedDelta: new Decimal(0),
-          }, tx);
-        }
-        if (dimToResolved && !toImpact.equals(0)) {
-          const updated = await this.updateOnHandDelta(itemId, dimToResolved.id, uom.id, {
-            physicalDelta: toImpact, allocatedDelta: new Decimal(0),
-            inboundOrderedDelta: new Decimal(0), outboundOrderedDelta: new Decimal(0),
-          }, tx);
-          onHandAfter = this.formatOnHandAfter(updated);
-        }
-      } else {
-        // Stage-based: apply delta to the relevant dimension
-        const targetDimId = dimToResolved?.id || dimFromResolved?.id;
-        if (targetDimId && this.hasDeltaEffect(delta)) {
-          const updated = await this.updateOnHandDelta(itemId, targetDimId, uom.id, delta, tx);
-          onHandAfter = this.formatOnHandAfter(updated);
-        }
-      }
+      // === MATERIALIZATION ===
+      // Per guide: posting engine does NOT update on_hand directly.
+      // Materialization service is the ONLY component that updates on_hand.
+      // Called sync here (monolith phase). Will be async via outbox in microservice phase.
+      const updatedOnHand = await this.materializer.materializeTransaction(
+        inventTrans, uom.id, tx
+      );
 
       const result = {
         transId: inventTrans.transId,
@@ -211,7 +195,7 @@ class PostingEngineService {
         transType: inventTrans.transType,
         itemId: inventTrans.itemId,
         qty: String(inventTrans.qty),
-        onHandAfter,
+        onHandAfter: this.materializer.formatOnHandAfter(updatedOnHand),
         idempotentReplay: false,
       };
 
@@ -251,60 +235,8 @@ class PostingEngineService {
     }
   }
 
-  /**
-   * Update on-hand with stage-based delta (all 4 buckets)
-   */
-  async updateOnHandDelta(itemId, inventDimId, uomId, delta, tx) {
-    const { onHand } = await this.onHandRepo.getOrCreate(
-      {
-        itemId,
-        inventDimId,
-        uomId,
-        physicalQty: 0,
-        allocatedQty: 0,
-        availableQty: 0,
-        inboundOrderedQty: 0,
-        outboundOrderedQty: 0,
-      },
-      tx
-    );
-
-    return this.onHandRepo.updateQty(
-      onHand.id,
-      {
-        physicalDelta: delta.physicalDelta.toFixed(3),
-        allocatedDelta: delta.allocatedDelta.toFixed(3),
-        inboundOrderedDelta: delta.inboundOrderedDelta.toFixed(3),
-        outboundOrderedDelta: delta.outboundOrderedDelta.toFixed(3),
-        isMovement: true,
-      },
-      tx
-    );
-  }
-
-  /**
-   * Check if delta has any non-zero effect
-   */
-  hasDeltaEffect(delta) {
-    return !delta.physicalDelta.equals(0) ||
-      !delta.allocatedDelta.equals(0) ||
-      !delta.inboundOrderedDelta.equals(0) ||
-      !delta.outboundOrderedDelta.equals(0);
-  }
-
-  /**
-   * Format onHandAfter response with all buckets
-   */
-  formatOnHandAfter(onHand) {
-    if (!onHand) return null;
-    return {
-      physicalQty: String(onHand.physicalQty),
-      allocatedQty: String(onHand.allocatedQty),
-      inboundOrderedQty: String(onHand.inboundOrderedQty),
-      outboundOrderedQty: String(onHand.outboundOrderedQty),
-      availableQty: String(onHand.availableQty),
-    };
-  }
+  // NOTE: updateOnHandDelta, hasDeltaEffect, formatOnHandAfter
+  // have been moved to MaterializationService (per guide: posting engine does NOT update on_hand)
 
   /**
    * Generate transaction ID using number sequence
