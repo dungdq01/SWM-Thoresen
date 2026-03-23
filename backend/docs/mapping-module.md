@@ -390,7 +390,7 @@
 ### Module 2 depends on:
 | Source Module | Dependency | Usage |
 |---------------|------------|-------|
-| Module 3 | `OnHand`, `InventDim` | **Inventory Guard** — check `physicalQty > 0` trước khi deactivate Owner, Item, Location, Zone, Warehouse. Query trực tiếp qua Prisma transaction trong service layer. |
+| Module 3 | `OnHand`, `InventDim` | **Inventory Guard** — check 4 buckets (`physicalQty`, `allocatedQty`, `inboundOrderedQty`, `outboundOrderedQty`) > 0 trước khi deactivate Owner, Item, Location, Zone, Warehouse. Query trong `$transaction()` + optimistic lock. Message lỗi tiếng Việt. |
 
 ### Module 2 is used by:
 | Target Module | Entity/Service | Usage |
@@ -535,7 +535,7 @@
 ### Modules that read M3 data:
 | Module | What they read | Usage |
 |--------|---------------|-------|
-| Module 2 | `OnHand`, `InventDim` | **Inventory Guard** — check stock trước khi deactivate master data |
+| Module 2 | `OnHand`, `InventDim` | **Inventory Guard** — check 4 buckets trước khi deactivate master data (Owner, Item, Location, Zone, Warehouse) |
 | Module 5 | `OnHand.allocatedQty` | Availability check trước khi allocate |
 | Module 9 | `OnHand.physicalQty`, `OnHand.allocatedQty` | VAS availability check |
 | Module 10 | `DailyStorageSnapshot` | Billing input — tính phí lưu kho |

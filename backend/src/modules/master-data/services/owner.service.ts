@@ -143,14 +143,22 @@ export class OwnerService {
       if (!owner.isActive) throw new BadRequestException('Owner is already inactive');
 
       // Check on-hand inventory linked to this owner via InventDim
+      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
       const stockRecord = await tx.onHand.findFirst({
         where: {
-          physicalQty: { gt: 0 },
           inventDim: { ownerId: id },
+          OR: [
+            { physicalQty: { gt: 0 } },
+            { allocatedQty: { gt: 0 } },
+            { inboundOrderedQty: { gt: 0 } },
+            { outboundOrderedQty: { gt: 0 } },
+          ],
         },
       });
       if (stockRecord) {
-        throw new BadRequestException('Cannot deactivate owner because inventory still exists');
+        throw new BadRequestException(
+          'Không thể vô hiệu hóa chủ hàng vì vẫn còn tồn kho hoặc đơn hàng đang xử lý liên quan'
+        );
       }
 
       const result = await tx.mdOwner.update({

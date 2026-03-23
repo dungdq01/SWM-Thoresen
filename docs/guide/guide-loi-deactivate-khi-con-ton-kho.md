@@ -412,16 +412,17 @@ Nếu muốn thân thiện hơn, có thể trả thêm metadata:
 ## 15. Checklist ngắn để gửi dev
 
 ### Checklist kiểm tra nhanh
-- [ ] Deactivate owner có check on-hand theo owner chưa?
-- [ ] Deactivate item có check on-hand theo item chưa?
-- [ ] Query check tồn kho có lọc đúng tenant chưa?
-- [ ] Check đang dùng nguồn tồn kho hiện tại hay không?
-- [ ] Check và update có nằm trong transaction chưa?
-- [ ] Backend có trả business error rõ ràng chưa?
-- [ ] Có audit log khi deactivate/reject deactivate chưa?
-- [ ] Có test case cho trường hợp còn hàng chưa?
-- [ ] Có test API bypass ngoài frontend chưa?
-- [ ] Warehouse/zone/location có đang chỉ check entity con mà chưa check stock không?
+- [x] Deactivate owner có check on-hand theo owner chưa? — ✅ check 4 buckets (physical, allocated, inboundOrdered, outboundOrdered)
+- [x] Deactivate item có check on-hand theo item chưa? — ✅ check 4 buckets
+- [x] Deactivate location có check stock chưa? — ✅ check 4 buckets via inventDim.locationId
+- [x] Deactivate zone có check stock chưa? — ✅ check active locations + 4 buckets via inventDim.location.zoneId
+- [x] Deactivate warehouse có check stock chưa? — ✅ check active zones + 4 buckets via inventDim.warehouseId
+- [x] Check và update có nằm trong transaction chưa? — ✅ `prisma.$transaction()` + optimistic lock
+- [x] Backend có trả business error rõ ràng chưa? — ✅ message tiếng Việt chi tiết
+- [x] Có audit log khi deactivate chưa? — ✅ `logService.createAuditLog()` cho owner, item, location, zone, warehouse
+- [ ] Query check tồn kho có lọc đúng tenant chưa? — N/A (single-tenant hiện tại)
+- [ ] Có test case cho trường hợp còn hàng chưa? — 🔜 cần viết
+- [ ] Có test API bypass ngoài frontend chưa? — 🔜 cần viết
 
 ---
 

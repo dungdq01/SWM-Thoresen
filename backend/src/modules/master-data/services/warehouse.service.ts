@@ -137,14 +137,22 @@ export class WarehouseService {
       }
 
       // Check on-hand inventory in this warehouse via InventDim
+      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
       const stockRecord = await tx.onHand.findFirst({
         where: {
-          physicalQty: { gt: 0 },
           inventDim: { warehouseId: id },
+          OR: [
+            { physicalQty: { gt: 0 } },
+            { allocatedQty: { gt: 0 } },
+            { inboundOrderedQty: { gt: 0 } },
+            { outboundOrderedQty: { gt: 0 } },
+          ],
         },
       });
       if (stockRecord) {
-        throw new BadRequestException('Cannot deactivate warehouse because inventory still exists in child locations');
+        throw new BadRequestException(
+          'Không thể vô hiệu hóa kho vì vẫn còn tồn kho hoặc đơn hàng đang xử lý tại các vị trí thuộc kho này'
+        );
       }
 
       const result = await tx.mdWarehouse.update({

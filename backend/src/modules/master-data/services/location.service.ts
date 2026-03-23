@@ -110,14 +110,22 @@ export class LocationService {
       if (!location.isActive) throw new BadRequestException('Location is already inactive');
 
       // Check on-hand inventory at this location via InventDim
+      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
       const stockRecord = await tx.onHand.findFirst({
         where: {
-          physicalQty: { gt: 0 },
           inventDim: { locationId: id },
+          OR: [
+            { physicalQty: { gt: 0 } },
+            { allocatedQty: { gt: 0 } },
+            { inboundOrderedQty: { gt: 0 } },
+            { outboundOrderedQty: { gt: 0 } },
+          ],
         },
       });
       if (stockRecord) {
-        throw new BadRequestException('Cannot deactivate location because stock still exists in this location');
+        throw new BadRequestException(
+          'Không thể vô hiệu hóa vị trí vì vẫn còn tồn kho hoặc đơn hàng đang xử lý tại vị trí này'
+        );
       }
 
       const result = await tx.mdLocation.update({

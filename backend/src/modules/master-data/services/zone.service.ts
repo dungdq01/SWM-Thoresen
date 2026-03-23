@@ -102,14 +102,22 @@ export class ZoneService {
       }
 
       // Check on-hand inventory at locations belonging to this zone
+      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
       const stockRecord = await tx.onHand.findFirst({
         where: {
-          physicalQty: { gt: 0 },
           inventDim: { location: { zoneId: id } },
+          OR: [
+            { physicalQty: { gt: 0 } },
+            { allocatedQty: { gt: 0 } },
+            { inboundOrderedQty: { gt: 0 } },
+            { outboundOrderedQty: { gt: 0 } },
+          ],
         },
       });
       if (stockRecord) {
-        throw new BadRequestException('Cannot deactivate zone because inventory still exists in its locations');
+        throw new BadRequestException(
+          'Không thể vô hiệu hóa khu vực vì vẫn còn tồn kho hoặc đơn hàng đang xử lý tại các vị trí thuộc khu vực này'
+        );
       }
 
       const result = await tx.mdZone.update({

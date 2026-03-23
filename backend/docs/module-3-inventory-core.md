@@ -909,6 +909,48 @@ POST /api/v1/inventory/materialization/rebuild
 
 ---
 
+## 8.6 Inventory Guard — Deactivate Protection (M2 ← M3)
+
+Module 2 (Master Data) gọi Module 3 (on_hand) để **chặn deactivate** master data khi còn tồn kho hoặc đơn hàng pending.
+
+### Check logic
+
+Mỗi entity check **4 buckets** trước khi cho deactivate:
+
+```
+IF on_hand.physicalQty > 0        → block (còn hàng thật)
+OR on_hand.allocatedQty > 0       → block (hàng đang giữ cho đơn xuất)
+OR on_hand.inboundOrderedQty > 0  → block (phiếu nhập đang pending)
+OR on_hand.outboundOrderedQty > 0 → block (phiếu xuất đang pending)
+→ THEN: throw BadRequestException với message tiếng Việt
+```
+
+### Entity matrix
+
+| Entity | Service file | Check scope | Thêm check |
+|--------|-------------|-------------|------------|
+| **Owner** | `master-data/services/owner.service.ts` | `inventDim.ownerId = id` | — |
+| **Item** | `master-data/services/item.service.ts` | `itemId = id` | — |
+| **Location** | `master-data/services/location.service.ts` | `inventDim.locationId = id` | — |
+| **Zone** | `master-data/services/zone.service.ts` | `inventDim.location.zoneId = id` | + check active locations |
+| **Warehouse** | `master-data/services/warehouse.service.ts` | `inventDim.warehouseId = id` | + check active zones |
+
+### Error messages (tiếng Việt)
+
+| Entity | Message |
+|--------|---------|
+| Owner | "Không thể vô hiệu hóa chủ hàng vì vẫn còn tồn kho hoặc đơn hàng đang xử lý liên quan" |
+| Item | "Không thể vô hiệu hóa mặt hàng vì vẫn còn tồn kho hoặc đơn hàng đang xử lý liên quan" |
+| Location | "Không thể vô hiệu hóa vị trí vì vẫn còn tồn kho hoặc đơn hàng đang xử lý tại vị trí này" |
+| Zone | "Không thể vô hiệu hóa khu vực vì vẫn còn tồn kho hoặc đơn hàng đang xử lý tại các vị trí thuộc khu vực này" |
+| Warehouse | "Không thể vô hiệu hóa kho vì vẫn còn tồn kho hoặc đơn hàng đang xử lý tại các vị trí thuộc kho này" |
+
+### Concurrency safety
+
+Tất cả check + update nằm trong `prisma.$transaction()` + optimistic lock (`rowVersion`). Ngăn race condition: check stock = 0 → nhập hàng → deactivate thành công.
+
+---
+
 ## 9. Error Codes (24 total)
 
 | Error Code | HTTP Status | Description |

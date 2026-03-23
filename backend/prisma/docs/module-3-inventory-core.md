@@ -510,6 +510,7 @@ RUNNING, COMPLETED, FAILED
 16. **Hold posts ledger**: Create hold → `ALLOCATION_CREATED` invent_trans; Release/Cancel → `ALLOCATION_RELEASED` invent_trans
 17. **on_hand is read model**: Chỉ `MaterializationService` được update `on_hand`. Posting engine và hold service KHÔNG update trực tiếp
 18. **Rebuildable**: `on_hand` có thể rebuild từ `invent_trans` via `POST /materialization/rebuild`
+19. **Deactivate Guard**: Master Data (M2) check `on_hand` 4 buckets trước khi deactivate — block nếu `physicalQty > 0` OR `allocatedQty > 0` OR `inboundOrderedQty > 0` OR `outboundOrderedQty > 0`. Áp dụng cho: Owner, Item, Location, Zone, Warehouse. Check nằm trong `$transaction()` + optimistic lock.
 
 ---
 

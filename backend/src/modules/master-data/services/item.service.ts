@@ -164,14 +164,22 @@ export class ItemService {
       if (!item.isActive) throw new BadRequestException('Item is already inactive');
 
       // Check on-hand inventory for this item
+      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
       const stockRecord = await tx.onHand.findFirst({
         where: {
           itemId: id,
-          physicalQty: { gt: 0 },
+          OR: [
+            { physicalQty: { gt: 0 } },
+            { allocatedQty: { gt: 0 } },
+            { inboundOrderedQty: { gt: 0 } },
+            { outboundOrderedQty: { gt: 0 } },
+          ],
         },
       });
       if (stockRecord) {
-        throw new BadRequestException('Cannot deactivate item because inventory still exists');
+        throw new BadRequestException(
+          'Không thể vô hiệu hóa mặt hàng vì vẫn còn tồn kho hoặc đơn hàng đang xử lý liên quan'
+        );
       }
 
       const result = await tx.mdItem.update({
