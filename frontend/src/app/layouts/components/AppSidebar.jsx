@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { 
   Boxes,
-  ChevronDown, 
+  ChevronDown,
+  ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   LayoutDashboard,
@@ -45,25 +46,29 @@ const getMenuConfig = (t) => [
     icon: Database,
     basePath: '/app/master-data',
     children: [
+      { _groupLabel: 'Đối tác' },
       { to: '/app/master-data/owners', label: t('sidebar.items.owners') },
       { to: '/app/master-data/vendors', label: t('sidebar.items.vendors') },
       { to: '/app/master-data/customers', label: t('sidebar.items.customers') },
-      { to: '/app/master-data/item-groups', label: 'Nhóm hàng hóa' },
       { to: '/app/master-data/carriers', label: 'Nhà vận chuyển' },
       { to: '/app/master-data/vessels', label: 'Tên tàu' },
-      { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU' },
-      { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner' },
-      { to: '/app/master-data/item-incompatibilities', label: 'Không tương thích' },
+      { _groupLabel: 'Hàng hóa' },
+      { to: '/app/master-data/item-groups', label: 'Nhóm hàng hóa' },
       { to: '/app/master-data/items', label: t('sidebar.items.items') },
       { to: '/app/master-data/lots', label: 'Lô hàng' },
-      { to: '/app/master-data/warehouses', label: t('sidebar.items.warehouses') },
-      { to: '/app/master-data/zones', label: t('sidebar.items.zones') },
+      { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU' },
+      { to: '/app/master-data/item-incompatibilities', label: 'Không tương thích' },
+      { _groupLabel: 'Thiết lập kho' },
+      { to: '/app/master-data/warehouses', label: 'Kho hàng' },
+      { to: '/app/master-data/zones', label: 'Khu vực' },
       { to: '/app/master-data/locations', label: t('sidebar.items.locations') },
+      { to: '/app/master-data/location-types', label: 'Loại vị trí' },
+      { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner' },
+      { _groupLabel: 'Cấu hình hệ thống' },
       { to: '/app/master-data/uoms', label: t('sidebar.items.uoms') },
       { to: '/app/master-data/uom-conversions', label: t('sidebar.items.uomConversions') },
       { to: '/app/master-data/inventory-statuses', label: t('sidebar.items.inventoryStatuses') },
       { to: '/app/master-data/vehicle-types', label: 'Loại phương tiện' },
-      { to: '/app/master-data/location-types', label: 'Loại vị trí' },
       { to: '/app/master-data/reason-codes', label: t('sidebar.items.reasonCodes') },
     ],
   },
@@ -101,9 +106,6 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/outbound-operations/sales-orders', label: 'Đơn bán hàng' },
       { to: '/app/outbound-operations/shipments', label: 'Phiếu xuất kho' },
-      { to: '/app/outbound-operations/allocation', label: 'Phân bổ kho' },
-      { to: '/app/outbound-operations/weighing', label: 'Cân hàng' },
-      { to: '/app/outbound-operations/approvals', label: 'Phê duyệt' },
       { to: '/app/outbound-operations/documents', label: 'Chứng từ xuất' },
     ],
   },
@@ -205,6 +207,75 @@ const getMenuConfig = (t) => [
   },
 ]
 
+function ChildrenWithGroups({ items }) {
+  const location = useLocation()
+
+  // Split items into groups: [ { label, items } ]
+  const groups = []
+  let current = { label: null, items: [] }
+  for (const child of items) {
+    if (child._groupLabel) {
+      if (current.items.length > 0 || current.label) groups.push(current)
+      current = { label: child._groupLabel, items: [] }
+    } else {
+      current.items.push(child)
+    }
+  }
+  if (current.items.length > 0 || current.label) groups.push(current)
+
+  // Auto-expand the group that contains the active route
+  const activeGroupIdx = groups.findIndex(g =>
+    g.items.some(i => location.pathname === i.to || location.pathname.startsWith(i.to + '/'))
+  )
+
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    // Start with all expanded
+    const set = new Set(groups.map((_, i) => i))
+    return set
+  })
+
+  const toggleGroup = useCallback((idx) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }, [])
+
+  return (
+    <div className="mt-0.5 ml-[15px] border-l border-sidebar-border/30 pl-4 pb-0.5">
+      {groups.map((group, gIdx) => {
+        const isOpen = expandedGroups.has(gIdx)
+        return (
+          <div key={group.label || gIdx}>
+            {group.label && (
+              <button
+                onClick={() => toggleGroup(gIdx)}
+                className="flex w-full items-center gap-1 px-2 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-moon-100/30 hover:text-moon-100/50 transition-colors"
+              >
+                <ChevronRight className={cn('h-3 w-3 transition-transform duration-150', isOpen && 'rotate-90')} />
+                <span>{group.label}</span>
+              </button>
+            )}
+            {(isOpen || !group.label) && group.items.map((child) => (
+              <NavLink
+                key={child.to}
+                to={child.to}
+                className={({ isActive }) =>
+                  cn('sidebar-child-item', isActive && 'sidebar-child-active')
+                }
+              >
+                <span>{child.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function MenuItem({ item, isCollapsed, isExpanded, onToggle }) {
   const location = useLocation()
 
@@ -264,22 +335,7 @@ function MenuItem({ item, isCollapsed, isExpanded, onToggle }) {
           )}
         >
           <div className="overflow-hidden">
-            <div className="mt-0.5 ml-[15px] border-l border-sidebar-border/30 pl-4 pb-0.5">
-              {item.children.map((child) => (
-                <NavLink
-                  key={child.to}
-                  to={child.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'sidebar-child-item',
-                      isActive && 'sidebar-child-active'
-                    )
-                  }
-                >
-                  <span>{child.label}</span>
-                </NavLink>
-              ))}
-            </div>
+            <ChildrenWithGroups items={item.children} />
           </div>
         </div>
       )}

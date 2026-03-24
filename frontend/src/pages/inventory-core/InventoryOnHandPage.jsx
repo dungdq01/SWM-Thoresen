@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Plus, Package, Layers, ShieldCheck, Lock, RotateCw, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
+import { Package, Layers, ShieldCheck, Lock, RotateCw } from 'lucide-react'
 import { useOnHandList } from '@domains/inventory-core'
 import { useLookupInventoryStatuses, useLookupItems, useLookupOwners, useLookupWarehouses } from '@domains/master-data'
 import { InventoryStatusBadge } from '@domains/master-data/components/StatusBadge'
 import { Button, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
 import { InventoryPostingDrawer } from '@features/inventory-core'
 
-const TOTAL_COLS = 13
+const TOTAL_COLS = 11
 
 function formatKg(value) {
   const num = Number(value)
@@ -76,18 +76,14 @@ export function InventoryOnHandPage() {
     let totalPhysical = 0
     let totalAvailable = 0
     let totalAllocated = 0
-    let totalInboundOrdered = 0
-    let totalOutboundOrdered = 0
     const uniqueItems = new Set()
     for (const row of rows) {
       totalPhysical += Number(row.physicalQty) || 0
       totalAvailable += Number(row.availableQty) || 0
       totalAllocated += Number(row.allocatedQty) || 0
-      totalInboundOrdered += Number(row.inboundOrderedQty) || 0
-      totalOutboundOrdered += Number(row.outboundOrderedQty) || 0
       if (row.item?.itemCode) uniqueItems.add(row.item.itemCode)
     }
-    return { totalPhysical, totalAvailable, totalAllocated, totalInboundOrdered, totalOutboundOrdered, uniqueItems: uniqueItems.size }
+    return { totalPhysical, totalAvailable, totalAllocated, uniqueItems: uniqueItems.size }
   }, [rows])
 
   const handleChange = useCallback((key, value) => {
@@ -111,12 +107,10 @@ export function InventoryOnHandPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6 mb-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-4">
         <KpiCard icon={Package} label="Tồn vật lý" value={formatKg(kpiSummary.totalPhysical)} color="ice" subtext={`${pagination.total || rows.length} dòng`} />
         <KpiCard icon={ShieldCheck} label="Khả dụng" value={formatKg(kpiSummary.totalAvailable)} color="emerald" />
         <KpiCard icon={Lock} label="Đã giữ chỗ" value={formatKg(kpiSummary.totalAllocated)} color="amber" />
-        <KpiCard icon={ArrowDownCircle} label="Sắp nhập" value={formatKg(kpiSummary.totalInboundOrdered)} color="ice" subtext="inbound ordered" />
-        <KpiCard icon={ArrowUpCircle} label="Nhu cầu xuất" value={formatKg(kpiSummary.totalOutboundOrdered)} color="amber" subtext="outbound ordered" />
         <KpiCard icon={Layers} label="Mặt hàng" value={kpiSummary.uniqueItems} color="navy" subtext="loại hàng hóa" />
       </div>
 
@@ -170,8 +164,6 @@ export function InventoryOnHandPage() {
                   <TableHead align="right">Thực tế</TableHead>
                   <TableHead align="right">Đã giữ</TableHead>
                   <TableHead align="right">Khả dụng</TableHead>
-                  <TableHead align="right">Sắp nhập</TableHead>
-                  <TableHead align="right">Nhu cầu xuất</TableHead>
                   <TableHead>ĐVT</TableHead>
                 </TableRow>
               </TableHeader>
@@ -207,12 +199,6 @@ export function InventoryOnHandPage() {
                       </TableCell>
                       <TableCell align="right">
                         <span className="font-semibold text-emerald-600">{formatQty(row.availableQty)}</span>
-                      </TableCell>
-                      <TableCell align="right">
-                        <span className="text-ice">{formatQty(row.inboundOrderedQty)}</span>
-                      </TableCell>
-                      <TableCell align="right">
-                        <span className="text-amber-600">{formatQty(row.outboundOrderedQty)}</span>
                       </TableCell>
                       <TableCell>
                         <span className="font-mono text-sm font-medium text-navy-700">KG</span>

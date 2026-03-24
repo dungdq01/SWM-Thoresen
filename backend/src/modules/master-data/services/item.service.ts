@@ -164,15 +164,13 @@ export class ItemService {
       if (!item.isActive) throw new BadRequestException('Item is already inactive');
 
       // Check on-hand inventory for this item
-      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
+      // Block if any bucket > 0: physical, allocated
       const stockRecord = await tx.onHand.findFirst({
         where: {
           itemId: id,
           OR: [
             { physicalQty: { gt: 0 } },
             { allocatedQty: { gt: 0 } },
-            { inboundOrderedQty: { gt: 0 } },
-            { outboundOrderedQty: { gt: 0 } },
           ],
         },
       });

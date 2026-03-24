@@ -69,13 +69,12 @@ function getOnHandImpact(transType, qty) {
 }
 
 /**
- * Stage-based inventory delta — returns deltas for all 4 buckets
- * This is the core business rule mapping (transType + stage) → bucket effects.
+ * Stage-based inventory delta — returns deltas for physicalQty and allocatedQty.
  *
  * @param {string} transType - RECEIPT, ISSUE, MOVE, ADJUSTMENT, TRANSFER_ISSUE, TRANSFER_RECEIPT, STATUS_CHANGE
  * @param {string} stage - EXPECTED, REGISTERED, ALLOCATED, DE_ALLOCATED, PHYSICAL, DEDUCTED
  * @param {number|string} qty - absolute quantity (always positive)
- * @returns {{ physicalDelta, allocatedDelta, inboundOrderedDelta, outboundOrderedDelta }}
+ * @returns {{ physicalDelta, allocatedDelta }}
  */
 function getInventoryDelta(transType, stage, qty) {
   const q = new Decimal(qty || 0).abs();
@@ -83,57 +82,57 @@ function getInventoryDelta(transType, stage, qty) {
 
   // --- INBOUND: RECEIPT ---
   if (transType === InventoryTransType.RECEIPT && stage === 'EXPECTED') {
-    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: q, outboundOrderedDelta: zero };
+    return { physicalDelta: zero, allocatedDelta: zero };
   }
   if (transType === InventoryTransType.RECEIPT && stage === 'REGISTERED') {
-    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: zero, allocatedDelta: zero };
   }
   if (transType === InventoryTransType.RECEIPT && stage === 'PHYSICAL') {
-    return { physicalDelta: q, allocatedDelta: zero, inboundOrderedDelta: q.negated(), outboundOrderedDelta: zero };
+    return { physicalDelta: q, allocatedDelta: zero };
   }
 
   // --- OUTBOUND: ISSUE ---
   if (transType === InventoryTransType.ISSUE && stage === 'EXPECTED') {
-    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: q };
+    return { physicalDelta: zero, allocatedDelta: zero };
   }
   if (transType === InventoryTransType.ISSUE && stage === 'ALLOCATED') {
-    return { physicalDelta: zero, allocatedDelta: q, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: zero, allocatedDelta: q };
   }
   if (transType === InventoryTransType.ISSUE && stage === 'DE_ALLOCATED') {
-    return { physicalDelta: zero, allocatedDelta: q.negated(), inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: zero, allocatedDelta: q.negated() };
   }
   if (transType === InventoryTransType.ISSUE && stage === 'PHYSICAL') {
     // Pick/Load — internal move, physicalQty handled by MOVE-like dim from/to logic
-    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: zero, allocatedDelta: zero };
   }
   if (transType === InventoryTransType.ISSUE && stage === 'DEDUCTED') {
-    return { physicalDelta: q.negated(), allocatedDelta: q.negated(), inboundOrderedDelta: zero, outboundOrderedDelta: q.negated() };
+    return { physicalDelta: q.negated(), allocatedDelta: q.negated() };
   }
 
   // --- TRANSFER ---
   if (transType === InventoryTransType.TRANSFER_ISSUE && stage === 'EXPECTED') {
-    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: q };
+    return { physicalDelta: zero, allocatedDelta: zero };
   }
   if (transType === InventoryTransType.TRANSFER_ISSUE && stage === 'DEDUCTED') {
-    return { physicalDelta: q.negated(), allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: q.negated() };
+    return { physicalDelta: q.negated(), allocatedDelta: zero };
   }
   if (transType === InventoryTransType.TRANSFER_RECEIPT && stage === 'PHYSICAL') {
-    return { physicalDelta: q, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: q, allocatedDelta: zero };
   }
 
   // --- MOVE / STATUS_CHANGE — handled separately via dim from/to ---
   if (transType === InventoryTransType.MOVE || transType === InventoryTransType.STATUS_CHANGE) {
-    return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: zero, allocatedDelta: zero };
   }
 
   // --- ADJUSTMENT (count gain/loss, VAS waste, manual) — always PHYSICAL stage ---
   if (transType === InventoryTransType.ADJUSTMENT && stage === 'PHYSICAL') {
     // qty sign determined by caller; for gain use +qty, for loss use -qty
-    return { physicalDelta: q, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+    return { physicalDelta: q, allocatedDelta: zero };
   }
 
   // Default: no effect
-  return { physicalDelta: zero, allocatedDelta: zero, inboundOrderedDelta: zero, outboundOrderedDelta: zero };
+  return { physicalDelta: zero, allocatedDelta: zero };
 }
 
 /**

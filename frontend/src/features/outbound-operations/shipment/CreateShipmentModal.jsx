@@ -90,7 +90,7 @@ export function CreateShipmentModal({
     if (!activeSo) return
 
     setDraft({
-      warehouseId: activeSo.warehouseId || '',
+      warehouseId: '',
       vehiclePlate: activeSo.vehiclePlate || '',
       notes: '',
       lines: buildInitialLines(activeSo),

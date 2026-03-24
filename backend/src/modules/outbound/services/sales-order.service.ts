@@ -265,8 +265,6 @@ export class SalesOrderService {
     }
 
     // SO confirm = chỉ đổi status, KHÔNG post M3 tại đây.
-    // outboundOrderedQty sẽ được post khi tạo SHP (shipment) — vì SHP mới biết kho cụ thể.
-
     const updated = await this.prisma.salesOrder.update({
       where: { id },
       data: { status: 'CONFIRMED', updatedBy: userId },
@@ -288,9 +286,6 @@ export class SalesOrderService {
       data: { status: 'CANCELLED', updatedBy: userId },
       include: { owner: true, lines: { include: { item: true, uom: true } } },
     });
-
-    // M3 outboundOrderedQty is posted at SHP level, not SO level.
-    // SHP cancel handles its own reversal.
 
     return this.transformSalesOrder(updated);
   }
@@ -323,9 +318,6 @@ export class SalesOrderService {
       data: { status: 'DRAFT', updatedBy: userId },
       include: { owner: true, lines: { include: { item: true, uom: true } } },
     });
-
-    // M3 outboundOrderedQty is posted at SHP level, not SO level.
-    // No M3 reversal needed here.
 
     return this.transformSalesOrder(updated);
   }

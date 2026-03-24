@@ -1,15 +1,12 @@
 /**
  * Ship Shipment Use Case - Application Layer
  * Handles shipping and M3 inventory posting
- * 
- * CR-2 FIX: Real M3 PostingEngine call + hold release
  */
 
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { ShipmentHeaderRepository } from '../repositories/shipment-header.repository';
 import { ShipmentLineRepository } from '../repositories/shipment-line.repository';
-import { AllocationRecordRepository } from '../repositories/allocation-record.repository';
 import { PostingLinkRepository } from '../repositories/posting-link.repository';
 import { StatusHistoryRepository } from '../repositories/status-history.repository';
 import { ShipmentStateMachineService } from '../services/shipment-state-machine.service';
@@ -35,7 +32,6 @@ export class ShipShipmentUseCase {
     private readonly prisma: PrismaService,
     private readonly headerRepo: ShipmentHeaderRepository,
     private readonly lineRepo: ShipmentLineRepository,
-    private readonly allocationRepo: AllocationRecordRepository,
     private readonly postingLinkRepo: PostingLinkRepository,
     private readonly historyRepo: StatusHistoryRepository,
     private readonly stateMachine: ShipmentStateMachineService,
@@ -53,7 +49,6 @@ export class ShipShipmentUseCase {
     this.stateMachine.assertCanTransition(shipment.status as any, 'SHIP');
 
     const lines = await this.lineRepo.findByShipmentId(input.shipmentId);
-    // Accept WEIGHED_PASS, ALLOCATED, or any non-cancelled/non-shipped line
     const shippableLines = lines.filter(
       (l: any) => !['CANCELLED', 'LINE_SHIPPED'].includes(l.lineStatus),
     );
@@ -65,83 +60,64 @@ export class ShipShipmentUseCase {
     const inventTransIds: string[] = [];
 
     for (const line of shippableLines) {
-      const lineAllocations = await this.allocationRepo.findByLineId(line.id);
+      // Post SHIP_CONFIRMED to M3 for each line
+      try {
+        const dim = await this.prisma.inventDim.findFirst({
+          where: {
+            warehouse: { id: shipment.warehouseId },
+            owner: { id: shipment.ownerId },
+          },
+          include: {
+            warehouse: { select: { warehouseCode: true } },
+            location: { select: { locationCode: true } },
+            owner: { select: { ownerCode: true } },
+            inventoryStatus: { select: { statusCode: true } },
+          },
+        });
 
-      for (const alloc of lineAllocations) {
-        // Try M3 posting if inventDimId exists
-        if (alloc.inventDimId) {
+        if (dim) {
+          const externalId = uuidv4();
+          const qtyKg = Number(line.expectedQtyKg || line.expectedQty || 0);
+          const postingResult = await this.m3Adapter.postShipmentShipped({
+            externalId,
+            correlationId: corrId,
+            shipmentId: input.shipmentId,
+            lineId: line.id,
+            itemId: line.itemId,
+            qty: String(qtyKg),
+            uomCode: 'KG',
+            dim: {
+              warehouseCode: dim.warehouse?.warehouseCode || '',
+              locationCode: dim.location?.locationCode || '',
+              ownerCode: dim.owner?.ownerCode || '',
+              statusCode: dim.inventoryStatus?.statusCode || 'AVAILABLE',
+            },
+            postedBy: input.userId,
+          });
+
+          inventTransIds.push(postingResult.transId);
+
+          // Create posting link
           try {
-            const dim = await this.prisma.inventDim.findUnique({
-              where: { id: alloc.inventDimId },
-              include: {
-                warehouse: { select: { warehouseCode: true } },
-                location: { select: { locationCode: true } },
-                owner: { select: { ownerCode: true } },
-                inventoryStatus: { select: { statusCode: true } },
+            const postingLink = await this.postingLinkRepo.create({
+              shipmentHeaderId: input.shipmentId,
+              shipmentLineId: line.id,
+              postingAction: 'POST',
+              m3ExternalId: postingResult.transId,
+              requestPayload: {
+                eventCode: 'SHIP_CONFIRMED',
+                qtyPosted: -qtyKg,
+                transDbId: postingResult.transDbId,
               },
+              correlationId: corrId,
             });
-
-            if (dim) {
-              const externalId = uuidv4();
-              const postingResult = await this.m3Adapter.postShipmentShipped({
-                externalId,
-                correlationId: corrId,
-                shipmentId: input.shipmentId,
-                lineId: line.id,
-                itemId: line.itemId,
-                qty: String(alloc.allocatedQty),
-                uomCode: 'KG',
-                dim: {
-                  warehouseCode: dim.warehouse?.warehouseCode || '',
-                  locationCode: dim.location?.locationCode || '',
-                  ownerCode: dim.owner?.ownerCode || '',
-                  statusCode: dim.inventoryStatus?.statusCode || 'AVAILABLE',
-                },
-                postedBy: input.userId,
-              });
-
-              inventTransIds.push(postingResult.transId);
-
-              // Release hold if exists
-              if (alloc.holdRef) {
-                try {
-                  const holds = await this.m3Adapter.getHoldsByShipment(input.shipmentId, line.id);
-                  for (const hold of holds) {
-                    if (hold.holdNo === alloc.holdRef && hold.status === 'ACTIVE') {
-                      await this.m3Adapter.releaseHold(hold.id, null, input.userId || '', corrId);
-                    }
-                  }
-                } catch { /* hold release is best-effort */ }
-              }
-
-              // Create posting link
-              try {
-                const postingLink = await this.postingLinkRepo.create({
-                  shipmentHeaderId: input.shipmentId,
-                  shipmentLineId: line.id,
-                  postingAction: 'POST',
-                  m3ExternalId: postingResult.transId,
-                  requestPayload: {
-                    eventCode: 'SHIP_CONFIRMED',
-                    qtyPosted: -Number(alloc.allocatedQty),
-                    transDbId: postingResult.transDbId,
-                  },
-                  correlationId: corrId,
-                });
-                await this.postingLinkRepo.markSuccess(postingLink.id, postingResult.transId, {
-                  transDbId: postingResult.transDbId,
-                  postedAt: new Date().toISOString(),
-                });
-              } catch { /* posting link is best-effort */ }
-            }
-          } catch { /* M3 posting failed — continue shipping without inventory deduction */ }
+            await this.postingLinkRepo.markSuccess(postingLink.id, postingResult.transId, {
+              transDbId: postingResult.transDbId,
+              postedAt: new Date().toISOString(),
+            });
+          } catch { /* posting link is best-effort */ }
         }
-
-        // Mark allocation as posted regardless
-        try {
-          await this.allocationRepo.markPosted(alloc.id, Number(alloc.allocatedQty));
-        } catch { /* ignore */ }
-      }
+      } catch { /* M3 posting failed — continue shipping without inventory deduction */ }
 
       await this.lineRepo.updateStatus(line.id, 'LINE_SHIPPED');
     }

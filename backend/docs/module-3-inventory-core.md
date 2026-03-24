@@ -2,8 +2,8 @@
 
 **Status:** ✅ Completed  
 **Code Path:** `src/modules/inventory-core`  
-**Version:** 3.1
-**Last Updated:** 2026-03-23
+**Version:** 3.2
+**Last Updated:** 2026-03-24
 
 ---
 
@@ -13,7 +13,7 @@ Module 3 là **trái tim dữ liệu vận hành** của SWM, chịu trách nhi�
 
 - **InventDim**: Dimension tồn kho (site, warehouse, location, owner, status)
 - **InventTrans**: Ledger bất biến ghi nhận mọi biến động tồn kho theo **stage** (EXPECTED → REGISTERED → ALLOCATED → DE_ALLOCATED → PHYSICAL → DEDUCTED)
-- **OnHand**: Current balance projection với 4 bucket gốc: `physicalQty`, `allocatedQty`, `inboundOrderedQty`, `outboundOrderedQty`
+- **OnHand**: Current balance projection với 2 bucket gốc: `physicalQty`, `allocatedQty` + computed `availableQty`
 - **Posting Engine**: Cổng vào duy nhất — ghi ledger (`invent_trans`) ONLY, không update `on_hand` trực tiếp
 - **Materialization Service**: Thành phần DUY NHẤT update `on_hand` — đọc delta từ ledger, apply vào read model
 - **Reversal Engine**: Đảo chiều transaction — ghi reversal ledger, materializer update on_hand
@@ -148,8 +148,6 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
     "onHandAfter": {
       "physicalQty": "5000.000",
       "allocatedQty": "0.000",
-      "inboundOrderedQty": "0.000",
-      "outboundOrderedQty": "0.000",
       "availableQty": "5000.000"
     },
     "idempotentReplay": false
@@ -241,8 +239,6 @@ Tất cả routes đều được bảo vệ bởi RBAC middleware:
       },
       "physicalQty": "30000.000",
       "allocatedQty": "10000.000",
-      "inboundOrderedQty": "5000.000",
-      "outboundOrderedQty": "3000.000",
       "availableQty": "20000.000",
       "uom": { "uomCode": "KG" }
     }
@@ -667,12 +663,12 @@ Mỗi transaction được gắn một `stage` thể hiện bước nào trong l
 
 | Stage | Ý nghĩa | Ảnh hưởng bucket |
 |-------|---------|-------------------|
-| `EXPECTED` | Có kế hoạch/demand, chưa tác động vật lý | Inbound: +`inboundOrderedQty`; Outbound: +`outboundOrderedQty` |
-| `REGISTERED` | Đã tạo chứng từ, chưa thay đổi tồn thực | Chưa thay đổi bucket chính |
+| `EXPECTED` | Có kế hoạch/demand, chưa tác động vật lý | Không ảnh hưởng bucket (audit trail only) |
+| `REGISTERED` | Đã tạo chứng từ, chưa thay đổi tồn thực | Không ảnh hưởng bucket |
 | `ALLOCATED` | Giữ chỗ hàng cho nhu cầu đã commit | +`allocatedQty` (giảm available) |
 | `DE_ALLOCATED` | Giải phóng phần đã allocate | -`allocatedQty` (tăng available) |
 | `PHYSICAL` | Thay đổi vật lý thật trên hàng | ±`physicalQty` |
-| `DEDUCTED` | Hoàn tất trừ tồn logic cuối cùng | -`physicalQty`, -`allocatedQty`, -`outboundOrderedQty` |
+| `DEDUCTED` | Hoàn tất trừ tồn logic cuối cùng | -`physicalQty`, -`allocatedQty` |
 
 ---
 
@@ -696,52 +692,38 @@ Mỗi transaction được gắn một `stage` thể hiện bước nào trong l
 
 | Event Code | Source | Stage | Trans Type | Bucket Effect |
 |------------|--------|-------|------------|---------------|
-| `PO_CONFIRMED` | M4 (Receipt create) | EXPECTED | RECEIPT | +`inboundOrderedQty` — posted khi tạo phiếu nhập (Receipt), không phải khi confirm PO |
-| `RECEIPT_CREATED` | M4 | REGISTERED | RECEIPT | (ghi nhận chứng từ, chưa thay đổi bucket) |
-| `GOODS_RECEIVED` | M4 | PHYSICAL | RECEIPT | +`physicalQty`, -`inboundOrderedQty` |
+| `RECEIPT_CREATED` | M4 | REGISTERED | RECEIPT | (ghi nhận chứng từ, không thay đổi bucket) |
+| `GOODS_RECEIVED` | M4 | PHYSICAL | RECEIPT | +`physicalQty` |
 | `PUTAWAY_COMPLETED` | M7 | PHYSICAL | MOVE | move location (tổng physicalQty không đổi) |
 
-**Inbound Lifecycle Example (v3.1):**
+**Inbound Lifecycle Example:**
 ```
 PO-001: đặt mua 500 KG WHEAT-SOFT (Cargill)
   ┌─ PO Confirm         → chỉ đổi status PO → CONFIRMED
-  │                        (KHÔNG post M3 — PO "kho phân phối" là planning)
   │
-  ├─ Receipt-001 (phiếu nhập 1, chọn kho WH5.1)
-  │  ├─ Create           → PO_CONFIRMED (EXPECTED)    → inboundOrderedQty += 200 tại WH5.1
-  │  └─ Nhận hàng 200kg → GOODS_RECEIVED (PHYSICAL)   → physicalQty += 200, inboundOrderedQty -= 200
+  ├─ Receipt-001 (phiếu nhập, chọn kho WH5.1)
+  │  └─ Nhận hàng 200kg → GOODS_RECEIVED (PHYSICAL)   → physicalQty += 200
   │
   ├─ Receipt-002 (phiếu nhập 2, chọn kho WH-02)
-  │  ├─ Create           → PO_CONFIRMED (EXPECTED)    → inboundOrderedQty += 300 tại WH-02
-  │  └─ Nhận hàng 300kg → GOODS_RECEIVED (PHYSICAL)   → physicalQty += 300, inboundOrderedQty -= 300
+  │  └─ Nhận hàng 300kg → GOODS_RECEIVED (PHYSICAL)   → physicalQty += 300
   │
-  └─ Receipt Cancel:
-     → Reverse PO_CONFIRMED → inboundOrderedQty -= reversed qty (floor 0)
+  └─ Receipt Cancel: nếu đã nhận → cần reverse GOODS_RECEIVED
 ```
-
-> **v3.1:** `inboundOrderedQty` post ở level Receipt (phiếu nhập), không phải PO. Receipt mới biết kho cụ thể nhận hàng.
-> **Floor to 0:** Nếu nhận quá (over-receive), inboundOrdered không bao giờ âm.
 
 ### 6.2 Outbound Postings (M5 → M3)
 
 | Event Code | Source | Stage | Trans Type | Bucket Effect |
 |------------|--------|-------|------------|---------------|
-| `SO_CONFIRMED` | M5 (SHP create) | EXPECTED | ISSUE | +`outboundOrderedQty` — posted khi tạo phiếu xuất (SHP), không phải khi confirm SO |
 | `ALLOCATION_CREATED` | M5 | ALLOCATED | ISSUE | +`allocatedQty` |
 | `ALLOCATION_RELEASED` | M5 | DE_ALLOCATED | ISSUE | -`allocatedQty` |
 | `PICK_CONFIRMED` | M7 | PHYSICAL | ISSUE | move nội bộ (storage → staging/picking zone) |
 | `LOAD_CONFIRMED` | M5 | PHYSICAL | ISSUE | move nội bộ (staging → dock/vehicle) |
-| `SHIP_CONFIRMED` | M5 | DEDUCTED | ISSUE | -`physicalQty`, -`allocatedQty`, -`outboundOrderedQty` |
+| `SHIP_CONFIRMED` | M5 | DEDUCTED | ISSUE | -`physicalQty`, -`allocatedQty` |
 
-**Outbound Lifecycle Example (v3.1):**
+**Outbound Lifecycle Example:**
 ```
 SO-001: xuất 1000 KG RICE-5T (OWN-001)
   ┌─ SO Confirm         → chỉ đổi status SO → CONFIRMED
-  │                        (KHÔNG post M3 — SO không biết kho cụ thể)
-  │
-  ├─ SHP Create (chọn kho WH-01)
-  │   → SO_CONFIRMED (EXPECTED) → outboundOrderedQty += 1000 tại WH-01
-  │   → Availability check: nếu kho thiếu tồn → block + báo lỗi
   │
   ├─ Allocate 1000      → ALLOCATION_CREATED (ALLOCATED) → allocatedQty += 1000
   │                                                        → availableQty -= 1000
@@ -750,30 +732,22 @@ SO-001: xuất 1000 KG RICE-5T (OWN-001)
   │
   ├─ Load (nếu có)      → LOAD_CONFIRMED (PHYSICAL)     → move location (staging → dock)
   │
-  ├─ Ship Confirm       → SHIP_CONFIRMED (DEDUCTED)     → physicalQty -= 1000
-  │                                                       → allocatedQty -= 1000
-  │                                                       → outboundOrderedQty -= 1000
-  │
-  └─ SHP Cancel         → Reverse SO_CONFIRMED           → outboundOrderedQty -= 1000
+  └─ Ship Confirm       → SHIP_CONFIRMED (DEDUCTED)     → physicalQty -= 1000
+                                                          → allocatedQty -= 1000
 ```
-
-> **v3.1:** `outboundOrderedQty` post ở level SHP (phiếu xuất), không phải SO (đơn bán hàng). SHP mới biết kho cụ thể → nhu cầu xuất hiện đúng warehouse trên tồn kho.
-> **Availability check:** Khi tạo SHP, check tồn kho tại warehouse đó. Nếu không đủ → block + hiện lỗi chi tiết trong form.
 
 ### 6.3 Transfer Postings (M6 → M3)
 
 | Event Code | Source | Stage | Trans Type | Bucket Effect |
 |------------|--------|-------|------------|---------------|
-| `TRANSFER_ORDER_CONFIRMED` | M6 | EXPECTED | TRANSFER_ISSUE | +`outboundOrderedQty` (kho nguồn) |
-| `TRANSFER_ISSUED` | M6 | DEDUCTED | TRANSFER_ISSUE | -`physicalQty` (kho nguồn), -`outboundOrderedQty` |
+| `TRANSFER_ISSUED` | M6 | DEDUCTED | TRANSFER_ISSUE | -`physicalQty` (kho nguồn) |
 | `TRANSFER_RECEIVED` | M6 | PHYSICAL | TRANSFER_RECEIPT | +`physicalQty` (kho đích) |
 
 ### 6.4 VAS Postings (M9 → M3)
 
 | Event Code | Source | Stage | Trans Type | Bucket Effect |
 |------------|--------|-------|------------|---------------|
-| `VAS_ORDER_CONFIRMED` | M9 | EXPECTED | ISSUE | +`outboundOrderedQty` (nguyên liệu) |
-| `VAS_CONSUMED` | M9 | DEDUCTED | ISSUE | -`physicalQty` (nguyên liệu), -`outboundOrderedQty` |
+| `VAS_CONSUMED` | M9 | DEDUCTED | ISSUE | -`physicalQty` (nguyên liệu) |
 | `VAS_PRODUCED` | M9 | PHYSICAL | RECEIPT | +`physicalQty` (thành phẩm) |
 | `VAS_WASTE` | M9 | PHYSICAL | ADJUSTMENT | -`physicalQty` (hao hụt) |
 
@@ -791,30 +765,32 @@ SO-001: xuất 1000 KG RICE-5T (OWN-001)
 
 ## 8. Stage-based Delta Logic (`getInventoryDelta`)
 
-Posting Engine sử dụng hàm `getInventoryDelta(transType, stage, qty)` trong `inventory.rules.js` để tính delta cho **tất cả 4 bucket** khi post transaction. Đây là core business rule.
+Posting Engine sử dụng hàm `getInventoryDelta(transType, stage, qty)` trong `inventory.rules.js` để tính delta cho **2 bucket** (`physicalQty`, `allocatedQty`) khi post transaction. Đây là core business rule.
 
 ### 7.1 Delta Matrix — `(transType + stage) → bucket effects`
 
-| transType | stage | physicalDelta | allocatedDelta | inboundOrderedDelta | outboundOrderedDelta |
-|-----------|-------|:---:|:---:|:---:|:---:|
-| RECEIPT | EXPECTED | 0 | 0 | **+qty** | 0 |
-| RECEIPT | REGISTERED | 0 | 0 | 0 | 0 |
-| RECEIPT | PHYSICAL | **+qty** | 0 | **-qty** | 0 |
-| ISSUE | EXPECTED | 0 | 0 | 0 | **+qty** |
-| ISSUE | ALLOCATED | 0 | **+qty** | 0 | 0 |
-| ISSUE | DE_ALLOCATED | 0 | **-qty** | 0 | 0 |
-| ISSUE | PHYSICAL | 0 | 0 | 0 | 0 |
-| ISSUE | DEDUCTED | **-qty** | **-qty** | 0 | **-qty** |
-| TRANSFER_ISSUE | EXPECTED | 0 | 0 | 0 | **+qty** |
-| TRANSFER_ISSUE | DEDUCTED | **-qty** | 0 | 0 | **-qty** |
-| TRANSFER_RECEIPT | PHYSICAL | **+qty** | 0 | 0 | 0 |
-| ADJUSTMENT | PHYSICAL | **+qty** | 0 | 0 | 0 |
-| MOVE | * | 0 | 0 | 0 | 0 |
-| STATUS_CHANGE | * | 0 | 0 | 0 | 0 |
+| transType | stage | physicalDelta | allocatedDelta |
+|-----------|-------|:---:|:---:|
+| RECEIPT | EXPECTED | 0 | 0 |
+| RECEIPT | REGISTERED | 0 | 0 |
+| RECEIPT | PHYSICAL | **+qty** | 0 |
+| ISSUE | EXPECTED | 0 | 0 |
+| ISSUE | ALLOCATED | 0 | **+qty** |
+| ISSUE | DE_ALLOCATED | 0 | **-qty** |
+| ISSUE | PHYSICAL | 0 | 0 |
+| ISSUE | DEDUCTED | **-qty** | **-qty** |
+| TRANSFER_ISSUE | EXPECTED | 0 | 0 |
+| TRANSFER_ISSUE | DEDUCTED | **-qty** | 0 |
+| TRANSFER_RECEIPT | PHYSICAL | **+qty** | 0 |
+| ADJUSTMENT | PHYSICAL | **±qty** | 0 |
+| MOVE | * | 0 | 0 |
+| STATUS_CHANGE | * | 0 | 0 |
 
 > **MOVE/STATUS_CHANGE** không dùng delta matrix — chúng dùng legacy dim from/to logic (trừ physicalQty ở source dim, cộng ở target dim).
 
 > **ISSUE + PHYSICAL** (pick/load) trả delta = 0 vì pick/load là internal move giữa locations, xử lý bằng dim from/to riêng.
+
+> **EXPECTED stage** giữ lại để audit trail nhưng không ảnh hưởng bucket nào (v3.2 đã loại bỏ ordered qty).
 
 ### 7.2 On-Hand Update Flow
 
@@ -823,14 +799,12 @@ eventCode → EventMapping → { transType, stage }
                               ↓
                      getInventoryDelta(transType, stage, qty)
                               ↓
-                   { physicalDelta, allocatedDelta, inboundOrderedDelta, outboundOrderedDelta }
+                   { physicalDelta, allocatedDelta }
                               ↓
                      onHandRepo.updateQty(id, deltas)
                               ↓
                    physicalQty += physicalDelta
                    allocatedQty += allocatedDelta
-                   inboundOrderedQty += inboundOrderedDelta  (floor 0)
-                   outboundOrderedQty += outboundOrderedDelta (floor 0)
                    availableQty = physicalQty - allocatedQty
 ```
 
@@ -839,27 +813,8 @@ eventCode → EventMapping → { transType, stage }
 Reversal negate toàn bộ delta gốc của transaction:
 - Lấy `transType` + `stage` từ original transaction
 - Gọi `getInventoryDelta(transType, stage, qty)` → lấy delta gốc
-- Negate tất cả: `{ -physicalDelta, -allocatedDelta, -inboundOrderedDelta, -outboundOrderedDelta }`
+- Negate tất cả: `{ -physicalDelta, -allocatedDelta }`
 - Apply vào on-hand
-
-**Auto-reversal khi cancel:**
-| Module | Action | Reversal target | Effect |
-|--------|--------|----------------|--------|
-| M4 | Receipt cancel | Reverse `PO_CONFIRMED` (stage=EXPECTED) refId=receiptId | -`inboundOrderedQty` |
-| M5 | SHP cancel | Reverse `SO_CONFIRMED` (stage=EXPECTED) refId=shipmentId | -`outboundOrderedQty` |
-
-> **v3.1:** SO cancel/unconfirm KHÔNG reverse M3 (vì SO không post M3). SHP cancel mới reverse.
-
-Logic: tìm tất cả `InventTrans` có `refId=entityId`, `stage=EXPECTED`, `isReversal=false` → reverse từng trans. Skip nếu đã reversed.
-
-### 7.3.1 Idempotency khi re-confirm
-
-Khi PO/SO được unconfirm rồi confirm lại, caller **phải dùng externalId unique mỗi lần** (ví dụ chứa timestamp). Nếu dùng externalId cố định:
-- M3 idempotency check tìm thấy transaction cũ (đã bị reversed)
-- Trả `idempotentReplay: true` → không tạo transaction mới
-- `inboundOrderedQty` / `outboundOrderedQty` không tăng lại
-
-Pattern đúng: `externalId: PO-CONFIRM-{poId}-{lineId}-{Date.now()}`
 
 ### 7.4 `availableQty` luôn là computed
 
@@ -868,10 +823,6 @@ availableQty = physicalQty - allocatedQty
 ```
 
 Không bao giờ update `availableQty` trực tiếp. Nó được tính lại mỗi khi `physicalQty` hoặc `allocatedQty` thay đổi.
-
-### 7.5 Ordered qty floor = 0
-
-`inboundOrderedQty` và `outboundOrderedQty` được floor về 0 khi update — không cho phép giá trị âm. Điều này xử lý trường hợp short receive hoặc partial cancel.
 
 ---
 
@@ -915,13 +866,11 @@ Module 2 (Master Data) gọi Module 3 (on_hand) để **chặn deactivate** mast
 
 ### Check logic
 
-Mỗi entity check **4 buckets** trước khi cho deactivate:
+Mỗi entity check **2 buckets** trước khi cho deactivate:
 
 ```
 IF on_hand.physicalQty > 0        → block (còn hàng thật)
 OR on_hand.allocatedQty > 0       → block (hàng đang giữ cho đơn xuất)
-OR on_hand.inboundOrderedQty > 0  → block (phiếu nhập đang pending)
-OR on_hand.outboundOrderedQty > 0 → block (phiếu xuất đang pending)
 → THEN: throw BadRequestException với message tiếng Việt
 ```
 

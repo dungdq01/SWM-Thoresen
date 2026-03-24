@@ -226,42 +226,6 @@ class ReceiptService {
         },
       });
 
-      // Post PO_CONFIRMED to M3 for each line → increases inboundOrderedQty at receipt warehouse
-      try {
-        const warehouse = await tx.mdWarehouse.findUnique({ where: { id: receipt.warehouseId } });
-        const owner = await tx.mdOwner.findUnique({ where: { id: receipt.ownerId } });
-        const firstLocation = await tx.mdLocation.findFirst({
-          where: { warehouseId: receipt.warehouseId, isActive: true },
-          orderBy: { locationCode: 'asc' },
-        });
-
-        for (const line of (receipt.lines || updated.lines || [])) {
-          const qtyKg = Number(line.expectedQty || 0);
-
-          await this.postingEngine.postInventory({
-            externalId: `RCV-CONFIRM-${receiptId}-${line.id}-${Date.now()}`,
-            correlationId: receipt.correlationId,
-            eventCode: 'PO_CONFIRMED',
-            refType: 'RECEIPT',
-            refId: receiptId,
-            refLineId: line.id,
-            itemId: line.itemId,
-            qty: String(qtyKg),
-            uomCode: 'KG',
-            dimTo: {
-              warehouseCode: warehouse?.warehouseCode,
-              locationCode: firstLocation?.locationCode || 'RCV-01',
-              ownerCode: owner?.ownerCode,
-              statusCode: 'AVAILABLE',
-            },
-            sourceApp: 'SYSTEM',
-            postedBy: context.userId,
-          }, tx);
-        }
-      } catch (err) {
-        console.error(`[M4→M3] Receipt PO_CONFIRMED posting failed for ${receiptId} (non-blocking):`, err.message);
-      }
-
       return { receipt: updated, idempotentReplay: false };
     });
   }
@@ -686,30 +650,6 @@ class ReceiptService {
           correlationId: receipt.correlationId,
         },
       });
-
-      // Reverse M3 PO_CONFIRMED postings for this receipt → decreases inboundOrderedQty
-      try {
-        const transactions = await tx.inventTrans.findMany({
-          where: { refId: receiptId, stage: 'EXPECTED', isReversal: false },
-        });
-        for (const trans of transactions) {
-          const existingReversal = await tx.inventoryReversalLink.findFirst({
-            where: { originalTransId: trans.id },
-          });
-          if (existingReversal) continue;
-
-          await this.reversalEngine.reverseTransaction({
-            externalId: `RCV-CANCEL-REV-${receiptId}-${trans.transId}-${Date.now()}`,
-            correlationId: receipt.correlationId,
-            originalTransId: trans.transId,
-            reasonCode: reasonCode || 'RECEIPT_CANCELLED',
-            note: 'Receipt cancelled',
-            reversedBy: context.userId,
-          }, tx);
-        }
-      } catch (err) {
-        console.error(`[M4→M3] Receipt cancel reversal failed for ${receiptId} (non-blocking):`, err.message);
-      }
 
       return { receipt: updated };
     });

@@ -671,7 +671,6 @@ model MdLocation {
   zone                MdZone                     @relation(fields: [zoneId], references: [id])
   inventDims          InventDim[]
   dailySnapshots      DailyStorageSnapshot[]
-  allocationRecords   ShipmentAllocationRecord[]
   bilStorageSnapshots BilStorageSnapshot[]
 
   @@unique([warehouseId, locationCode])
@@ -712,7 +711,6 @@ model MdOwner {
   dailySnapshots      DailyStorageSnapshot[]
   receiptHeaders      ReceiptHeader[]
   shipmentHeaders     ShipmentHeader[]
-  allocationRecords   ShipmentAllocationRecord[]
   purchaseOrders      PurchaseOrder[]
   vasWorkOrders       VasWorkOrder[]               @relation("VasWoOwner")
   vasPackagingOrders  VasWorkOrder[]               @relation("VasPackagingOwner")
@@ -907,7 +905,6 @@ model MdItem {
   dailySnapshots        DailyStorageSnapshot[]
   receiptLines          ReceiptLine[]
   shipmentLines         ShipmentLine[]
-  allocationRecords     ShipmentAllocationRecord[]
   purchaseOrderLines    PurchaseOrderLine[]
   vasBulkSourceOrders   VasWorkOrder[]                  @relation("VasBulkSource")
   vasBaggedOutputOrders VasWorkOrder[]                  @relation("VasBaggedOutput")
@@ -1331,7 +1328,6 @@ model InventDim {
   holds             InventoryHold[]
   reconcileResults  InventoryReconciliationResult[]
   snapshots         DailyStorageSnapshot[]
-  allocationRecords ShipmentAllocationRecord[]
 
   @@index([warehouseId, locationId, ownerId, inventoryStatusId])
   @@map("invent_dim")
@@ -1389,11 +1385,9 @@ model OnHand {
   id             String    @id @default(uuid()) @db.Uuid
   itemId         String    @map("item_id") @db.Uuid
   inventDimId    String    @map("invent_dim_id") @db.Uuid
-  physicalQty        Decimal   @default(0) @map("physical_qty") @db.Decimal(18, 3)
-  allocatedQty       Decimal   @default(0) @map("allocated_qty") @db.Decimal(18, 3)
-  availableQty       Decimal   @default(0) @map("available_qty") @db.Decimal(18, 3)
-  inboundOrderedQty  Decimal   @default(0) @map("inbound_ordered_qty") @db.Decimal(18, 3)
-  outboundOrderedQty Decimal   @default(0) @map("outbound_ordered_qty") @db.Decimal(18, 3)
+  physicalQty    Decimal   @default(0) @map("physical_qty") @db.Decimal(18, 3)
+  allocatedQty   Decimal   @default(0) @map("allocated_qty") @db.Decimal(18, 3)
+  availableQty   Decimal   @default(0) @map("available_qty") @db.Decimal(18, 3)
   lotNumber      String?   @map("lot_number") @db.VarChar(50)
   lotId          String?   @map("lot_id") @db.Uuid
   uomId          String    @map("uom_id") @db.Uuid
@@ -2113,11 +2107,6 @@ model ShipmentHeader {
   vehicleTypeId        String?            @map("vehicle_type_id") @db.Uuid
   notes                String?            @db.Text
   status               ShipmentStatus     @default(DRAFT)
-  tareWeightKg         Decimal?           @map("tare_weight_kg") @db.Decimal(18, 3)
-  totalGrossKg         Decimal?           @map("total_gross_kg") @db.Decimal(18, 3)
-  totalNetKg           Decimal?           @map("total_net_kg") @db.Decimal(18, 3)
-  allLinesPassed       Boolean            @default(false) @map("all_lines_passed")
-  pendingApprovalCount Int                @default(0) @map("pending_approval_count")
   shipmentOrderType    ShipmentOrderType  @default(STANDARD) @map("shipment_order_type")
   containerNumber      String?            @map("container_number") @db.VarChar(30)
   sealNumber           String?            @map("seal_number") @db.VarChar(30)
@@ -2142,11 +2131,8 @@ model ShipmentHeader {
   salesOrder  SalesOrder?    @relation(fields: [salesOrderId], references: [id])
 
   lines             ShipmentLine[]
-  allocationRecords ShipmentAllocationRecord[]
-  weighingAttempts  ShipmentWeighingAttempt[]
   statusHistory     ShipmentStatusHistory[]
   exceptionLogs     ShipmentExceptionLog[]
-  approvalDecisions ShipmentApprovalDecision[]
   pickWorkLinks     ShipmentPickWorkLink[]
   postingLinks      ShipmentPostingLink[]
   soLinks           ShipmentSoLink[]
@@ -2196,9 +2182,6 @@ model ShipmentLine {
   item   MdItem         @relation(fields: [itemId], references: [id])
   uom    MdUom          @relation(fields: [uomId], references: [id])
 
-  allocationRecords ShipmentAllocationRecord[]
-  weighingAttempts  ShipmentWeighingAttempt[]
-  approvalDecisions ShipmentApprovalDecision[]
   pickWorkLinks     ShipmentPickWorkLink[]
   postingLinks      ShipmentPostingLink[]
   weighbridgeLogs   M8WeighbridgeLog[]
@@ -2208,74 +2191,6 @@ model ShipmentLine {
   @@index([shipmentHeaderId, lineStatus])
   @@index([soLineId])
   @@map("shipment_line")
-}
-
-model ShipmentAllocationRecord {
-  id               String           @id @default(uuid()) @db.Uuid
-  shipmentHeaderId String           @map("shipment_header_id") @db.Uuid
-  shipmentLineId   String           @map("shipment_line_id") @db.Uuid
-  locationId       String           @map("location_id") @db.Uuid
-  inventDimId      String           @map("invent_dim_id") @db.Uuid
-  itemId           String           @map("item_id") @db.Uuid
-  ownerId          String           @map("owner_id") @db.Uuid
-  allocatedQty     Decimal          @map("allocated_qty") @db.Decimal(18, 3)
-  pickedQty        Decimal          @default(0) @map("picked_qty") @db.Decimal(18, 3)
-  releasedQty      Decimal          @default(0) @map("released_qty") @db.Decimal(18, 3)
-  postedQty        Decimal          @default(0) @map("posted_qty") @db.Decimal(18, 3)
-  lotDate          DateTime         @map("lot_date") @db.Date
-  fifoRank         Int?             @map("fifo_rank")
-  status           AllocationStatus @default(ALLOCATED)
-  holdRef          String?          @map("hold_ref") @db.VarChar(50)
-  externalId       String?          @map("external_id") @db.VarChar(120)
-  correlationId    String           @map("correlation_id") @db.VarChar(120)
-  createdAt        DateTime         @default(now()) @map("created_at")
-  createdBy        String?          @map("created_by") @db.Uuid
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  updatedBy        String?          @map("updated_by") @db.Uuid
-
-  header    ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
-  line      ShipmentLine   @relation(fields: [shipmentLineId], references: [id])
-  location  MdLocation     @relation(fields: [locationId], references: [id])
-  inventDim InventDim      @relation(fields: [inventDimId], references: [id])
-  item      MdItem         @relation(fields: [itemId], references: [id])
-  owner     MdOwner        @relation(fields: [ownerId], references: [id])
-
-  @@index([shipmentLineId, status])
-  @@index([shipmentHeaderId, status])
-  @@index([inventDimId, status])
-  @@index([itemId, ownerId, lotDate, status])
-  @@index([holdRef])
-  @@map("shipment_allocation_record")
-}
-
-model ShipmentWeighingAttempt {
-  id                   String          @id @default(uuid()) @db.Uuid
-  shipmentHeaderId     String          @map("shipment_header_id") @db.Uuid
-  shipmentLineId       String?         @map("shipment_line_id") @db.Uuid
-  weighType            WeighType       @map("weigh_type")
-  sequenceNo           Int             @map("sequence_no")
-  sourceMode           WeighSourceMode @map("source_mode")
-  rawWeightKg          Decimal         @map("raw_weight_kg") @db.Decimal(18, 3)
-  calculatedNetKg      Decimal?        @map("calculated_net_kg") @db.Decimal(18, 3)
-  scaleTicketNo        String?         @map("scale_ticket_no") @db.VarChar(80)
-  externalEventId      String?         @map("external_event_id") @db.VarChar(120)
-  capturedAt           DateTime        @map("captured_at")
-  capturedBy           String?         @map("captured_by") @db.Uuid
-  duplicateOfAttemptId String?         @map("duplicate_of_attempt_id") @db.Uuid
-  isValid              Boolean         @default(true) @map("is_valid")
-  reasonCode           String?         @map("reason_code") @db.VarChar(50)
-  remark               String?         @db.Text
-  correlationId        String          @map("correlation_id") @db.VarChar(120)
-  createdAt            DateTime        @default(now()) @map("created_at")
-
-  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
-  line   ShipmentLine?  @relation(fields: [shipmentLineId], references: [id])
-
-  @@index([shipmentHeaderId, capturedAt(sort: Desc)])
-  @@index([shipmentLineId, capturedAt(sort: Desc)])
-  @@index([scaleTicketNo])
-  @@index([externalEventId])
-  @@map("shipment_weighing_attempt")
 }
 
 model ShipmentStatusHistory {
@@ -2321,28 +2236,6 @@ model ShipmentExceptionLog {
   @@index([shipmentHeaderId, status, createdAt(sort: Desc)])
   @@index([exceptionType, status, createdAt(sort: Desc)])
   @@map("shipment_exception_log")
-}
-
-model ShipmentApprovalDecision {
-  id               String               @id @default(uuid()) @db.Uuid
-  shipmentHeaderId String               @map("shipment_header_id") @db.Uuid
-  shipmentLineId   String?              @map("shipment_line_id") @db.Uuid
-  decisionType     ApprovalDecisionType @map("decision_type")
-  approvalScope    ApprovalScope        @map("approval_scope")
-  reasonCode       String               @map("reason_code") @db.VarChar(50)
-  note             String?              @db.Text
-  decidedBy        String               @map("decided_by") @db.Uuid
-  decidedAt        DateTime             @default(now()) @map("decided_at")
-  beforeSnapshot   Json?                @map("before_snapshot")
-  afterSnapshot    Json?                @map("after_snapshot")
-  correlationId    String               @map("correlation_id") @db.VarChar(120)
-
-  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
-  line   ShipmentLine?  @relation(fields: [shipmentLineId], references: [id])
-
-  @@index([shipmentHeaderId, decidedAt(sort: Desc)])
-  @@index([shipmentLineId, decidedAt(sort: Desc)])
-  @@map("shipment_approval_decision")
 }
 
 model ShipmentPickWorkLink {

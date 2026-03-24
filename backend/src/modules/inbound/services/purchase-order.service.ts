@@ -304,7 +304,6 @@ export class PurchaseOrderService {
     }
 
     // PO confirm = chỉ đổi status, KHÔNG post M3 tại đây.
-    // inboundOrderedQty sẽ được post khi tạo Receipt (phiếu nhập) — vì Receipt mới biết kho cụ thể nhận hàng.
     const result = await this.prisma.purchaseOrder.update({
       where: { id },
       data: { status: PoStatus.CONFIRMED, rowVersion: { increment: 1 }, updatedBy: userId || null },
@@ -344,9 +343,6 @@ export class PurchaseOrderService {
       include: this.includeDetail(),
     });
 
-    // M3 inboundOrderedQty is posted at Receipt level, not PO level.
-    // Receipt cancel handles its own reversal.
-
     return result;
   }
 
@@ -369,8 +365,6 @@ export class PurchaseOrderService {
       data: { status: PoStatus.NEW, rowVersion: { increment: 1 }, updatedBy: userId || null },
       include: this.includeDetail(),
     });
-
-    // M3 inboundOrderedQty is posted at Receipt level, not PO level.
 
     return result;
   }

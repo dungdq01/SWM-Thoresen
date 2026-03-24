@@ -4,37 +4,42 @@ import { cn } from '@shared/lib/cn'
 
 const navGroups = [
   {
-    label: 'Đối tác & Hàng hóa',
+    label: 'Đối tác',
     items: [
       { to: '/app/master-data/owners', label: 'Chủ hàng', icon: Building2 },
       { to: '/app/master-data/vendors', label: 'Nhà cung cấp', icon: Ship },
       { to: '/app/master-data/customers', label: 'Khách hàng', icon: Users },
-      { to: '/app/master-data/item-groups', label: 'Nhóm hàng hóa', icon: Layers },
       { to: '/app/master-data/carriers', label: 'Nhà vận chuyển', icon: Truck },
       { to: '/app/master-data/vessels', label: 'Tên tàu', icon: Ship },
-      { to: '/app/master-data/items', label: 'Mặt hàng', icon: Package },
-      { to: '/app/master-data/lots', label: 'Lô hàng', icon: Boxes },
     ],
   },
   {
-    label: 'Kho & Vị trí',
+    label: 'Hàng hóa',
     items: [
-      { to: '/app/master-data/warehouses', label: 'Kho', icon: Warehouse },
-      { to: '/app/master-data/zones', label: 'Zone', icon: Grid3X3 },
-      { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },
+      { to: '/app/master-data/item-groups', label: 'Nhóm hàng hóa', icon: Layers },
+      { to: '/app/master-data/items', label: 'Mặt hàng', icon: Package },
+      { to: '/app/master-data/lots', label: 'Lô hàng', icon: Boxes },
       { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU', icon: Link2 },
-      { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner', icon: KeyRound },
       { to: '/app/master-data/item-incompatibilities', label: 'Không tương thích', icon: ShieldAlert },
     ],
   },
   {
-    label: 'Cấu hình',
+    label: 'Thiết lập kho',
+    items: [
+      { to: '/app/master-data/warehouses', label: 'Kho hàng', icon: Warehouse },
+      { to: '/app/master-data/zones', label: 'Khu vực', icon: Grid3X3 },
+      { to: '/app/master-data/locations', label: 'Vị trí', icon: MapPin },
+      { to: '/app/master-data/location-types', label: 'Loại vị trí', icon: LayoutGrid },
+      { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner', icon: KeyRound },
+    ],
+  },
+  {
+    label: 'Cấu hình hệ thống',
     items: [
       { to: '/app/master-data/uoms', label: 'Đơn vị tính', icon: Scale },
       { to: '/app/master-data/uom-conversions', label: 'Quy đổi ĐVT', icon: ArrowRightLeft },
       { to: '/app/master-data/inventory-statuses', label: 'Trạng thái tồn kho', icon: Tags },
       { to: '/app/master-data/vehicle-types', label: 'Loại phương tiện', icon: Truck },
-      { to: '/app/master-data/location-types', label: 'Loại vị trí', icon: LayoutGrid },
       { to: '/app/master-data/reason-codes', label: 'Mã lý do', icon: FileText },
     ],
   },

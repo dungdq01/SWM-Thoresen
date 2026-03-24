@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ShipmentHeaderRepository, ShipmentFilterParams } from '../repositories/shipment-header.repository';
 import { ShipmentLineRepository } from '../repositories/shipment-line.repository';
-import { AllocationRecordRepository } from '../repositories/allocation-record.repository';
-import { WeighingAttemptRepository } from '../repositories/weighing-attempt.repository';
 import { StatusHistoryRepository } from '../repositories/status-history.repository';
 import { ExceptionLogRepository } from '../repositories/exception-log.repository';
 
@@ -11,8 +9,6 @@ export class ShipmentQueryService {
   constructor(
     private readonly headerRepo: ShipmentHeaderRepository,
     private readonly lineRepo: ShipmentLineRepository,
-    private readonly allocationRepo: AllocationRecordRepository,
-    private readonly weighingRepo: WeighingAttemptRepository,
     private readonly historyRepo: StatusHistoryRepository,
     private readonly exceptionRepo: ExceptionLogRepository,
   ) {}
@@ -37,18 +33,6 @@ export class ShipmentQueryService {
     return this.lineRepo.findByShipmentId(shipmentId);
   }
 
-  async getAllocations(shipmentId: string) {
-    return this.allocationRepo.findByShipmentId(shipmentId);
-  }
-
-  async getLineAllocations(lineId: string) {
-    return this.allocationRepo.findByLineId(lineId);
-  }
-
-  async getWeighingHistory(shipmentId: string) {
-    return this.weighingRepo.findByShipmentId(shipmentId);
-  }
-
   async getStatusHistory(shipmentId: string) {
     return this.historyRepo.findByShipmentId(shipmentId);
   }
@@ -63,14 +47,5 @@ export class ShipmentQueryService {
 
   async getDashboardSummary(warehouseId?: string) {
     return this.headerRepo.getDashboardSummary(warehouseId);
-  }
-
-  async getPendingApprovals(warehouseId?: string) {
-    return this.headerRepo.findMany({
-      status: 'PENDING_APPROVAL' as any,
-      warehouseId,
-      page: 1,
-      pageSize: 100,
-    });
   }
 }

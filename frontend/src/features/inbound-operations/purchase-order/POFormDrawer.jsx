@@ -217,7 +217,7 @@ export function POFormDrawer({
                 </div>
 
                 <MultiSelect
-                  label="Kho phân phối *"
+                  label="Kho hàng *"
                   value={draft.warehouseIds}
                   onChange={(values) => setDraft((p) => ({ ...p, warehouseIds: values }))}
                   options={warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))}

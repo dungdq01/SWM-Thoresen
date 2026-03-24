@@ -110,15 +110,13 @@ export class LocationService {
       if (!location.isActive) throw new BadRequestException('Location is already inactive');
 
       // Check on-hand inventory at this location via InventDim
-      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
+      // Block if any bucket > 0: physical, allocated
       const stockRecord = await tx.onHand.findFirst({
         where: {
           inventDim: { locationId: id },
           OR: [
             { physicalQty: { gt: 0 } },
             { allocatedQty: { gt: 0 } },
-            { inboundOrderedQty: { gt: 0 } },
-            { outboundOrderedQty: { gt: 0 } },
           ],
         },
       });

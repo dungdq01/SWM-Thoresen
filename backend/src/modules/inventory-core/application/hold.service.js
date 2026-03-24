@@ -169,7 +169,7 @@ class HoldService {
       // STEP 4: Insert hold
       // Get or create on_hand record for the hold FK reference
       const { onHand } = await this.onHandRepo.getOrCreate(
-        { itemId, inventDimId: dimResult.dim.id, uomId: dimResult.dim.uomId || (await this.getKgUomId(tx)), physicalQty: 0, allocatedQty: 0, availableQty: 0, inboundOrderedQty: 0, outboundOrderedQty: 0 },
+        { itemId, inventDimId: dimResult.dim.id, uomId: dimResult.dim.uomId || (await this.getKgUomId(tx)), physicalQty: 0, allocatedQty: 0, availableQty: 0 },
         tx
       );
 

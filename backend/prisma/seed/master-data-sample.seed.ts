@@ -482,8 +482,6 @@ export async function seedMasterDataSample(prisma: PrismaClient) {
           physicalQty: oh.qty,
           allocatedQty: 0,
           availableQty: oh.qty,
-          inboundOrderedQty: 0,
-          outboundOrderedQty: 0,
           uomId,
           lastMovementAt: new Date(),
         },

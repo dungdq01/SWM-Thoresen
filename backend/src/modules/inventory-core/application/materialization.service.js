@@ -67,8 +67,6 @@ class MaterializationService {
       await this.applyDelta(itemId, dimFromId, uomId, {
         physicalDelta: fromImpact,
         allocatedDelta: zero,
-        inboundOrderedDelta: zero,
-        outboundOrderedDelta: zero,
       }, tx);
     }
 
@@ -76,8 +74,6 @@ class MaterializationService {
       lastUpdated = await this.applyDelta(itemId, dimToId, uomId, {
         physicalDelta: toImpact,
         allocatedDelta: zero,
-        inboundOrderedDelta: zero,
-        outboundOrderedDelta: zero,
       }, tx);
     }
 
@@ -96,8 +92,6 @@ class MaterializationService {
         physicalQty: 0,
         allocatedQty: 0,
         availableQty: 0,
-        inboundOrderedQty: 0,
-        outboundOrderedQty: 0,
       },
       tx
     );
@@ -107,8 +101,6 @@ class MaterializationService {
       {
         physicalDelta: delta.physicalDelta.toFixed(3),
         allocatedDelta: delta.allocatedDelta.toFixed(3),
-        inboundOrderedDelta: delta.inboundOrderedDelta.toFixed(3),
-        outboundOrderedDelta: delta.outboundOrderedDelta.toFixed(3),
         isMovement: true,
       },
       tx
@@ -120,9 +112,7 @@ class MaterializationService {
    */
   hasDeltaEffect(delta) {
     return !delta.physicalDelta.equals(0) ||
-      !delta.allocatedDelta.equals(0) ||
-      !delta.inboundOrderedDelta.equals(0) ||
-      !delta.outboundOrderedDelta.equals(0);
+      !delta.allocatedDelta.equals(0);
   }
 
   /**
@@ -133,8 +123,6 @@ class MaterializationService {
     return {
       physicalQty: String(onHand.physicalQty),
       allocatedQty: String(onHand.allocatedQty),
-      inboundOrderedQty: String(onHand.inboundOrderedQty),
-      outboundOrderedQty: String(onHand.outboundOrderedQty),
       availableQty: String(onHand.availableQty),
     };
   }
@@ -161,8 +149,6 @@ class MaterializationService {
 
     let physical = new Decimal(0);
     let allocated = new Decimal(0);
-    let inboundOrdered = new Decimal(0);
-    let outboundOrdered = new Decimal(0);
 
     for (const t of transactions) {
       const isMoveLike = t.transType === 'MOVE' || t.transType === 'STATUS_CHANGE';
@@ -177,8 +163,6 @@ class MaterializationService {
         if (isTarget) {
           physical = physical.plus(delta.physicalDelta);
           allocated = allocated.plus(delta.allocatedDelta);
-          inboundOrdered = inboundOrdered.plus(delta.inboundOrderedDelta);
-          outboundOrdered = outboundOrdered.plus(delta.outboundOrderedDelta);
         }
       }
     }
@@ -210,15 +194,10 @@ class MaterializationService {
           // Reversal negates the delta
           physical = physical.minus(delta.physicalDelta);
           allocated = allocated.minus(delta.allocatedDelta);
-          inboundOrdered = inboundOrdered.minus(delta.inboundOrderedDelta);
-          outboundOrdered = outboundOrdered.minus(delta.outboundOrderedDelta);
         }
       }
     }
 
-    // Floor ordered qtys to 0
-    inboundOrdered = Decimal.max(0, inboundOrdered);
-    outboundOrdered = Decimal.max(0, outboundOrdered);
     allocated = Decimal.max(0, allocated);
     const available = physical.minus(allocated);
 
@@ -230,8 +209,6 @@ class MaterializationService {
         data: {
           physicalQty: physical.toFixed(3),
           allocatedQty: allocated.toFixed(3),
-          inboundOrderedQty: inboundOrdered.toFixed(3),
-          outboundOrderedQty: outboundOrdered.toFixed(3),
           availableQty: available.toFixed(3),
           rowVersion: { increment: 1 },
         },

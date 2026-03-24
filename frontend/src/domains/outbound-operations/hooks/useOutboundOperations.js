@@ -14,9 +14,6 @@ export const OUTBOUND_QUERY_KEYS = {
   nextSoNumber: ['outbound', 'sales-orders', 'next-number'],
   shipments: ['outbound', 'shipments'],
   shipment: (id) => ['outbound', 'shipments', id],
-  allocations: ['outbound', 'allocations'],
-  weighingHistory: ['outbound', 'weighing-history'],
-  pendingApprovals: ['outbound', 'pending-approvals'],
 }
 
 // ─── Sales Orders ─────────────────────────────────────────────────────────────
@@ -223,125 +220,7 @@ export function useReportShipmentError() {
   })
 }
 
-// ─── Allocation ──────────────────────────────────────────────────────────────
-
-export function useAllocations(params = {}) {
-  return useQuery({
-    queryKey: [...OUTBOUND_QUERY_KEYS.allocations, params],
-    queryFn: () => outboundOperationsApi.getAllocations(params),
-    staleTime: 15000,
-  })
-}
-
-export function useAllocateShipment() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id) => outboundOperationsApi.allocateShipment(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.allocations })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      toast.success('Phân bổ kho thành công')
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi phân bổ kho')
-    },
-  })
-}
-
-export function useUnallocateShipment() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id) => outboundOperationsApi.unallocateShipment(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.allocations })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      toast.success('Hủy phân bổ thành công')
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi hủy phân bổ')
-    },
-  })
-}
-
-// ─── Weighing ────────────────────────────────────────────────────────────────
-
-export function useRecordTareWeight() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data) => outboundOperationsApi.recordTareWeight(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.weighingHistory })
-      toast.success('Ghi cân bì thành công')
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi ghi cân bì')
-    },
-  })
-}
-
-export function useRecordGrossWeight() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data) => outboundOperationsApi.recordGrossWeight(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.weighingHistory })
-      toast.success('Ghi cân tổng thành công')
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi ghi cân tổng')
-    },
-  })
-}
-
-export function useWeighingHistory(params = {}) {
-  return useQuery({
-    queryKey: [...OUTBOUND_QUERY_KEYS.weighingHistory, params],
-    queryFn: () => outboundOperationsApi.getWeighingHistory(params),
-    staleTime: 15000,
-  })
-}
-
-// ─── Approval ────────────────────────────────────────────────────────────────
-
-export function usePendingApprovals(params = {}) {
-  return useQuery({
-    queryKey: [...OUTBOUND_QUERY_KEYS.pendingApprovals, params],
-    queryFn: () => outboundOperationsApi.getPendingApprovals(params),
-    staleTime: 15000,
-  })
-}
-
-export function useApproveShipment() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data) => outboundOperationsApi.approveShipment(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.pendingApprovals })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      toast.success('Phê duyệt phiếu xuất thành công')
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi phê duyệt')
-    },
-  })
-}
-
-export function useRejectShipment() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data) => outboundOperationsApi.rejectShipment(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.pendingApprovals })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      toast.success('Từ chối phiếu xuất thành công')
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || 'Lỗi từ chối phiếu')
-    },
-  })
-}
+// ─── Ship ────────────────────────────────────────────────────────────────────
 
 export function useShipShipment() {
   const qc = useQueryClient()
@@ -349,7 +228,6 @@ export function useShipShipment() {
     mutationFn: (id) => outboundOperationsApi.shipShipment(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
-      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.pendingApprovals })
       toast.success('Xuất hàng thành công')
     },
     onError: (err) => {

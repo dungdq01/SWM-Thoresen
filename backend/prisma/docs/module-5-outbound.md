@@ -3,9 +3,9 @@
 **Schema Location:** `prisma/schema.prisma`  
 **Module:** Outbound Operations  
 **Status:** ✅ Active (Sales Order + Shipment Management)  
-**Tables:** 14 (Sales Order + Shipment + Document tables)  
-**Version:** 2.5.0  
-**Last Updated:** 2026-03-22  
+**Tables:** 10 (Sales Order + Shipment + Document tables)
+**Version:** 2.6.0
+**Last Updated:** 2026-03-24  
 
 ---
 
@@ -35,9 +35,7 @@ Module 5 sử dụng các bảng database để quản lý **luồng xuất hàn
 | Group | Tables | Mục đích | Status |
 |-------|--------|----------|--------|
 | **Runtime** | `shipment_header`, `shipment_line` | Dữ liệu nghiệp vụ chính | ✅ Active |
-| **Allocation** | `shipment_allocation_record` | Phân bổ tồn kho | 🟡 Pending |
-| **Weighing** | `shipment_weighing_attempt` | Log cân nặng | 🟡 Pending |
-| **Audit** | `shipment_status_history`, `shipment_exception_log`, `shipment_approval_decision` | Lịch sử và exceptions | 🟡 Pending |
+| **Audit** | `shipment_status_history`, `shipment_exception_log` | Lịch sử và exceptions | 🟡 Pending |
 | **Control** | `shipment_pick_work_link`, `shipment_posting_link`, `shipment_so_link` | Liên kết với modules khác | 🟡 Pending |
 
 ### 2.3 Document Tables (Đang sử dụng)
@@ -129,7 +127,6 @@ enum SalesOrderLineStatus {
 enum ShipmentStatus {
   DRAFT              // Frontend: NEW
   CONFIRMED          // Frontend: CONFIRMED
-  ALLOCATED          // Frontend: ALLOCATED (🟡 Pending)
   PICKING            // Frontend: PICKING (🟡 Pending)
   LOADING            // Frontend: LOADING (🟡 Pending)
   SHIPPED            // Frontend: SHIPPED
@@ -139,7 +136,6 @@ enum ShipmentStatus {
 
 enum ShipmentLineStatus {
   PENDING            // Chờ xử lý
-  ALLOCATED          // Đã phân bổ
   PICKING            // Đang lấy hàng
   PICKED             // Đã lấy
   LOADING            // Đang xếp hàng
@@ -155,9 +151,7 @@ enum ShipmentSourceType {
 ```
 
 ### Shipment Enums (Pending)
-- `AllocationStatus`, `WeighType`, `WeighSourceMode`
 - `ShipmentExceptionType`, `ShipmentExceptionStatus`
-- `ApprovalDecisionType`, `ApprovalScope`
 - `WorkLinkType`, `WorkLinkStatus`, `PostingAction`, `PostingStatus`
 
 ---
@@ -193,8 +187,6 @@ model ShipmentHeader {
   notes                String?            @db.Text         // Ghi chú header (v2.4.0)
   status               ShipmentStatus     @default(DRAFT)  // DRAFT=NEW
   cancelReasonCode     String?                             // Lý do báo lỗi/hủy
-  totalGrossKg         Decimal?                            // Tổng KL thực
-  totalNetKg           Decimal?                            // Tổng KL net
   ...
 }
 ```
@@ -281,3 +273,4 @@ enum OutboundDocumentStatus {
 | 2.3.0 | 2026-03-17 | **Shipment Management:** Sử dụng `shipment_header`, `shipment_line` để lưu phiếu xuất từ SO |
 | 2.4.0 | 2026-03-17 | **Shipment Notes:** Thêm field `notes` cho `shipment_header` và `shipment_line` |
 | 2.5.0 | 2026-03-22 | **Outbound Document:** Thêm bảng `outbound_document` để lưu chứng từ xuất kho (B/L, packing list, ...) |
+| 2.6.0 | 2026-03-24 | **REMOVED Tables:** Xóa `shipment_allocation_record`, `shipment_weighing_attempt`, `shipment_approval_decision`. Xóa fields `tareWeightKg`, `totalGrossKg`, `totalNetKg`, `allLinesPassed`, `pendingApprovalCount` từ `shipment_header`. Xóa relation fields liên quan từ các model khác |

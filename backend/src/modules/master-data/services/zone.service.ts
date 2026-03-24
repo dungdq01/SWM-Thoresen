@@ -102,15 +102,13 @@ export class ZoneService {
       }
 
       // Check on-hand inventory at locations belonging to this zone
-      // Block if any bucket > 0: physical, allocated, inboundOrdered, outboundOrdered
+      // Block if any bucket > 0: physical, allocated
       const stockRecord = await tx.onHand.findFirst({
         where: {
           inventDim: { location: { zoneId: id } },
           OR: [
             { physicalQty: { gt: 0 } },
             { allocatedQty: { gt: 0 } },
-            { inboundOrderedQty: { gt: 0 } },
-            { outboundOrderedQty: { gt: 0 } },
           ],
         },
       });
