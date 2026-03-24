@@ -672,6 +672,8 @@ model MdLocation {
   inventDims          InventDim[]
   dailySnapshots      DailyStorageSnapshot[]
   bilStorageSnapshots BilStorageSnapshot[]
+  shipmentLines       ShipmentLine[]
+  receiptLines        ReceiptLine[]
 
   @@unique([warehouseId, locationCode])
   @@index([zoneId, isActive])
@@ -1807,6 +1809,8 @@ model ReceiptLine {
   bagCount            Int?              @map("bag_count")
   nominalWeightPerBag Decimal?          @map("nominal_weight_per_bag") @db.Decimal(18, 3)
   cargoForm           CargoForm         @map("cargo_form")
+  locationId          String?           @map("location_id") @db.Uuid
+  unloadSequenceNo    Int?              @map("unload_sequence_no")
   notes               String?           @db.VarChar(500)
   status              ReceiptLineStatus @default(OPEN)
   createdAt           DateTime          @default(now()) @map("created_at")
@@ -1817,11 +1821,13 @@ model ReceiptLine {
   header          ReceiptHeader      @relation(fields: [receiptHeaderId], references: [id])
   item            MdItem             @relation(fields: [itemId], references: [id])
   uom             MdUom              @relation(fields: [uomId], references: [id])
+  location        MdLocation?        @relation(fields: [locationId], references: [id])
   weighbridgeLogs M8WeighbridgeLog[]
 
   @@unique([receiptHeaderId, lineNumber])
   @@index([itemId, cargoForm])
   @@index([receiptHeaderId, status])
+  @@index([locationId])
   @@map("receipt_line")
 }
 
@@ -1987,16 +1993,8 @@ model ReceiptIntegrationState {
 enum ShipmentStatus {
   DRAFT
   CONFIRMED
-  WEIGHING_1
-  WEIGHING_2
-  WEIGHED
-  ALLOCATED
-  PICKING
-  PICKED
-  WEIGHING_TARE
   LOADING
-  ALL_WEIGHED
-  PENDING_APPROVAL
+  LOADED
   SHIPPED
   CLOSED
   CANCELLED
@@ -2004,12 +2002,8 @@ enum ShipmentStatus {
 
 enum ShipmentLineStatus {
   PENDING
-  ALLOCATED
-  PICKING
-  PICKED
   LOADING
   WEIGHED_PASS
-  WEIGHED_FAIL
   LINE_SHIPPED
   CANCELLED
 }
@@ -2168,6 +2162,7 @@ model ShipmentLine {
   grossWeightKg       Decimal?           @map("gross_weight_kg") @db.Decimal(18, 3)
   netWeightKg         Decimal?           @map("net_weight_kg") @db.Decimal(18, 3)
   weighSequenceNo     Int?               @map("weigh_sequence_no")
+  locationId          String?            @map("location_id") @db.Uuid
   lineStatus          ShipmentLineStatus @default(PENDING) @map("line_status")
   notes               String?            @db.Text
   postedTransId       String?            @map("posted_trans_id") @db.VarChar(40)
@@ -2178,9 +2173,10 @@ model ShipmentLine {
   updatedAt           DateTime           @updatedAt @map("updated_at")
   updatedBy           String?            @map("updated_by") @db.Uuid
 
-  header ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
-  item   MdItem         @relation(fields: [itemId], references: [id])
-  uom    MdUom          @relation(fields: [uomId], references: [id])
+  header   ShipmentHeader @relation(fields: [shipmentHeaderId], references: [id])
+  item     MdItem         @relation(fields: [itemId], references: [id])
+  uom      MdUom          @relation(fields: [uomId], references: [id])
+  location MdLocation?    @relation(fields: [locationId], references: [id])
 
   pickWorkLinks     ShipmentPickWorkLink[]
   postingLinks      ShipmentPostingLink[]
@@ -2189,6 +2185,7 @@ model ShipmentLine {
   @@unique([shipmentHeaderId, lineNumber])
   @@index([itemId, cargoForm])
   @@index([shipmentHeaderId, lineStatus])
+  @@index([locationId])
   @@index([soLineId])
   @@map("shipment_line")
 }

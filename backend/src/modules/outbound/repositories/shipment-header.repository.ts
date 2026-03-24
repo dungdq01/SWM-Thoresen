@@ -46,10 +46,6 @@ export class ShipmentHeaderRepository {
         owner: true,
         warehouse: true,
         vehicleType: true,
-        allocationRecords: true,
-        weighingAttempts: {
-          orderBy: { sequenceNo: 'asc' },
-        },
         statusHistory: {
           orderBy: { changedAt: 'desc' },
           take: 10,
@@ -247,16 +243,14 @@ export class ShipmentHeaderRepository {
     const [
       totalDraft,
       totalConfirmed,
-      totalAllocated,
-      totalPicking,
-      totalPendingApproval,
+      totalLoading,
+      totalLoaded,
       totalShippedToday,
     ] = await Promise.all([
       this.prisma.shipmentHeader.count({ where: { ...where, status: 'DRAFT' } }),
       this.prisma.shipmentHeader.count({ where: { ...where, status: 'CONFIRMED' } }),
-      this.prisma.shipmentHeader.count({ where: { ...where, status: 'ALLOCATED' } }),
-      this.prisma.shipmentHeader.count({ where: { ...where, status: 'PICKING' } }),
-      this.prisma.shipmentHeader.count({ where: { ...where, status: 'PENDING_APPROVAL' } }),
+      this.prisma.shipmentHeader.count({ where: { ...where, status: 'LOADING' } }),
+      this.prisma.shipmentHeader.count({ where: { ...where, status: 'LOADED' } }),
       this.prisma.shipmentHeader.count({
         where: {
           ...where,
@@ -269,9 +263,8 @@ export class ShipmentHeaderRepository {
     return {
       totalDraft,
       totalConfirmed,
-      totalAllocated,
-      totalPicking,
-      totalPendingApproval,
+      totalLoading,
+      totalLoaded,
       totalShippedToday,
     };
   }

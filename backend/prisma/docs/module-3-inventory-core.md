@@ -4,7 +4,7 @@
 **Database:** PostgreSQL
 **Total Tables:** 10
 **Total Services:** 9
-**Last Updated:** 2026-03-24 (v3.2 — removed inboundOrderedQty/outboundOrderedQty)
+**Last Updated:** 2026-03-24 (v3.3 — document cross-module OnHand usage for M5 warehouse filtering)
 
 ---
 
@@ -551,3 +551,16 @@ Reversal = negate delta gốc:
 original: getInventoryDelta(transType, stage, qty) → { +100, 0 }
 reversal: { -100, 0 }
 ```
+
+---
+
+## 8. Cross-Module Usage
+
+### 8.1 OnHand API dùng để filter Warehouse cho M5 Outbound
+
+Module 5 (Outbound) sử dụng `GET /inventory-core/onhand?ownerId={ownerId}&pageSize=100` để xác định kho nào đang có tồn kho của một chủ hàng cụ thể, dùng cho dropdown chọn Kho khi tạo phiếu xuất (SHP).
+
+- **Query:** `GET /inventory-core/onhand?ownerId=<uuid>&pageSize=100` (không truyền `hasStock` → lấy tất cả)
+- **Extract:** Unique `inventDim.warehouseId` từ kết quả
+- **Mục đích:** Chỉ hiển thị các kho có liên quan đến chủ hàng trong dropdown, thay vì hiển thị tất cả kho trong hệ thống
+- **Lưu ý:** `pageSize` max = 100 (Joi validation). Frontend hiện chỉ lấy page 1, đủ cho use case có ít warehouse per owner

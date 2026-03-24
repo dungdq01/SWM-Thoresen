@@ -147,7 +147,7 @@ export class DashboardService {
 
     // Get active shipments (using correct enum values from schema)
     const activeShipments = await this.prisma.shipmentHeader.count({
-      where: { status: { in: ['CONFIRMED', 'ALLOCATED', 'PICKING', 'PICKED', 'WEIGHING_TARE', 'LOADING', 'PENDING_APPROVAL'] } },
+      where: { status: { in: ['CONFIRMED', 'LOADING', 'LOADED'] } },
     });
 
     // Get on-hand quantity (KG) - using physicalQty field
@@ -249,7 +249,7 @@ export class DashboardService {
       const pendingShipments = await this.prisma.shipmentHeader.count({
         where: {
           ownerId: owner.id,
-          status: { in: ['CONFIRMED', 'ALLOCATED', 'PICKING', 'PICKED', 'WEIGHING_TARE', 'LOADING', 'PENDING_APPROVAL'] },
+          status: { in: ['CONFIRMED', 'LOADING', 'LOADED'] },
         },
       });
 

@@ -54,11 +54,13 @@ const InboundOperationsLayout = lazy(() => import('@pages/inbound-operations').t
 const InboundReceiptsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundReceiptsPage })))
 const PurchaseOrdersPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.PurchaseOrdersPage })))
 const InboundDocumentsPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundDocumentsPage })))
+const InboundUnloadingPage = lazy(() => import('@pages/inbound-operations').then(m => ({ default: m.InboundUnloadingPage })))
 
 // Outbound Operations Pages
 const OutboundOperationsLayout = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundOperationsLayout })))
 const OutboundShipmentsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundShipmentsPage })))
 const SalesOrdersPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.SalesOrdersPage })))
+const OutboundLoadingPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundLoadingPage })))
 const OutboundDocumentsPage = lazy(() => import('@pages/outbound-operations').then(m => ({ default: m.OutboundDocumentsPage })))
 
 // Inventory Control Pages
@@ -336,6 +338,10 @@ export const router = createBrowserRouter([
             element: withSuspense(InboundReceiptsPage),
           },
           {
+            path: 'unloading',
+            element: withSuspense(InboundUnloadingPage),
+          },
+          {
             path: 'documents',
             element: withSuspense(InboundDocumentsPage),
           },
@@ -356,6 +362,10 @@ export const router = createBrowserRouter([
           {
             path: 'shipments',
             element: withSuspense(OutboundShipmentsPage),
+          },
+          {
+            path: 'loading',
+            element: withSuspense(OutboundLoadingPage),
           },
           {
             path: 'documents',

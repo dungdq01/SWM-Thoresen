@@ -127,20 +127,11 @@ export class ShipmentLineRepository {
     });
   }
 
-  async findAllocatedLines(shipmentId: string) {
+  async findLoadedLines(shipmentId: string) {
     return this.prisma.shipmentLine.findMany({
       where: {
         shipmentHeaderId: shipmentId,
-        lineStatus: 'ALLOCATED',
-      },
-    });
-  }
-
-  async findFailedLines(shipmentId: string) {
-    return this.prisma.shipmentLine.findMany({
-      where: {
-        shipmentHeaderId: shipmentId,
-        lineStatus: 'WEIGHED_FAIL',
+        lineStatus: { in: ['LOADING', 'WEIGHED_PASS'] },
       },
     });
   }
@@ -152,26 +143,12 @@ export class ShipmentLineRepository {
     });
   }
 
-  async updateAllocatedQty(id: string, qty: number) {
-    return this.prisma.shipmentLine.update({
-      where: { id },
-      data: {
-        allocatedQty: qty,
-        lineStatus: 'ALLOCATED',
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  async updateWeighResult(
+  async updateLoadedWeight(
     id: string,
     data: {
       grossWeightKg: number;
       netWeightKg: number;
-      variancePct: number;
-      tolerancePctApplied: number;
       weighSequenceNo: number;
-      passed: boolean;
     },
   ) {
     return this.prisma.shipmentLine.update({
@@ -179,10 +156,10 @@ export class ShipmentLineRepository {
       data: {
         grossWeightKg: data.grossWeightKg,
         netWeightKg: data.netWeightKg,
-        variancePct: data.variancePct,
-        tolerancePctApplied: data.tolerancePctApplied,
+        loadedQty: data.netWeightKg,
+        weighedQtyKg: data.netWeightKg,
         weighSequenceNo: data.weighSequenceNo,
-        lineStatus: data.passed ? 'WEIGHED_PASS' : 'WEIGHED_FAIL',
+        lineStatus: 'LOADING',
         updatedAt: new Date(),
       },
     });

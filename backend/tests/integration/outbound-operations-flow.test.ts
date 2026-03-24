@@ -224,7 +224,7 @@ async function cleanupTestData() {
     // Shipment cleanup
     if (shipmentId) {
       await prisma.shipmentStatusHistory.deleteMany({ where: { shipmentHeaderId: shipmentId } });
-      await prisma.shipmentAllocationRecord.deleteMany({ where: { shipmentHeaderId: shipmentId } });
+      // shipmentAllocationRecord model removed — skip cleanup
       await prisma.shipmentLine.deleteMany({ where: { shipmentHeaderId: shipmentId } });
       await prisma.shipmentHeader.deleteMany({ where: { id: shipmentId } });
     }
@@ -571,34 +571,16 @@ describe('Outbound Operations — Full E2E Flow', () => {
     const line = lines[0];
     const allocQty = Number(line.expectedQtyKg);
 
-    // Create allocation record
-    await prisma.shipmentAllocationRecord.create({
-      data: {
-        shipmentHeaderId: shipmentId,
-        shipmentLineId: line.id,
-        locationId: onHand!.inventDim.locationId!,
-        inventDimId: onHand!.inventDimId,
-        itemId: ids.itemId,
-        ownerId: ids.ownerId,
-        allocatedQty: allocQty,
-        lotDate: new Date(),
-        fifoRank: 1,
-        status: 'ALLOCATED',
-        externalId: `ALLOC-E2E-${TS}-001`,
-        correlationId: `corr-ob-${TS}-alloc`,
-      },
-    });
-
-    // Update line status
+    // Update line with allocated qty (allocation model removed, use line directly)
     await prisma.shipmentLine.update({
       where: { id: line.id },
-      data: { allocatedQty: allocQty, lineStatus: 'ALLOCATED' },
+      data: { allocatedQty: allocQty, lineStatus: 'LOADING' },
     });
 
-    // Update header status
+    // Update header status to LOADING (ALLOCATED status removed from schema)
     await prisma.shipmentHeader.update({
       where: { id: shipmentId },
-      data: { status: 'ALLOCATED', rowVersion: { increment: 1 } },
+      data: { status: 'LOADING', rowVersion: { increment: 1 } },
     });
 
     await prisma.shipmentStatusHistory.create({
@@ -606,8 +588,8 @@ describe('Outbound Operations — Full E2E Flow', () => {
         shipmentHeaderId: shipmentId,
         entityLevel: 'HEADER',
         fromStatus: 'CONFIRMED',
-        toStatus: 'ALLOCATED',
-        triggerAction: 'ALLOCATE',
+        toStatus: 'LOADING',
+        triggerAction: 'START_LOADING',
         correlationId: `corr-ob-${TS}-alloc`,
       },
     });
@@ -616,24 +598,23 @@ describe('Outbound Operations — Full E2E Flow', () => {
       where: { id: shipmentId },
       include: { lines: true },
     });
-    expect(updated?.status).toBe('ALLOCATED');
+    expect(updated?.status).toBe('LOADING');
     expect(Number(updated?.lines[0].allocatedQty)).toBe(5000);
   });
 
-  it('Step 14: Verify allocation records', async () => {
-    const allocs = await prisma.shipmentAllocationRecord.findMany({
+  it('Step 14: Verify allocation on line', async () => {
+    const lines = await prisma.shipmentLine.findMany({
       where: { shipmentHeaderId: shipmentId },
     });
-    expect(allocs.length).toBe(1);
-    expect(Number(allocs[0].allocatedQty)).toBe(5000);
-    expect(allocs[0].status).toBe('ALLOCATED');
+    expect(lines.length).toBe(1);
+    expect(Number(lines[0].allocatedQty)).toBe(5000);
   });
 
   // ════════════════════════════════════════════════════════════════════════
   // PHASE 6: Verify Data Integrity
   // ════════════════════════════════════════════════════════════════════════
 
-  it('Step 15: Shipment status history — 3 entries (CREATE, CONFIRM, ALLOCATE)', async () => {
+  it('Step 15: Shipment status history — 3 entries (CREATE, CONFIRM, START_LOADING)', async () => {
     const history = await prisma.shipmentStatusHistory.findMany({
       where: { shipmentHeaderId: shipmentId },
       orderBy: { changedAt: 'asc' },
@@ -641,7 +622,7 @@ describe('Outbound Operations — Full E2E Flow', () => {
     expect(history.length).toBe(3);
     expect(history[0].toStatus).toBe('DRAFT');
     expect(history[1].toStatus).toBe('CONFIRMED');
-    expect(history[2].toStatus).toBe('ALLOCATED');
+    expect(history[2].toStatus).toBe('LOADING');
   });
 
   it('Step 16: Shipment detail — full include check', async () => {
@@ -651,7 +632,6 @@ describe('Outbound Operations — Full E2E Flow', () => {
         lines: { include: { item: true, uom: true } },
         owner: true,
         warehouse: true,
-        allocationRecords: true,
         statusHistory: { orderBy: { changedAt: 'desc' } },
       },
     });
@@ -662,7 +642,6 @@ describe('Outbound Operations — Full E2E Flow', () => {
     expect(detail!.lines[0].uom.uomCode).toBe(`KG-OB${TS}`);
     expect(detail!.owner.ownerCode).toBe(`OWN-OB${TS}`);
     expect(detail!.warehouse.warehouseCode).toBe(`WH-OB${TS}`);
-    expect(detail!.allocationRecords.length).toBe(1);
     expect(detail!.statusHistory.length).toBe(3);
   });
 

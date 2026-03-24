@@ -259,4 +259,90 @@ export function useCancelPurchaseOrder() {
   return useMutation({ mutationFn: (id) => inboundOperationsApi.cancelPurchaseOrder(id), onSuccess, onError })
 }
 
+// ─── Unloading (Dỡ hàng) ─────────────────────────────────────────────────────
+
+const UNLOADING_KEYS = {
+  receipts: ['inbound', 'unloading', 'receipts'],
+  status: (id) => ['inbound', 'unloading', id],
+  locations: (id) => ['inbound', 'unloading', id, 'locations'],
+}
+
+export function useReceiptsForUnloading(params = {}) {
+  return useQuery({
+    queryKey: [...UNLOADING_KEYS.receipts, params],
+    queryFn: () => inboundOperationsApi.getReceiptsForUnloading(params),
+    staleTime: 10000,
+  })
+}
+
+export function useUnloadingStatus(receiptId) {
+  return useQuery({
+    queryKey: UNLOADING_KEYS.status(receiptId),
+    queryFn: () => inboundOperationsApi.getUnloadingStatus(receiptId),
+    enabled: !!receiptId,
+    staleTime: 5000,
+  })
+}
+
+export function useAvailableLocations(receiptId) {
+  return useQuery({
+    queryKey: UNLOADING_KEYS.locations(receiptId),
+    queryFn: () => inboundOperationsApi.getAvailableLocations(receiptId),
+    enabled: !!receiptId,
+    staleTime: 10000,
+  })
+}
+
+export function useStartUnloading() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (receiptId) => inboundOperationsApi.startUnloading(receiptId),
+    onSuccess: (_, receiptId) => {
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.receipts })
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.status(receiptId) })
+      toast.success('Bắt đầu dỡ hàng')
+    },
+    onError: (err) => toast.error(parseApiError(err?.response?.data || err)),
+  })
+}
+
+export function useUnloadItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ receiptId, receiptLineId, locationId }) =>
+      inboundOperationsApi.unloadItem(receiptId, receiptLineId, locationId),
+    onSuccess: (_, { receiptId }) => {
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.status(receiptId) })
+      toast.success('Đã dỡ hàng xuống kho')
+    },
+    onError: (err) => toast.error(parseApiError(err?.response?.data || err)),
+  })
+}
+
+export function useUndoUnloadItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ receiptId, receiptLineId }) =>
+      inboundOperationsApi.undoUnloadItem(receiptId, receiptLineId),
+    onSuccess: (_, { receiptId }) => {
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.status(receiptId) })
+      toast.success('Đã hoàn tác dỡ hàng')
+    },
+    onError: (err) => toast.error(parseApiError(err?.response?.data || err)),
+  })
+}
+
+export function useCompleteUnloading() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (receiptId) => inboundOperationsApi.completeUnloading(receiptId),
+    onSuccess: (_, receiptId) => {
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.receipts })
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.status(receiptId) })
+      toast.success('Hoàn thành dỡ hàng')
+    },
+    onError: (err) => toast.error(parseApiError(err?.response?.data || err)),
+  })
+}
+
 export { QUERY_KEYS as INBOUND_OPERATIONS_QUERY_KEYS }

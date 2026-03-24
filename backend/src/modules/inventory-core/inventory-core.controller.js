@@ -116,9 +116,53 @@ class InventoryCoreController {
       const { page, pageSize, ...filters } = value;
       const result = await this.onHandService.queryOnHand(filters, { page, pageSize });
 
+      // Get warehouseId from inventDim for each on-hand row
+      const inventDimIds = result.items.map(r => r.inventDimId).filter(Boolean);
+      const dimRows = inventDimIds.length > 0
+        ? await this.prisma.inventDim.findMany({
+            where: { id: { in: inventDimIds } },
+            select: { id: true, warehouseId: true },
+          })
+        : [];
+      const dimWarehouseMap = {};
+      for (const d of dimRows) dimWarehouseMap[d.id] = d.warehouseId;
+
+      // Enrich with outbound shipped qty per item+warehouse
+      const outboundMap = {};
+      // Enrich with inbound received qty per item+warehouse
+      const inboundMap = {};
+      if (result.items.length > 0) {
+        const shipmentLines = await this.prisma.shipmentLine.findMany({
+          where: { shippedQty: { gt: 0 }, lineStatus: { notIn: ['CANCELLED'] } },
+          select: { itemId: true, shippedQty: true, header: { select: { warehouseId: true } } },
+        });
+        for (const sl of shipmentLines) {
+          const key = `${sl.itemId}|${sl.header?.warehouseId}`;
+          outboundMap[key] = (outboundMap[key] || 0) + Number(sl.shippedQty || 0);
+        }
+
+        const receiptLines = await this.prisma.receiptLine.findMany({
+          where: { receivedQty: { gt: 0 }, status: { notIn: ['CANCELLED'] } },
+          select: { itemId: true, receivedQty: true, header: { select: { warehouseId: true } } },
+        });
+        for (const rl of receiptLines) {
+          const key = `${rl.itemId}|${rl.header?.warehouseId}`;
+          inboundMap[key] = (inboundMap[key] || 0) + Number(rl.receivedQty || 0);
+        }
+      }
+
+      const enrichedData = result.items.map(r => {
+        const key = `${r.itemId}|${dimWarehouseMap[r.inventDimId]}`;
+        return {
+          ...r,
+          outboundDemandQty: outboundMap[key] || 0,
+          inboundReceivedQty: inboundMap[key] || 0,
+        };
+      });
+
       return res.status(200).json({
         success: true,
-        data: result.items,
+        data: enrichedData,
         pagination: {
           page: result.page,
           pageSize: result.pageSize,

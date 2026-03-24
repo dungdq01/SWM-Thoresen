@@ -61,6 +61,28 @@ export const outboundOperationsApi = {
   shipShipment: (id) =>
     httpClient.post(`/outbound/shipments/${id}/ship`),
 
+  // ─── Loading (Xếp hàng) ────────────────────────────────────────────────────
+  getShipmentsForLoading: (params = {}) =>
+    httpClient.get('/outbound/loading/shipments', { params }),
+
+  getLoadingStatus: (id) =>
+    httpClient.get(`/outbound/loading/${id}/status`),
+
+  startLoading: (id) =>
+    httpClient.post(`/outbound/loading/${id}/start`),
+
+  getLocationsWithStock: (shipmentId, itemId) =>
+    httpClient.get(`/outbound/loading/${shipmentId}/locations-with-stock`, { params: { itemId } }),
+
+  loadItem: (id, shipmentLineId, locationId) =>
+    httpClient.post(`/outbound/loading/${id}/load-item`, { shipmentLineId, locationId }),
+
+  unloadItem: (id, shipmentLineId) =>
+    httpClient.post(`/outbound/loading/${id}/unload-item`, { shipmentLineId }),
+
+  completeLoading: (id) =>
+    httpClient.post(`/outbound/loading/${id}/complete`),
+
   // ─── Outbound Documents ─────────────────────────────────────────────────────
   getOutboundDocuments: (params = {}) =>
     httpClient.get('/outbound/documents', { params }),

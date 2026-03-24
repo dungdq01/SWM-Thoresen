@@ -1,12 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { WeighbridgeLogRepository, WeighLogQueryParams } from '../repositories/weighbridge-log.repository';
 import { WeighbridgeEventStateRepository } from '../repositories/weighbridge-event-state.repository';
 import { WeighbridgeError, IntegrationErrorCodes } from '../domain/integration.errors';
 import { WeighEventProcessingStatus } from '../domain/integration.enums';
-import { InboundBridgeAdapter } from '../adapters/inbound-bridge.adapter_draft';
-import { OutboundBridgeAdapter } from '../adapters/outbound-bridge.adapter_draft';
-import { FEATURES } from '../config/feature-flags_draft';
+// TODO: Re-enable when bridge adapters are finalized
+// import { InboundBridgeAdapter } from '../adapters/inbound-bridge.adapter_draft';
+// import { OutboundBridgeAdapter } from '../adapters/outbound-bridge.adapter_draft';
+// import { FEATURES } from '../config/feature-flags_draft';
+const FEATURES = { M8_M4_AUTO_SYNC: false, M8_M5_AUTO_SYNC: false, M8_M4_VERBOSE_LOGGING: false, M8_M5_VERBOSE_LOGGING: false };
 
 @Injectable()
 export class WeighbridgeLogService {
@@ -143,49 +145,8 @@ export class WeighbridgeLogService {
       processingStatus: WeighEventProcessingStatus.VALIDATED as any,
     });
 
-    // [DRAFT] Notify M4 Inbound - Tắt bằng cách set FEATURES.M8_M4_AUTO_SYNC = false
-    if (FEATURES.M8_M4_AUTO_SYNC && log.receiptId) {
-      try {
-        const adapter = new InboundBridgeAdapter(this.prisma);
-        const bridgeResult = await adapter.onWeighLogConfirmed(
-          {
-            id: log.id,
-            receiptId: log.receiptId,
-            grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : undefined,
-            weighingTimestamp: log.weighingTimestamp ?? undefined,
-          },
-          context,
-        );
-        if (FEATURES.M8_M4_VERBOSE_LOGGING) {
-          this.logger.log(`[DRAFT] M8→M4 Bridge result: ${JSON.stringify(bridgeResult)}`);
-        }
-      } catch (error) {
-        // Silent fail - không throw, chỉ log warning
-        this.logger.warn(`[DRAFT] M8→M4 Bridge failed: ${error instanceof Error ? error.message : 'Unknown'}`);
-      }
-    }
-
-    // [DRAFT] Notify M5 Outbound - Tắt bằng cách set FEATURES.M8_M5_AUTO_SYNC = false
-    if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
-      try {
-        const adapter = new OutboundBridgeAdapter(this.prisma);
-        const bridgeResult = await adapter.onWeighLogConfirmed(
-          {
-            id: log.id,
-            shipmentId: log.shipmentId,
-            grossWeightKg: log.grossWeightKg ? Number(log.grossWeightKg) : undefined,
-            weighingTimestamp: log.weighingTimestamp ?? undefined,
-          },
-          context,
-        );
-        if (FEATURES.M8_M5_VERBOSE_LOGGING) {
-          this.logger.log(`[DRAFT] M8→M5 Bridge result: ${JSON.stringify(bridgeResult)}`);
-        }
-      } catch (error) {
-        // Silent fail - không throw, chỉ log warning
-        this.logger.warn(`[DRAFT] M8→M5 Bridge failed: ${error instanceof Error ? error.message : 'Unknown'}`);
-      }
-    }
+    // TODO: [DRAFT] Re-enable when bridge adapters are finalized
+    // Notify M4 Inbound and M5 Outbound — disabled (adapters removed)
 
     return { id, processingStatus: WeighEventProcessingStatus.VALIDATED };
   }
@@ -241,51 +202,40 @@ export class WeighbridgeLogService {
         processingStatus: WeighEventProcessingStatus.WEIGHING as any,
       });
 
-      // Notify M4 Inbound khi ghi gross weight - ASN: WEIGHED_IN → PROCESSING
-      if (FEATURES.M8_M4_AUTO_SYNC && log.receiptId) {
-        try {
-          const adapter = new InboundBridgeAdapter(this.prisma);
-          const bridgeResult = await adapter.onGrossWeightRecorded(
-            {
-              id: log.id,
-              receiptId: log.receiptId,
-              grossWeightKg: data.weightKg,
-            },
-            { userId: undefined },
-          );
-          if (FEATURES.M8_M4_VERBOSE_LOGGING) {
-            this.logger.log(`M8→M4 onGrossWeightRecorded: ${JSON.stringify(bridgeResult)}`);
-          }
-        } catch (error) {
-          this.logger.warn(`M8→M4 onGrossWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
-        }
-      }
-
-      // Notify M5 Outbound khi ghi gross weight - SHP: WEIGHING_1 → WEIGHING_2
-      if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
-        try {
-          const adapter = new OutboundBridgeAdapter(this.prisma);
-          const bridgeResult = await adapter.onGrossWeightRecorded(
-            {
-              id: log.id,
-              shipmentId: log.shipmentId,
-              grossWeightKg: data.weightKg,
-            },
-            { userId: undefined },
-          );
-          if (FEATURES.M8_M5_VERBOSE_LOGGING) {
-            this.logger.log(`M8→M5 onGrossWeightRecorded: ${JSON.stringify(bridgeResult)}`);
-          }
-        } catch (error) {
-          this.logger.warn(`M8→M5 onGrossWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
-        }
-      }
+      // TODO: [DRAFT] Re-enable when bridge adapters are finalized
+      // Notify M4 Inbound and M5 Outbound on gross weight — disabled (adapters removed)
 
       return { id, grossWeightKg: data.weightKg, grossWeightAt: now, processingStatus: WeighEventProcessingStatus.WEIGHING };
     }
 
     // Lần 2: đã có gross, chưa có tare → ghi tare + tính net, chuyển trạng thái sang COMPLETED
     if (log.tareWeightKg == null) {
+      // Outbound: kiểm tra xe đã xếp hàng xong chưa trước khi cho cân lần 2
+      if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
+        const shipment = await this.prisma.shipmentHeader.findUnique({
+          where: { id: log.shipmentId },
+          select: { status: true },
+        });
+        if (shipment && shipment.status !== 'LOADED') {
+          throw new BadRequestException(
+            'Xe chưa xếp hàng xong. Vui lòng hoàn thành xếp hàng trước khi cân lần 2.',
+          );
+        }
+      }
+
+      // Inbound: kiểm tra đã dỡ hàng xong chưa trước khi cho cân lần 2
+      if (log.weighingType === 'WEIGH_IN' && log.receiptId) {
+        const receiptLines = await this.prisma.receiptLine.findMany({
+          where: { receiptHeaderId: log.receiptId },
+        });
+        const hasOpenLines = receiptLines.some(l => l.status === 'OPEN');
+        if (hasOpenLines) {
+          throw new BadRequestException(
+            'Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2.',
+          );
+        }
+      }
+
       const grossWeight = Number(log.grossWeightKg);
       const tareWeight = data.weightKg;
 
@@ -313,47 +263,178 @@ export class WeighbridgeLogService {
         processingStatus: WeighEventProcessingStatus.COMPLETED as any,
       });
 
-      // [DRAFT] Notify M4 Inbound khi cân hoàn thành - Tắt bằng cách set FEATURES.M8_M4_AUTO_SYNC = false
-      if (FEATURES.M8_M4_AUTO_SYNC && log.receiptId) {
-        try {
-          const adapter = new InboundBridgeAdapter(this.prisma);
-          const bridgeResult = await adapter.onWeighLogCompleted(
-            {
-              id: log.id,
-              receiptId: log.receiptId,
-              grossWeightKg: Number(log.grossWeightKg),
-              tareWeightKg: data.weightKg,
-              netWeightKg: Math.abs(netWeightKg),
+      // Sync net weight back to shipment lines and post inventory transaction
+      if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
+        const absNet = Math.abs(netWeightKg);
+        // Get shipment with warehouse, owner, lines (including location)
+        const shipment = await this.prisma.shipmentHeader.findUnique({
+          where: { id: log.shipmentId },
+          include: {
+            warehouse: { select: { warehouseCode: true } },
+            owner: { select: { ownerCode: true } },
+            lines: {
+              where: { lineStatus: { not: 'CANCELLED' } },
+              include: {
+                item: { select: { itemCode: true } },
+                uom: { select: { uomCode: true } },
+                location: { select: { locationCode: true } },
+              },
             },
-            { userId: undefined },
-          );
-          if (FEATURES.M8_M4_VERBOSE_LOGGING) {
-            this.logger.log(`[DRAFT] M8→M4 onWeighLogCompleted: ${JSON.stringify(bridgeResult)}`);
+          },
+        });
+
+        if (shipment) {
+          const lines = shipment.lines;
+          // Update shippedQty on lines (proportional split if multiple)
+          if (lines.length === 1) {
+            await this.prisma.shipmentLine.update({
+              where: { id: lines[0].id },
+              data: { shippedQty: absNet, netWeightKg: absNet },
+            });
+          } else if (lines.length > 1) {
+            const totalExpected = lines.reduce((s, l) => s + Number(l.expectedQtyKg), 0);
+            for (const line of lines) {
+              const ratio = totalExpected > 0 ? Number(line.expectedQtyKg) / totalExpected : 1 / lines.length;
+              const lineNet = Math.round(absNet * ratio * 1000) / 1000;
+              await this.prisma.shipmentLine.update({
+                where: { id: line.id },
+                data: { shippedQty: lineNet, netWeightKg: lineNet },
+              });
+            }
           }
-        } catch (error) {
-          this.logger.warn(`[DRAFT] M8→M4 onWeighLogCompleted failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+
+          // Post SHIP_CONFIRMED inventory transaction for each line
+          try {
+            const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+            const postingEngine = new PostingEngineService(this.prisma);
+
+            for (const line of lines) {
+              const lineNet = lines.length === 1
+                ? absNet
+                : Math.round(absNet * (Number(line.expectedQtyKg) / lines.reduce((s, l) => s + Number(l.expectedQtyKg), 0)) * 1000) / 1000;
+
+              if (lineNet <= 0) continue;
+
+              await postingEngine.postInventory({
+                externalId: `SHP-${log.shipmentId}-${line.id}-${Date.now()}`,
+                correlationId: `SHP-${shipment.shipmentNumber || log.shipmentId}`,
+                eventCode: 'SHIP_CONFIRMED',
+                refType: 'SHIPMENT',
+                refId: log.shipmentId,
+                refLineId: line.id,
+                itemId: line.itemId,
+                qty: String(lineNet),
+                uomCode: line.uom?.uomCode || 'KG',
+                dimFrom: {
+                  warehouseCode: shipment.warehouse?.warehouseCode,
+                  locationCode: line.location?.locationCode || undefined,
+                  ownerCode: shipment.owner?.ownerCode,
+                  statusCode: 'AVAILABLE',
+                },
+                sourceApp: 'SYSTEM',
+                postedBy: undefined,
+                weighbridgeTicketId: id,
+              });
+
+              this.logger.log(`Posted SHIP_CONFIRMED for line ${line.id}, qty=${lineNet} kg`);
+            }
+          } catch (postErr) {
+            this.logger.error(`Error posting inventory for shipment ${log.shipmentId}`, postErr);
+          }
         }
+
+        this.logger.log(`Synced net weight ${absNet} kg to shipment ${log.shipmentId}`);
       }
 
-      // [DRAFT] Notify M5 Outbound khi ghi tare weight - SHP: WEIGHING_2 → WEIGHED
-      if (FEATURES.M8_M5_AUTO_SYNC && log.shipmentId) {
-        try {
-          const adapter = new OutboundBridgeAdapter(this.prisma);
-          const bridgeResult = await adapter.onTareWeightRecorded(
-            {
-              id: log.id,
-              shipmentId: log.shipmentId,
+      // Inbound: Sync net weight to receipt lines + post GOODS_RECEIVED inventory transaction
+      if (log.weighingType === 'WEIGH_IN' && log.receiptId) {
+        const absNet = Math.abs(netWeightKg);
+        const receipt = await this.prisma.receiptHeader.findUnique({
+          where: { id: log.receiptId },
+          include: {
+            warehouse: { select: { warehouseCode: true } },
+            owner: { select: { ownerCode: true } },
+            lines: {
+              where: { status: { not: 'CANCELLED' } },
+              include: {
+                item: { select: { itemCode: true } },
+                uom: { select: { uomCode: true } },
+                location: { select: { locationCode: true } },
+              },
+            },
+          },
+        });
+
+        if (receipt) {
+          const lines = receipt.lines;
+          // Update receivedQty + netWeightKg on receipt lines (proportional split)
+          if (lines.length === 1) {
+            await this.prisma.receiptLine.update({
+              where: { id: lines[0].id },
+              data: { receivedQty: absNet, netWeightKg: absNet },
+            });
+          } else if (lines.length > 1) {
+            const totalExpected = lines.reduce((s, l) => s + Number(l.expectedQty), 0);
+            for (const line of lines) {
+              const ratio = totalExpected > 0 ? Number(line.expectedQty) / totalExpected : 1 / lines.length;
+              const lineNet = Math.round(absNet * ratio * 1000) / 1000;
+              await this.prisma.receiptLine.update({
+                where: { id: line.id },
+                data: { receivedQty: lineNet, netWeightKg: lineNet },
+              });
+            }
+          }
+
+          // Update receipt header weights
+          await this.prisma.receiptHeader.update({
+            where: { id: log.receiptId },
+            data: {
               grossWeightKg: Number(log.grossWeightKg),
               tareWeightKg: data.weightKg,
-              netWeightKg: Math.abs(netWeightKg),
+              netWeightKg: absNet,
             },
-            { userId: undefined },
-          );
-          if (FEATURES.M8_M5_VERBOSE_LOGGING) {
-            this.logger.log(`[DRAFT] M8→M5 onTareWeightRecorded: ${JSON.stringify(bridgeResult)}`);
+          });
+
+          // Post GOODS_RECEIVED inventory transaction for each line
+          try {
+            const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+            const postingEngine = new PostingEngineService(this.prisma);
+
+            for (const line of lines) {
+              const lineNet = lines.length === 1
+                ? absNet
+                : Math.round(absNet * (Number(line.expectedQty) / lines.reduce((s, l) => s + Number(l.expectedQty), 0)) * 1000) / 1000;
+
+              if (lineNet <= 0) continue;
+
+              await postingEngine.postInventory({
+                externalId: `RCV-${log.receiptId}-${line.id}-${Date.now()}`,
+                correlationId: `RCV-${receipt.receiptNumber || log.receiptId}`,
+                eventCode: 'GOODS_RECEIVED',
+                refType: 'RECEIPT',
+                refId: log.receiptId,
+                refLineId: line.id,
+                itemId: line.itemId,
+                qty: String(lineNet),
+                uomCode: (line as any).uom?.uomCode || 'KG',
+                dimTo: {
+                  warehouseCode: receipt.warehouse?.warehouseCode,
+                  locationCode: (line as any).location?.locationCode || undefined,
+                  ownerCode: receipt.owner?.ownerCode,
+                  statusCode: 'AVAILABLE',
+                },
+                sourceApp: 'SYSTEM',
+                postedBy: undefined,
+                weighbridgeTicketId: id,
+              });
+
+              this.logger.log(`Posted GOODS_RECEIVED for receipt line ${line.id}, qty=${lineNet} kg`);
+            }
+          } catch (postErr) {
+            this.logger.error(`Error posting inventory for receipt ${log.receiptId}`, postErr);
           }
-        } catch (error) {
-          this.logger.warn(`[DRAFT] M8→M5 onTareWeightRecorded failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+
+          this.logger.log(`Synced net weight ${absNet} kg to receipt ${log.receiptId}`);
         }
       }
 

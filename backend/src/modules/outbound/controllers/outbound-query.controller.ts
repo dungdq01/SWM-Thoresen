@@ -55,7 +55,7 @@ export class OutboundQueryController {
     return {
       ...summary,
       completionRate: summary.totalShippedToday > 0
-        ? (summary.totalShippedToday / (summary.totalDraft + summary.totalConfirmed + summary.totalAllocated + summary.totalPicking + summary.totalShippedToday)) * 100
+        ? (summary.totalShippedToday / (summary.totalDraft + summary.totalConfirmed + summary.totalLoading + summary.totalLoaded + summary.totalShippedToday)) * 100
         : 0,
     };
   }

@@ -5,29 +5,32 @@ import { SimpleShipmentController } from './controllers/simple-shipment.controll
 import { SimpleShipmentService } from './services/simple-shipment.service';
 import { OutboundDocumentController } from './controllers/outbound-document.controller';
 import { OutboundDocumentService } from './services/outbound-document.service';
+import { LoadingController } from './controllers/loading.controller';
+import { LoadingService } from './services/loading.service';
 import { PostShipResidualService } from './services/post-ship-residual.service';
 import { SoQtyRollupService } from './services/so-qty-rollup.service';
+import { ShipmentHeaderRepository } from './repositories/shipment-header.repository';
+import { ShipmentLineRepository } from './repositories/shipment-line.repository';
+import { StatusHistoryRepository } from './repositories/status-history.repository';
+import { ShipmentStateMachineService } from './services/shipment-state-machine.service';
 
-/**
- * Module 5: Outbound Operations
- * 
- * Sales Order Management:
- * - Tạo đơn xuất hàng (SO)
- * - Quản lý trạng thái SO
- * - Xác nhận, hủy, đóng SO
- * 
- * Shipment Management:
- * - Tạo phiếu xuất từ SO
- * - Quản lý danh sách phiếu xuất
- * 
- * Outbound Documents:
- * - Chứng từ xuất (phiếu cân, B/L, packing list...)
- * - OCR auto-link tạo chứng từ tự động
- */
 @Module({
   imports: [],
-  controllers: [SalesOrderController, SimpleShipmentController, OutboundDocumentController],
-  providers: [SalesOrderService, SimpleShipmentService, OutboundDocumentService, PostShipResidualService, SoQtyRollupService],
-  exports: [SalesOrderService, SimpleShipmentService, OutboundDocumentService, PostShipResidualService, SoQtyRollupService],
+  controllers: [SalesOrderController, SimpleShipmentController, LoadingController, OutboundDocumentController],
+  providers: [
+    // Repositories
+    ShipmentHeaderRepository,
+    ShipmentLineRepository,
+    StatusHistoryRepository,
+    // Services
+    ShipmentStateMachineService,
+    SalesOrderService,
+    SimpleShipmentService,
+    LoadingService,
+    OutboundDocumentService,
+    PostShipResidualService,
+    SoQtyRollupService,
+  ],
+  exports: [SalesOrderService, SimpleShipmentService, LoadingService, OutboundDocumentService, PostShipResidualService, SoQtyRollupService],
 })
 export class OutboundModule {}

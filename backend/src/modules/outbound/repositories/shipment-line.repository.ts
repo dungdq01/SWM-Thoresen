@@ -26,10 +26,6 @@ export class ShipmentLineRepository {
         header: true,
         item: true,
         uom: true,
-        allocationRecords: true,
-        weighingAttempts: {
-          orderBy: { sequenceNo: 'asc' },
-        },
       },
     });
   }
@@ -40,7 +36,6 @@ export class ShipmentLineRepository {
       include: {
         item: true,
         uom: true,
-        allocationRecords: true,
       },
       orderBy: { lineNumber: 'asc' },
     });
@@ -64,35 +59,12 @@ export class ShipmentLineRepository {
     });
   }
 
-  async updateAllocatedQty(id: string, allocatedQty: number) {
-    return this.prisma.shipmentLine.update({
-      where: { id },
-      data: {
-        allocatedQty,
-        lineStatus: 'ALLOCATED',
-      },
-    });
-  }
-
-  async updatePickedQty(id: string, pickedQty: number) {
-    return this.prisma.shipmentLine.update({
-      where: { id },
-      data: {
-        pickedQty,
-        lineStatus: 'PICKED',
-      },
-    });
-  }
-
-  async updateWeighResult(
+  async updateLoadedWeight(
     id: string,
     data: {
       grossWeightKg: number;
       netWeightKg: number;
-      variancePct: number;
-      tolerancePctApplied: number;
       weighSequenceNo: number;
-      passed: boolean;
     },
   ) {
     return this.prisma.shipmentLine.update({
@@ -100,10 +72,10 @@ export class ShipmentLineRepository {
       data: {
         grossWeightKg: data.grossWeightKg,
         netWeightKg: data.netWeightKg,
-        variancePct: data.variancePct,
-        tolerancePctApplied: data.tolerancePctApplied,
+        loadedQty: data.netWeightKg,
+        weighedQtyKg: data.netWeightKg,
         weighSequenceNo: data.weighSequenceNo,
-        lineStatus: data.passed ? 'WEIGHED_PASS' : 'WEIGHED_FAIL',
+        lineStatus: 'LOADING',
       },
     });
   }
@@ -139,16 +111,15 @@ export class ShipmentLineRepository {
     });
   }
 
-  async findAllocatedLines(shipmentHeaderId: string) {
+  async findLoadedLines(shipmentHeaderId: string) {
     return this.prisma.shipmentLine.findMany({
       where: {
         shipmentHeaderId,
-        lineStatus: { in: ['ALLOCATED', 'PICKING', 'PICKED'] },
+        lineStatus: { in: ['LOADING', 'WEIGHED_PASS'] },
       },
       include: {
         item: true,
         uom: true,
-        allocationRecords: true,
       },
       orderBy: { lineNumber: 'asc' },
     });
@@ -158,24 +129,7 @@ export class ShipmentLineRepository {
     return this.prisma.shipmentLine.findMany({
       where: {
         shipmentHeaderId,
-        lineStatus: { in: ['WEIGHED_PASS'] },
-      },
-      include: {
-        item: true,
-        uom: true,
-        allocationRecords: {
-          where: { status: 'PICKED' },
-        },
-      },
-      orderBy: { lineNumber: 'asc' },
-    });
-  }
-
-  async findFailedLines(shipmentHeaderId: string) {
-    return this.prisma.shipmentLine.findMany({
-      where: {
-        shipmentHeaderId,
-        lineStatus: 'WEIGHED_FAIL',
+        lineStatus: 'WEIGHED_PASS',
       },
       include: {
         item: true,

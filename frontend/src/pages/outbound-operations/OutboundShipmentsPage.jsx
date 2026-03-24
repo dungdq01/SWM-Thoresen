@@ -26,22 +26,18 @@ const SHIPMENT_STATUSES = [
   { value: '', label: 'Tất cả' },
   { value: 'NEW', label: 'Tạo mới' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
-  { value: 'WEIGHING_1', label: 'Đang cân lần 1' },
-  { value: 'WEIGHING_2', label: 'Đang cân lần 2' },
-  { value: 'WEIGHED', label: 'Hoàn thành cân' },
-  { value: 'PICKING', label: 'Đang lấy hàng' },
   { value: 'LOADING', label: 'Đang xếp hàng' },
+  { value: 'LOADED', label: 'Đã xếp xong' },
   { value: 'SHIPPED', label: 'Đã xuất' },
   { value: 'CLOSED', label: 'Đã đóng' },
   { value: 'CANCELLED', label: 'Đã hủy' },
 ]
 
 const statusTone = (status) => {
-  if (status === 'NEW') return 'info'
+  if (status === 'NEW' || status === 'DRAFT') return 'info'
   if (status === 'CONFIRMED') return 'success'
-  if (['WEIGHING_1', 'WEIGHING_2'].includes(status)) return 'warning'
-  if (status === 'WEIGHED') return 'success'
-  if (['PICKING', 'LOADING'].includes(status)) return 'warning'
+  if (status === 'LOADING') return 'warning'
+  if (status === 'LOADED') return 'success'
   if (status === 'SHIPPED') return 'success'
   if (status === 'CLOSED') return 'default'
   if (status === 'CANCELLED') return 'danger'
@@ -50,12 +46,10 @@ const statusTone = (status) => {
 
 const STATUS_LABELS = {
   NEW: 'Tạo mới',
+  DRAFT: 'Tạo mới',
   CONFIRMED: 'Đã xác nhận',
-  WEIGHING_1: 'Đang cân lần 1',
-  WEIGHING_2: 'Đang cân lần 2',
-  WEIGHED: 'Hoàn thành cân',
-  PICKING: 'Đang lấy hàng',
   LOADING: 'Đang xếp hàng',
+  LOADED: 'Đã xếp xong',
   SHIPPED: 'Đã xuất',
   CLOSED: 'Đã đóng',
   CANCELLED: 'Đã hủy',
@@ -280,7 +274,7 @@ export function OutboundShipmentsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {shp.status === 'NEW' && (
+                        {(shp.status === 'NEW' || shp.status === 'DRAFT') && (
                           <>
                             <Button
                               variant="ghost"

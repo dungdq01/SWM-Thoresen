@@ -3,13 +3,8 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 export enum ShipmentStatus {
   DRAFT = 'DRAFT',
   CONFIRMED = 'CONFIRMED',
-  ALLOCATED = 'ALLOCATED',
-  PICKING = 'PICKING',
-  PICKED = 'PICKED',
-  WEIGHING_TARE = 'WEIGHING_TARE',
   LOADING = 'LOADING',
-  ALL_WEIGHED = 'ALL_WEIGHED',
-  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  LOADED = 'LOADED',
   SHIPPED = 'SHIPPED',
   CLOSED = 'CLOSED',
   CANCELLED = 'CANCELLED',
@@ -19,40 +14,34 @@ export interface StateTransition {
   from: ShipmentStatus;
   to: ShipmentStatus;
   action: string;
-  guard?: (context: TransitionContext) => boolean;
 }
 
-export interface TransitionContext {
-  shipmentId: string;
-  userId?: string;
-  allLinesAllocated?: boolean;
-  allLinesPicked?: boolean;
-  hasTare?: boolean;
-  allLinesWeighed?: boolean;
-  allLinesPassed?: boolean;
-  pendingApprovalCount?: number;
-  hasOpenExceptions?: boolean;
-}
-
+/**
+ * Simplified Outbound State Machine:
+ *
+ * DRAFT → CONFIRMED → LOADING → LOADED → SHIPPED → CLOSED
+ *   ↓        ↓
+ * CANCELLED  CANCELLED
+ *
+ * Loading flow:
+ * - CONFIRMED + START_LOADING → LOADING (cân tare xe rỗng)
+ * - LOADING + LOAD_ITEM → LOADING (xếp từng item, cân sau mỗi item)
+ * - LOADING + COMPLETE_LOADING → LOADED (xếp xong tất cả)
+ * - LOADED + SHIP → SHIPPED
+ */
 const SHIPMENT_TRANSITIONS: StateTransition[] = [
+  // Create & Confirm
   { from: ShipmentStatus.DRAFT, to: ShipmentStatus.CONFIRMED, action: 'CONFIRM' },
   { from: ShipmentStatus.DRAFT, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
-  { from: ShipmentStatus.CONFIRMED, to: ShipmentStatus.ALLOCATED, action: 'ALLOCATE' },
+
+  // Loading
+  { from: ShipmentStatus.CONFIRMED, to: ShipmentStatus.LOADING, action: 'START_LOADING' },
   { from: ShipmentStatus.CONFIRMED, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
-  { from: ShipmentStatus.ALLOCATED, to: ShipmentStatus.PICKING, action: 'START_PICK' },
-  { from: ShipmentStatus.ALLOCATED, to: ShipmentStatus.CONFIRMED, action: 'UNALLOCATE' },
-  { from: ShipmentStatus.ALLOCATED, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
-  { from: ShipmentStatus.PICKING, to: ShipmentStatus.PICKED, action: 'COMPLETE_PICK' },
-  { from: ShipmentStatus.PICKING, to: ShipmentStatus.ALLOCATED, action: 'SHORT_PICK' },
-  { from: ShipmentStatus.PICKED, to: ShipmentStatus.WEIGHING_TARE, action: 'RECORD_TARE' },
-  { from: ShipmentStatus.WEIGHING_TARE, to: ShipmentStatus.LOADING, action: 'START_LOAD' },
-  { from: ShipmentStatus.LOADING, to: ShipmentStatus.ALL_WEIGHED, action: 'ALL_WEIGHED' },
-  { from: ShipmentStatus.LOADING, to: ShipmentStatus.PENDING_APPROVAL, action: 'TOLERANCE_FAIL' },
-  { from: ShipmentStatus.ALL_WEIGHED, to: ShipmentStatus.SHIPPED, action: 'SHIP' },
-  { from: ShipmentStatus.ALL_WEIGHED, to: ShipmentStatus.PENDING_APPROVAL, action: 'TOLERANCE_FAIL' },
-  { from: ShipmentStatus.PENDING_APPROVAL, to: ShipmentStatus.ALL_WEIGHED, action: 'APPROVE' },
-  { from: ShipmentStatus.PENDING_APPROVAL, to: ShipmentStatus.LOADING, action: 'REWEIGH' },
-  { from: ShipmentStatus.PENDING_APPROVAL, to: ShipmentStatus.CANCELLED, action: 'REJECT' },
+  { from: ShipmentStatus.LOADING, to: ShipmentStatus.LOADED, action: 'COMPLETE_LOADING' },
+  { from: ShipmentStatus.LOADING, to: ShipmentStatus.CANCELLED, action: 'CANCEL' },
+
+  // Ship & Close
+  { from: ShipmentStatus.LOADED, to: ShipmentStatus.SHIPPED, action: 'SHIP' },
   { from: ShipmentStatus.SHIPPED, to: ShipmentStatus.CLOSED, action: 'CLOSE' },
 ];
 
@@ -69,34 +58,6 @@ export class ShipmentStateMachineService {
       (t) => t.from === currentStatus && t.action === action,
     );
     return transition?.to || null;
-  }
-
-  validateTransition(
-    currentStatus: ShipmentStatus,
-    action: string,
-    context?: TransitionContext,
-  ): { valid: boolean; nextStatus: ShipmentStatus | null; error?: string } {
-    const transition = SHIPMENT_TRANSITIONS.find(
-      (t) => t.from === currentStatus && t.action === action,
-    );
-
-    if (!transition) {
-      return {
-        valid: false,
-        nextStatus: null,
-        error: `Invalid transition: ${action} from ${currentStatus}`,
-      };
-    }
-
-    if (transition.guard && context && !transition.guard(context)) {
-      return {
-        valid: false,
-        nextStatus: null,
-        error: `Guard condition not met for ${action}`,
-      };
-    }
-
-    return { valid: true, nextStatus: transition.to };
   }
 
   assertCanTransition(currentStatus: ShipmentStatus, action: string): void {
@@ -121,12 +82,8 @@ export class ShipmentStateMachineService {
     const cancelableStates = [
       ShipmentStatus.DRAFT,
       ShipmentStatus.CONFIRMED,
-      ShipmentStatus.ALLOCATED,
+      ShipmentStatus.LOADING,
     ];
     return cancelableStates.includes(status);
-  }
-
-  canReverse(status: ShipmentStatus): boolean {
-    return status === ShipmentStatus.SHIPPED;
   }
 }

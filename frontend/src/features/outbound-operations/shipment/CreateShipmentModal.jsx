@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Trash2, FileOutput, Sparkles, X, Truck, AlertCircle, Warehouse } from 'lucide-react'
 import { Button, Input, Select, Textarea, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@shared/ui'
+import { useQuery } from '@tanstack/react-query'
+import { inventoryCoreApi } from '@domains/inventory-core/api/inventoryCore.api'
 
 const emptyLine = {
   itemId: '',
@@ -332,9 +334,32 @@ export function CreateShipmentModal({
     ...uoms.map((u) => ({ value: u.id, label: u.code })),
   ]
 
+  // Query OnHand để lấy kho có tồn kho của chủ hàng (bất kể trạng thái tồn kho)
+  const ownerId = activeSo?.ownerId || activeSo?.owner?.id || shipmentToEdit?.ownerId || ''
+  const { data: onHandWarehouseIds } = useQuery({
+    queryKey: ['onhand-warehouses', ownerId],
+    queryFn: () => inventoryCoreApi.getOnHand({ ownerId, pageSize: 100 }),
+    enabled: !!ownerId,
+    staleTime: 30000,
+    select: (res) => {
+      const items = Array.isArray(res) ? res : (res?.data || res?.items || [])
+      const ids = new Set()
+      items.forEach((oh) => {
+        const whId = oh.inventDim?.warehouseId || oh.warehouseId
+        if (whId) ids.add(whId)
+      })
+      return [...ids]
+    },
+  })
+
+  const filteredWarehouses = useMemo(() => {
+    if (!onHandWarehouseIds?.length) return warehouses
+    return warehouses.filter((w) => onHandWarehouseIds.includes(w.id))
+  }, [warehouses, onHandWarehouseIds])
+
   const warehouseOptions = [
     { value: '', label: '-- Chọn kho --' },
-    ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` })),
+    ...filteredWarehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` })),
   ]
 
   const soOptions = [

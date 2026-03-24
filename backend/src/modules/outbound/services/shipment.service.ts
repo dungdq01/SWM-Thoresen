@@ -103,7 +103,7 @@ export class ShipmentService {
     
     this.stateMachine.assertCanTransition(shipment.status as any, 'CONFIRM');
 
-    if (!shipment.lines || shipment.lines.length === 0) {
+    if (!(shipment as any).lines || (shipment as any).lines.length === 0) {
       throw new BadRequestException('Cannot confirm shipment without lines');
     }
 

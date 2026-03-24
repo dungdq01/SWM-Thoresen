@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Truck, X, Plus, Trash2, Sparkles } from 'lucide-react'
 import { Button, Input, Select } from '@shared/ui'
+import { useQuery } from '@tanstack/react-query'
+import { inventoryCoreApi } from '@domains/inventory-core/api/inventoryCore.api'
 
 const CARGO_FORMS = [
   { value: 'BULK', label: 'Hàng rời' },
@@ -76,6 +78,27 @@ export function OutboundShipmentFormDrawer({
         : [{ ...emptyLine }],
     }))
   }, [soDetail, selectedSoId])
+
+  // Filter warehouses by on-hand inventory of selected owner
+  const { data: onHandWarehouseIds } = useQuery({
+    queryKey: ['onhand-warehouses', draft.ownerId],
+    queryFn: () => inventoryCoreApi.getOnHand({ ownerId: draft.ownerId, pageSize: 100 }),
+    enabled: !!draft.ownerId,
+    staleTime: 30000,
+    select: (res) => {
+      const items = Array.isArray(res) ? res : (res?.data || res?.items || [])
+      const ids = new Set()
+      items.forEach((oh) => {
+        const whId = oh.inventDim?.warehouseId || oh.warehouseId
+        if (whId) ids.add(whId)
+      })
+      return [...ids]
+    },
+  })
+  const filteredWarehouses = useMemo(() => {
+    if (!onHandWarehouseIds?.length) return warehouses
+    return warehouses.filter((w) => onHandWarehouseIds.includes(w.id))
+  }, [warehouses, onHandWarehouseIds])
 
   const set = (field, value) => setDraft((prev) => ({ ...prev, [field]: value }))
 
@@ -202,7 +225,10 @@ export function OutboundShipmentFormDrawer({
                   <Select
                     label="Owner *"
                     value={draft.ownerId}
-                    onChange={(e) => set('ownerId', e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setDraft((prev) => ({ ...prev, ownerId: v, warehouseId: '' }))
+                    }}
                     options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]}
                   />
                   <Select
@@ -217,7 +243,7 @@ export function OutboundShipmentFormDrawer({
                     label="Kho *"
                     value={draft.warehouseId}
                     onChange={(e) => set('warehouseId', e.target.value)}
-                    options={[{ value: '', label: '-- Chọn Kho --' }, ...warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
+                    options={[{ value: '', label: '-- Chọn Kho --' }, ...filteredWarehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))]}
                   />
                   <Input
                     label="Biển số xe *"

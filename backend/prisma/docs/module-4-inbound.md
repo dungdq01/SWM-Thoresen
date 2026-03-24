@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-22 (Module 2 DB changes: Owner-Warehouse Access, Item Incompatibility, Dual Tracking)
+> **Last Updated:** 2026-03-25 (Unloading: locationId + unloadSequenceNo on receipt_line, MdLocation relation)
 
 ---
 
@@ -625,3 +625,50 @@ Khi volume tăng, cân nhắc partition theo tháng:
 |-------|-------------|------------|
 | HI-2 | Putaway workflow | M7 Work ready |
 | HI-5 | AuditLog integration | M1 LogService ready |
+
+---
+
+## 7. Schema Changes — Unloading (2026-03-25)
+
+### 7.1 `receipt_line` — New Columns
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `location_id` | UUID | YES | FK → `md_location` — vị trí dỡ hàng (set khi unload item) |
+| `unload_sequence_no` | INT | YES | Thứ tự dỡ hàng |
+
+**New Relation:**
+```prisma
+location MdLocation? @relation(fields: [locationId], references: [id])
+```
+
+**New Index:**
+```prisma
+@@index([locationId])
+```
+
+**Ghi chú:**
+- `location_id` nullable — chỉ được set khi dỡ hàng (bước 7)
+- Ghi nhận vị trí thực tế dỡ hàng vào kho
+- Dùng cho `dimTo.locationCode` khi post `GOODS_RECEIVED` inventory transaction
+- Tương tự `shipment_line.location_id` cho outbound
+
+### 7.2 `md_location` — New Relation
+
+```prisma
+receiptLines ReceiptLine[]
+```
+
+### 7.3 Inventory Integration
+
+Sau cân lần 2 (WEIGH_IN), `weighbridge-log.service.ts` tự động:
+1. Update `receipt_line.received_qty` = net weight (proportional split)
+2. Update `receipt_line.net_weight_kg` = net weight
+3. Update `receipt_header`: `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`
+4. Post `GOODS_RECEIVED` → `invent_trans` (RECEIPT/RECEIVED) → `on_hand.physical_qty` **tăng**
+
+### 7.4 On-Hand Enhancement
+
+Cột **"Đã nhập"** trên trang Tồn kho hiện tại:
+- Backend: `inventory-core.controller.js` enrich `inboundReceivedQty` = tổng `receipt_line.received_qty` (>0, not CANCELLED) group by `item_id + warehouse_id`
+- Frontend: `InventoryOnHandPage.jsx` cột "Đã nhập" (màu xanh dương)

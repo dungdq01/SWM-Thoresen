@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FileText, X, Plus, Trash2, Sparkles, Ship, Truck } from 'lucide-react'
 import { Badge, Button, Input, Select, Textarea } from '@shared/ui'
+import { useOnHandList } from '@domains/inventory-core/hooks/useInventoryCore'
 
 const SO_TYPES = [
   { value: 'SEA', label: 'Đường thủy' },
@@ -44,6 +45,23 @@ export function SOFormDrawer({
 }) {
   const isEdit = !!initialData
   const [draft, setDraft] = useState({ ...emptyDraft, lines: [{ ...emptyLine }] })
+
+  // Query on-hand theo owner để filter items có tồn kho xuất được
+  const { data: onHandData } = useOnHandList(
+    draft.ownerId ? { ownerId: draft.ownerId, hasStock: true, pageSize: 100 } : {}
+  )
+  const ownerItemIds = useMemo(() => {
+    if (!draft.ownerId || !onHandData?.data) return null // null = không filter
+    const rows = onHandData.data
+    const ids = new Set()
+    for (const row of rows) {
+      // Chỉ lấy items có trạng thái AVAILABLE (có thể xuất)
+      if (row.inventDim?.inventoryStatus?.statusCode === 'AVAILABLE') {
+        ids.add(row.itemId)
+      }
+    }
+    return ids
+  }, [draft.ownerId, onHandData])
 
   useEffect(() => {
     if (!isOpen) return
@@ -117,7 +135,8 @@ export function SOFormDrawer({
   const isLandTransportValid = draft.soType !== 'LAND' || !!draft.vehiclePlate.trim()
   const isValid = !!(draft.ownerId && draft.blNumber && draft.lines.some((l) => l.itemId && l.expectedQty) && isSeaTransportValid && isLandTransportValid)
 
-  const itemOptions = [{ value: '', label: '-- Chọn hàng hóa --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
+  const filteredItems = ownerItemIds ? items.filter((i) => ownerItemIds.has(i.id)) : items
+  const itemOptions = [{ value: '', label: '-- Chọn hàng hóa --' }, ...filteredItems.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
   const ownerOptions = [{ value: '', label: '-- Chọn chủ hàng --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]
 

@@ -14,6 +14,9 @@ export const OUTBOUND_QUERY_KEYS = {
   nextSoNumber: ['outbound', 'sales-orders', 'next-number'],
   shipments: ['outbound', 'shipments'],
   shipment: (id) => ['outbound', 'shipments', id],
+  loadingShipments: ['outbound', 'loading', 'shipments'],
+  loadingStatus: (id) => ['outbound', 'loading', id],
+  locationsWithStock: (shipmentId, itemId) => ['outbound', 'loading', shipmentId, 'locations', itemId],
 }
 
 // ─── Sales Orders ─────────────────────────────────────────────────────────────
@@ -232,6 +235,96 @@ export function useShipShipment() {
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || 'Lỗi xuất hàng')
+    },
+  })
+}
+
+// ─── Loading (Xếp hàng) ─────────────────────────────────────────────────────
+
+export function useShipmentsForLoading(params = {}) {
+  return useQuery({
+    queryKey: [...OUTBOUND_QUERY_KEYS.loadingShipments, params],
+    queryFn: () => outboundOperationsApi.getShipmentsForLoading(params),
+    staleTime: 10000,
+  })
+}
+
+export function useLoadingStatus(shipmentId) {
+  return useQuery({
+    queryKey: OUTBOUND_QUERY_KEYS.loadingStatus(shipmentId),
+    queryFn: () => outboundOperationsApi.getLoadingStatus(shipmentId),
+    enabled: !!shipmentId,
+    staleTime: 5000,
+  })
+}
+
+export function useStartLoading() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (shipmentId) => outboundOperationsApi.startLoading(shipmentId),
+    onSuccess: (_, shipmentId) => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.loadingShipments })
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.loadingStatus(shipmentId) })
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      toast.success('Bắt đầu xếp hàng')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi bắt đầu xếp hàng')
+    },
+  })
+}
+
+export function useLocationsWithStock(shipmentId, itemId) {
+  return useQuery({
+    queryKey: OUTBOUND_QUERY_KEYS.locationsWithStock(shipmentId, itemId),
+    queryFn: () => outboundOperationsApi.getLocationsWithStock(shipmentId, itemId),
+    enabled: !!shipmentId && !!itemId,
+    staleTime: 5000,
+  })
+}
+
+export function useLoadItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ shipmentId, shipmentLineId, locationId }) =>
+      outboundOperationsApi.loadItem(shipmentId, shipmentLineId, locationId),
+    onSuccess: (_, { shipmentId }) => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.loadingStatus(shipmentId) })
+      toast.success('Đã xếp hàng lên xe')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi xếp hàng')
+    },
+  })
+}
+
+export function useUnloadItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ shipmentId, shipmentLineId }) =>
+      outboundOperationsApi.unloadItem(shipmentId, shipmentLineId),
+    onSuccess: (_, { shipmentId }) => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.loadingStatus(shipmentId) })
+      toast.success('Đã bỏ xếp')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi bỏ xếp')
+    },
+  })
+}
+
+export function useCompleteLoading() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (shipmentId) => outboundOperationsApi.completeLoading(shipmentId),
+    onSuccess: (_, shipmentId) => {
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.loadingShipments })
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.loadingStatus(shipmentId) })
+      qc.invalidateQueries({ queryKey: OUTBOUND_QUERY_KEYS.shipments })
+      toast.success('Hoàn thành xếp hàng')
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Lỗi hoàn thành xếp hàng')
     },
   })
 }

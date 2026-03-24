@@ -95,6 +95,7 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/inbound-operations/purchase-orders', label: t('sidebar.items.purchaseOrders') },
       { to: '/app/inbound-operations/receipts', label: t('sidebar.items.receipts') },
+      { to: '/app/inbound-operations/unloading', label: 'Dỡ hàng' },
       { to: '/app/inbound-operations/documents', label: 'Chứng từ nhập' },
     ],
   },
@@ -106,6 +107,7 @@ const getMenuConfig = (t) => [
     children: [
       { to: '/app/outbound-operations/sales-orders', label: 'Đơn bán hàng' },
       { to: '/app/outbound-operations/shipments', label: 'Phiếu xuất kho' },
+      { to: '/app/outbound-operations/loading', label: 'Xếp hàng' },
       { to: '/app/outbound-operations/documents', label: 'Chứng từ xuất' },
     ],
   },

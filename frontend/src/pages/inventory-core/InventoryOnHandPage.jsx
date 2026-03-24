@@ -6,7 +6,7 @@ import { InventoryStatusBadge } from '@domains/master-data/components/StatusBadg
 import { Button, Select, Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableLoading, TableRow, Pagination } from '@shared/ui'
 import { InventoryPostingDrawer } from '@features/inventory-core'
 
-const TOTAL_COLS = 11
+const TOTAL_COLS = 13
 
 function formatKg(value) {
   const num = Number(value)
@@ -163,6 +163,8 @@ export function InventoryOnHandPage() {
                   <TableHead>Vị trí</TableHead>
                   <TableHead align="right">Thực tế</TableHead>
                   <TableHead align="right">Đã giữ</TableHead>
+                  <TableHead align="right">Đã nhập</TableHead>
+                  <TableHead align="right">Đã xuất</TableHead>
                   <TableHead align="right">Khả dụng</TableHead>
                   <TableHead>ĐVT</TableHead>
                 </TableRow>
@@ -196,6 +198,16 @@ export function InventoryOnHandPage() {
                       </TableCell>
                       <TableCell align="right">
                         <span className="text-navy-600">{formatQty(row.allocatedQty)}</span>
+                      </TableCell>
+                      <TableCell align="right">
+                        <span className={Number(row.inboundReceivedQty) > 0 ? 'font-medium text-blue-600' : 'text-navy-400'}>
+                          {formatQty(row.inboundReceivedQty || 0)}
+                        </span>
+                      </TableCell>
+                      <TableCell align="right">
+                        <span className={Number(row.outboundDemandQty) > 0 ? 'font-medium text-amber-600' : 'text-navy-400'}>
+                          {formatQty(row.outboundDemandQty || 0)}
+                        </span>
                       </TableCell>
                       <TableCell align="right">
                         <span className="font-semibold text-emerald-600">{formatQty(row.availableQty)}</span>

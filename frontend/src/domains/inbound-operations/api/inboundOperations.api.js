@@ -127,4 +127,26 @@ export const inboundOperationsApi = {
     (id) => inboundOperationsMockApi.cancelPurchaseOrder(id),
     (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/cancel`)
   ),
+
+  // ─── Unloading (Dỡ hàng) ──────────────────────────────────────────────────
+  getReceiptsForUnloading: (params = {}) =>
+    httpClient.get(`${BASE_URL}/unloading/receipts`, { params }),
+
+  getUnloadingStatus: (id) =>
+    httpClient.get(`${BASE_URL}/unloading/${id}/status`),
+
+  getAvailableLocations: (receiptId) =>
+    httpClient.get(`${BASE_URL}/unloading/${receiptId}/locations-available`),
+
+  startUnloading: (id) =>
+    httpClient.post(`${BASE_URL}/unloading/${id}/start`),
+
+  unloadItem: (id, receiptLineId, locationId) =>
+    httpClient.post(`${BASE_URL}/unloading/${id}/unload-item`, { receiptLineId, locationId }),
+
+  undoUnloadItem: (id, receiptLineId) =>
+    httpClient.post(`${BASE_URL}/unloading/${id}/undo-unload-item`, { receiptLineId }),
+
+  completeUnloading: (id) =>
+    httpClient.post(`${BASE_URL}/unloading/${id}/complete`),
 }

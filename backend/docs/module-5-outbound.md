@@ -1,21 +1,22 @@
 # Module 5: Outbound Operations — API Documentation
 
-**Module Path:** `src/modules/outbound`  
-**Status:** ✅ Active (Sales Order Management)  
-**Version:** 3.6.0  
-**Last Updated:** 2026-03-17  
+**Module Path:** `src/modules/outbound`
+**Status:** ✅ Active (Sales Order + Shipment + Loading + Weighbridge Integration)
+**Version:** 4.0.0
+**Last Updated:** 2026-03-25
 
 ---
 
 ## 1. Tổng quan
 
-Module 5 quản lý **luồng xuất hàng (Outbound Operations)**, bắt đầu từ việc tạo đơn xuất hàng (Sales Order - SO).
+Module 5 quản lý **luồng xuất hàng (Outbound Operations)**, từ tạo đơn xuất hàng → xếp hàng → cân xe → trừ tồn kho.
 
 ### Chức năng chính
-- **Sales Order Management**: Tạo, cập nhật, xác nhận, hủy đơn xuất hàng
-- **Shipment Management**: Tạo phiếu xuất kho từ SO đã xác nhận
-- Quản lý chi tiết hàng hóa theo dòng (SO Lines, Shipment Lines)
-- Theo dõi SL dự kiến và SL đã xuất
+- **Sales Order Management**: Tạo, cập nhật, xác nhận, hủy đơn xuất hàng (SO)
+- **Shipment Management**: Tạo phiếu xuất kho (SHP) từ SO đã xác nhận
+- **Loading (Xếp hàng)**: Xếp hàng lên xe với chọn vị trí lấy hàng (location picking)
+- **Weighbridge Integration**: Cân xe 2 lần (tare + gross), tự động trừ tồn kho
+- **Inventory Posting**: Post `SHIP_CONFIRMED` → trừ `on_hand` theo vị trí
 
 ---
 
@@ -23,52 +24,35 @@ Module 5 quản lý **luồng xuất hàng (Outbound Operations)**, bắt đầu
 
 ```
 src/modules/outbound/
-├── outbound.module.ts                    # Module definition
+├── outbound.module.ts
 │
 ├── controllers/
-│   ├── sales-order.controller.ts         # Sales Order REST endpoints
-│   ├── simple-shipment.controller.ts     # Simple Shipment CRUD (từ SO)
+│   ├── sales-order.controller.ts         # SO REST endpoints
+│   ├── simple-shipment.controller.ts     # SHP CRUD
+│   ├── loading.controller.ts             # ✅ Xếp hàng + Location picking
 │   ├── shipment.controller.ts            # Full Shipment với M3 integration
-│   ├── outbound-query.controller.ts      # Query/Dashboard endpoints
-│   └── outbound-document.controller.ts   # Document list endpoint
+│   ├── outbound-query.controller.ts      # Query/Dashboard
+│   └── outbound-document.controller.ts   # Documents
 │
 ├── services/
-│   ├── sales-order.service.ts            # Business logic cho SO
-│   ├── simple-shipment.service.ts        # Simple Shipment từ SO
-│   ├── shipment.service.ts               # Core shipment service
+│   ├── sales-order.service.ts            # SO business logic
+│   ├── simple-shipment.service.ts        # SHP CRUD + status mapping
+│   ├── loading.service.ts                # ✅ Xếp hàng: start/load/unload/complete + location stock
+│   ├── shipment.service.ts               # Core shipment
 │   ├── shipment-command.service.ts       # Shipment commands
-│   ├── shipment-query.service.ts         # Shipment queries
 │   ├── shipment-state-machine.service.ts # State machine rules
-│   ├── shipment-line-state.service.ts    # Line state management
 │   ├── so-qty-rollup.service.ts          # SO quantity rollup
-│   ├── post-ship-residual.service.ts     # Post-ship residual handling
 │   └── outbound-document.service.ts      # Document service
-│
-├── application/
-│   ├── createShipment.usecase.ts         # Create shipment use case
-│   └── shipShipment.usecase.ts           # Ship với M3 Posting
 │
 ├── repositories/
 │   ├── shipment-header.repository.ts
 │   ├── shipment-line.repository.ts
-│   ├── status-history.repository.ts
-│   ├── exception-log.repository.ts
-│   ├── pick-work-link.repository.ts
-│   └── posting-link.repository.ts
-│
-├── domain/
-│   ├── outbound.state-machine.ts         # State machine definitions
-│   ├── outbound.policy.ts                # Business policies
-│   └── outbound.errors.ts                # Error definitions
-│
-├── infra/
-│   └── m3-adapter.service.ts             # M3 Posting wrapper
+│   └── status-history.repository.ts
 │
 └── dto/
-    ├── sales-order.dto.ts                # DTOs cho SO
-    ├── shipment.dto.ts                   # DTOs cho Shipment
-    ├── create-shipment.dto.ts            # Create shipment DTO
-    └── shipment-response.dto.ts          # Response DTOs
+    ├── sales-order.dto.ts
+    ├── shipment.dto.ts
+    └── shipment-response.dto.ts
 ```
 
 ---
@@ -77,436 +61,274 @@ src/modules/outbound/
 
 ### 3.1 Sales Order Management
 
-#### GET /api/v1/outbound/sales-orders/next-number
-**Mục đích:** Lấy số SO tiếp theo (auto-gen)
-
-**Response:** `200 OK`
-```json
-{
-  "code": "SO-202603-00001"
-}
-```
-
----
-
-#### GET /api/v1/outbound/sales-orders
-**Mục đích:** Danh sách Sales Orders với phân trang và filter
-
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| page | number | Trang (default: 1) |
-| pageSize | number | Số items/trang (default: 20) |
-| keyword | string | Tìm theo số SO, số B/L |
-| status | string | Filter theo trạng thái |
-| ownerId | uuid | Filter theo chủ hàng |
-
-**Response:** `200 OK`
-```json
-{
-  "data": [...],
-  "items": [...],
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "total": 100,
-    "totalPages": 5
-  }
-}
-```
-
----
-
-#### GET /api/v1/outbound/sales-orders/:id
-**Mục đích:** Chi tiết Sales Order theo ID
-
-**Response:** `200 OK`
-```json
-{
-  "id": "uuid",
-  "soNumber": "SO-202603-00001",
-  "soType": "SEA",
-  "blNumber": "BL-2026-RICE-001",
-  "status": "NEW",
-  "owner": { "ownerCode": "TVL", "ownerName": "Thoresen" },
-  "totalExpectedQty": 5000,
-  "totalShippedQty": 0,
-  "lines": [...]
-}
-```
-
----
-
-#### POST /api/v1/outbound/sales-orders
-**Mục đích:** Tạo Sales Order mới
-
-**Request Body:**
-```json
-{
-  "soType": "SEA",
-  "ownerId": "uuid",
-  "blNumber": "BL-2026-RICE-001",
-  "notes": "Ghi chú",
-  "lines": [
-    {
-      "itemId": "uuid",
-      "expectedQty": 1000,
-      "uomId": "uuid",
-      "notes": "Ghi chú dòng"
-    }
-  ]
-}
-```
-
-**Response:** `201 Created`
-
----
-
-#### PATCH /api/v1/outbound/sales-orders/:id
-**Mục đích:** Cập nhật Sales Order (chỉ khi status = NEW/Tạo mới)
-
-**Request Body:**
-```json
-{
-  "soType": "LAND",
-  "ownerId": "uuid",
-  "blNumber": "BL-2026-RICE-002",
-  "notes": "Ghi chú mới",
-  "lines": [
-    {
-      "id": "uuid",
-      "itemId": "uuid",
-      "expectedQty": 1500,
-      "uomId": "uuid",
-      "notes": "Ghi chú dòng"
-    }
-  ]
-}
-```
-
-**Note:** `lines[].id` là optional, dùng cho việc update line có sẵn.
-
----
-
-#### POST /api/v1/outbound/sales-orders/:id/confirm
-**Mục đích:** Xác nhận Sales Order (Tạo mới → Đã xác nhận)
-
----
-
-#### POST /api/v1/outbound/sales-orders/:id/cancel
-**Mục đích:** Xóa/Hủy Sales Order (chỉ khi status = Tạo mới)
-
----
-
-#### POST /api/v1/outbound/sales-orders/:id/unconfirm
-**Mục đích:** Hủy xác nhận Sales Order (Đã xác nhận → Tạo mới)
-
-**Note:** Chỉ có thể unconfirm SO ở trạng thái CONFIRMED.
-
----
-
-#### POST /api/v1/outbound/sales-orders/:id/close
-**Mục đích:** Đóng Sales Order (SHIPPED → CLOSED)
-
----
+| Method | Endpoint | Mục đích |
+|--------|----------|----------|
+| GET | `/outbound/sales-orders/next-number` | Lấy số SO tiếp theo |
+| GET | `/outbound/sales-orders` | Danh sách SO (phân trang, filter) |
+| GET | `/outbound/sales-orders/:id` | Chi tiết SO |
+| POST | `/outbound/sales-orders` | Tạo SO mới |
+| PATCH | `/outbound/sales-orders/:id` | Cập nhật SO (chỉ khi DRAFT) |
+| POST | `/outbound/sales-orders/:id/confirm` | Xác nhận SO |
+| POST | `/outbound/sales-orders/:id/cancel` | Hủy SO |
+| POST | `/outbound/sales-orders/:id/unconfirm` | Hủy xác nhận SO |
+| POST | `/outbound/sales-orders/:id/close` | Đóng SO |
 
 ### 3.2 Shipment Management
 
-#### GET /api/v1/outbound/shipments
-**Mục đích:** Danh sách Phiếu xuất kho với phân trang và filter
+| Method | Endpoint | Mục đích |
+|--------|----------|----------|
+| GET | `/outbound/shipments` | Danh sách SHP (phân trang, filter) |
+| GET | `/outbound/shipments/:id` | Chi tiết SHP |
+| POST | `/outbound/shipments` | Tạo SHP từ SO |
+| PATCH | `/outbound/shipments/:id` | Cập nhật SHP (chỉ khi DRAFT) |
+| POST | `/outbound/shipments/:id/confirm` | Xác nhận SHP |
+| DELETE | `/outbound/shipments/:id` | Xóa SHP (chỉ khi DRAFT) |
+| POST | `/outbound/shipments/:id/report-error` | Báo lỗi SHP |
+| POST | `/outbound/shipments/:id/ship` | Xuất hàng + post M3 |
+
+### 3.3 Loading (Xếp hàng) — ✅ Updated v4.0.0
+
+| Method | Endpoint | Mục đích |
+|--------|----------|----------|
+| GET | `/outbound/loading/shipments` | Danh sách SHP cần xếp (CONFIRMED + LOADING) |
+| GET | `/outbound/loading/:id/status` | Trạng thái xếp hàng + thông tin cân |
+| GET | `/outbound/loading/:id/locations-with-stock?itemId=` | **NEW:** Danh sách vị trí có tồn kho cho dropdown |
+| POST | `/outbound/loading/:id/start` | Bắt đầu xếp (yêu cầu đã cân tare) |
+| POST | `/outbound/loading/:id/load-item` | **UPDATED:** Xếp 1 item + ghi locationId |
+| POST | `/outbound/loading/:id/unload-item` | Bỏ xếp 1 item |
+| POST | `/outbound/loading/:id/complete` | Hoàn thành xếp hàng |
+
+### 3.4 Documents
+
+| Method | Endpoint | Mục đích |
+|--------|----------|----------|
+| GET | `/outbound/documents` | Danh sách chứng từ xuất |
+
+---
+
+## 4. Loading API Detail
+
+### GET /outbound/loading/:id/locations-with-stock
+
+**Mục đích:** Lấy danh sách vị trí có tồn kho cho 1 mặt hàng trong kho của SHP. Dùng cho dropdown chọn vị trí khi xếp hàng.
 
 **Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| page | number | Trang (default: 1) |
-| pageSize | number | Số items/trang (default: 20) |
-| keyword | string | Tìm theo số phiếu, số SO, biển số xe |
-| status | string | Filter theo trạng thái |
-| ownerId | uuid | Filter theo chủ hàng |
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| itemId | UUID | ✅ | Mặt hàng cần tìm vị trí |
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "locationId": "uuid",
+    "locationCode": "WH01-B-01",
+    "locationType": "STORAGE",
+    "ownerId": "uuid",
+    "ownerCode": "OWN-001",
+    "inventoryStatusId": "uuid",
+    "statusCode": "AVAILABLE",
+    "availableQty": 120000,
+    "physicalQty": 120000,
+    "uomCode": "KG"
+  }
+]
+```
+
+**Logic:** Query `on_hand` WHERE `itemId` AND `inventDim.warehouseId = SHP.warehouseId` AND `availableQty > 0`, sorted by `availableQty DESC`.
+
+---
+
+### POST /outbound/loading/:id/load-item
+
+**Mục đích:** Đánh dấu 1 item đã xếp lên xe + ghi nhận vị trí lấy hàng.
+
+**Request Body:**
+```json
+{
+  "shipmentLineId": "uuid",
+  "locationId": "uuid"          // ← NEW: vị trí lấy hàng (từ dropdown)
+}
+```
+
+**Response:** Loading status (same as GET status)
+
+**Logic:**
+1. Kiểm tra SHP status = LOADING
+2. Kiểm tra đã cân tare
+3. Kiểm tra line status = PENDING
+4. Update line: `lineStatus=LOADING`, `loadedQty=expectedQtyKg`, `locationId=locationId`, `weighSequenceNo=N`
+
+---
+
+### GET /outbound/loading/:id/status
 
 **Response:** `200 OK`
 ```json
 {
-  "data": [
+  "shipmentId": "uuid",
+  "shipmentNumber": "SHP-202603-00001",
+  "vehicleNumber": "1232131",
+  "status": "LOADING",
+  "owner": { "id": "uuid", "ownerCode": "OWN-001", "ownerName": "Thoresen" },
+  "warehouse": { "id": "uuid", "warehouseCode": "WH-01", "warehouseName": "Kho 1" },
+  "hasTare": true,
+  "hasGross": false,
+  "lines": [
     {
       "id": "uuid",
-      "shipmentNumber": "SHP-202603-00001",
-      "soNumber": "SO-202603-00001",
-      "blNumber": "BL-2026-RICE-001",
-      "owner": { "ownerCode": "TVL", "ownerName": "Thoresen" },
-      "vehicleNumber": "29A-12345",
-      "status": "NEW",
-      "expectedQty": 1000,
-      "shippedQty": 0,
-      "lines": [...]
-    }
-  ],
-  "pagination": { "page": 1, "pageSize": 20, "total": 10, "totalPages": 1 }
-}
-```
-
----
-
-#### GET /api/v1/outbound/shipments/:id
-**Mục đích:** Chi tiết Phiếu xuất theo ID
-
----
-
-#### POST /api/v1/outbound/shipments
-**Mục đích:** Tạo Phiếu xuất kho từ SO đã xác nhận
-
-**Request Body:**
-```json
-{
-  "salesOrderId": "uuid",
-  "warehouseId": "uuid",
-  "vehicleNumber": "29A-12345",
-  "blNumber": "BL-2026-RICE-001",
-  "notes": "Ghi chú header",
-  "lines": [
-    {
+      "lineNumber": 1,
       "itemId": "uuid",
-      "uomId": "uuid",
-      "expectedQty": 500,
-      "soLineId": "uuid",
-      "notes": "Ghi chú dòng"
+      "itemCode": "CLINKER",
+      "itemName": "Clinker xi măng",
+      "uomCode": "BAG25",
+      "expectedQtyKg": 2775,
+      "loadSequence": 1,
+      "lineStatus": "LOADING",
+      "locationId": "uuid",
+      "locationCode": "WH01-B-01",
+      "isLoaded": true
     }
   ]
 }
 ```
 
-**Response:** `201 Created`
-
-**Note:** Chỉ có thể tạo phiếu xuất từ SO đang ở trạng thái CONFIRMED.
+> **Lưu ý bảo mật:** `hasTare` và `hasGross` chỉ trả trạng thái (true/false), **KHÔNG trả số kg** — tránh gian lận ăn bớt hàng.
 
 ---
 
-#### PATCH /api/v1/outbound/shipments/:id
-**Mục đích:** Cập nhật Phiếu xuất (chỉ khi status = NEW)
-
-**Request Body:**
-```json
-{
-  "warehouseId": "uuid",
-  "vehicleNumber": "29A-12345",
-  "notes": "Ghi chú mới",
-  "lines": [
-    {
-      "itemId": "uuid",
-      "uomId": "uuid",
-      "expectedQty": 600,
-      "soLineId": "uuid",
-      "notes": "Ghi chú dòng mới"
-    }
-  ]
-}
-```
-
----
-
-#### POST /api/v1/outbound/shipments/:id/confirm
-**Mục đích:** Xác nhận Phiếu xuất (NEW → CONFIRMED)
-
----
-
-#### DELETE /api/v1/outbound/shipments/:id
-**Mục đích:** Xóa Phiếu xuất (chỉ khi status = NEW)
-
----
-
-#### POST /api/v1/outbound/shipments/:id/report-error
-**Mục đích:** Báo lỗi Phiếu xuất (NEW/CONFIRMED → CANCELLED)
-
-**Request Body:**
-```json
-{
-  "reasonCode": "Lý do báo lỗi"
-}
-```
-
----
-
-#### POST /api/v1/outbound/shipments/:id/ship
-**Mục đích:** Xuất hàng và post inventory sang M3
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "status": "SHIPPED",
-    "postedTransIds": ["TRX-001", "TRX-002"]
-  }
-}
-```
-
-**Note:** Chỉ ship được khi shipment ở trạng thái CONFIRMED.
-
----
-
-### 3.3 Query & Dashboard
-
-#### GET /api/v1/outbound/shipments/:id/history
-**Mục đích:** Lịch sử thay đổi trạng thái shipment
-
----
-
-#### GET /api/v1/outbound/shipments/:id/exceptions
-**Mục đích:** Danh sách exceptions của shipment
-
----
-
-#### GET /api/v1/outbound/dashboard/summary
-**Mục đích:** Tổng hợp dashboard
-
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| warehouseId | uuid | Filter theo kho |
-
----
-
-#### GET /api/v1/outbound/dashboard/kpis
-**Mục đích:** KPI metrics
-
----
-
-### 3.4 Outbound Documents
-
-#### GET /api/v1/outbound/documents
-**Mục đích:** Danh sách chứng từ xuất kho
-
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| shipmentHeaderId | uuid | Filter theo shipment |
-| ownerId | uuid | Filter theo chủ hàng |
-| status | string | Filter theo trạng thái |
-
----
-
-## 4. State Machine
+## 5. State Machine
 
 ### Sales Order Status Flow
 ```
-Tạo mới → Đã xác nhận → Xuất 1 phần → Xuất đủ → Đã đóng
-    ↓
-  Đã hủy
+DRAFT (Tạo mới) ──→ CONFIRMED (Đã xác nhận) ──→ PARTIALLY_RELEASED ──→ FULLY_RELEASED ──→ CLOSED
+      ↓                      ↕ (unconfirm)
+   CANCELLED              DRAFT
 ```
-
-| From | To | Action | UI Button |
-|------|-----|--------|-----------|
-| Tạo mới (NEW) | Đã xác nhận (CONFIRMED) | confirm | ✓ Xác nhận |
-| Tạo mới (NEW) | Đã hủy (CANCELLED) | cancel | 🗑 Xóa |
-| Đã xác nhận | Tạo mới | unconfirm | ↩ Hủy xác nhận |
-| Đã xác nhận | Xuất 1 phần | - | Tự động khi có shipment |
-| Xuất 1 phần | Xuất đủ | - | Tự động khi xuất hết |
-| Xuất đủ | Đã đóng | close | - |
-
-### UI Actions theo trạng thái
-
-| Trạng thái | Chỉnh sửa | Xác nhận | Xóa | Hủy xác nhận | Tạo phiếu xuất |
-|------------|-----------|----------|-----|--------------|----------------|
-| Tạo mới | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Đã xác nhận | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Xuất 1 phần | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Xuất đủ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Đã đóng | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Đã hủy | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Shipment Status Flow
 ```
-Tạo mới (NEW) → Đã xác nhận (CONFIRMED) → ... → Đã xuất (SHIPPED) → Đã đóng (CLOSED)
-    ↓
-  Đã hủy (CANCELLED)
+DRAFT ──→ CONFIRMED ──→ LOADING ──→ LOADED ──→ SHIPPED ──→ CLOSED
+  ↓           ↓
+CANCELLED  CANCELLED (report-error)
 ```
 
-### Shipment UI Actions theo trạng thái
+| Transition | Action | Trigger | Validation |
+|------------|--------|---------|------------|
+| DRAFT → CONFIRMED | `confirm` | User click | — |
+| CONFIRMED → LOADING | `START_LOADING` | User "Bắt đầu xếp" | Đã cân tare |
+| LOADING → LOADED | `COMPLETE_LOADING` | User "Hoàn thành xếp" | Tất cả lines đã xếp |
+| LOADED → SHIPPED | Cân lần 2 | Weighbridge auto | SHP status = LOADED |
 
-| Trạng thái | Chỉnh sửa | Xác nhận | Xóa | Báo lỗi |
-|------------|-----------|----------|-----|----------|
-| Tạo mới (NEW) | ✅ | ✅ | ✅ | ❌ |
-| Đã xác nhận | ❌ | ❌ | ❌ | ✅ |
-| Khác | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## 5. Data Mapping
-
-### Frontend ↔ Backend Mapping
-
-| Frontend Field | Backend Field | Notes |
-|----------------|---------------|-------|
-| soType (SEA/LAND) | orderType (STANDARD/CONSIGNMENT) | Mapping trong service |
-| blNumber | externalSoNumber | Số B/L lưu trong externalSoNumber |
-| status (NEW/CONFIRMED/...) | status (DRAFT/CONFIRMED/...) | Mapping trong service |
+### Shipment Line Status Flow
+```
+PENDING ──→ LOADING ──→ WEIGHED_PASS
+   ↓           ↓
+CANCELLED  PENDING (unload)
+```
 
 ---
 
-## 6. Dependencies
+## 6. Weighbridge Integration (M8 → M5 → M3)
 
-### Module 5 phụ thuộc
+### Luồng cân outbound (WEIGH_OUT)
+
+```
+Cân lần 1 (xe rỗng)                     Cân lần 2 (xe có hàng)
+─────────────────────                    ──────────────────────────
+M8: grossWeightKg = tare weight          M8: tareWeightKg = gross weight
+M8: status → WEIGHING                    M8: netWeightKg = |gross - tare|
+                                         M8: status → COMPLETED
+                                         ↓
+                                         M5: shipmentLine.shippedQty = netWeight
+                                         M5: shipmentLine.netWeightKg = netWeight
+                                         ↓
+                                         M3: PostingEngine.postInventory({
+                                           eventCode: 'SHIP_CONFIRMED',
+                                           dimFrom: { warehouse, location, owner },
+                                           qty: netWeight
+                                         })
+                                         ↓
+                                         on_hand: physicalQty -= netWeight
+                                         on_hand: allocatedQty -= netWeight
+                                         invent_trans: new ISSUE/DEDUCTED record
+```
+
+### Validation Constraints
+
+| Constraint | Check Location | Error Message |
+|------------|---------------|---------------|
+| Chưa cân tare → không xếp hàng | `loading.service.ts` `startLoading()` | Xe chưa cân tare. Vui lòng đưa xe đến Trạm cân trước. |
+| Chưa xếp xong → không cân lần 2 | `weighbridge-log.service.ts` `recordWeight()` | Xe chưa xếp hàng xong. Vui lòng hoàn thành xếp hàng trước khi cân lần 2. |
+| Cân lần 2 nhỏ hơn lần 1 (WEIGH_OUT) | `weighbridge-log.service.ts` `recordWeight()` | Trọng lượng lần 2 không được nhỏ hơn trọng lượng lần 1 |
+
+---
+
+## 7. On-Hand Page Enhancement
+
+### Cột "Đã xuất" trên trang Tồn kho hiện tại
+
+**Controller:** `inventory-core.controller.js` `queryOnHand()`
+
+**Logic:** Sau khi query on-hand, enrich mỗi row với `outboundDemandQty`:
+
+```javascript
+// Query tổng shippedQty từ shipment lines đã xuất
+const shipmentLines = await prisma.shipmentLine.findMany({
+  where: { shippedQty: { gt: 0 }, lineStatus: { notIn: ['CANCELLED'] } },
+  select: { itemId: true, shippedQty: true, header: { select: { warehouseId: true } } },
+});
+// Group by itemId + warehouseId
+demandMap[`${itemId}|${warehouseId}`] = sum(shippedQty)
+// Enrich each on-hand row
+row.outboundDemandQty = demandMap[`${row.itemId}|${row.inventDim.warehouseId}`] || 0
+```
+
+---
+
+## 8. Dependencies
 
 | Module | Service/Data | Usage |
 |--------|--------------|-------|
-| M1 - Foundation | `NumberSequence` | Sinh SO number (SO-*), shipment number (SHP-*) |
-| M1 - Foundation | `ReasonCode` | Validate reason codes |
-| M1 - Foundation | `AuditLog` | Audit trail |
-| M1 - Foundation | `Idempotency` | External ID check |
-| M2 - Master Data | `MdOwner` | Owner validation |
-| M2 - Master Data | `MdItem` | Item validation |
-| M2 - Master Data | `MdWarehouse` | Warehouse validation |
-| M2 - Master Data | `MdLocation` | Location validation |
-| M2 - Master Data | `MdInventoryStatus` | Status check (AVAILABLE) |
-| M2 - Master Data | `MdVehicleType` | Vehicle type lookup |
-| **M3 - Inventory Core** | **`PostingEngine`** | **Post outbound transaction** |
-
-### M3 Integration (✅ Implemented)
-
-| Use Case | M3 Service | Event Code |
-|----------|------------|------------|
-| Ship | `PostingEngineService.postInventory()` | `SHIPMENT_SHIPPED` |
+| M1 Foundation | NumberSequence | Sinh SO/SHP number |
+| M2 Master Data | MdOwner, MdItem, MdWarehouse, MdLocation | Validation + lookup |
+| **M3 Inventory** | **PostingEngineService** | **Post SHIP_CONFIRMED → trừ on_hand** |
+| **M3 Inventory** | **OnHand query** | **Dropdown vị trí có tồn kho, cột "Đã xuất"** |
+| **M8 Integration** | **WeighbridgeLogService** | **Cân xe, trigger inventory posting** |
 
 ---
 
-## 7. RBAC Permissions
+## 9. Frontend Components
 
-### Sales Order Permissions
-| Permission Code | Description |
-|-----------------|-------------|
-| `OUTBOUND.SO.CREATE` | Tạo Sales Order |
-| `OUTBOUND.SO.READ` | Xem Sales Order |
-| `OUTBOUND.SO.UPDATE` | Cập nhật Sales Order |
-| `OUTBOUND.SO.CONFIRM` | Xác nhận Sales Order |
-| `OUTBOUND.SO.CANCEL` | Hủy Sales Order |
-| `OUTBOUND.SO.CLOSE` | Đóng Sales Order |
+| Component | File | Mục đích |
+|-----------|------|----------|
+| SalesOrdersPage | `pages/outbound-operations/SalesOrdersPage.jsx` | Danh sách + CRUD SO |
+| OutboundShipmentsPage | `pages/outbound-operations/OutboundShipmentsPage.jsx` | Danh sách + CRUD SHP |
+| OutboundLoadingPage | `pages/outbound-operations/OutboundLoadingPage.jsx` | Xếp hàng + chọn vị trí |
+| LocationPicker | (inline in OutboundLoadingPage) | Dropdown vị trí có tồn kho |
+| WeighbridgePage | `pages/integration/WeighbridgePage.jsx` | Trạm cân |
 
-### Shipment Permissions
-| Permission Code | Description |
-|-----------------|-------------|
-| `OUTBOUND.SHIPMENT.CREATE` | Tạo Shipment |
-| `OUTBOUND.SHIPMENT.READ` | Xem Shipment |
-| `OUTBOUND.SHIPMENT.CONFIRM` | Xác nhận Shipment |
-| `OUTBOUND.SHIPMENT.CANCEL` | Hủy Shipment |
-| `OUTBOUND.SHIPMENT.SHIP` | Xuất hàng (post M3) |
+### Frontend Hooks (Loading)
 
-### Other Permissions
-| Permission Code | Description |
-|-----------------|-------------|
-| `OUTBOUND.DASHBOARD.READ` | Xem dashboard |
+| Hook | API | Mục đích |
+|------|-----|----------|
+| `useShipmentsForLoading()` | GET /loading/shipments | Danh sách SHP cần xếp |
+| `useLoadingStatus(id)` | GET /loading/:id/status | Trạng thái xếp hàng |
+| `useLocationsWithStock(shipmentId, itemId)` | GET /loading/:id/locations-with-stock | Dropdown vị trí |
+| `useStartLoading()` | POST /loading/:id/start | Bắt đầu xếp |
+| `useLoadItem()` | POST /loading/:id/load-item | Xếp item + locationId |
+| `useUnloadItem()` | POST /loading/:id/unload-item | Bỏ xếp |
+| `useCompleteLoading()` | POST /loading/:id/complete | Hoàn thành xếp |
 
 ---
 
-## 8. Changelog
+## 10. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2024-03 | Initial implementation |
-| 3.0.0 | 2026-03-17 | RESET: Xóa toàn bộ logic cũ |
-| 3.1.0 | 2026-03-17 | Implement Sales Order Management: Controller, Service, DTO, API endpoints |
-| 3.2.0 | 2026-03-17 | - Đổi label trạng thái "Nháp" → "Tạo mới"<br>- Thêm UpdateSoLineDto với field `id` cho update lines<br>- Thêm `ownerId` vào UpdateSalesOrderDto<br>- UI: Button xóa chỉ hiển thị khi status = Tạo mới |
-| 3.3.0 | 2026-03-17 | **REMOVED Features:**<br>- Xóa Phân bổ (Allocation) - chưa implement<br>- Xóa Cân hàng (Weighing) - chưa implement<br>- Xóa Phê duyệt (Approvals) - chưa implement<br>Module 5 hiện chỉ còn: Sales Order, Shipments |
-| 3.4.0 | 2026-03-17 | - Thêm endpoint `POST /sales-orders/:id/unconfirm` (Đã xác nhận → Tạo mới)<br>- Thêm UI buttons: Hủy xác nhận, Tạo phiếu xuất cho trạng thái Đã xác nhận<br>- Tạo CreateShipmentModal component |
-| 3.5.0 | 2026-03-17 | **Shipment Management:**<br>- Thêm `SimpleShipmentService` và `SimpleShipmentController`<br>- Endpoints: `GET/POST /outbound/shipments`, `GET /outbound/shipments/:id`<br>- Tạo phiếu xuất từ SO đã xác nhận<br>- Lưu vào `shipment_header`, `shipment_line` |
-| 3.6.0 | 2026-03-17 | **Shipment CRUD:**<br>- Thêm `PATCH /shipments/:id` (cập nhật)<br>- Thêm `POST /shipments/:id/confirm` (xác nhận)<br>- Thêm `DELETE /shipments/:id` (xóa)<br>- Thêm `POST /shipments/:id/report-error` (báo lỗi)<br>- Thêm field `notes` cho ShipmentHeader và ShipmentLine |
+| 3.0.0 | 2026-03-17 | RESET: SO + Shipment CRUD |
+| 3.7.0 | 2026-03-24 | Warehouse Filter by Owner OnHand |
+| 4.0.0 | 2026-03-25 | **Loading + Weighbridge + Inventory Integration:**<br>- Loading với location picking, cân lần 2 auto-post SHIP_CONFIRMED, on-hand cột "Đã xuất" |
+| 4.1.0 | 2026-03-25 | **Item Filter theo Owner OnHand khi tạo SO:**<br>- `SOFormDrawer`: query `on_hand` theo `ownerId` + `hasStock=true` khi chọn chủ hàng<br>- Filter items: chỉ hiển thị items có `inventoryStatus.statusCode === 'AVAILABLE'`<br>- Dùng `useOnHandList` hook từ `@domains/inventory-core`<br>- Nếu chưa chọn chủ hàng → hiển thị tất cả items (không filter) |

@@ -4,7 +4,7 @@
 > **Status:** ✅ Implemented (Feedback Fixed v4 - Multi-line ASN + Multi-warehouse PO)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-23 (M3 stage-based integration: PO_CONFIRMED + GOODS_RECEIVED, removed unused Express files)
+> **Last Updated:** 2026-03-25 (Unloading feature: dỡ hàng + weighbridge validation + inventory posting)
 
 ---
 
@@ -1140,3 +1140,122 @@ receipt.receiptNumber || receipt.asnId || receipt.id?.slice(0, 8)
 | `INBOUND.RECEIPT.CLOSE`   | Close receipt     |
 | `INBOUND.WEIGH.RECEIVE`   | Nhận weigh events |
 | `INBOUND.DASHBOARD.READ`  | Xem dashboard     |
+
+---
+
+## 11. Unloading (Dỡ hàng) — NEW 2026-03-25
+
+### 11.1 Tổng quan
+
+Tính năng dỡ hàng cho phép nhân viên kho dỡ hàng từ xe xuống vị trí kho, tương tự Loading của outbound nhưng ngược chiều.
+
+**Luồng:** Cân Gross (xe có hàng) → **Dỡ hàng** (chọn vị trí) → Cân Tare (xe rỗng) → Cộng tồn kho
+
+### 11.2 Code Structure
+
+```
+src/modules/inbound/
+├── controllers/
+│   └── unloading.controller.ts        # ✅ NEW: REST endpoints dỡ hàng
+├── services/
+│   └── unloading.service.ts           # ✅ NEW: Business logic dỡ hàng
+```
+
+### 11.3 API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/inbound/unloading/receipts` | Danh sách receipt cần dỡ (AWAITING_WEIGHING + WEIGHED_IN + PROCESSING) |
+| GET | `/inbound/unloading/:id/status` | Trạng thái dỡ hàng + thông tin cân |
+| GET | `/inbound/unloading/:id/locations-available` | Vị trí active trong kho receipt |
+| POST | `/inbound/unloading/:id/start` | Bắt đầu dỡ (yêu cầu đã cân gross) → PROCESSING |
+| POST | `/inbound/unloading/:id/unload-item` | Dỡ 1 item + ghi locationId |
+| POST | `/inbound/unloading/:id/undo-unload-item` | Hoàn tác dỡ 1 item |
+| POST | `/inbound/unloading/:id/complete` | Hoàn thành dỡ hàng |
+
+### 11.4 POST /inbound/unloading/:id/unload-item
+
+**Request Body:**
+```json
+{
+  "receiptLineId": "uuid",
+  "locationId": "uuid"
+}
+```
+
+### 11.5 GET /inbound/unloading/:id/status
+
+**Response:**
+```json
+{
+  "receiptId": "uuid",
+  "receiptNumber": "RCV-20260324-000001",
+  "vehicleNumber": "123132",
+  "status": "PROCESSING",
+  "owner": { "id": "uuid", "ownerCode": "CARGILL", "ownerName": "Cargill Vietnam" },
+  "warehouse": { "id": "uuid", "warehouseCode": "MX-01", "warehouseName": "Kho tổng hợp" },
+  "hasGross": true,
+  "hasTare": false,
+  "allUnloaded": false,
+  "lines": [
+    {
+      "id": "uuid",
+      "lineNumber": 1,
+      "itemId": "uuid",
+      "itemCode": "DAP-50",
+      "itemName": "Phân DAP — bao 50kg",
+      "uomCode": "BAG50",
+      "expectedQty": 5500,
+      "unloadSequence": 1,
+      "lineStatus": "RECEIVED",
+      "locationId": "uuid",
+      "locationCode": "LOC-1",
+      "isUnloaded": true
+    }
+  ]
+}
+```
+
+### 11.6 Weighbridge Validation (WEIGH_IN)
+
+| Constraint | Location | Error |
+|------------|----------|-------|
+| Chưa cân gross → không dỡ | `unloading.service.ts` `startUnloading()` | Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước khi dỡ hàng. |
+| Chưa dỡ xong → không cân tare | `weighbridge-log.service.ts` `recordWeight()` | Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2. |
+
+### 11.7 Inventory Posting sau cân lần 2 (WEIGH_IN)
+
+Khi weighbridge hoàn thành cân lần 2 cho WEIGH_IN:
+
+1. Update `receivedQty` + `netWeightKg` trên receipt lines (proportional split)
+2. Update receipt header: `grossWeightKg`, `tareWeightKg`, `netWeightKg`
+3. Post `GOODS_RECEIVED` inventory transaction:
+   ```javascript
+   {
+     eventCode: 'GOODS_RECEIVED',
+     refType: 'RECEIPT',
+     refId: receiptId,
+     dimTo: {
+       warehouseCode: receipt.warehouse.warehouseCode,
+       locationCode: line.location.locationCode,  // vị trí dỡ hàng
+       ownerCode: receipt.owner.ownerCode,
+       statusCode: 'AVAILABLE',
+     },
+     qty: netWeight,
+   }
+   ```
+4. `on_hand.physicalQty` **tăng** tại vị trí dỡ hàng
+5. Ghi `invent_trans` record (RECEIPT/RECEIVED)
+
+### 11.8 Frontend
+
+| Component | File | Route |
+|-----------|------|-------|
+| InboundUnloadingPage | `pages/inbound-operations/InboundUnloadingPage.jsx` | `/app/inbound-operations/unloading` |
+| LocationPicker | (inline) | Dropdown vị trí trong kho |
+
+**Sidebar:** Vận hành nhập > Dỡ hàng
+
+### 11.9 On-Hand Page Enhancement
+
+Cột **"Đã nhập"** (`inboundReceivedQty`) = tổng `receivedQty` từ receipt lines có `receivedQty > 0`, group theo `itemId + warehouseId`.

@@ -50,18 +50,6 @@ export class PostShipResidualService {
           include: {
             item: true,
             uom: true,
-            allocationRecords: {
-              include: {
-                inventDim: {
-                  include: {
-                    warehouse: true,
-                    location: true,
-                    owner: true,
-                    inventoryStatus: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -79,7 +67,7 @@ export class PostShipResidualService {
     const residualLines: ResidualResult['residualLines'] = [];
     let totalResidualKg = 0;
 
-    for (const line of shipment.lines) {
+    for (const line of (shipment as any).lines) {
       const allocatedQty = Number(line.allocatedQty || 0);
       const shippedQty = Number(line.shippedQty || line.weighedQtyKg || 0);
 
@@ -181,7 +169,7 @@ export class PostShipResidualService {
 
     return {
       shipmentId,
-      linesProcessed: shipment.lines.length,
+      linesProcessed: (shipment as any).lines.length,
       residualLines,
       totalResidualKg,
     };
