@@ -8,9 +8,10 @@ const initialState = {
   isDay: true,
   heatmapActive: false,
   effectsOn: true,
-  settings: { labels: true, vehicles: true, grid: true, fog: true, shadows: true },
+  settings: { labels: true, vehicles: true, grid: true, fog: true, shadows: true, roof: true },
   hoveredWhIndex: null,
   selectedWhIndex: null,
+  mode4D: false,
   searchQuery: '',
   filters: { owner: 'all', type: 'all', usage: 'all' },
   isModalOpen: false,
@@ -41,6 +42,8 @@ function reducer(state, action) {
       return { ...state, isModalOpen: true, selectedWhIndex: action.payload ?? state.selectedWhIndex };
     case 'CLOSE_MODAL':
       return { ...state, isModalOpen: false };
+    case 'TOGGLE_4D':
+      return { ...state, mode4D: !state.mode4D };
     case 'SET_SCENE_READY':
       return { ...state, sceneReady: true };
     default:
@@ -63,6 +66,7 @@ export function Warehouse3DStoreProvider({ children }) {
     setFilter: (key, value) => dispatch({ type: 'SET_FILTER', payload: { key, value } }),
     openModal: (idx) => dispatch({ type: 'OPEN_MODAL', payload: idx }),
     closeModal: () => dispatch({ type: 'CLOSE_MODAL' }),
+    toggle4D: () => dispatch({ type: 'TOGGLE_4D' }),
     setSceneReady: () => dispatch({ type: 'SET_SCENE_READY' }),
   }), []);
 

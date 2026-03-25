@@ -909,6 +909,10 @@ function getWarehouse3DHTML() {
         <i class="fas fa-magic"></i> <span class="w3d-btn-label">Hiệu ứng</span>
       </button>
       <div class="w3d-toolbar-divider"></div>
+      <button class="w3d-btn w3d-btn-4d" id="btn-4d-mode" onclick="w3dToggle4DMode()" title="Chế độ 4D — Mô phỏng nhập/xuất hàng">
+        <i class="fas fa-shipping-fast"></i> <span class="w3d-btn-label">4D</span>
+      </button>
+      <div class="w3d-toolbar-divider"></div>
       <button class="w3d-btn" onclick="w3dResetCamera()" title="Reset camera">
         <i class="fas fa-home"></i>
       </button>
@@ -1015,6 +1019,10 @@ function getWarehouse3DHTML() {
           <span>Bóng đổ</span>
           <button class="w3d-toggle on" id="toggle-shadows" onclick="w3dToggleSetting(this,'shadows')"></button>
         </div>
+        <div class="w3d-toggle-row">
+          <span>Mái kho</span>
+          <button class="w3d-toggle on" id="toggle-roofs" onclick="w3dToggleSetting(this,'roofs')"></button>
+        </div>
       </div>
     </div>
 
@@ -1072,6 +1080,18 @@ function getWarehouse3DHTML() {
     <div class="w3d-minimap" id="w3d-minimap" onclick="w3dResetCamera()">
       <canvas id="minimap-canvas" width="200" height="140"></canvas>
       <div class="w3d-minimap-label">MINI MAP</div>
+    </div>
+
+    <!-- Warehouse Detail Panel (slide-in on click) -->
+    <div class="w3d-detail-panel" id="w3d-detail-panel">
+      <!-- Content populated by w3dOpenWhDetail() -->
+    </div>
+
+    <!-- 4D Mode Indicator -->
+    <div class="w3d-4d-indicator" id="w3d-4d-indicator">
+      <div class="w3d-4d-dot"></div>
+      <span>4D MODE</span>
+      <span class="w3d-4d-desc">Mô phỏng nhập/xuất hàng thời gian thực</span>
     </div>
 
     <!-- Activity Ticker -->

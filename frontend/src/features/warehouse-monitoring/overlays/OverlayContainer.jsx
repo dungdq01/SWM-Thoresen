@@ -8,6 +8,8 @@ import { HeatmapLegend } from './HeatmapLegend'
 import { ActivityTicker } from './ActivityTicker'
 import { FPSCounter } from './FPSCounter'
 import { LoadingScreen } from './LoadingScreen'
+import { WarehouseDetailPanel } from './WarehouseDetailPanel'
+import { Mode4DIndicator } from './Mode4DIndicator'
 
 export const OverlayContainer = memo(function OverlayContainer() {
   return (
@@ -16,6 +18,8 @@ export const OverlayContainer = memo(function OverlayContainer() {
       <LeftStatsPanel />
       <RightSettingsPanel />
       <WarehouseHoverPanel />
+      <WarehouseDetailPanel />
+      <Mode4DIndicator />
       <HeatmapLegend />
       <ActivityTicker />
       <FPSCounter />

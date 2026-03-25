@@ -482,6 +482,7 @@ function initWarehouse3D() {
     roof.rotation.x = Math.PI / 2;
     roof.position.set(0, wallHeight, rD);
     roof.castShadow = true;
+    roof.userData.isRoof = true;
     group.add(roof);
 
     // === GUTTERS (roof edge trim) ===
@@ -489,6 +490,7 @@ function initWarehouse3D() {
     [-rD, rD].forEach(gz => {
       const gutter = new THREE.Mesh(new THREE.BoxGeometry(rW * 2, 0.6, 1), gutterMat);
       gutter.position.set(0, wallHeight + 0.3, gz);
+      gutter.userData.isRoof = true;
       group.add(gutter);
     });
 
@@ -1327,16 +1329,19 @@ function initWarehouse3D() {
       const whIdx = intersects[0].object.userData.whIndex;
       selectedWh = whIdx;
       const wh = WH_DATA[whIdx];
+      // Fly to warehouse and open detail panel
       smoothFlyTo(
         new THREE.Vector3(wh.pos[0] + 30, 60, wh.pos[2] + wh.depth * 0.8),
         new THREE.Vector3(wh.pos[0], 8, wh.pos[2])
       );
+      w3dOpenWhDetail(whIdx);
     } else {
       selectedWh = null;
+      w3dCloseWhDetail();
     }
   });
 
-  // Double-click to open modal
+  // Double-click to open full modal
   canvas.addEventListener('dblclick', (e) => {
     const rect = canvas.getBoundingClientRect();
     mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1575,6 +1580,15 @@ function initWarehouse3D() {
       renderer.shadowMap.enabled = isOn;
       sunLight.castShadow = isOn;
     }
+    if (setting === 'roofs') {
+      whMeshes.forEach(wm => {
+        wm.group.children.forEach(child => {
+          if (child.userData && child.userData.isRoof) {
+            child.visible = isOn;
+          }
+        });
+      });
+    }
   };
 
   // ---- SEARCH & FILTER ----
@@ -1793,6 +1807,313 @@ function initWarehouse3D() {
       new THREE.Vector3(wh.pos[0], 8, wh.pos[2])
     );
   };
+
+  // ---- WAREHOUSE DETAIL PANEL (slide-in on click) ----
+  window.w3dOpenWhDetail = function(whIdx) {
+    const wh = WH_DATA[whIdx];
+    if (!wh) return;
+    const panel = document.getElementById('w3d-detail-panel');
+    if (!panel) return;
+    panel.classList.add('visible');
+
+    // Fill capacity color
+    const fillColor = wh.fill >= 90 ? '#ef4444' : wh.fill >= 70 ? '#f59e0b' : wh.fill >= 50 ? '#3b82f6' : '#10b981';
+    const ownerBadgeColor = wh.owner === 'TVL' ? '#38bdf8' : wh.owner === 'Partner A' ? '#a78bfa' : '#f59e0b';
+
+    panel.innerHTML = `
+      <div class="w3d-detail-header">
+        <div class="w3d-detail-header-top">
+          <div class="w3d-detail-code">${wh.code}</div>
+          <button class="w3d-detail-close" onclick="w3dCloseWhDetail()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="w3d-detail-name">${wh.name}</div>
+        <div class="w3d-detail-badges">
+          <span class="w3d-detail-badge" style="background:${ownerBadgeColor}22;color:${ownerBadgeColor};border:1px solid ${ownerBadgeColor}44"><i class="fas fa-building"></i> ${wh.owner}</span>
+          <span class="w3d-detail-badge" style="background:${fillColor}22;color:${fillColor};border:1px solid ${fillColor}44"><i class="fas fa-box"></i> ${wh.type}</span>
+        </div>
+      </div>
+      <div class="w3d-detail-body">
+        <!-- Capacity Ring -->
+        <div class="w3d-detail-capacity">
+          <div class="w3d-detail-ring">
+            <svg viewBox="0 0 100 100" width="90" height="90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="42" fill="none" stroke="${fillColor}" stroke-width="8"
+                stroke-dasharray="${wh.fill * 2.64} ${264 - wh.fill * 2.64}"
+                stroke-dashoffset="66" stroke-linecap="round" style="transition:stroke-dasharray 0.8s ease"/>
+            </svg>
+            <div class="w3d-detail-ring-text">
+              <div class="w3d-detail-ring-pct" style="color:${fillColor}">${wh.fill}%</div>
+              <div class="w3d-detail-ring-label">Công suất</div>
+            </div>
+          </div>
+          <div class="w3d-detail-capacity-info">
+            <div class="w3d-detail-cap-row">
+              <span class="w3d-detail-cap-label">Tồn kho</span>
+              <span class="w3d-detail-cap-value">${wh.stock.toLocaleString('vi-VN')} tấn</span>
+            </div>
+            <div class="w3d-detail-cap-row">
+              <span class="w3d-detail-cap-label">Diện tích</span>
+              <span class="w3d-detail-cap-value">${wh.area.toLocaleString('vi-VN')} m²</span>
+            </div>
+            <div class="w3d-detail-cap-row">
+              <span class="w3d-detail-cap-label">Zones</span>
+              <span class="w3d-detail-cap-value">${wh.zones} zones</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Environment -->
+        <div class="w3d-detail-env">
+          <div class="w3d-detail-env-card">
+            <i class="fas fa-thermometer-half" style="color:#ef4444"></i>
+            <div class="w3d-detail-env-val">${wh.temp}°C</div>
+            <div class="w3d-detail-env-label">Nhiệt độ</div>
+          </div>
+          <div class="w3d-detail-env-card">
+            <i class="fas fa-tint" style="color:#3b82f6"></i>
+            <div class="w3d-detail-env-val">${wh.humid}%</div>
+            <div class="w3d-detail-env-label">Độ ẩm</div>
+          </div>
+          <div class="w3d-detail-env-card">
+            <i class="fas fa-fan" style="color:#10b981"></i>
+            <div class="w3d-detail-env-val">Tốt</div>
+            <div class="w3d-detail-env-label">Thông gió</div>
+          </div>
+        </div>
+
+        <!-- Items List -->
+        <div class="w3d-detail-section">
+          <div class="w3d-detail-section-title"><i class="fas fa-cubes"></i> Hàng hóa tồn kho</div>
+          ${wh.items.map(([name, qty, unit]) => {
+            const pct = Math.round(qty / wh.stock * 100);
+            return `<div class="w3d-detail-item">
+              <div class="w3d-detail-item-top">
+                <span class="w3d-detail-item-name">${name}</span>
+                <span class="w3d-detail-item-qty">${typeof qty === 'number' ? qty.toLocaleString('vi-VN') : qty} ${unit}</span>
+              </div>
+              <div class="w3d-detail-item-bar-track">
+                <div class="w3d-detail-item-bar-fill" style="width:${pct}%;background:${fillColor}"></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <!-- Zone Usage -->
+        <div class="w3d-detail-section">
+          <div class="w3d-detail-section-title"><i class="fas fa-th-large"></i> Phân bổ theo Zone</div>
+          <div class="w3d-detail-zones-grid">
+            ${Array.from({ length: wh.zones }, (_, i) => {
+              const zFill = Math.round(Math.max(15, Math.min(100, wh.fill * (0.65 + Math.random() * 0.65))));
+              const zColor = zFill >= 90 ? '#ef4444' : zFill >= 70 ? '#f59e0b' : zFill >= 40 ? '#3b82f6' : '#10b981';
+              const zNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+              return `<div class="w3d-detail-zone-card">
+                <div class="w3d-detail-zone-name">Zone ${zNames[i] || (i + 1)}</div>
+                <div class="w3d-detail-zone-pct" style="color:${zColor}">${zFill}%</div>
+                <div class="w3d-detail-zone-bar"><div style="width:${zFill}%;background:${zColor}"></div></div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="w3d-detail-section">
+          <div class="w3d-detail-section-title"><i class="fas fa-history"></i> Hoạt động gần đây</div>
+          ${[
+            { type: 'Nhập', icon: 'fa-arrow-circle-down', color: '#10b981', code: 'RC-2026-' + (300 + whIdx * 13), qty: (10 + Math.random() * 25).toFixed(1), time: '14:' + String(30 - whIdx * 2).padStart(2, '0') },
+            { type: 'Xuất', icon: 'fa-arrow-circle-up', color: '#f59e0b', code: 'SH-2026-' + (200 + whIdx * 7), qty: (5 + Math.random() * 20).toFixed(1), time: '13:' + String(45 - whIdx * 3).padStart(2, '0') },
+            { type: 'Kiểm kê', icon: 'fa-clipboard-check', color: '#a78bfa', code: 'IC-2026-' + (100 + whIdx * 11), qty: '', time: '11:00' },
+          ].map(t => `<div class="w3d-detail-activity">
+            <div class="w3d-detail-activity-icon" style="background:${t.color}22;color:${t.color}"><i class="fas ${t.icon}"></i></div>
+            <div class="w3d-detail-activity-info">
+              <div class="w3d-detail-activity-type">${t.type} ${t.qty ? '— ' + t.qty + ' tấn' : ''}</div>
+              <div class="w3d-detail-activity-code">${t.code}</div>
+            </div>
+            <div class="w3d-detail-activity-time">${t.time}</div>
+          </div>`).join('')}
+        </div>
+
+        <!-- Actions -->
+        <div class="w3d-detail-actions">
+          <button class="w3d-detail-btn primary" onclick="w3dShowWhModal()"><i class="fas fa-expand-alt"></i> Chi tiết đầy đủ</button>
+          <button class="w3d-detail-btn secondary" onclick="w3dCloseWhDetail();navigateTo('inventory-core/on-hand')"><i class="fas fa-boxes"></i> Tồn kho</button>
+          <button class="w3d-detail-btn secondary" onclick="w3dCloseWhDetail();navigateTo('inbound/receipts')"><i class="fas fa-receipt"></i> Phiếu nhập</button>
+        </div>
+      </div>
+    `;
+  };
+
+  window.w3dCloseWhDetail = function() {
+    const panel = document.getElementById('w3d-detail-panel');
+    if (panel) panel.classList.remove('visible');
+  };
+
+  // ---- 4D MODE: Animated goods loading/unloading ----
+  let mode4DActive = false;
+  let mode4DGoods = []; // animated goods objects
+  let mode4DTruckTargets = []; // truck-to-warehouse assignments
+  let mode4DTimer = null;
+
+  window.w3dToggle4DMode = function() {
+    mode4DActive = !mode4DActive;
+    const btn = document.getElementById('btn-4d-mode');
+    if (btn) btn.classList.toggle('active', mode4DActive);
+    const indicator = document.getElementById('w3d-4d-indicator');
+    if (indicator) indicator.classList.toggle('visible', mode4DActive);
+
+    if (mode4DActive) {
+      start4DMode();
+    } else {
+      stop4DMode();
+    }
+  };
+
+  function start4DMode() {
+    // Assign trucks to warehouses for loading/unloading operations
+    mode4DTruckTargets = [];
+    const operations = [
+      { truckIdx: 0, whIdx: 0, type: 'inbound', label: 'Nhập hàng → WH5.1' },
+      { truckIdx: 1, whIdx: 3, type: 'inbound', label: 'Nhập hàng → WH5.4' },
+      { truckIdx: 2, whIdx: 6, type: 'outbound', label: 'Xuất hàng ← WH5.6.1' },
+      { truckIdx: 3, whIdx: 1, type: 'inbound', label: 'Nhập hàng → WH5.2' },
+      { truckIdx: 4, whIdx: 8, type: 'outbound', label: 'Xuất hàng ← WH5.7' },
+    ];
+
+    operations.forEach(op => {
+      const wh = WH_DATA[op.whIdx];
+      // Create operation target — truck will pause near warehouse door
+      const doorZ = wh.pos[2] + wh.depth / 2 + 12;
+      const doorX = wh.pos[0] + wh.width * 0.26;
+      mode4DTruckTargets.push({
+        ...op,
+        targetX: doorX,
+        targetZ: doorZ,
+        phase: 'traveling', // traveling → docking → loading → departing
+        phaseTimer: 0,
+        goodsGroup: new THREE.Group(),
+      });
+      scene.add(mode4DTruckTargets[mode4DTruckTargets.length - 1].goodsGroup);
+    });
+
+    // Start periodic goods spawn
+    mode4DTimer = setInterval(spawn4DGoods, 2500);
+    spawn4DGoods();
+  }
+
+  function stop4DMode() {
+    if (mode4DTimer) { clearInterval(mode4DTimer); mode4DTimer = null; }
+    // Remove all animated goods
+    mode4DGoods.forEach(g => { if (g.mesh && g.mesh.parent) g.mesh.parent.remove(g.mesh); });
+    mode4DGoods = [];
+    mode4DTruckTargets.forEach(t => {
+      if (t.goodsGroup) { scene.remove(t.goodsGroup); }
+    });
+    mode4DTruckTargets = [];
+  }
+
+  function spawn4DGoods() {
+    if (!mode4DActive) return;
+    mode4DTruckTargets.forEach((op, i) => {
+      const truck = trucks[op.truckIdx];
+      if (!truck) return;
+
+      // Create animated cargo box/bag
+      const isInbound = op.type === 'inbound';
+      const wh = WH_DATA[op.whIdx];
+      const goodsColors = [0xd4c5a0, 0xc9ba90, 0x8b6914, 0xb8a87a, 0x6b5a2e];
+      const goodsColor = goodsColors[Math.floor(Math.random() * goodsColors.length)];
+      const size = 1.5 + Math.random() * 2;
+
+      let mesh;
+      if (wh.type.includes('Bulk') || wh.type.includes('Clinker')) {
+        mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(size * 0.3, size * 0.6, size, 8),
+          new THREE.MeshStandardMaterial({ color: goodsColor, roughness: 0.85 })
+        );
+      } else if (wh.type.includes('Container')) {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(size * 1.2, size * 0.8, size * 2),
+          new THREE.MeshStandardMaterial({ color: [0x2563eb, 0xdc2626, 0x059669][Math.floor(Math.random() * 3)], roughness: 0.4, metalness: 0.7 })
+        );
+      } else {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(size, size * 0.6, size * 0.8),
+          new THREE.MeshStandardMaterial({ color: goodsColor, roughness: 0.8 })
+        );
+      }
+
+      mesh.castShadow = true;
+
+      // Start position near truck, target inside warehouse (or reverse for outbound)
+      const truckPos = truck.mesh.position;
+      const whInsideX = wh.pos[0] + (Math.random() - 0.5) * wh.width * 0.6;
+      const whInsideZ = wh.pos[2] + (Math.random() - 0.5) * wh.depth * 0.5;
+
+      let startPos, endPos;
+      if (isInbound) {
+        startPos = new THREE.Vector3(truckPos.x + (Math.random() - 0.5) * 8, 3 + Math.random() * 3, truckPos.z + (Math.random() - 0.5) * 8);
+        endPos = new THREE.Vector3(whInsideX, size * 0.3, whInsideZ);
+      } else {
+        startPos = new THREE.Vector3(whInsideX, size * 0.3, whInsideZ);
+        endPos = new THREE.Vector3(truckPos.x + (Math.random() - 0.5) * 8, 3 + Math.random() * 3, truckPos.z + (Math.random() - 0.5) * 8);
+      }
+
+      mesh.position.copy(startPos);
+      scene.add(mesh);
+
+      // Arc path: start → peak → end
+      const midY = Math.max(startPos.y, endPos.y) + 8 + Math.random() * 4;
+      const midPos = new THREE.Vector3(
+        (startPos.x + endPos.x) / 2 + (Math.random() - 0.5) * 5,
+        midY,
+        (startPos.z + endPos.z) / 2
+      );
+
+      mode4DGoods.push({
+        mesh,
+        startPos,
+        midPos,
+        endPos,
+        progress: 0,
+        speed: 0.008 + Math.random() * 0.006,
+        opType: op.type,
+        whIdx: op.whIdx,
+      });
+    });
+  }
+
+  function animate4DGoods(dt) {
+    if (!mode4DActive) return;
+    const toRemove = [];
+    mode4DGoods.forEach((g, idx) => {
+      g.progress += g.speed * dt * 0.06;
+      if (g.progress >= 1) {
+        toRemove.push(idx);
+        return;
+      }
+      // Quadratic Bezier interpolation for arc path
+      const t = g.progress;
+      const t1 = 1 - t;
+      const x = t1 * t1 * g.startPos.x + 2 * t1 * t * g.midPos.x + t * t * g.endPos.x;
+      const y = t1 * t1 * g.startPos.y + 2 * t1 * t * g.midPos.y + t * t * g.endPos.y;
+      const z = t1 * t1 * g.startPos.z + 2 * t1 * t * g.midPos.z + t * t * g.endPos.z;
+      g.mesh.position.set(x, y, z);
+      g.mesh.rotation.y += dt * 0.002;
+      // Fade out near end
+      if (t > 0.85) {
+        g.mesh.material.transparent = true;
+        g.mesh.material.opacity = Math.max(0, 1 - (t - 0.85) / 0.15);
+      }
+    });
+    // Remove finished goods (reverse order)
+    toRemove.sort((a, b) => b - a).forEach(idx => {
+      const g = mode4DGoods[idx];
+      if (g.mesh.parent) g.mesh.parent.remove(g.mesh);
+      if (g.mesh.geometry) g.mesh.geometry.dispose();
+      if (g.mesh.material) g.mesh.material.dispose();
+      mode4DGoods.splice(idx, 1);
+    });
+  }
 
   // ---- FULLSCREEN ----
   window.w3dToggleFullscreen = function() {
@@ -2023,6 +2344,7 @@ function initWarehouse3D() {
     else if (key === 'f') w3dToggleFullscreen();
     else if (key === 'escape') {
       w3dCloseModal();
+      w3dCloseWhDetail();
       w3dClearSearch();
     }
     // WASD movement in free mode
@@ -2052,6 +2374,7 @@ function initWarehouse3D() {
     if (effectsOn) animateParticles(now);
     animateFlythrough(dt);
     animatePulse(dt);
+    animate4DGoods(dt);
 
     // Minimap every ~5 frames
     if (Math.round(now / 16) % 5 === 0) renderMinimap();
@@ -2068,6 +2391,7 @@ function initWarehouse3D() {
   window.warehouse3dInstance = {
     dispose: function() {
       cancelAnimationFrame(animFrameId);
+      if (mode4DActive) stop4DMode();
       renderer.dispose();
       window.removeEventListener('resize', handleResize);
     }

@@ -17,6 +17,7 @@ export const WarehouseGroup = memo(function WarehouseGroup() {
           isSelected={state.selectedWhIndex === idx}
           heatmapActive={state.heatmapActive}
           showLabels={state.settings.labels}
+          showRoof={state.settings.roof}
         />
       ))}
     </group>

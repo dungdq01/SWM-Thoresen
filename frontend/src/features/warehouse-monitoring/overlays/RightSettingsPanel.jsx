@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Tag, Truck, Grid3X3, CloudFog, Sun } from 'lucide-react'
+import { Tag, Truck, Grid3X3, CloudFog, Sun, Home } from 'lucide-react'
 import { useWarehouse3D } from '../hooks/useWarehouse3DStore'
 
 const settingItems = [
@@ -8,6 +8,7 @@ const settingItems = [
   { key: 'grid', icon: Grid3X3, label: 'Lưới nền' },
   { key: 'fog', icon: CloudFog, label: 'Sương mù' },
   { key: 'shadows', icon: Sun, label: 'Bóng đổ' },
+  { key: 'roof', icon: Home, label: 'Mái kho' },
 ]
 
 export const RightSettingsPanel = memo(function RightSettingsPanel() {

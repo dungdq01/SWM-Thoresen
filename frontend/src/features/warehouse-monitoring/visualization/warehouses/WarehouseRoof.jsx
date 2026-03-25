@@ -1,39 +1,53 @@
 import { memo, useMemo } from 'react'
 import * as THREE from 'three'
-import { WALL_HEIGHT, ROOF_PEAK, ROOF_OVERHANG } from '../../data/warehouseData'
+import { WALL_HEIGHT, ROOF_OVERHANG } from '../../data/warehouseData'
 
 export const WarehouseRoof = memo(function WarehouseRoof({ wh, heatmapColor }) {
-  const rW = wh.width / 2 + ROOF_OVERHANG
-  const rD = wh.depth / 2 + ROOF_OVERHANG
-
-  const roofGeo = useMemo(() => {
-    const shape = new THREE.Shape()
-    shape.moveTo(-rW, 0)
-    shape.lineTo(0, ROOF_PEAK)
-    shape.lineTo(rW, 0)
-    shape.lineTo(-rW, 0)
-    return new THREE.ExtrudeGeometry(shape, { depth: rD * 2, bevelEnabled: false })
-  }, [rW, rD])
+  const overhang = ROOF_OVERHANG
+  const roofW = wh.width + overhang * 2
+  const roofD = wh.depth + overhang * 2
+  const roofThick = 1.5
+  const roofY = WALL_HEIGHT + roofThick / 2
 
   const roofColor = useMemo(() => {
-    return new THREE.Color(heatmapColor || wh.color).offsetHSL(0, -0.1, -0.22)
+    return new THREE.Color(heatmapColor || wh.color).offsetHSL(0, -0.08, -0.18)
   }, [wh.color, heatmapColor])
 
   const roofMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: roofColor, roughness: 0.65, metalness: 0.2, side: THREE.DoubleSide
+    color: roofColor, roughness: 0.55, metalness: 0.35, side: THREE.DoubleSide
   }), [roofColor])
 
-  const gutterMat = useMemo(() => new THREE.MeshStandardMaterial({ color: 0x6b7280, metalness: 0.7, roughness: 0.3 }), [])
+  const edgeMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: 0x64748b, metalness: 0.6, roughness: 0.3
+  }), [])
+
+  const edgeH = 1.2
+  const edgeThick = 0.8
 
   return (
     <group>
-      <mesh geometry={roofGeo} material={roofMat} rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT, rD]} castShadow />
-      {/* Gutters */}
-      {[-rD, rD].map(gz => (
-        <mesh key={gz} position={[0, WALL_HEIGHT + 0.3, gz]} material={gutterMat}>
-          <boxGeometry args={[rW * 2, 0.6, 1]} />
-        </mesh>
-      ))}
+      {/* Flat roof slab */}
+      <mesh position={[0, roofY, 0]} material={roofMat} castShadow receiveShadow>
+        <boxGeometry args={[roofW, roofThick, roofD]} />
+      </mesh>
+
+      {/* Edge trims — 4 sides */}
+      {/* Front */}
+      <mesh position={[0, roofY + roofThick / 2 + edgeH / 2, -roofD / 2 + edgeThick / 2]} material={edgeMat}>
+        <boxGeometry args={[roofW, edgeH, edgeThick]} />
+      </mesh>
+      {/* Back */}
+      <mesh position={[0, roofY + roofThick / 2 + edgeH / 2, roofD / 2 - edgeThick / 2]} material={edgeMat}>
+        <boxGeometry args={[roofW, edgeH, edgeThick]} />
+      </mesh>
+      {/* Left */}
+      <mesh position={[-roofW / 2 + edgeThick / 2, roofY + roofThick / 2 + edgeH / 2, 0]} material={edgeMat}>
+        <boxGeometry args={[edgeThick, edgeH, roofD]} />
+      </mesh>
+      {/* Right */}
+      <mesh position={[roofW / 2 - edgeThick / 2, roofY + roofThick / 2 + edgeH / 2, 0]} material={edgeMat}>
+        <boxGeometry args={[edgeThick, edgeH, roofD]} />
+      </mesh>
     </group>
   )
 })
