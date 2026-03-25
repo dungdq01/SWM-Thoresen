@@ -347,3 +347,158 @@ VALIDATED → WEIGHING (Đã cân lần 1 gross) → COMPLETED (Đã cân lần 
 | Cân sau | Gross (xe có hàng) | Tare (xe rỗng) |
 | Event code | SHIP_CONFIRMED | GOODS_RECEIVED |
 | dim | dimFrom (vị trí lấy) | dimTo (vị trí dỡ) |
+
+---
+
+## Thiết kế Multi-Item ASN (N items → N+1 lần cân)
+
+### Nguyên tắc cốt lõi
+
+Một xe có thể chở **nhiều loại hàng**. Để biết chính xác khối lượng từng loại, xe cần cân **N+1 lần** (N = số lần dỡ). Giữa mỗi 2 lần cân phải **dỡ ít nhất 1 item**. Net weight = lần cân trước − lần cân sau.
+
+### Ví dụ minh họa
+
+ASN có 3 items: Gạo (A), Phân bón (B), Xi măng (C)
+
+```
+Lần cân 1 (Gross):  50.000 kg   ← Xe đầy A+B+C
+  → Dỡ Gạo (A) vào WH02-B-01
+Lần cân 2:          35.000 kg   → Net A = 50.000 - 35.000 = 15.000 kg ✓
+  → Dỡ Phân bón (B) vào WH03-STG-01
+Lần cân 3:          18.000 kg   → Net B = 35.000 - 18.000 = 17.000 kg ✓
+  → Dỡ Xi măng (C) vào WH01-B-01
+Lần cân 4 (Tare):    5.000 kg   → Net C = 18.000 -  5.000 = 13.000 kg ✓
+```
+
+**Tổng net = 15.000 + 17.000 + 13.000 = 45.000 kg = Gross − Tare**
+
+### Trạng thái ASN theo từng giai đoạn
+
+| Giai đoạn | ASN Status | Mô tả |
+|-----------|-----------|-------|
+| Tạo ASN | **NEW** | Mới tạo |
+| Xác nhận ASN | **CONFIRMED** | Đã duyệt, chờ tạo phiếu cân |
+| Tạo phiếu cân | **AWAITING_WEIGHING** | Chờ xác nhận phiếu cân |
+| Xác nhận phiếu cân | **WEIGHING_1** | Phiếu cân sẵn sàng |
+| Ghi cân lần 1 (gross) | **UNLOADING** | Đã cân xe đầy, bắt đầu dỡ hàng |
+| Dỡ item A + chọn vị trí | **UNLOADING** | Đang dỡ (1/3 items xong) |
+| Ghi cân lần 2 | **UNLOADING** | Net A tính xong, tiếp tục dỡ |
+| Dỡ item B + chọn vị trí | **UNLOADING** | Đang dỡ (2/3 items xong) |
+| Ghi cân lần 3 | **UNLOADING** | Net B tính xong, tiếp tục dỡ |
+| Dỡ item C + chọn vị trí | **UNLOADING** | Đang dỡ (3/3 items xong) |
+| Ghi cân lần cuối (tare) | **COMPLETED** | Net C tính xong, tất cả done |
+
+> **Lưu ý:** ASN ở **UNLOADING** suốt quá trình dỡ hàng. Chỉ chuyển **COMPLETED** khi cân lần cuối (tare — xe rỗng, không còn hàng).
+
+### Trạng thái Receipt Line theo từng giai đoạn
+
+| Giai đoạn | Line A | Line B | Line C |
+|-----------|--------|--------|--------|
+| Sau cân lần 1 | OPEN | OPEN | OPEN |
+| Dỡ item A | **UNLOADED** | OPEN | OPEN |
+| Sau cân lần 2 | **WEIGHED** (net=15k) | OPEN | OPEN |
+| Dỡ item B | WEIGHED | **UNLOADED** | OPEN |
+| Sau cân lần 3 | WEIGHED | **WEIGHED** (net=17k) | OPEN |
+| Dỡ item C | WEIGHED | WEIGHED | **UNLOADED** |
+| Sau cân lần 4 (tare) | **RECEIVED** (net=15k) | **RECEIVED** (net=17k) | **RECEIVED** (net=13k) |
+
+### Receipt Line Status mới (cần thêm)
+
+```
+OPEN      - Chưa dỡ, chờ trên xe
+UNLOADED  - Đã dỡ xuống kho, chờ cân tiếp để tính net
+WEIGHED   - Đã tính net weight (lần cân sau − lần cân trước)
+RECEIVED  - Hoàn thành — đã post inventory (sau cân lần cuối)
+CANCELLED - Đã hủy
+```
+
+### Phiếu cân — Hỗ trợ nhiều lần cân (weighing sequence)
+
+Hiện tại 1 phiếu cân = 2 lần cân (gross + tare). Với multi-item, cần **1 phiếu cân = N+1 lần cân**.
+
+**Cấu trúc mới cho phiếu cân:**
+
+| Field | Mô tả |
+|-------|-------|
+| `weighingSequence` | Lần cân thứ mấy (1, 2, 3, ..., N+1) |
+| `totalSequences` | Tổng số lần cân dự kiến (N+1) |
+| `weightRecords[]` | Mảng ghi nhận trọng lượng mỗi lần |
+
+**Mỗi weight record:**
+
+| Field | Mô tả | Ví dụ |
+|-------|-------|-------|
+| `sequence` | Lần cân thứ mấy | 2 |
+| `weightKg` | Trọng lượng | 35.000 |
+| `recordedAt` | Thời gian cân | 2026-03-25 11:30 |
+| `unloadedLineIds` | Item(s) đã dỡ **trước** lần cân này | [line_A_id] |
+| `netWeightKg` | = weight lần trước − weight lần này | 15.000 |
+
+### Validation Rules cho Multi-Item
+
+| Rule | Mô tả |
+|------|-------|
+| **Phải dỡ trước khi cân tiếp** | Giữa lần cân N và N+1, phải có ít nhất 1 line chuyển OPEN → UNLOADED |
+| **Không dỡ cùng lúc nhiều nhóm** | Sau khi dỡ, phải cân rồi mới dỡ tiếp (optional — có thể dỡ nhiều item giữa 2 lần cân) |
+| **Lần cân cuối = tare** | Khi tất cả lines đã WEIGHED, lần cân tiếp là lần cuối → xe rỗng |
+| **Net = lần trước − lần sau** | Vì inbound cân vào, xe nhẹ dần sau mỗi lần dỡ |
+| **Tổng net = Gross − Tare** | SUM(net tất cả items) phải = cân lần 1 − cân lần cuối |
+
+### Flow UI cho Multi-Item
+
+**Trang dỡ hàng:**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ASN-20260325-001    Xe: 51C-12345         Status: UNLOADING │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Lịch sử cân:                                               │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ Lần 1: 50.000 kg (Gross)     25/03 11:00           │     │
+│  │ Lần 2: 35.000 kg             25/03 11:30           │     │
+│  │   → Net Gạo (A) = 15.000 kg ✓                     │     │
+│  │ Lần 3: 18.000 kg             25/03 12:00           │     │
+│  │   → Net Phân bón (B) = 17.000 kg ✓                │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                                                              │
+│  Chưa dỡ (1):                                               │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ 3. Xi măng (C) — CLINKER                           │     │
+│  │    [Chọn vị trí ▼]            [Dỡ xuống kho]      │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                                                              │
+│  Đã dỡ — chờ cân (0):                                       │
+│  (không có — tất cả đã cân xong hoặc chưa dỡ)              │
+│                                                              │
+│  Đã hoàn thành (2):                                          │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ 1. Gạo (A) → WH02-B-01  — Net: 15.000 kg ✓       │     │
+│  │ 2. Phân bón (B) → WH03-STG-01 — Net: 17.000 kg ✓ │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                                                              │
+│  [→ Đưa xe đi cân]  (khi có ít nhất 1 item UNLOADED)       │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Thay đổi Database cần thiết
+
+| Bảng | Thay đổi | Mô tả |
+|------|---------|-------|
+| `receipt_line` | Thêm `weigh_sequence_no` | Lần cân nào tính net cho line này |
+| `receipt_line` | Thêm `unload_sequence_no` | ✅ Đã có |
+| `receipt_line` | Thêm `location_id` | ✅ Đã có |
+| `receipt_line` | Sửa enum `ReceiptLineStatus` | Thêm `UNLOADED`, `WEIGHED` |
+| `m8_weighbridge_log` | Thêm `weight_records` JSON | Mảng ghi lại trọng lượng mỗi lần |
+| `m8_weighbridge_log` | Hoặc tạo bảng `weighbridge_weight_record` | 1-N relation |
+
+### So sánh Single-Item vs Multi-Item
+
+| | Single-Item (hiện tại) | Multi-Item (mới) |
+|--|----------------------|-----------------|
+| Số lần cân | 2 (gross + tare) | N+1 |
+| Phân bổ net | Toàn bộ cho 1 line | Mỗi line = lần trước − lần sau |
+| Dỡ hàng | Dỡ tất cả → hoàn thành → cân tare | Dỡ từng nhóm → cân → dỡ tiếp → cân → ... |
+| ASN status | UNLOADING → UNLOADED → COMPLETED | UNLOADING suốt → COMPLETED khi cân cuối |
+| Inventory posting | 1 lần sau cân tare | Mỗi lần cân → post cho items vừa dỡ |
