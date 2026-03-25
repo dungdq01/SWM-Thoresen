@@ -14,6 +14,7 @@ import { WarehouseGroup } from './warehouses/WarehouseGroup'
 import { TruckGroup } from './vehicles/TruckGroup'
 import { ForkliftGroup } from './vehicles/ForkliftGroup'
 import { HeatmapEffect } from './effects/HeatmapEffect'
+import { AnimatedGoods4D } from './effects/AnimatedGoods4D'
 import { CameraController } from './camera/CameraController'
 import { OverlayContainer } from '../overlays/OverlayContainer'
 
@@ -40,6 +41,7 @@ function SceneContent() {
       <WarehouseGroup />
       <AmbientParticles />
       <HeatmapEffect />
+      <AnimatedGoods4D />
       <CameraController />
     </>
   )

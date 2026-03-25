@@ -16,6 +16,31 @@ export const FORKLIFT_PATHS = [
   { path: [[-180, 115], [-110, 115], [-50, 115], [-50, 205], [-110, 205], [-180, 205], [-180, 115]], speed: 0.13 },
 ];
 
+// 4D mode: truck docking positions near warehouse doors
+// Each entry maps truckIdx → warehouse for loading/unloading
+import { WH_DATA } from './warehouseData'
+
+export const TRUCK_4D_OPERATIONS = [
+  { truckIdx: 0, whIdx: 0, type: 'inbound', label: 'Nhập hàng → WH5.1' },
+  { truckIdx: 1, whIdx: 3, type: 'inbound', label: 'Nhập hàng → WH5.4' },
+  { truckIdx: 2, whIdx: 6, type: 'outbound', label: 'Xuất hàng ← WH5.6.1' },
+  { truckIdx: 3, whIdx: 1, type: 'inbound', label: 'Nhập hàng → WH5.2' },
+  { truckIdx: 4, whIdx: 8, type: 'outbound', label: 'Xuất hàng ← WH5.7' },
+]
+
+// Compute docking position for each 4D operation (truck parks near warehouse door)
+export function getTruck4DDockingPos(opIdx) {
+  const op = TRUCK_4D_OPERATIONS[opIdx]
+  if (!op) return null
+  const wh = WH_DATA[op.whIdx]
+  if (!wh) return null
+  const doorX = wh.pos[0] + wh.width * 0.26
+  const doorZ = wh.pos[2] + wh.depth / 2 + 15
+  // Face toward warehouse (angle pointing -Z)
+  const angle = Math.PI
+  return { x: doorX, z: doorZ, angle }
+}
+
 export function precomputeSegments(waypoints) {
   const segDists = [];
   let totalDist = 0;

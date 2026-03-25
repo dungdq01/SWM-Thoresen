@@ -11,7 +11,7 @@ import { WarehouseExterior } from './WarehouseExterior'
 import { WarehouseLabel } from './WarehouseLabel'
 import { WarehouseShelvingRacks } from './WarehouseShelvingRacks'
 
-export const WarehouseBuilding = memo(function WarehouseBuilding({ wh, index, isHovered, isSelected, heatmapActive, showLabels }) {
+export const WarehouseBuilding = memo(function WarehouseBuilding({ wh, index, isHovered, isSelected, heatmapActive, showLabels, showRoof }) {
   const { actions } = useWarehouse3D()
   const groupRef = useRef()
 
@@ -161,7 +161,7 @@ export const WarehouseBuilding = memo(function WarehouseBuilding({ wh, index, is
       </mesh>
 
       {/* Sub-components */}
-      <WarehouseRoof wh={wh} heatmapColor={heatmapColor} />
+      {showRoof && <WarehouseRoof wh={wh} heatmapColor={heatmapColor} />}
       <WarehouseInterior wh={wh} />
       <WarehouseZones wh={wh} />
       <WarehouseInventory wh={wh} />

@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react'
-import { Eye, Map, Plane, Gamepad2, RotateCcw, Maximize, Sun, Moon, Thermometer, Sparkles } from 'lucide-react'
+import { Eye, Map, Plane, Gamepad2, RotateCcw, Maximize, Sun, Moon, Thermometer, Sparkles, Truck } from 'lucide-react'
 import { useWarehouse3D } from '../hooks/useWarehouse3DStore'
 
 const cameraModes = [
@@ -67,6 +67,16 @@ export const Toolbar = memo(function Toolbar() {
           title="Hiệu ứng"
         >
           <Sparkles className="w-4 h-4" />
+        </button>
+        <button
+          onClick={actions.toggle4D}
+          className={`p-2 rounded-lg transition-all relative ${state.mode4D ? 'bg-amber-500/25 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+          title="Chế độ 4D — Mô phỏng nhập/xuất hàng"
+        >
+          <Truck className="w-4 h-4" />
+          {state.mode4D && (
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+          )}
         </button>
         <button onClick={handleReset} className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all" title="Reset">
           <RotateCcw className="w-4 h-4" />
