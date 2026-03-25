@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { WeighbridgeLogRepository, WeighLogQueryParams } from '../repositories/weighbridge-log.repository';
 import { WeighbridgeEventStateRepository } from '../repositories/weighbridge-event-state.repository';
@@ -244,114 +244,37 @@ export class WeighbridgeLogService {
 
     this.logger.log(`recordWeight id=${id} grossWeightKg=${log.grossWeightKg} tareWeightKg=${log.tareWeightKg}`);
 
-    // Lần 1: chưa có grossWeightKg → ghi gross, chuyển trạng thái sang WEIGHING
+    // ─── INBOUND MULTI-ITEM WEIGHING (N+1 lần cân) ───
+    if (log.weighingType === 'WEIGH_IN' && log.receiptId) {
+      return this.recordInboundWeight(id, log, data.weightKg, now);
+    }
+
+    // ─── OUTBOUND (giữ nguyên logic 2 lần cân) ───
+    // Lần 1: chưa có grossWeightKg → ghi gross
     if (log.grossWeightKg == null) {
-      await this.logRepo.update(id, {
-        grossWeightKg: data.weightKg,
-        grossWeightAt: now,
-      });
-      await this.eventStateRepo.updateByLogId(id, {
-        processingStatus: WeighEventProcessingStatus.WEIGHING as any,
-      });
-
-      // Update receipt status after gross weight recorded:
-      // AWAITING_WEIGHING/CONFIRMED → WEIGHING_1, then check unloading status
-      // If not unloaded → UNLOADING (show on unloading page)
-      // If already unloaded → stay WEIGHING_1 (will go UNLOADED later)
-      if (log.receiptId) {
-        try {
-          const receipt = await this.prisma.receiptHeader.findUnique({
-            where: { id: log.receiptId },
-            select: { status: true },
-          });
-          if (receipt && ['AWAITING_WEIGHING', 'CONFIRMED', 'WEIGHING_1'].includes(receipt.status)) {
-            // Check if all lines already unloaded
-            const lines = await this.prisma.receiptLine.findMany({ where: { receiptHeaderId: log.receiptId } });
-            const allUnloaded = lines.length > 0 && lines.every(l => l.status === 'RECEIVED' || l.status === 'CANCELLED');
-
-            // Determine target status
-            const targetStatus = allUnloaded ? 'UNLOADED' : 'UNLOADING';
-
-            await this.prisma.receiptHeader.update({
-              where: { id: log.receiptId },
-              data: { status: targetStatus },
-            });
-            await this.prisma.receiptStatusHistory.create({
-              data: {
-                receiptHeaderId: log.receiptId,
-                fromStatus: receipt.status,
-                toStatus: targetStatus,
-                transitionCode: 'WEIGH_IN',
-                triggeredBy: undefined,
-                correlationId: log.receiptId,
-                occurredAt: now,
-              },
-            });
-            this.logger.log(`Receipt ${log.receiptId} status: ${receipt.status} → ${targetStatus}`);
-          }
-        } catch (e: any) {
-          this.logger.warn(`Failed to update receipt status on gross weight: ${e.message}`);
-        }
-      }
-
+      await this.logRepo.update(id, { grossWeightKg: data.weightKg, grossWeightAt: now });
+      await this.eventStateRepo.updateByLogId(id, { processingStatus: WeighEventProcessingStatus.WEIGHING as any });
       return { id, grossWeightKg: data.weightKg, grossWeightAt: now, processingStatus: WeighEventProcessingStatus.WEIGHING };
     }
 
-    // Lần 2: đã có gross, chưa có tare → ghi tare + tính net, chuyển trạng thái sang COMPLETED
+    // Lần 2: ghi tare
     if (log.tareWeightKg == null) {
-      // Outbound: kiểm tra xe đã xếp hàng xong chưa trước khi cho cân lần 2
       if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
-        const shipment = await this.prisma.shipmentHeader.findUnique({
-          where: { id: log.shipmentId },
-          select: { status: true },
-        });
+        const shipment = await this.prisma.shipmentHeader.findUnique({ where: { id: log.shipmentId }, select: { status: true } });
         if (shipment && shipment.status !== 'LOADED') {
-          throw new BadRequestException(
-            'Xe chưa xếp hàng xong. Vui lòng hoàn thành xếp hàng trước khi cân lần 2.',
-          );
-        }
-      }
-
-      // Inbound: kiểm tra đã dỡ hàng xong chưa trước khi cho cân lần 2
-      if (log.weighingType === 'WEIGH_IN' && log.receiptId) {
-        const receipt = await this.prisma.receiptHeader.findUnique({
-          where: { id: log.receiptId },
-          select: { status: true },
-        });
-        // Chỉ cho cân lần 2 khi receipt ở UNLOADED
-        if (receipt && receipt.status !== 'UNLOADED') {
-          throw new BadRequestException(
-            'Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2.',
-          );
+          throw new BadRequestException('Xe chưa xếp hàng xong. Vui lòng hoàn thành xếp hàng trước khi cân lần 2.');
         }
       }
 
       const grossWeight = Number(log.grossWeightKg);
       const tareWeight = data.weightKg;
-
-      // Validation: Cân ra (WEIGH_OUT) - Lần 1 xe trống, Lần 2 xe đầy → TL lần 2 không được nhỏ hơn TL lần 1
       if (log.weighingType === 'WEIGH_OUT' && tareWeight < grossWeight) {
-        throw new WeighbridgeError(
-          IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
-          `Trọng lượng lần 2 (${tareWeight} kg) không được nhỏ hơn trọng lượng lần 1 (${grossWeight} kg)`,
-        );
+        throw new WeighbridgeError(IntegrationErrorCodes.INVALID_WEIGHING_TYPE, `TL lần 2 (${tareWeight} kg) < TL lần 1 (${grossWeight} kg)`);
       }
+      const netWeightKg = log.weighingType === 'WEIGH_OUT' ? tareWeight - grossWeight : grossWeight - tareWeight;
 
-      // Công thức tính net weight:
-      // - Cân ra (WEIGH_OUT): Lần 1 xe trống, Lần 2 xe đầy → TL ròng = TL lần 2 - TL lần 1
-      // - Cân vào (WEIGH_IN): Lần 1 xe đầy, Lần 2 xe trống → TL ròng = TL lần 1 - TL lần 2
-      const netWeightKg = log.weighingType === 'WEIGH_OUT'
-        ? tareWeight - grossWeight  // Cân ra: lần 2 - lần 1
-        : grossWeight - tareWeight; // Cân vào: lần 1 - lần 2
-
-      await this.logRepo.update(id, {
-        tareWeightKg: tareWeight,
-        tareWeightAt: now,
-        netWeightKg: Math.abs(netWeightKg),
-      });
-      await this.eventStateRepo.updateByLogId(id, {
-        processingStatus: WeighEventProcessingStatus.COMPLETED as any,
-      });
+      await this.logRepo.update(id, { tareWeightKg: tareWeight, tareWeightAt: now, netWeightKg: Math.abs(netWeightKg) });
+      await this.eventStateRepo.updateByLogId(id, { processingStatus: WeighEventProcessingStatus.COMPLETED as any });
 
       // Sync net weight back to shipment lines and post inventory transaction
       if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
@@ -436,134 +359,217 @@ export class WeighbridgeLogService {
         this.logger.log(`Synced net weight ${absNet} kg to shipment ${log.shipmentId}`);
       }
 
-      // Inbound: Sync net weight to receipt lines + post GOODS_RECEIVED inventory transaction
-      if (log.weighingType === 'WEIGH_IN' && log.receiptId) {
-        const absNet = Math.abs(netWeightKg);
-        const receipt = await this.prisma.receiptHeader.findUnique({
-          where: { id: log.receiptId },
-          include: {
-            warehouse: { select: { warehouseCode: true } },
-            owner: { select: { ownerCode: true } },
-            lines: {
-              where: { status: { not: 'CANCELLED' } },
-              include: {
-                item: { select: { itemCode: true } },
-                uom: { select: { uomCode: true } },
-                location: { select: { locationCode: true } },
-              },
-            },
-          },
-        });
-
-        if (receipt) {
-          const lines = receipt.lines;
-          // Update receivedQty + netWeightKg on receipt lines (proportional split)
-          if (lines.length === 1) {
-            await this.prisma.receiptLine.update({
-              where: { id: lines[0].id },
-              data: { receivedQty: absNet, netWeightKg: absNet },
-            });
-          } else if (lines.length > 1) {
-            const totalExpected = lines.reduce((s, l) => s + Number(l.expectedQty), 0);
-            for (const line of lines) {
-              const ratio = totalExpected > 0 ? Number(line.expectedQty) / totalExpected : 1 / lines.length;
-              const lineNet = Math.round(absNet * ratio * 1000) / 1000;
-              await this.prisma.receiptLine.update({
-                where: { id: line.id },
-                data: { receivedQty: lineNet, netWeightKg: lineNet },
-              });
-            }
-          }
-
-          // Update receipt header weights + status → WEIGHING_2 then COMPLETED
-          const prevStatus = receipt.status;
-          await this.prisma.receiptHeader.update({
-            where: { id: log.receiptId },
-            data: {
-              grossWeightKg: Number(log.grossWeightKg),
-              tareWeightKg: data.weightKg,
-              netWeightKg: absNet,
-              status: 'COMPLETED',
-            },
-          });
-
-          // Log status transitions: UNLOADED → WEIGHING_2 → COMPLETED
-          if (prevStatus !== 'COMPLETED') {
-            await this.prisma.receiptStatusHistory.create({
-              data: {
-                receiptHeaderId: log.receiptId,
-                fromStatus: prevStatus,
-                toStatus: 'WEIGHING_2',
-                transitionCode: 'WEIGH_OUT',
-                triggeredBy: undefined,
-                correlationId: log.receiptId,
-                occurredAt: now,
-              },
-            });
-            await this.prisma.receiptStatusHistory.create({
-              data: {
-                receiptHeaderId: log.receiptId,
-                fromStatus: 'WEIGHING_2',
-                toStatus: 'COMPLETED',
-                transitionCode: 'AUTO_ACCEPT',
-                triggeredBy: undefined,
-                correlationId: log.receiptId,
-                occurredAt: now,
-              },
-            });
-            this.logger.log(`Receipt ${log.receiptId} status: ${prevStatus} → WEIGHING_2 → COMPLETED`);
-          }
-
-          // Post GOODS_RECEIVED inventory transaction for each line
-          try {
-            const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
-            const postingEngine = new PostingEngineService(this.prisma);
-
-            for (const line of lines) {
-              const lineNet = lines.length === 1
-                ? absNet
-                : Math.round(absNet * (Number(line.expectedQty) / lines.reduce((s, l) => s + Number(l.expectedQty), 0)) * 1000) / 1000;
-
-              if (lineNet <= 0) continue;
-
-              await postingEngine.postInventory({
-                externalId: `RCV-${log.receiptId}-${line.id}-${Date.now()}`,
-                correlationId: `RCV-${receipt.receiptNumber || log.receiptId}`,
-                eventCode: 'GOODS_RECEIVED',
-                refType: 'RECEIPT',
-                refId: log.receiptId,
-                refLineId: line.id,
-                itemId: line.itemId,
-                qty: String(lineNet),
-                uomCode: (line as any).uom?.uomCode || 'KG',
-                dimTo: {
-                  warehouseCode: receipt.warehouse?.warehouseCode,
-                  locationCode: (line as any).location?.locationCode || undefined,
-                  ownerCode: receipt.owner?.ownerCode,
-                  statusCode: 'AVAILABLE',
-                },
-                sourceApp: 'SYSTEM',
-                postedBy: undefined,
-                weighbridgeTicketId: id,
-              });
-
-              this.logger.log(`Posted GOODS_RECEIVED for receipt line ${line.id}, qty=${lineNet} kg`);
-            }
-          } catch (postErr) {
-            this.logger.error(`Error posting inventory for receipt ${log.receiptId}`, postErr);
-          }
-
-          this.logger.log(`Synced net weight ${absNet} kg to receipt ${log.receiptId}`);
-        }
-      }
-
       return { id, tareWeightKg: data.weightKg, tareWeightAt: now, netWeightKg: Math.abs(netWeightKg), processingStatus: WeighEventProcessingStatus.COMPLETED };
     }
 
-    throw new WeighbridgeError(
-      IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
-      'Both weights have already been recorded',
-    );
+    throw new WeighbridgeError(IntegrationErrorCodes.INVALID_WEIGHING_TYPE, 'Both weights have already been recorded');
+  }
+
+  /**
+   * Multi-item inbound weighing: N items → N+1 lần cân
+   * Mỗi lần cân: net = lần trước − lần này, gán cho items đã dỡ giữa 2 lần cân
+   */
+  private async recordInboundWeight(logId: string, log: any, weightKg: number, now: Date) {
+    const receiptId = log.receiptId!;
+
+    // Get existing weight records
+    let existingRecords = await this.prisma.weighbridgeWeightRecord.findMany({
+      where: { weighbridgeLogId: logId },
+      orderBy: { sequence: 'asc' },
+    });
+
+    const receipt = await this.prisma.receiptHeader.findUnique({
+      where: { id: receiptId },
+      include: {
+        warehouse: { select: { warehouseCode: true } },
+        owner: { select: { ownerCode: true } },
+        lines: {
+          where: { status: { not: 'CANCELLED' } },
+          include: {
+            item: { select: { itemCode: true } },
+            uom: { select: { uomCode: true } },
+            location: { select: { locationCode: true } },
+          },
+        },
+      },
+    }) as any;
+    if (!receipt) throw new NotFoundException('Receipt not found');
+
+    // Backward compat: nếu gross đã ghi (flow cũ) nhưng chưa có WeightRecord, tạo record lần 1
+    if (existingRecords.length === 0 && log.grossWeightKg != null) {
+      await this.prisma.weighbridgeWeightRecord.create({
+        data: {
+          weighbridgeLogId: logId,
+          sequence: 1,
+          weightKg: Number(log.grossWeightKg),
+          recordedAt: log.grossWeightAt || now,
+          isFinal: false,
+        },
+      });
+      existingRecords = await this.prisma.weighbridgeWeightRecord.findMany({
+        where: { weighbridgeLogId: logId },
+        orderBy: { sequence: 'asc' },
+      });
+      this.logger.log(`Created retroactive weight record #1 from existing grossWeightKg=${log.grossWeightKg}`);
+    }
+
+    const nextSequence = existingRecords.length + 1;
+
+    // ─── Lần 1: Gross (xe đầy hàng) ───
+    if (existingRecords.length === 0) {
+      await this.prisma.weighbridgeWeightRecord.create({
+        data: {
+          weighbridgeLogId: logId,
+          sequence: 1,
+          weightKg,
+          recordedAt: now,
+          isFinal: false,
+        },
+      });
+
+      await this.logRepo.update(logId, { grossWeightKg: weightKg, grossWeightAt: now });
+      await this.eventStateRepo.updateByLogId(logId, { processingStatus: WeighEventProcessingStatus.WEIGHING as any });
+
+      // Receipt → UNLOADING
+      const prevStatus = receipt.status;
+      if (prevStatus !== 'UNLOADING') {
+        await this.prisma.receiptHeader.update({ where: { id: receiptId }, data: { status: 'UNLOADING' } });
+        await this.prisma.receiptStatusHistory.create({
+          data: { receiptHeaderId: receiptId, fromStatus: prevStatus, toStatus: 'UNLOADING', transitionCode: 'WEIGH_IN_GROSS', triggeredBy: undefined, correlationId: receiptId, occurredAt: now },
+        });
+      }
+
+      this.logger.log(`Inbound weighing #1 (gross): ${weightKg} kg for receipt ${receiptId}`);
+      return { id: logId, sequence: 1, grossWeightKg: weightKg, processingStatus: WeighEventProcessingStatus.WEIGHING };
+    }
+
+    // ─── Lần 2+: Intermediate hoặc Tare ───
+    const previousRecord = existingRecords[existingRecords.length - 1];
+    const previousWeight = Number(previousRecord.weightKg);
+
+    // Validation: phải có ít nhất 1 line UNLOADED (dỡ sau lần cân trước)
+    const unloadedLines = receipt.lines.filter((l: any) => l.status === 'UNLOADED');
+    if (unloadedLines.length === 0) {
+      throw new BadRequestException('Chưa dỡ mặt hàng nào. Vui lòng dỡ ít nhất 1 mặt hàng trước khi cân tiếp.');
+    }
+
+    // Validation: xe nhẹ dần (inbound: dỡ hàng ra nên trọng lượng giảm)
+    if (weightKg >= previousWeight) {
+      throw new BadRequestException(`Trọng lượng (${weightKg} kg) phải nhỏ hơn lần cân trước (${previousWeight} kg) vì đã dỡ hàng.`);
+    }
+
+    const netWeight = previousWeight - weightKg;
+    const unloadedLineIds = unloadedLines.map((l: any) => l.id);
+
+    // Check if this is the final weighing (no OPEN lines left — all items are off the truck)
+    const openLines = receipt.lines.filter((l: any) => l.status === 'OPEN');
+    const isFinal = openLines.length === 0;
+
+    // Create weight record
+    await this.prisma.weighbridgeWeightRecord.create({
+      data: {
+        weighbridgeLogId: logId,
+        sequence: nextSequence,
+        weightKg,
+        recordedAt: now,
+        unloadedLineIds,
+        netWeightKg: netWeight,
+        isFinal,
+      },
+    });
+
+    // Distribute net weight among UNLOADED lines → RECEIVED immediately + post inventory
+    const lineNets: { line: any; lineNet: number }[] = [];
+    if (unloadedLines.length === 1) {
+      lineNets.push({ line: unloadedLines[0], lineNet: netWeight });
+    } else {
+      const totalExpected = unloadedLines.reduce((s: number, l: any) => s + Number(l.expectedQty), 0);
+      for (const line of unloadedLines) {
+        const ratio = totalExpected > 0 ? Number(line.expectedQty) / totalExpected : 1 / unloadedLines.length;
+        lineNets.push({ line, lineNet: Math.round(netWeight * ratio * 1000) / 1000 });
+      }
+    }
+
+    // Update lines → RECEIVED (skip WEIGHED, go straight to RECEIVED since inventory posted immediately)
+    for (const { line, lineNet } of lineNets) {
+      await this.prisma.receiptLine.update({
+        where: { id: line.id },
+        data: { status: 'RECEIVED', receivedQty: lineNet, netWeightKg: lineNet },
+      });
+    }
+
+    // Post GOODS_RECEIVED immediately for each line in this batch
+    try {
+      const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+      const postingEngine = new PostingEngineService(this.prisma);
+
+      for (const { line, lineNet } of lineNets) {
+        if (lineNet <= 0) continue;
+        await postingEngine.postInventory({
+          externalId: `RCV-${receiptId}-${line.id}-${Date.now()}`,
+          correlationId: `RCV-${receipt.receiptNumber || receiptId}`,
+          eventCode: 'GOODS_RECEIVED',
+          refType: 'RECEIPT',
+          refId: receiptId,
+          refLineId: line.id,
+          itemId: line.itemId,
+          qty: String(lineNet),
+          uomCode: (line as any).uom?.uomCode || 'KG',
+          dimTo: {
+            warehouseCode: receipt.warehouse?.warehouseCode,
+            locationCode: (line as any).location?.locationCode || undefined,
+            ownerCode: receipt.owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: 'SYSTEM',
+          postedBy: undefined,
+          weighbridgeTicketId: logId,
+        });
+        this.logger.log(`Posted GOODS_RECEIVED for line ${line.id}, qty=${lineNet} kg`);
+      }
+    } catch (postErr: any) {
+      this.logger.error(`Error posting inventory for receipt ${receiptId}`, postErr);
+    }
+
+    // Update PO totalReceivedQty
+    if (receipt.poId) {
+      try {
+        const allReceivedLines = await this.prisma.receiptLine.findMany({
+          where: { header: { poId: receipt.poId }, status: 'RECEIVED' },
+        });
+        const totalReceived = allReceivedLines.reduce((s, l) => s + Number(l.receivedQty || 0), 0);
+        await this.prisma.purchaseOrder.update({
+          where: { id: receipt.poId },
+          data: { totalReceivedQty: totalReceived },
+        });
+        this.logger.log(`Updated PO ${receipt.poId} totalReceivedQty=${totalReceived}`);
+      } catch (poErr: any) {
+        this.logger.warn(`Failed to update PO totalReceivedQty: ${poErr.message}`);
+      }
+    }
+
+    this.logger.log(`Inbound weighing #${nextSequence}: ${weightKg} kg, net=${netWeight} kg for ${unloadedLines.length} items`);
+
+    // ─── If FINAL weighing: complete receipt ───
+    if (isFinal) {
+      const totalNet = Number(existingRecords[0].weightKg) - weightKg;
+      await this.logRepo.update(logId, { tareWeightKg: weightKg, tareWeightAt: now, netWeightKg: totalNet });
+      await this.eventStateRepo.updateByLogId(logId, { processingStatus: WeighEventProcessingStatus.COMPLETED as any });
+
+      await this.prisma.receiptHeader.update({
+        where: { id: receiptId },
+        data: { grossWeightKg: Number(existingRecords[0].weightKg), tareWeightKg: weightKg, netWeightKg: totalNet, status: 'COMPLETED' },
+      });
+      await this.prisma.receiptStatusHistory.create({
+        data: { receiptHeaderId: receiptId, fromStatus: 'UNLOADING', toStatus: 'COMPLETED', transitionCode: 'WEIGH_FINAL', triggeredBy: undefined, correlationId: receiptId, occurredAt: now },
+      });
+
+      this.logger.log(`Receipt ${receiptId} COMPLETED: total net=${totalNet} kg`);
+      return { id: logId, sequence: nextSequence, isFinal: true, netWeightKg: netWeight, totalNetWeightKg: totalNet, processingStatus: WeighEventProcessingStatus.COMPLETED };
+    }
+
+    // ─── NOT final: keep UNLOADING ───
+    return { id: logId, sequence: nextSequence, isFinal: false, netWeightKg: netWeight, processingStatus: WeighEventProcessingStatus.WEIGHING };
   }
 
   async updateLog(id: string, data: { notes?: string }) {
@@ -634,6 +640,11 @@ export class WeighbridgeLogService {
       createdAt: log.createdAt,
       processingStatus: log.eventState?.processingStatus,
       callbackStatus: log.eventState?.callbackStatus,
+      // Multi-item: last weight from weight records (for display in modal)
+      lastWeightKg: log.weightRecords?.length > 0
+        ? Number(log.weightRecords[log.weightRecords.length - 1].weightKg)
+        : (log.grossWeightKg ? Number(log.grossWeightKg) : null),
+      weightRecordCount: log.weightRecords?.length || 0,
     };
   }
 

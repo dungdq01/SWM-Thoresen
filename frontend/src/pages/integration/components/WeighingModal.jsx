@@ -13,8 +13,11 @@ export function WeighingModal({
 }) {
   const [weightKg, setWeightKg] = useState('')
 
-  // Determine if this is lần 1 (gross) or lần 2 (tare)
+  // Determine if this is lần 1 (gross) or lần 2+ (intermediate/tare)
   const isSecondWeighing = data?.grossWeightKg != null && Number(data.grossWeightKg) > 0
+  // Multi-item: use lastWeightKg (most recent weighing) instead of grossWeightKg
+  const previousWeight = data?.lastWeightKg || (data?.grossWeightKg ? Number(data.grossWeightKg) : 0)
+  const weighingNumber = (data?.weightRecordCount || 0) + 1
 
   useEffect(() => {
     if (isOpen) {
@@ -35,13 +38,15 @@ export function WeighingModal({
   const isWeighOut = data?.weighingType === 'WEIGH_OUT'
   const netWeight = isSecondWeighing && weightKg
     ? (isWeighOut
-        ? Number(weightKg) - Number(data.grossWeightKg)  // Cân ra: lần 2 - lần 1 (xe đầy - xe trống)
-        : Number(data.grossWeightKg) - Number(weightKg)) // Cân vào: lần 1 - lần 2 (xe đầy - xe trống)
+        ? Number(weightKg) - previousWeight  // Cân ra: lần sau - lần trước
+        : previousWeight - Number(weightKg)) // Cân vào: lần trước - lần sau (xe nhẹ dần)
     : null
 
-  // Validation: Cân ra - TL lần 2 không được nhỏ hơn TL lần 1 (vì xe đã pack đồ)
-  const weightError = isSecondWeighing && isWeighOut && weightKg && Number(weightKg) < Number(data.grossWeightKg)
-    ? `Trọng lượng lần 2 (${Number(weightKg).toLocaleString('vi-VN')} kg) không được nhỏ hơn trọng lượng lần 1 (${Number(data.grossWeightKg).toLocaleString('vi-VN')} kg)`
+  // Validation
+  const weightError = isSecondWeighing && isWeighOut && weightKg && Number(weightKg) < previousWeight
+    ? `Trọng lượng (${Number(weightKg).toLocaleString('vi-VN')} kg) không được nhỏ hơn lần trước (${previousWeight.toLocaleString('vi-VN')} kg)`
+    : isSecondWeighing && !isWeighOut && weightKg && Number(weightKg) >= previousWeight
+    ? `Trọng lượng (${Number(weightKg).toLocaleString('vi-VN')} kg) phải nhỏ hơn lần trước (${previousWeight.toLocaleString('vi-VN')} kg) vì đã dỡ hàng`
     : null
 
   const isValid = weightKg !== '' && Number(weightKg) > 0 && !weightError
@@ -76,7 +81,7 @@ export function WeighingModal({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-navy-900">
-                    {isSecondWeighing ? 'Cân lần 2' : 'Cân lần 1'}
+                    {isSecondWeighing ? `Cân lần ${weighingNumber}` : 'Cân lần 1'}
                   </h2>
                   <p className="text-xs text-navy-500">{data.weighbridgeEventId}</p>
                 </div>
@@ -120,9 +125,9 @@ export function WeighingModal({
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-blue-600">Trọng lượng lần 1 (đã ghi nhận)</p>
+                      <p className="text-xs text-blue-600">Trọng lượng lần {weighingNumber - 1} (đã ghi nhận)</p>
                       <p className="text-lg font-bold text-blue-700">
-                        {Number(data.grossWeightKg).toLocaleString('vi-VN')} KG
+                        {previousWeight.toLocaleString('vi-VN')} KG
                       </p>
                     </div>
                     {data.grossWeightAt && (
@@ -140,11 +145,11 @@ export function WeighingModal({
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-600">
                     {isSecondWeighing ? '2' : '1'}
                   </span>
-                  {isSecondWeighing ? 'Nhập trọng lượng lần 2' : 'Nhập trọng lượng lần 1'}
+                  {isSecondWeighing ? `Nhập trọng lượng lần ${weighingNumber}` : 'Nhập trọng lượng lần 1'}
                 </h3>
 
                 <Input
-                  label={isSecondWeighing ? 'Trọng lượng lần 2 (KG) *' : 'Trọng lượng lần 1 (KG) *'}
+                  label={isSecondWeighing ? `Trọng lượng lần ${weighingNumber} (KG) *` : 'Trọng lượng lần 1 (KG) *'}
                   type="number"
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
@@ -160,11 +165,12 @@ export function WeighingModal({
                     <p className="text-2xl font-bold text-emerald-700">
                       {Math.abs(netWeight).toLocaleString('vi-VN')} KG
                     </p>
-                    {isWeighOut && (
-                      <p className="text-xs text-navy-400 mt-1">
-                        = {Number(weightKg).toLocaleString('vi-VN')} - {Number(data.grossWeightKg).toLocaleString('vi-VN')} (lần 2 - lần 1)
-                      </p>
-                    )}
+                    <p className="text-xs text-navy-400 mt-1">
+                      = {isWeighOut
+                        ? `${Number(weightKg).toLocaleString('vi-VN')} - ${previousWeight.toLocaleString('vi-VN')} (lần ${weighingNumber} - lần ${weighingNumber - 1})`
+                        : `${previousWeight.toLocaleString('vi-VN')} - ${Number(weightKg).toLocaleString('vi-VN')} (lần ${weighingNumber - 1} - lần ${weighingNumber})`
+                      }
+                    </p>
                   </div>
                 )}
               </div>
@@ -178,7 +184,7 @@ export function WeighingModal({
                     * Sẵn sàng ghi nhận
                   </span>
                 ) : (
-                  `* Trọng lượng ${isSecondWeighing ? 'lần 2' : 'lần 1'} là bắt buộc`
+                  `* Trọng lượng ${isSecondWeighing ? `lần ${weighingNumber}` : 'lần 1'} là bắt buộc`
                 )}
               </p>
               <div className="flex gap-3">

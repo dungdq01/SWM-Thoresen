@@ -112,18 +112,26 @@ export class UnloadingService {
     }
 
     if (line.status !== 'OPEN') {
-      throw new BadRequestException('Item đã được dỡ rồi');
+      throw new BadRequestException('Item đã được dỡ rồi hoặc đã cân');
+    }
+
+    // Multi-item: chỉ cho dỡ 1 item mỗi lần. Phải cân xong item trước mới dỡ tiếp.
+    const hasUnloadedLine = await this.prisma.receiptLine.count({
+      where: { receiptHeaderId: receiptId, status: 'UNLOADED' },
+    });
+    if (hasUnloadedLine > 0) {
+      throw new BadRequestException('Đã có mặt hàng chờ cân. Vui lòng đưa xe đi cân trước khi dỡ tiếp.');
     }
 
     // Đếm thứ tự dỡ
     const unloadedCount = await this.prisma.receiptLine.count({
-      where: { receiptHeaderId: receiptId, status: 'RECEIVED' },
+      where: { receiptHeaderId: receiptId, status: { in: ['UNLOADED', 'WEIGHED', 'RECEIVED'] } },
     });
 
     await this.prisma.receiptLine.update({
       where: { id: receiptLineId },
       data: {
-        status: 'RECEIVED',
+        status: 'UNLOADED',
         locationId: locationId || null,
         unloadSequenceNo: unloadedCount + 1,
         updatedBy: userId,
@@ -153,8 +161,8 @@ export class UnloadingService {
       throw new BadRequestException('Line does not belong to this receipt');
     }
 
-    if (line.status !== 'RECEIVED') {
-      throw new BadRequestException('Item chưa được dỡ');
+    if (line.status !== 'UNLOADED') {
+      throw new BadRequestException('Chỉ có thể hoàn tác item đã dỡ nhưng chưa cân');
     }
 
     await this.prisma.receiptLine.update({
@@ -173,6 +181,10 @@ export class UnloadingService {
   /**
    * Hoàn thành dỡ hàng
    */
+  /**
+   * Xác nhận sẵn sàng đưa xe đi cân — yêu cầu ít nhất 1 line UNLOADED
+   * Multi-item: gọi sau mỗi đợt dỡ hàng, trước khi cân tiếp
+   */
   async completeUnloading(receiptId: string, userId?: string) {
     const receipt = await this.prisma.receiptHeader.findUnique({
       where: { id: receiptId },
@@ -180,36 +192,20 @@ export class UnloadingService {
     if (!receipt) throw new NotFoundException('Receipt not found');
 
     if (receipt.status !== 'UNLOADING') {
-      throw new BadRequestException('Receipt phải ở trạng thái PROCESSING');
+      throw new BadRequestException('Receipt phải ở trạng thái Đang dỡ hàng');
     }
 
     const lines = await this.prisma.receiptLine.findMany({
-      where: { receiptHeaderId: receiptId },
+      where: { receiptHeaderId: receiptId, status: { not: 'CANCELLED' } },
     });
 
-    const openCount = lines.filter(l => l.status === 'OPEN').length;
-    if (openCount > 0) {
-      throw new BadRequestException(`Còn ${openCount} mặt hàng chưa dỡ`);
+    const unloadedCount = lines.filter(l => l.status === 'UNLOADED').length;
+    if (unloadedCount === 0) {
+      throw new BadRequestException('Chưa có mặt hàng nào được dỡ. Vui lòng dỡ ít nhất 1 mặt hàng trước khi đưa xe đi cân.');
     }
 
-    // Chuyển sang UNLOADED — dỡ hàng xong, chờ cân tare
-    await this.prisma.receiptHeader.update({
-      where: { id: receiptId },
-      data: { status: 'UNLOADED', updatedBy: userId },
-    });
-
-    await this.prisma.receiptStatusHistory.create({
-      data: {
-        receiptHeaderId: receiptId,
-        fromStatus: 'UNLOADING',
-        toStatus: 'UNLOADED',
-        transitionCode: 'COMPLETE_UNLOADING',
-        triggeredBy: userId,
-        correlationId: receiptId,
-        occurredAt: new Date(),
-      },
-    });
-
+    // Không đổi header status — vẫn giữ UNLOADING
+    // Weighbridge recordWeight sẽ xử lý tính net và chuyển status
     return this.getUnloadingStatus(receiptId);
   }
 
@@ -220,7 +216,7 @@ export class UnloadingService {
     const lines = await this.prisma.receiptLine.findMany({
       where: { receiptHeaderId: receiptId },
     });
-    return lines.length > 0 && lines.every(l => l.status === 'RECEIVED' || l.status === 'CANCELLED');
+    return lines.length > 0 && lines.every(l => ['UNLOADED', 'WEIGHED', 'RECEIVED', 'CANCELLED'].includes(l.status));
   }
 
   /**
@@ -277,9 +273,26 @@ export class UnloadingService {
     const grossLog = await this.getGrossLog(receiptId);
     const tareLog = await this.getTareLog(receiptId);
 
-    const allUnloaded = receipt.lines.length > 0 && receipt.lines.every(
-      l => l.status === 'RECEIVED' || l.status === 'CANCELLED'
-    );
+    // Fetch weighing history
+    let weighingHistory: any[] = [];
+    if (grossLog) {
+      const records = await this.prisma.weighbridgeWeightRecord.findMany({
+        where: { weighbridgeLogId: grossLog.id },
+        orderBy: { sequence: 'asc' },
+      });
+      weighingHistory = records.map(r => ({
+        sequence: r.sequence,
+        weightKg: Number(r.weightKg),
+        netWeightKg: r.netWeightKg ? Number(r.netWeightKg) : null,
+        isFinal: r.isFinal,
+        recordedAt: r.recordedAt,
+        unloadedLineIds: r.unloadedLineIds || [],
+      }));
+    }
+
+    const activeLines = receipt.lines.filter(l => l.status !== 'CANCELLED');
+    const hasUnloadedLines = activeLines.some(l => l.status === 'UNLOADED');
+    const allDone = activeLines.length > 0 && activeLines.every(l => ['WEIGHED', 'RECEIVED'].includes(l.status));
 
     return {
       receiptId: receipt.id,
@@ -290,7 +303,10 @@ export class UnloadingService {
       warehouse: receipt.warehouse,
       hasGross: !!grossLog,
       hasTare: !!tareLog,
-      allUnloaded,
+      allDone,
+      hasUnloadedLines,
+      canWeigh: hasUnloadedLines, // có item UNLOADED → sẵn sàng đưa xe đi cân
+      weighingHistory,
       lines: receipt.lines.map((l) => ({
         id: l.id,
         lineNumber: l.lineNumber,
@@ -299,11 +315,13 @@ export class UnloadingService {
         itemName: (l as any).item?.itemName || '',
         uomCode: (l as any).uom?.uomCode || '',
         expectedQty: Number(l.expectedQty),
+        receivedQty: l.receivedQty ? Number(l.receivedQty) : 0,
+        netWeightKg: l.netWeightKg ? Number(l.netWeightKg) : 0,
         unloadSequence: l.unloadSequenceNo,
+        weighSequence: (l as any).weighSequenceNo,
         lineStatus: l.status,
         locationId: l.locationId || null,
         locationCode: (l as any).location?.locationCode || null,
-        isUnloaded: l.status === 'RECEIVED',
       })),
     };
   }

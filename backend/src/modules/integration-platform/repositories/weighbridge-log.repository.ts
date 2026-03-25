@@ -30,7 +30,7 @@ export class WeighbridgeLogRepository {
   async findById(id: string) {
     return this.prisma.m8WeighbridgeLog.findUnique({
       where: { id },
-      include: { eventState: true, device: true },
+      include: { eventState: true, device: true, weightRecords: { orderBy: { sequence: 'asc' as const } } },
     });
   }
 
@@ -71,6 +71,7 @@ export class WeighbridgeLogRepository {
         include: {
           eventState: true,
           device: true,
+          weightRecords: { orderBy: { sequence: 'asc' as const } },
         },
         skip,
         take,

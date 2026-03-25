@@ -1692,6 +1692,8 @@ enum ReceiptStatus {
 
 enum ReceiptLineStatus {
   OPEN
+  UNLOADED
+  WEIGHED
   RECEIVED
   CANCELLED
 }
@@ -3437,6 +3439,7 @@ model M8WeighbridgeLog {
   receiptLine        ReceiptLine?             @relation(fields: [receiptLineId], references: [id])
   shipmentLine       ShipmentLine?            @relation(fields: [shipmentLineId], references: [id])
   transferOrderLines IcTransferOrderLine[]
+  weightRecords      WeighbridgeWeightRecord[]
 
   @@index([receiptId])
   @@index([shipmentId])
@@ -3450,6 +3453,24 @@ model M8WeighbridgeLog {
   @@index([receiptLineId])
   @@index([shipmentLineId])
   @@map("m8_weighbridge_log")
+}
+
+model WeighbridgeWeightRecord {
+  id               String   @id @default(uuid()) @db.Uuid
+  weighbridgeLogId String   @map("weighbridge_log_id") @db.Uuid
+  sequence         Int      // 1 = gross, 2..N = intermediate, N+1 = tare
+  weightKg         Decimal  @map("weight_kg") @db.Decimal(18, 3)
+  recordedAt       DateTime @map("recorded_at")
+  unloadedLineIds  Json?    @map("unloaded_line_ids") // UUID[] of receipt lines unloaded before this weighing
+  netWeightKg      Decimal? @map("net_weight_kg") @db.Decimal(18, 3) // previous weight - this weight
+  isFinal          Boolean  @default(false) @map("is_final") // true = tare (last weighing)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  weighLog M8WeighbridgeLog @relation(fields: [weighbridgeLogId], references: [id])
+
+  @@unique([weighbridgeLogId, sequence])
+  @@index([weighbridgeLogId])
+  @@map("weighbridge_weight_record")
 }
 
 model M8WeighbridgeEventState {

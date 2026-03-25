@@ -83,8 +83,12 @@ export function InboundUnloadingPage() {
   const completeMut = useCompleteUnloading()
 
   const receipts = receiptsData?.items || []
-  const pendingLines = detail?.lines?.filter((l) => !l.isUnloaded) || []
-  const unloadedLines = detail?.lines?.filter((l) => l.isUnloaded) || []
+  // 4 groups: OPEN (on truck), UNLOADED (off truck, waiting weigh), WEIGHED (net known), RECEIVED (done)
+  const openLines = detail?.lines?.filter((l) => l.lineStatus === 'OPEN') || []
+  const unloadedLines = detail?.lines?.filter((l) => l.lineStatus === 'UNLOADED') || []
+  const weighedLines = detail?.lines?.filter((l) => l.lineStatus === 'WEIGHED') || []
+  const receivedLines = detail?.lines?.filter((l) => l.lineStatus === 'RECEIVED') || []
+  const weighingHistory = detail?.weighingHistory || []
 
   const handleStart = useCallback(() => {
     if (!selectedId) return
@@ -177,105 +181,23 @@ export function InboundUnloadingPage() {
                 </span>
               </div>
 
-              {/* Weighing status — chỉ hiện trạng thái, KHÔNG hiện số kg */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className={`rounded-xl border p-4 ${detail.hasGross ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                  <div className="text-xs text-gray-500 mb-1">Cân lần 1 — Gross (xe có hàng)</div>
-                  {detail.hasGross ? (
-                    <div className="text-sm font-semibold text-green-700">Đã cân</div>
-                  ) : (
-                    <div className="text-sm font-medium text-red-600">Chưa cân — đưa xe đến Trạm cân</div>
-                  )}
-                </div>
-                <div className={`rounded-xl border p-4 ${detail.hasTare ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="text-xs text-gray-500 mb-1">Cân lần 2 — Tare (xe rỗng)</div>
-                  {detail.hasTare ? (
-                    <div className="text-sm font-semibold text-green-700">Đã cân</div>
-                  ) : (
-                    <div className="text-sm text-gray-400">Chờ dỡ hàng xong</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Start button — phải cân gross trước */}
-              {(detail.status === 'CONFIRMED' || detail.status === 'WEIGHING_1') && (
-                <div className={`rounded-xl p-6 text-center border ${
-                  detail.hasGross
-                    ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                    : 'bg-red-50 border-red-200'
-                }`}>
-                  {detail.hasGross ? (
-                    <>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                        Xe đã cân gross. Bắt đầu dỡ hàng?
-                      </p>
-                      <button
-                        onClick={handleStart}
-                        disabled={startMut.isPending}
-                        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
-                      >
-                        {startMut.isPending ? 'Đang xử lý...' : 'Bắt đầu dỡ hàng'}
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-sm text-red-600 font-medium">
-                      Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước khi dỡ hàng.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Pending items — chọn vị trí dỡ hàng */}
-              {detail.status === 'UNLOADING' && pendingLines.length > 0 && (
+              {/* Weighing history */}
+              {weighingHistory.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-medium text-gray-900 dark:text-white">Chưa dỡ ({pendingLines.length})</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white">Lịch sử cân ({weighingHistory.length} lần)</h3>
                   </div>
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {pendingLines.map((line) => (
-                      <LocationPicker
-                        key={line.id}
-                        receiptId={selectedId}
-                        line={line}
-                        onUnload={handleUnload}
-                        isLoading={unloadMut.isPending}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Unloaded items */}
-              {unloadedLines.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-medium text-green-700 dark:text-green-400">Đã dỡ ({unloadedLines.length})</h3>
-                  </div>
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {unloadedLines.map((line, i) => (
-                      <div key={line.id} className="px-4 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">
-                            {line.unloadSequence || i + 1}
-                          </span>
-                          <div>
-                            <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
-                            <div className="text-xs text-gray-500">
-                              {line.itemCode}
-                              {line.locationCode && (
-                                <span className="ml-2 text-blue-600">→ {line.locationCode}</span>
-                              )}
-                            </div>
-                          </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                    {weighingHistory.map((w) => (
+                      <div key={w.sequence} className="px-4 py-2 flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">Lần {w.sequence}:</span>
+                          <span className="ml-2">{w.weightKg.toLocaleString()} kg</span>
+                          {w.sequence === 1 && <span className="ml-2 text-xs text-blue-600">(Gross)</span>}
+                          {w.isFinal && <span className="ml-2 text-xs text-green-600">(Tare)</span>}
                         </div>
-                        {detail.status === 'UNLOADING' && !unloadingCompleted && !detail.hasTare && (
-                          <button
-                            onClick={() => handleUndo(line.id)}
-                            disabled={undoMut.isPending}
-                            className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
-                          >
-                            Hoàn tác
-                          </button>
+                        {w.netWeightKg != null && (
+                          <span className="text-green-700 font-medium">Net: {w.netWeightKg.toLocaleString()} kg</span>
                         )}
                       </div>
                     ))}
@@ -283,35 +205,111 @@ export function InboundUnloadingPage() {
                 </div>
               )}
 
-              {/* Complete button */}
-              {detail.status === 'UNLOADING' && pendingLines.length === 0 && unloadedLines.length > 0 && !unloadingCompleted && !detail.hasTare && (
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 text-center border border-green-200 dark:border-green-800">
-                  <p className="text-sm text-green-700 dark:text-green-300 mb-4">
-                    Tất cả mặt hàng đã dỡ xuống kho
-                  </p>
-                  <button
-                    onClick={handleComplete}
-                    disabled={completeMut.isPending}
-                    className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
-                  >
-                    {completeMut.isPending ? 'Đang xử lý...' : 'Hoàn thành dỡ hàng'}
-                  </button>
+              {/* Start button — phải cân gross trước */}
+              {(detail.status === 'CONFIRMED' || detail.status === 'WEIGHING_1' || detail.status === 'AWAITING_WEIGHING') && (
+                <div className={`rounded-xl p-6 text-center border ${
+                  detail.hasGross ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'
+                }`}>
+                  {detail.hasGross ? (
+                    <>
+                      <p className="text-sm text-blue-700 mb-4">Xe đã cân gross. Bắt đầu dỡ hàng?</p>
+                      <button onClick={handleStart} disabled={startMut.isPending}
+                        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">
+                        {startMut.isPending ? 'Đang xử lý...' : 'Bắt đầu dỡ hàng'}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-red-600 font-medium">Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước khi dỡ hàng.</p>
+                  )}
                 </div>
               )}
 
-              {/* Completed — already weighed tare */}
-              {detail.hasTare && (
+              {/* OPEN items — trên xe, chọn vị trí dỡ (chỉ cho dỡ khi không có item UNLOADED chờ cân) */}
+              {detail.status === 'UNLOADING' && openLines.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-medium text-gray-900 dark:text-white">Trên xe ({openLines.length})</h3>
+                  </div>
+                  {unloadedLines.length > 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-500 text-center">
+                      Đã dỡ 1 mặt hàng. Vui lòng đưa xe đi cân trước khi dỡ tiếp.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {openLines.map((line) => (
+                        <LocationPicker key={line.id} receiptId={selectedId} line={line} onUnload={handleUnload} isLoading={unloadMut.isPending} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* UNLOADED items — đã dỡ, chờ cân */}
+              {unloadedLines.length > 0 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl shadow-sm border border-yellow-200 dark:border-yellow-700">
+                  <div className="px-4 py-3 border-b border-yellow-200 dark:border-yellow-700">
+                    <h3 className="font-medium text-yellow-800 dark:text-yellow-400">Đã dỡ — chờ cân ({unloadedLines.length})</h3>
+                  </div>
+                  <div className="divide-y divide-yellow-100 dark:divide-yellow-700">
+                    {unloadedLines.map((line, i) => (
+                      <div key={line.id} className="px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs bg-yellow-200 text-yellow-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">{i + 1}</span>
+                          <div>
+                            <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
+                            <div className="text-xs text-gray-500">{line.itemCode} {line.locationCode && <span className="ml-2 text-blue-600">→ {line.locationCode}</span>}</div>
+                          </div>
+                        </div>
+                        <button onClick={() => handleUndo(line.id)} disabled={undoMut.isPending}
+                          className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50">Hoàn tác</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* "Đưa xe đi cân" reminder — when UNLOADED items exist */}
+              {detail.status === 'UNLOADING' && unloadedLines.length > 0 && (
+                <div className="bg-orange-50 rounded-xl p-6 text-center border border-orange-200">
+                  <p className="text-sm text-orange-700">
+                    {openLines.length > 0
+                      ? `Đã dỡ ${unloadedLines.length} mặt hàng. Vui lòng đưa xe đến Trạm cân để tính khối lượng, sau đó tiếp tục dỡ ${openLines.length} mặt hàng còn lại.`
+                      : `Tất cả mặt hàng đã dỡ. Vui lòng đưa xe đến Trạm cân để cân lần cuối (tare).`
+                    }
+                  </p>
+                </div>
+              )}
+
+              {/* WEIGHED + RECEIVED items — đã cân xong */}
+              {(weighedLines.length > 0 || receivedLines.length > 0) && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-green-200 dark:border-green-700">
+                  <div className="px-4 py-3 border-b border-green-200 dark:border-green-700">
+                    <h3 className="font-medium text-green-700 dark:text-green-400">Đã hoàn thành ({weighedLines.length + receivedLines.length})</h3>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {[...weighedLines, ...receivedLines].map((line, i) => (
+                      <div key={line.id} className="px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">{i + 1}</span>
+                          <div>
+                            <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
+                            <div className="text-xs text-gray-500">
+                              {line.itemCode} {line.locationCode && <span className="ml-2 text-blue-600">→ {line.locationCode}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm font-semibold text-green-700">{line.netWeightKg > 0 ? `${line.netWeightKg.toLocaleString()} kg` : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* COMPLETED status */}
+              {detail.status === 'COMPLETED' && (
                 <div className="bg-green-50 rounded-xl p-6 text-center border border-green-200">
                   <p className="text-green-800 font-medium mb-1">Đã hoàn thành</p>
-                  <p className="text-sm text-green-600">Xe đã cân tare. Phiếu nhập đã được xử lý xong.</p>
-                </div>
-              )}
-
-              {/* Completed — remind to go weigh tare */}
-              {detail.status === 'UNLOADING' && unloadingCompleted && !detail.hasTare && (
-                <div className="bg-yellow-50 rounded-xl p-6 text-center border border-yellow-200">
-                  <p className="text-yellow-800 font-medium mb-1">Đã dỡ hàng xong</p>
-                  <p className="text-sm text-yellow-600">Vui lòng đưa xe đến Trạm cân để cân lần 2 (tare — xe rỗng)</p>
+                  <p className="text-sm text-green-600">Tất cả mặt hàng đã cân xong. Tồn kho đã được cập nhật.</p>
                 </div>
               )}
             </div>
