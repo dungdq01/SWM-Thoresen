@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SWM TVL — Smart Warehouse Management</title>
+  <meta name="description" content="Hệ thống Quản lý Kho Thông Minh — Thoresen Vinama Logistics">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- GSAP for smooth animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ========== LANDING PAGE ========== -->
+<div id="landing-page" class="landing-page">
+  <!-- Particle Canvas -->
+  <canvas id="landing-canvas" class="landing-canvas"></canvas>
+
+  <!-- Navigation -->
+  <nav class="landing-nav">
+    <div class="landing-nav-brand">
+      <div class="brand-logo">
+        <i class="fas fa-warehouse"></i>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">SWM TVL</span>
+        <span class="brand-sub">Smart Warehouse</span>
+      </div>
+    </div>
+    <div class="landing-nav-links">
+      <a href="#features">Tính năng</a>
+      <a href="#modules">Modules</a>
+      <a href="#about">Về dự án</a>
+    </div>
+    <button class="btn-landing-login" onclick="showLogin()">
+      <i class="fas fa-sign-in-alt"></i> Đăng nhập
+    </button>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="landing-hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <i class="fas fa-star"></i> Hệ thống WMS hàng đầu Việt Nam
+      </div>
+      <h1 class="hero-title">
+        Quản lý kho <span class="gradient-text">thông minh</span><br>
+        — SWM TVL
+      </h1>
+      <p class="hero-subtitle">
+        Nền tảng quản lý kho bãi toàn diện cho <strong>Thoresen Vinama Logistics</strong><br>
+        81,500 m² kho bãi · 11 nhà kho · Tích hợp trạm cân & OCR · Giám sát 3D thời gian thực
+      </p>
+      <div class="hero-cta">
+        <button class="btn-hero-primary" onclick="showLogin()">
+          <i class="fas fa-rocket"></i> Truy cập hệ thống
+        </button>
+        <button class="btn-hero-secondary" onclick="scrollToSection('features')">
+          <i class="fas fa-play-circle"></i> Tìm hiểu thêm
+        </button>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="hero-stats">
+        <div class="stat-item">
+          <div class="stat-number" data-count="81500">0</div>
+          <div class="stat-label">m² Kho bãi</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-number" data-count="11">0</div>
+          <div class="stat-label">Nhà kho</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-number" data-count="11">0</div>
+          <div class="stat-label">Modules</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="stat-number" data-count="140">0</div>
+          <div class="stat-label">+ Entities</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Preview hint -->
+    <div class="hero-3d-hint">
+      <div class="hint-inner">
+        <i class="fas fa-cube"></i>
+        <span>Giám sát kho 3D thời gian thực</span>
+        <i class="fas fa-arrow-right"></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="landing-features">
+    <div class="section-header">
+      <span class="section-tag">Tính năng nổi bật</span>
+      <h2>Giải pháp toàn diện cho logistics hiện đại</h2>
+      <p>Từ nhận hàng tại cảng đến phân phối nội địa — tất cả trong một hệ thống</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background: linear-gradient(135deg,#667eea,#764ba2)">
+          <i class="fas fa-cube"></i>
+        </div>
+        <h3>Giám sát kho 3D</h3>
+        <p>Visualize toàn bộ 81,500m² kho bãi trong không gian 3D thời gian thực. Theo dõi từng khu vực, zone, vị trí hàng hóa.</p>
+        <div class="feature-tags"><span>Three.js</span><span>Real-time</span><span>Heatmap</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: linear-gradient(135deg,#f093fb,#f5576c)">
+          <i class="fas fa-weight-hanging"></i>
+        </div>
+        <h3>Tích hợp Trạm cân</h3>
+        <p>Kết nối trực tiếp với Weighbridge. Tự động ghi nhận trọng lượng, tính net weight, phát hiện sai lệch tolerance.</p>
+        <div class="feature-tags"><span>Auto-sync</span><span>Tolerance check</span><span>OCR</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: linear-gradient(135deg,#4facfe,#00f2fe)">
+          <i class="fas fa-truck-loading"></i>
+        </div>
+        <h3>Nhập/Xuất kho</h3>
+        <p>Quản lý luồng PO → Receipt → Weighing → Stock. Xuất kho theo SO → Shipment → Allocation → Ship.</p>
+        <div class="feature-tags"><span>State machine</span><span>Dual inbound</span><span>Bulk cargo</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: linear-gradient(135deg,#43e97b,#38f9d7)">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <h3>Kiểm soát tồn kho</h3>
+        <p>Ledger-based inventory với InventTrans. Di chuyển, chuyển kho, kiểm kê, điều chỉnh — toàn bộ có audit trail.</p>
+        <div class="feature-tags"><span>Ledger</span><span>Cycle count</span><span>Audit trail</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: linear-gradient(135deg,#fa709a,#fee140)">
+          <i class="fas fa-file-invoice-dollar"></i>
+        </div>
+        <h3>Billing tự động</h3>
+        <p>Tính phí lưu kho, xếp dỡ, đóng bao, VAS tự động theo hợp đồng. Tạo Debit Note và đẩy lên ERP.</p>
+        <div class="feature-tags"><span>Auto-billing</span><span>Debit note</span><span>ERP push</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: linear-gradient(135deg,#a18cd1,#fbc2eb)">
+          <i class="fas fa-camera"></i>
+        </div>
+        <h3>OCR Phiếu cân</h3>
+        <p>Chụp ảnh phiếu cân → Google Vision + Gemini AI tự động đọc và link với PO/SO. Giảm 90% nhập liệu thủ công.</p>
+        <div class="feature-tags"><span>AI-powered</span><span>Auto-link</span><span>Vietnamese OCR</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Module Architecture -->
+  <section id="modules" class="landing-modules">
+    <div class="section-header">
+      <span class="section-tag">Kiến trúc hệ thống</span>
+      <h2>11 Modules nghiệp vụ hoàn chỉnh</h2>
+    </div>
+    <div class="module-diagram">
+      <div class="module-row top">
+        <div class="module-box auth">
+          <i class="fas fa-shield-alt"></i>
+          <span>M0. Auth & User</span>
+        </div>
+      </div>
+      <div class="module-row middle">
+        <div class="module-box foundation">
+          <i class="fas fa-cogs"></i>
+          <span>M1. Foundation</span>
+        </div>
+        <div class="module-box master">
+          <i class="fas fa-database"></i>
+          <span>M2. Master Data</span>
+        </div>
+        <div class="module-box integration">
+          <i class="fas fa-plug"></i>
+          <span>M8. Integration</span>
+        </div>
+      </div>
+      <div class="module-row middle">
+        <div class="module-box inbound">
+          <i class="fas fa-arrow-circle-down"></i>
+          <span>M4. Inbound Ops</span>
+        </div>
+        <div class="module-box inventory">
+          <i class="fas fa-layer-group"></i>
+          <span>M3. Inventory Core</span>
+        </div>
+        <div class="module-box outbound">
+          <i class="fas fa-arrow-circle-up"></i>
+          <span>M5. Outbound Ops</span>
+        </div>
+      </div>
+      <div class="module-row middle">
+        <div class="module-box control">
+          <i class="fas fa-sliders-h"></i>
+          <span>M6. Inventory Control</span>
+        </div>
+        <div class="module-box work">
+          <i class="fas fa-tasks"></i>
+          <span>M7. Work Execution</span>
+        </div>
+        <div class="module-box vas">
+          <i class="fas fa-box"></i>
+          <span>M9. VAS / Bagging</span>
+        </div>
+      </div>
+      <div class="module-row full">
+        <div class="module-box billing">
+          <i class="fas fa-file-invoice"></i>
+          <span>M10. Billing & Commercial</span>
+        </div>
+      </div>
+      <div class="module-row full">
+        <div class="module-box reporting">
+          <i class="fas fa-chart-bar"></i>
+          <span>M11. Reporting, Audit & Go-Live</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <div class="brand-logo"><i class="fas fa-warehouse"></i></div>
+        <div>
+          <div class="brand-name">SWM TVL</div>
+          <div class="brand-sub">Smart Warehouse Management</div>
+        </div>
+      </div>
+      <div class="footer-info">
+        <p>© 2026 Thoresen Vinama Logistics (TVL)</p>
+        <p>Hệ thống quản lý kho thông minh — Phiên bản 2.0</p>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ========== LOGIN PAGE ========== -->
+<div id="login-page" class="login-page hidden">
+  <canvas id="login-canvas" class="login-canvas"></canvas>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">
+          <i class="fas fa-warehouse"></i>
+        </div>
+        <h2>SWM TVL</h2>
+        <p>Smart Warehouse Management</p>
+      </div>
+      <form class="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Tên đăng nhập</label>
+          <div class="input-icon-wrap">
+            <i class="fas fa-user"></i>
+            <input type="text" id="username" placeholder="Nhập tên đăng nhập" value="admin" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu</label>
+          <div class="input-icon-wrap">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="password" placeholder="Nhập mật khẩu" value="admin123" required>
+            <button type="button" class="toggle-pw" onclick="togglePassword()">
+              <i class="fas fa-eye" id="pw-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="login-options">
+          <label class="checkbox-label">
+            <input type="checkbox" checked> Ghi nhớ đăng nhập
+          </label>
+          <a href="#">Quên mật khẩu?</a>
+        </div>
+        <button type="submit" class="btn-login">
+          <i class="fas fa-sign-in-alt"></i> Đăng nhập
+        </button>
+      </form>
+      <div class="login-demo">
+        <p>Demo accounts:</p>
+        <div class="demo-accounts">
+          <span onclick="setDemo('admin','admin123')">ADMIN</span>
+          <span onclick="setDemo('manager','manager123')">WH_MANAGER</span>
+          <span onclick="setDemo('keeper','keeper123')">WH_KEEPER</span>
+          <span onclick="setDemo('billing','billing123')">BILLING_OFC</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MAIN APP ========== -->
+<div id="app" class="app-shell hidden">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="brand-logo"><i class="fas fa-warehouse"></i></div>
+        <div class="brand-text">
+          <span class="brand-name">SWM TVL</span>
+          <span class="brand-version">v2.0</span>
+        </div>
+      </div>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Thu gọn sidebar">
+        <i class="fas fa-chevron-left" id="sidebar-chevron"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-search">
+      <div class="sidebar-search-input">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Tìm kiếm..." onclick="openCommandPalette()">
+        <span class="kbd">Ctrl+K</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- Dashboard -->
+      <div class="nav-item" onclick="navigateTo('dashboard')">
+        <i class="fas fa-tachometer-alt nav-icon"></i>
+        <span class="nav-label">Tổng quan</span>
+      </div>
+
+      <!-- Warehouse 3D -->
+      <div class="nav-item nav-item-highlight" onclick="navigateTo('warehouse-monitoring')">
+        <i class="fas fa-cube nav-icon"></i>
+        <span class="nav-label">Giám sát kho 3D</span>
+        <span class="nav-badge badge-new">3D</span>
+      </div>
+
+      <!-- Settings -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-cog nav-icon"></i>
+            <span class="nav-label">Cài đặt hệ thống</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('settings/users')"><i class="fas fa-users"></i><span>Người dùng</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('settings/roles')"><i class="fas fa-user-tag"></i><span>Vai trò</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('settings/permissions')"><i class="fas fa-key"></i><span>Quyền hạn</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('settings/number-sequences')"><i class="fas fa-hashtag"></i><span>Chuỗi số</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('settings/governance')"><i class="fas fa-balance-scale"></i><span>Business Rules</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('settings/logs')"><i class="fas fa-list-alt"></i><span>Audit Logs</span></div>
+        </div>
+      </div>
+
+      <!-- Master Data -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-database nav-icon"></i>
+            <span class="nav-label">Dữ liệu nền tảng</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('master-data/owners')"><i class="fas fa-building"></i><span>Chủ hàng</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/vendors')"><i class="fas fa-truck"></i><span>Nhà cung cấp</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/customers')"><i class="fas fa-user-tie"></i><span>Khách hàng</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/items')"><i class="fas fa-box-open"></i><span>Hàng hóa / SKU</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/warehouses')"><i class="fas fa-warehouse"></i><span>Nhà kho</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/zones')"><i class="fas fa-th-large"></i><span>Khu vực (Zone)</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/locations')"><i class="fas fa-map-marker-alt"></i><span>Vị trí</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/vessels')"><i class="fas fa-ship"></i><span>Tàu</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('master-data/lots')"><i class="fas fa-tag"></i><span>Lô hàng</span></div>
+        </div>
+      </div>
+
+      <!-- Inbound -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-arrow-circle-down nav-icon" style="color:#10b981"></i>
+            <span class="nav-label">Nhập kho</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('inbound/purchase-orders')"><i class="fas fa-file-alt"></i><span>Đơn mua hàng (PO)</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inbound/receipts')"><i class="fas fa-receipt"></i><span>Phiếu nhập kho</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inbound/unloading')"><i class="fas fa-dolly"></i><span>Dỡ hàng</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inbound/documents')"><i class="fas fa-folder"></i><span>Chứng từ</span></div>
+        </div>
+      </div>
+
+      <!-- Outbound -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-arrow-circle-up nav-icon" style="color:#f59e0b"></i>
+            <span class="nav-label">Xuất kho</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('outbound/sales-orders')"><i class="fas fa-file-contract"></i><span>Đơn bán hàng (SO)</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('outbound/shipments')"><i class="fas fa-shipping-fast"></i><span>Phiếu xuất kho</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('outbound/loading')"><i class="fas fa-pallet"></i><span>Xếp hàng</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('outbound/documents')"><i class="fas fa-folder-open"></i><span>Chứng từ</span></div>
+        </div>
+      </div>
+
+      <!-- Goods Split -->
+      <div class="nav-item" onclick="navigateTo('goods-split')">
+        <i class="fas fa-code-branch nav-icon"></i>
+        <span class="nav-label">Chia hàng đổi chủ</span>
+      </div>
+
+      <!-- Inventory Core -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-layer-group nav-icon" style="color:#8b5cf6"></i>
+            <span class="nav-label">Tồn kho</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('inventory-core/on-hand')"><i class="fas fa-boxes"></i><span>Tồn kho hiện tại</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-core/transactions')"><i class="fas fa-exchange-alt"></i><span>Giao dịch tồn kho</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-core/holds')"><i class="fas fa-lock"></i><span>Hàng bị giữ</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-core/reconciliation')"><i class="fas fa-balance-scale"></i><span>Đối soát</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-core/snapshots')"><i class="fas fa-camera"></i><span>Snapshots</span></div>
+        </div>
+      </div>
+
+      <!-- Inventory Control -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-sliders-h nav-icon" style="color:#06b6d4"></i>
+            <span class="nav-label">Kiểm soát kho</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('inventory-control/move-orders')"><i class="fas fa-random"></i><span>Lệnh di chuyển</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-control/transfers')"><i class="fas fa-exchange-alt"></i><span>Chuyển kho</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-control/cycle-count')"><i class="fas fa-clipboard-list"></i><span>Kiểm kê</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('inventory-control/adjustments')"><i class="fas fa-edit"></i><span>Điều chỉnh tồn kho</span></div>
+        </div>
+      </div>
+
+      <!-- Work Execution -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-tasks nav-icon" style="color:#f97316"></i>
+            <span class="nav-label">Thực thi công việc</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('work-execution/queue')"><i class="fas fa-list-ul"></i><span>Hàng đợi công việc</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('work-execution/my-work')"><i class="fas fa-user-clock"></i><span>Việc của tôi</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('work-execution/monitor')"><i class="fas fa-desktop"></i><span>Giám sát</span></div>
+        </div>
+      </div>
+
+      <!-- Weighbridge -->
+      <div class="nav-item" onclick="navigateTo('weighbridge')">
+        <i class="fas fa-weight-hanging nav-icon" style="color:#ec4899"></i>
+        <span class="nav-label">Trạm cân</span>
+      </div>
+
+      <!-- Integration -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-plug nav-icon" style="color:#14b8a6"></i>
+            <span class="nav-label">Tích hợp</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('integration/monitoring')"><i class="fas fa-heartbeat"></i><span>Giám sát kết nối</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('integration/alerts')"><i class="fas fa-bell"></i><span>Cảnh báo</span></div>
+        </div>
+      </div>
+
+      <!-- OCR -->
+      <div class="nav-item" onclick="navigateTo('ocr')">
+        <i class="fas fa-camera nav-icon" style="color:#a78bfa"></i>
+        <span class="nav-label">OCR Phiếu cân</span>
+      </div>
+
+      <!-- VAS -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-box nav-icon" style="color:#fb923c"></i>
+            <span class="nav-label">VAS / Đóng bao</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('vas/work-orders')"><i class="fas fa-file-alt"></i><span>Lệnh VAS</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('vas/execution')"><i class="fas fa-play-circle"></i><span>Thực thi VAS</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('vas/dashboard')"><i class="fas fa-chart-pie"></i><span>Dashboard VAS</span></div>
+        </div>
+      </div>
+
+      <!-- Billing -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-file-invoice-dollar nav-icon" style="color:#fbbf24"></i>
+            <span class="nav-label">Billing</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('billing/invoices')"><i class="fas fa-file-invoice"></i><span>Debit Notes</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('billing/rate-cards')"><i class="fas fa-tags"></i><span>Biểu phí</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('billing/events')"><i class="fas fa-calendar-check"></i><span>Sự kiện tính phí</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('billing/dashboard')"><i class="fas fa-chart-bar"></i><span>Dashboard Billing</span></div>
+        </div>
+      </div>
+
+      <!-- Reporting -->
+      <div class="nav-group">
+        <div class="nav-group-header" onclick="toggleNavGroup(this)">
+          <div class="nav-group-left">
+            <i class="fas fa-chart-bar nav-icon" style="color:#60a5fa"></i>
+            <span class="nav-label">Báo cáo</span>
+          </div>
+          <i class="fas fa-chevron-down nav-group-chevron"></i>
+        </div>
+        <div class="nav-group-items">
+          <div class="nav-sub-item" onclick="navigateTo('reporting/dashboard')"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('reporting/inventory')"><i class="fas fa-boxes"></i><span>Báo cáo tồn kho</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('reporting/billing')"><i class="fas fa-dollar-sign"></i><span>Báo cáo billing</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('reporting/audit')"><i class="fas fa-history"></i><span>Audit Trail</span></div>
+          <div class="nav-sub-item" onclick="navigateTo('reporting/go-live')"><i class="fas fa-rocket"></i><span>Go-Live Checklist</span></div>
+        </div>
+      </div>
+
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <div class="user-name">Admin TVL</div>
+          <div class="user-role">Quản trị viên</div>
+        </div>
+      </div>
+      <div class="sidebar-footer-actions">
+        <button onclick="toggleTheme()" title="Đổi giao diện">
+          <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+        <button onclick="showLogout()" title="Đăng xuất">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-wrapper" id="main-wrapper">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="breadcrumb" id="breadcrumb">
+          <span>Tổng quan</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="header-btn" onclick="openCommandPalette()" title="Tìm kiếm (Ctrl+K)">
+          <i class="fas fa-search"></i>
+        </button>
+        <button class="header-btn notification-btn" onclick="toggleNotifications()">
+          <i class="fas fa-bell"></i>
+          <span class="notification-dot"></span>
+        </button>
+        <div class="header-user" onclick="toggleUserMenu()">
+          <div class="header-user-avatar">A</div>
+          <span class="header-user-name">Admin TVL</span>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content" id="page-content">
+      <!-- Loaded dynamically -->
+    </main>
+  </div>
+</div>
+
+<!-- ========== COMMAND PALETTE ========== -->
+<div id="command-palette" class="command-palette hidden">
+  <div class="command-overlay" onclick="closeCommandPalette()"></div>
+  <div class="command-modal">
+    <div class="command-input-wrap">
+      <i class="fas fa-search"></i>
+      <input type="text" id="command-input" placeholder="Tìm kiếm trang, tính năng..." oninput="searchCommand(this.value)">
+      <kbd>ESC</kbd>
+    </div>
+    <div class="command-results" id="command-results"></div>
+  </div>
+</div>
+
+<!-- ========== TOAST CONTAINER ========== -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ========== SCRIPTS ========== -->
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/modules.js"></script>
+<script src="js/warehouse3d.js"></script>
+
+</body>
+</html>
