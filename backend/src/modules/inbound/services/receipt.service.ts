@@ -265,7 +265,7 @@ export class ReceiptService {
           netWeightKg,
           isManualEntry: true,
           manualEntryReasonCode: dto.reasonCode || 'WB_FALLBACK',
-          status: 'WEIGHED_OUT',
+          status: 'WEIGHING_2',
           updatedBy: resolvedUserId,
         },
         include: { lines: true },
@@ -276,7 +276,7 @@ export class ReceiptService {
         data: {
           receiptHeaderId: id,
           fromStatus: receipt.status,
-          toStatus: 'WEIGHED_OUT',
+          toStatus: 'WEIGHING_2',
           transitionCode: 'MANUAL_WEIGHT',
           triggeredBy: resolvedUserId,
           note: dto.note || 'Manual weight applied',
@@ -303,14 +303,14 @@ export class ReceiptService {
         throw new NotFoundException(`Receipt ${id} không tồn tại`);
       }
 
-      if (receipt.status !== 'RECEIVED') {
+      if (receipt.status !== 'COMPLETED') {
         throw new BadRequestException(`Không thể thực hiện action 'putawayComplete' khi receipt đang ở trạng thái '${receipt.status}'. Cần ở trạng thái: RECEIVED`);
       }
 
       const updated = await this.prisma.receiptHeader.update({
         where: { id },
         data: {
-          status: 'PUTAWAY',
+          status: 'CLOSED',
           putawayWorkId: dto.putawayWorkId || `PW-${Date.now()}`,
           updatedBy: resolvedUserId,
         },
@@ -321,7 +321,7 @@ export class ReceiptService {
         data: {
           receiptHeaderId: id,
           fromStatus: receipt.status,
-          toStatus: 'PUTAWAY',
+          toStatus: 'CLOSED',
           transitionCode: 'PUTAWAY_COMPLETE',
           triggeredBy: resolvedUserId,
           note: dto.note || 'Putaway completed',
@@ -348,7 +348,7 @@ export class ReceiptService {
       }
 
       // Only allow update for DRAFT status
-      if (receipt.status !== 'DRAFT') {
+      if (receipt.status !== 'NEW') {
         throw new BadRequestException('Chỉ có thể chỉnh sửa phiếu nhập ở trạng thái Tạo mới');
       }
 
@@ -416,7 +416,7 @@ export class ReceiptService {
       }
 
       // Only allow delete for DRAFT status
-      if (receipt.status !== 'DRAFT') {
+      if (receipt.status !== 'NEW') {
         throw new BadRequestException('Chỉ có thể xóa phiếu nhập ở trạng thái Tạo mới');
       }
 

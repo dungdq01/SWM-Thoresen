@@ -4,7 +4,7 @@
 > **Status:** ✅ Implemented (Feedback Fixed v4 - Multi-line ASN + Multi-warehouse PO)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-25 (Unloading feature: dỡ hàng + weighbridge validation + inventory posting)
+> **Last Updated:** 2026-03-25 (Receipt status refactor + Unloading + Weighbridge auto-sync)
 
 ---
 
@@ -1259,3 +1259,65 @@ Khi weighbridge hoàn thành cân lần 2 cho WEIGH_IN:
 ### 11.9 On-Hand Page Enhancement
 
 Cột **"Đã nhập"** (`inboundReceivedQty`) = tổng `receivedQty` từ receipt lines có `receivedQty > 0`, group theo `itemId + warehouseId`.
+
+---
+
+## 12. Receipt Status Refactor — 2026-03-25
+
+### 12.1 Enum Migration
+
+| Enum cũ | Enum mới | Ý nghĩa |
+|---------|----------|---------|
+| `DRAFT` | `NEW` | Tạo mới |
+| — | `CONFIRMED` | Đã xác nhận, chờ tạo phiếu cân |
+| `AWAITING_WEIGHING` | `AWAITING_WEIGHING` | Đã tạo phiếu cân, chờ xác nhận |
+| `WEIGHED_IN` | `WEIGHING_1` | Đang cân lần 1 / phiếu cân đã xác nhận |
+| `PROCESSING` | `UNLOADING` | Đang dỡ hàng |
+| — | `UNLOADED` | Đã dỡ xong, chờ cân lần 2 |
+| `WEIGHED_OUT` | `WEIGHING_2` | Đang cân lần 2 (transient) |
+| `RECEIVED` | `COMPLETED` | Hoàn thành |
+| `PUTAWAY` | _(removed)_ | Không dùng — hàng đã ở đúng vị trí từ bước dỡ |
+| — | `ERROR` | Lỗi |
+
+### 12.2 State Machine Flow
+
+```
+NEW → CONFIRMED → AWAITING_WEIGHING → WEIGHING_1 → UNLOADING → UNLOADED → WEIGHING_2 → COMPLETED → CLOSED
+```
+
+### 12.3 Trigger Points — Tự động đổi trạng thái Receipt
+
+| Sự kiện | Trigger location | Transition |
+|---------|-----------------|------------|
+| Xác nhận receipt | `receipt.service.js` `confirmReceipt()` | NEW → CONFIRMED |
+| Tạo phiếu cân | `weighbridge-ingest.service.ts` `createManualWeighEvent()` | CONFIRMED → AWAITING_WEIGHING |
+| Hủy/reject phiếu cân | `weighbridge-log.service.ts` `rejectLog()` | AWAITING_WEIGHING → CONFIRMED |
+| Xác nhận phiếu cân | `weighbridge-log.service.ts` `confirmLog()` | AWAITING_WEIGHING → WEIGHING_1 |
+| Ghi gross (cân lần 1) | `weighbridge-log.service.ts` `recordWeight()` lần 1 | WEIGHING_1 → UNLOADING (chưa dỡ) / UNLOADED (đã dỡ) |
+| Bắt đầu dỡ hàng | `unloading.service.ts` `startUnloading()` | → UNLOADING |
+| Hoàn thành dỡ hàng | `unloading.service.ts` `completeUnloading()` | UNLOADING → UNLOADED |
+| Ghi tare (cân lần 2) | `weighbridge-log.service.ts` `recordWeight()` lần 2 | UNLOADED → WEIGHING_2 → COMPLETED |
+| Đóng receipt | `receipt.service.ts` `putawayComplete()` | COMPLETED → CLOSED |
+
+### 12.4 Validation Rules
+
+| Rule | Check point | Error message |
+|------|-----------|---------------|
+| Chưa cân gross → không dỡ | `unloading.service.ts` `startUnloading()` | Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước |
+| Chưa dỡ xong → không cân lần 2 | `weighbridge-log.service.ts` `recordWeight()` | Receipt status phải = UNLOADED |
+| Chỉ edit/delete ở NEW | `receipt.service.ts` | Chỉ có thể chỉnh sửa ở trạng thái Tạo mới |
+
+### 12.5 Frontend Status Labels
+
+| Status | Label VN | Badge color |
+|--------|---------|-------------|
+| NEW | Tạo mới | default (gray) |
+| CONFIRMED | Xác nhận | success (green) |
+| AWAITING_WEIGHING | Chờ cân | info (blue) |
+| WEIGHING_1 | Đang cân lần 1 | info (blue) |
+| UNLOADING | Đang dỡ hàng | warning (yellow) |
+| UNLOADED | Chờ cân lần 2 | info (blue) |
+| WEIGHING_2 | Đang cân lần 2 | warning (yellow) |
+| COMPLETED | Hoàn thành | success (green) |
+| CANCELLED | Đã hủy | danger (red) |
+| ERROR | Lỗi | danger (red) |

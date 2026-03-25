@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-25 (Unloading: locationId + unloadSequenceNo on receipt_line, MdLocation relation)
+> **Last Updated:** 2026-03-25 (Receipt status refactor + Unloading: locationId + unloadSequenceNo)
 
 ---
 
@@ -62,18 +62,30 @@ STANDARD  - Nhập hàng thông thường (xe tải)
 VESSEL    - Nhập hàng từ tàu (có B/L)
 ```
 
-### 2.2 ReceiptStatus
+### 2.2 ReceiptStatus (Refactored 2026-03-25)
 ```
-DRAFT             - Vừa tạo, chưa confirm
-AWAITING_WEIGHING - Đang chờ cân gross
-WEIGHED_IN        - Đã cân gross
-PROCESSING        - Đang dỡ hàng
-WEIGHED_OUT       - Đã cân tare (transient)
-RECEIVED          - Tolerance pass, đã accept
-PUTAWAY           - Putaway completed
+NEW               - Tạo mới, chưa confirm
+CONFIRMED         - Đã xác nhận, chờ tạo phiếu cân
+AWAITING_WEIGHING - Đã tạo phiếu cân, chờ xác nhận phiếu cân
+WEIGHING_1        - Phiếu cân đã xác nhận / đang cân lần 1
+UNLOADING         - Đang dỡ hàng (sau cân gross, chưa dỡ xong)
+UNLOADED          - Đã dỡ hàng xong, chờ cân lần 2 (tare)
+WEIGHING_2        - Đang cân lần 2 (transient)
+COMPLETED         - Hoàn thành (tolerance pass, inventory posted)
 CLOSED            - Terminal - đã đóng
-REJECTED          - Tolerance fail
+REJECTED          - Tolerance fail (reweigh → CONFIRMED)
 CANCELLED         - Terminal - đã hủy
+ERROR             - Lỗi nghiệp vụ
+```
+
+**State Transitions:**
+```
+NEW ──confirm──> CONFIRMED ──tạo phiếu cân──> AWAITING_WEIGHING
+  ──xác nhận phiếu cân──> WEIGHING_1 ──ghi gross──> UNLOADING/UNLOADED
+  ──hoàn thành dỡ──> UNLOADED ──ghi tare──> WEIGHING_2 ──auto_accept──> COMPLETED
+CONFIRMED/AWAITING_WEIGHING/WEIGHING_1/UNLOADING → CANCELLED (cancel)
+REJECTED ──reweigh──> CONFIRMED
+COMPLETED ──close──> CLOSED
 ```
 
 ### 2.3 ReceiptLineStatus
@@ -610,10 +622,10 @@ Khi volume tăng, cân nhắc partition theo tháng:
 
 ### 6.3 M3 Integration (✅ Fixed v3)
 
-| Issue | Description | Fix | Status |
-|-------|-------------|-----|--------|
-| CR-1 | M3 PostingEngine | `postInventory()` called at RECEIVED | ✅ Fixed |
-| HI-1 | BaggedPolicy expectedBagCount | Calculate from lineData | ✅ Fixed |
+| Issue | Description                   | Fix                                  | Status  |
+| -------| -------------------------------| --------------------------------------| ---------|
+| CR-1  | M3 PostingEngine              | `postInventory()` called at RECEIVED | ✅ Fixed |
+| HI-1  | BaggedPolicy expectedBagCount | Calculate from lineData              | ✅ Fixed |
 
 **Data Flow (CR-1):**
 - Receipt RECEIVED → `postInventory()` → `InventTrans` created → `OnHand` updated

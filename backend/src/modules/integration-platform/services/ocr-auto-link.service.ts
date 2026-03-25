@@ -332,7 +332,7 @@ export class OcrAutoLinkService {
           tareWeightKg: ocrData.tareWeight ? Number(ocrData.tareWeight) : null,
           netWeightKg: ocrData.qtyExtracted ? Number(ocrData.qtyExtracted) : null,
           notes: `Tự động tạo từ OCR - Phiếu cân cảng`,
-          status: 'DRAFT',
+          status: 'NEW',
           externalId,
           correlationId,
           sourceApp: 'INTEGRATION',
@@ -360,8 +360,8 @@ export class OcrAutoLinkService {
       await tx.receiptStatusHistory.create({
         data: {
           receiptHeaderId: receiptId,
-          fromStatus: 'DRAFT',
-          toStatus: 'DRAFT',
+          fromStatus: 'NEW',
+          toStatus: 'NEW',
           transitionCode: 'OCR_AUTO_CREATE',
           triggeredBy: ocrData.createdBy || null,
           note: `Tự động tạo từ OCR scan - matched PO ${po.poNumber}`,

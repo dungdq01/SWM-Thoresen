@@ -145,8 +145,32 @@ export class WeighbridgeLogService {
       processingStatus: WeighEventProcessingStatus.VALIDATED as any,
     });
 
-    // TODO: [DRAFT] Re-enable when bridge adapters are finalized
-    // Notify M4 Inbound and M5 Outbound — disabled (adapters removed)
+    // Update receipt status: AWAITING_WEIGHING → WEIGHING_1 when weigh ticket confirmed
+    if (log.receiptId) {
+      try {
+        const receipt = await this.prisma.receiptHeader.findUnique({ where: { id: log.receiptId }, select: { status: true } });
+        if (receipt && receipt.status === 'AWAITING_WEIGHING') {
+          await this.prisma.receiptHeader.update({
+            where: { id: log.receiptId },
+            data: { status: 'WEIGHING_1' },
+          });
+          await this.prisma.receiptStatusHistory.create({
+            data: {
+              receiptHeaderId: log.receiptId,
+              fromStatus: 'AWAITING_WEIGHING',
+              toStatus: 'WEIGHING_1',
+              transitionCode: 'WEIGH_TICKET_CONFIRMED',
+              triggeredBy: context.userId || undefined,
+              correlationId: log.receiptId,
+              occurredAt: new Date(),
+            },
+          });
+          this.logger.log(`Receipt ${log.receiptId} status: AWAITING_WEIGHING → WEIGHING_1`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`Failed to update receipt status on confirm: ${e.message}`);
+      }
+    }
 
     return { id, processingStatus: WeighEventProcessingStatus.VALIDATED };
   }
@@ -169,6 +193,34 @@ export class WeighbridgeLogService {
       processingStatus: WeighEventProcessingStatus.REJECTED as any,
       callbackError: reason || null,
     });
+
+    // Revert receipt status: AWAITING_WEIGHING → CONFIRMED when weigh ticket rejected/cancelled
+    if (log.receiptId) {
+      try {
+        const receipt = await this.prisma.receiptHeader.findUnique({ where: { id: log.receiptId }, select: { status: true } });
+        if (receipt && receipt.status === 'AWAITING_WEIGHING') {
+          await this.prisma.receiptHeader.update({
+            where: { id: log.receiptId },
+            data: { status: 'CONFIRMED' },
+          });
+          await this.prisma.receiptStatusHistory.create({
+            data: {
+              receiptHeaderId: log.receiptId,
+              fromStatus: 'AWAITING_WEIGHING',
+              toStatus: 'CONFIRMED',
+              transitionCode: 'WEIGH_TICKET_CANCELLED',
+              triggeredBy: undefined,
+              correlationId: log.receiptId,
+              occurredAt: new Date(),
+            },
+          });
+          this.logger.log(`Receipt ${log.receiptId} status: AWAITING_WEIGHING → CONFIRMED (weigh ticket rejected)`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`Failed to revert receipt status on weigh ticket rejection: ${e.message}`);
+      }
+    }
+
     return { id, processingStatus: WeighEventProcessingStatus.REJECTED };
   }
 
@@ -202,8 +254,45 @@ export class WeighbridgeLogService {
         processingStatus: WeighEventProcessingStatus.WEIGHING as any,
       });
 
-      // TODO: [DRAFT] Re-enable when bridge adapters are finalized
-      // Notify M4 Inbound and M5 Outbound on gross weight — disabled (adapters removed)
+      // Update receipt status after gross weight recorded:
+      // AWAITING_WEIGHING/CONFIRMED → WEIGHING_1, then check unloading status
+      // If not unloaded → UNLOADING (show on unloading page)
+      // If already unloaded → stay WEIGHING_1 (will go UNLOADED later)
+      if (log.receiptId) {
+        try {
+          const receipt = await this.prisma.receiptHeader.findUnique({
+            where: { id: log.receiptId },
+            select: { status: true },
+          });
+          if (receipt && ['AWAITING_WEIGHING', 'CONFIRMED', 'WEIGHING_1'].includes(receipt.status)) {
+            // Check if all lines already unloaded
+            const lines = await this.prisma.receiptLine.findMany({ where: { receiptHeaderId: log.receiptId } });
+            const allUnloaded = lines.length > 0 && lines.every(l => l.status === 'RECEIVED' || l.status === 'CANCELLED');
+
+            // Determine target status
+            const targetStatus = allUnloaded ? 'UNLOADED' : 'UNLOADING';
+
+            await this.prisma.receiptHeader.update({
+              where: { id: log.receiptId },
+              data: { status: targetStatus },
+            });
+            await this.prisma.receiptStatusHistory.create({
+              data: {
+                receiptHeaderId: log.receiptId,
+                fromStatus: receipt.status,
+                toStatus: targetStatus,
+                transitionCode: 'WEIGH_IN',
+                triggeredBy: undefined,
+                correlationId: log.receiptId,
+                occurredAt: now,
+              },
+            });
+            this.logger.log(`Receipt ${log.receiptId} status: ${receipt.status} → ${targetStatus}`);
+          }
+        } catch (e: any) {
+          this.logger.warn(`Failed to update receipt status on gross weight: ${e.message}`);
+        }
+      }
 
       return { id, grossWeightKg: data.weightKg, grossWeightAt: now, processingStatus: WeighEventProcessingStatus.WEIGHING };
     }
@@ -225,11 +314,12 @@ export class WeighbridgeLogService {
 
       // Inbound: kiểm tra đã dỡ hàng xong chưa trước khi cho cân lần 2
       if (log.weighingType === 'WEIGH_IN' && log.receiptId) {
-        const receiptLines = await this.prisma.receiptLine.findMany({
-          where: { receiptHeaderId: log.receiptId },
+        const receipt = await this.prisma.receiptHeader.findUnique({
+          where: { id: log.receiptId },
+          select: { status: true },
         });
-        const hasOpenLines = receiptLines.some(l => l.status === 'OPEN');
-        if (hasOpenLines) {
+        // Chỉ cho cân lần 2 khi receipt ở UNLOADED
+        if (receipt && receipt.status !== 'UNLOADED') {
           throw new BadRequestException(
             'Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2.',
           );
@@ -385,15 +475,44 @@ export class WeighbridgeLogService {
             }
           }
 
-          // Update receipt header weights
+          // Update receipt header weights + status → WEIGHING_2 then COMPLETED
+          const prevStatus = receipt.status;
           await this.prisma.receiptHeader.update({
             where: { id: log.receiptId },
             data: {
               grossWeightKg: Number(log.grossWeightKg),
               tareWeightKg: data.weightKg,
               netWeightKg: absNet,
+              status: 'COMPLETED',
             },
           });
+
+          // Log status transitions: UNLOADED → WEIGHING_2 → COMPLETED
+          if (prevStatus !== 'COMPLETED') {
+            await this.prisma.receiptStatusHistory.create({
+              data: {
+                receiptHeaderId: log.receiptId,
+                fromStatus: prevStatus,
+                toStatus: 'WEIGHING_2',
+                transitionCode: 'WEIGH_OUT',
+                triggeredBy: undefined,
+                correlationId: log.receiptId,
+                occurredAt: now,
+              },
+            });
+            await this.prisma.receiptStatusHistory.create({
+              data: {
+                receiptHeaderId: log.receiptId,
+                fromStatus: 'WEIGHING_2',
+                toStatus: 'COMPLETED',
+                transitionCode: 'AUTO_ACCEPT',
+                triggeredBy: undefined,
+                correlationId: log.receiptId,
+                occurredAt: now,
+              },
+            });
+            this.logger.log(`Receipt ${log.receiptId} status: ${prevStatus} → WEIGHING_2 → COMPLETED`);
+          }
 
           // Post GOODS_RECEIVED inventory transaction for each line
           try {

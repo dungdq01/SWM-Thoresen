@@ -1676,16 +1676,18 @@ enum ReceiptType {
 }
 
 enum ReceiptStatus {
-  DRAFT
+  NEW
+  CONFIRMED
   AWAITING_WEIGHING
-  WEIGHED_IN
-  PROCESSING
-  WEIGHED_OUT
-  RECEIVED
-  PUTAWAY
+  WEIGHING_1
+  UNLOADING
+  UNLOADED
+  WEIGHING_2
+  COMPLETED
   CLOSED
   REJECTED
   CANCELLED
+  ERROR
 }
 
 enum ReceiptLineStatus {
@@ -1757,7 +1759,7 @@ model ReceiptHeader {
   tareWeightKg          Decimal?      @map("tare_weight_kg") @db.Decimal(18, 3)
   netWeightKg           Decimal?      @map("net_weight_kg") @db.Decimal(18, 3)
   notes                 String?       @db.VarChar(500)
-  status                ReceiptStatus @default(DRAFT)
+  status                ReceiptStatus @default(NEW)
   attemptNumber         Int           @default(1) @map("attempt_number")
   tolerancePctApplied   Decimal?      @map("tolerance_pct_applied") @db.Decimal(8, 4)
   variancePct           Decimal?      @map("variance_pct") @db.Decimal(8, 4)

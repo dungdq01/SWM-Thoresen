@@ -67,7 +67,7 @@ export const inboundOperationsApi = {
   ),
   getPutawayQueue: withDataSource(
     (params) => inboundOperationsMockApi.getPutawayQueue(params),
-    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'RECEIVED,PUTAWAY' } })
+    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'COMPLETED,CLOSED' } })
   ),
   completePutaway: withDataSource(
     (id, data) => inboundOperationsMockApi.completePutaway(id, data),

@@ -179,7 +179,7 @@ export class DashboardService {
     // Get inbound today - count all receipts created today (any active status)
     const inboundToday = await this.prisma.receiptHeader.count({
       where: {
-        status: { in: ['PROCESSING', 'WEIGHED_IN', 'WEIGHED_OUT', 'RECEIVED', 'PUTAWAY', 'CLOSED'] },
+        status: { in: ['UNLOADING', 'WEIGHING_1', 'WEIGHING_2', 'COMPLETED', 'CLOSED'] },
         createdAt: { gte: today },
       },
     });

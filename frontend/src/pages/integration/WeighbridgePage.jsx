@@ -62,7 +62,7 @@ export function WeighbridgePage() {
   const { data: ownersData } = useLookupOwners()
   const { data: itemsData } = useLookupItems()
   const { data: warehousesData } = useLookupWarehouses()
-  const { data: receiptsData } = useInboundReceipts({ pageSize: 100, status: 'AWAITING_WEIGHING' })
+  const { data: receiptsData } = useInboundReceipts({ pageSize: 100, status: 'CONFIRMED' })
   const { data: shipmentsData } = useShipments({ pageSize: 100, status: 'CONFIRMED' })
   const createWeighEventMutation = useCreateWeighEvent()
   const updateWeighLogMutation = useUpdateWeighLog()

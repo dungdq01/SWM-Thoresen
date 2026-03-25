@@ -82,7 +82,7 @@ Hệ thống mô phỏng hoạt động nhập hàng vào kho trung gian (transi
 | SL dự kiến | Số lượng dự kiến nhập (kg) | 50.000 |
 | ĐVT | Đơn vị tính | KG |
 
-**Kết quả:** Receipt được tạo với trạng thái **DRAFT**.
+**Kết quả:** Receipt được tạo với trạng thái **NEW** (Tạo mới).
 
 ---
 
@@ -90,9 +90,9 @@ Hệ thống mô phỏng hoạt động nhập hàng vào kho trung gian (transi
 
 **Hành động:** Xác nhận phiếu nhập.
 
-**Trạng thái Receipt:** DRAFT → **AWAITING_WEIGHING** (Chờ cân)
+**Trạng thái Receipt:** NEW → **CONFIRMED** (Xác nhận)
 
-**Ý nghĩa:** Xe đã đến kho, sẵn sàng lên trạm cân.
+**Ý nghĩa:** Xe đã đến kho, sẵn sàng tạo phiếu cân.
 
 ---
 
@@ -106,25 +106,39 @@ Hệ thống mô phỏng hoạt động nhập hàng vào kho trung gian (transi
 |--------|-------|-------|
 | Mã phiếu cân | Tự động sinh | WB-EVT-{timestamp} |
 | Loại cân | **Cân vào** (inbound) | Cân vào (WEIGH_IN) |
-| Mã phiếu nhập | Liên kết Receipt | RCV-202603-00001 |
+| Mã phiếu nhập | Liên kết Receipt (status = CONFIRMED) | RCV-202603-00001 |
 | Kho | Tự động theo Receipt | WH-01 |
 | Số xe | Kế thừa | 51C-12345 |
 | Chủ hàng | Tự động | OWN-001 |
 | Mã hàng | Tự động | CLINKER |
 
-**Kết quả:** Phiếu cân được tạo.
+**Kết quả:** Phiếu cân được tạo → **Receipt tự động chuyển CONFIRMED → AWAITING_WEIGHING** (Chờ cân).
+
+> **Nếu phiếu cân bị hủy/reject:** Receipt quay về **CONFIRMED** (Xác nhận).
+
+---
+
+### Bước 5b: Xác nhận Phiếu Cân
+
+**Hành động:** Nhấn nút xác nhận (✓) trên phiếu cân.
+
+**Trạng thái Receipt:** AWAITING_WEIGHING → **WEIGHING_1** (Đang cân lần 1)
+
+**Ý nghĩa:** Xe sẵn sàng lên bàn cân, phiếu cân đã được duyệt.
 
 ---
 
 ### Bước 6: Cân lần 1 — Gross (Xe có hàng)
 
-**Hành động:** Xe **có hàng** lên trạm cân → nhập trọng lượng lần 1.
+**Hành động:** Xe **có hàng** lên trạm cân → nhập trọng lượng lần 1 (gross).
 
 **Khác với outbound:** Ở inbound, xe vào kho đã chở hàng nên cân lần 1 là **gross** (xe nặng).
 
-**Trạng thái Receipt:** AWAITING_WEIGHING → **WEIGHED_IN**
-
 **Trạng thái phiếu cân:** → WEIGHING (Đang cân lần 2)
+
+**Trạng thái Receipt sau ghi gross:**
+- Nếu **chưa dỡ hàng** → WEIGHING_1 → **UNLOADING** (Đang dỡ hàng) — hiện ở trang dỡ hàng
+- Nếu **đã dỡ hàng** → WEIGHING_1 → **UNLOADED** (Chờ cân lần 2) — sẵn sàng cân tare
 
 > **Ràng buộc:** Cân lần 1 (gross) là **bắt buộc** trước khi dỡ hàng. Nếu xe chưa cân lần 1, hệ thống **không cho phép dỡ hàng**: *"Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước khi dỡ hàng."*
 
@@ -134,16 +148,16 @@ Hệ thống mô phỏng hoạt động nhập hàng vào kho trung gian (transi
 
 **Màn hình:** Vận hành nhập > Dỡ hàng (`/app/inbound-operations/unloading`)
 
-**Điều kiện tiên quyết:** Xe đã cân lần 1 (gross) thành công. Receipt status = WEIGHED_IN hoặc PROCESSING.
+**Điều kiện tiên quyết:** Xe đã cân lần 1 (gross) thành công. Receipt status = UNLOADING.
 
 **Quy trình:**
 
-1. Chọn phiếu nhập (Receipt) từ danh sách bên trái (WEIGHED_IN / PROCESSING)
+1. Chọn phiếu nhập (Receipt) từ danh sách bên trái (CONFIRMED / AWAITING_WEIGHING / WEIGHING_1 / UNLOADING)
 2. Hệ thống hiển thị trạng thái cân:
    - **Cân lần 1 — Gross (xe có hàng):** Đã cân ✓
    - **Cân lần 2 — Tare (xe rỗng):** Chờ dỡ hàng xong
-3. Nhấn **"Bắt đầu dỡ hàng"**
-4. **Trạng thái Receipt:** WEIGHED_IN → **PROCESSING** (Đang dỡ hàng)
+3. Nhấn **"Bắt đầu dỡ hàng"** (yêu cầu đã cân gross)
+4. **Trạng thái Receipt:** → **UNLOADING** (Đang dỡ hàng)
 
 #### Chọn vị trí dỡ hàng (Location Picking)
 
@@ -171,6 +185,7 @@ Với mỗi dòng hàng cần dỡ, hiển thị:
 5. Di chuyển sang vị trí khác nếu cần → quét tiếp
 
 5. Sau khi dỡ xong tất cả hàng, nhấn **"Hoàn thành dỡ hàng"**
+6. **Trạng thái Receipt:** UNLOADING → **UNLOADED** (Chờ cân lần 2)
 
 > **Tại sao cần chọn vị trí dỡ hàng?**
 > - Hàng nhập cần được đặt đúng vị trí trong kho
@@ -184,9 +199,9 @@ Với mỗi dòng hàng cần dỡ, hiển thị:
 
 **Màn hình:** Trạm cân (`/app/weighbridge`)
 
-**Điều kiện tiên quyết:** Hàng đã dỡ xong. Receipt phải ở trạng thái **PROCESSING** và đã hoàn thành dỡ hàng.
+**Điều kiện tiên quyết:** Hàng đã dỡ xong. Receipt phải ở trạng thái **UNLOADED** (Chờ cân lần 2).
 
-> **Ràng buộc:** Nếu chưa dỡ hàng xong → báo lỗi: *"Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2."*
+> **Ràng buộc:** Nếu receipt chưa ở UNLOADED → báo lỗi: *"Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2."*
 
 **Hành động:** Xe **đã dỡ hàng** (rỗng) lên trạm cân → nhập trọng lượng lần 2.
 
@@ -199,12 +214,9 @@ VD: 55.000 kg − 5.000 kg = 50.000 kg
 **Cập nhật tự động sau khi cân lần 2:**
 
 1. **Phiếu cân:** → COMPLETED
-2. **Receipt:** PROCESSING → **WEIGHED_OUT**
-3. **Kiểm tra dung sai (Tolerance Check):**
-   - Tính variance: `|netWeight - expectedQty| / expectedQty × 100%`
-   - Nếu variance ≤ tolerance → **AUTO_ACCEPT** → Receipt status → **RECEIVED**
-   - Nếu variance > tolerance → **AUTO_REJECT** → Receipt status → **REJECTED** (có thể reweigh tối đa 3 lần)
-4. **Receipt Lines:** Cập nhật `receivedQty` = net weight
+2. **Receipt:** UNLOADED → **WEIGHING_2** → **COMPLETED**
+3. **Receipt Lines:** Cập nhật `receivedQty` = net weight (proportional split)
+4. **Receipt Header:** Cập nhật `grossWeightKg`, `tareWeightKg`, `netWeightKg`
 5. **Inventory Transaction:** Tự động post `GOODS_RECEIVED` vào Module 3 (Inventory Core):
    - Event: `GOODS_RECEIVED` → Transaction type: `RECEIPT`, Stage: `RECEIVED`
    - **Cộng** `physicalQty` trên `on_hand` tại vị trí đã chọn khi dỡ hàng
@@ -213,17 +225,9 @@ VD: 55.000 kg − 5.000 kg = 50.000 kg
 
 ---
 
-### Bước 9: Cất hàng / Putaway (Tùy chọn)
+### Bước 9: Đóng phiếu nhập
 
-**Trạng thái Receipt:** RECEIVED → **PUTAWAY** (sau khi xác nhận cất hàng)
-
-> Bước này tùy chọn — hàng đã ở đúng vị trí từ bước dỡ hàng. Putaway dùng khi cần di chuyển hàng từ vị trí nhận hàng tạm sang vị trí lưu trữ chính thức.
-
----
-
-### Bước 10: Đóng phiếu nhập
-
-**Trạng thái Receipt:** PUTAWAY → **CLOSED**
+**Trạng thái Receipt:** COMPLETED → **CLOSED**
 
 **PO:** Cập nhật tổng SL đã nhận từ tất cả Receipt liên quan.
 
@@ -240,15 +244,22 @@ NEW (Tạo mới) → CONFIRMED (Đã xác nhận) → RECEIVING (Đang nhận) 
 
 ### Receipt (ASN / Phiếu nhập)
 ```
-DRAFT → AWAITING_WEIGHING → WEIGHED_IN → PROCESSING → WEIGHED_OUT
-  ↓                                                        ↓
-CANCELLED                                           ┌──────┴──────┐
-                                                    ↓             ↓
-                                                RECEIVED      REJECTED
-                                                    ↓         (reweigh ≤3)
-                                                PUTAWAY           ↓
-                                                    ↓      AWAITING_WEIGHING
-                                                CLOSED
+NEW ──xác nhận──> CONFIRMED ──tạo phiếu cân──> AWAITING_WEIGHING ──xác nhận phiếu cân──> WEIGHING_1
+ ↓                    ↓         ↑ (hủy phiếu cân)                                           ↓
+CANCELLED         CANCELLED                                              (ghi gross → check dỡ hàng)
+                                                                           ↓                   ↓
+                                                                       UNLOADING            UNLOADED
+                                                                     (chưa dỡ)           (đã dỡ xong)
+                                                                           ↓                   ↓
+                                                                   ──hoàn thành dỡ──> UNLOADED ─┘
+                                                                                           ↓
+                                                                              (cân lần 2 tare)
+                                                                                           ↓
+                                                                                      WEIGHING_2
+                                                                                           ↓
+                                                                                      COMPLETED → CLOSED
+                                                                                           ↓
+                                                                                      (nếu reject → REJECTED → reweigh → CONFIRMED)
 ```
 
 ### Phiếu cân (Weighbridge Event — WEIGH_IN)
@@ -263,31 +274,31 @@ VALIDATED → WEIGHING (Đã cân lần 1 gross) → COMPLETED (Đã cân lần 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
 │ 1. Tạo PO       │────>│ 2. Xác nhận PO   │────>│ 3. Tạo Receipt (ASN) │
-│    (NEW)        │     │    (CONFIRMED)   │     │    (DRAFT)           │
+│    (NEW)        │     │    (CONFIRMED)   │     │    (NEW)             │
 └─────────────────┘     └──────────────────┘     └──────────┬───────────┘
                                                             │
                                                             v
-┌─────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
-│ 6. Cân lần 1    │<────│ 5. Tạo phiếu cân │<────│ 4. Xác nhận Receipt  │
-│    Gross        │     │    (Cân vào)     │     │    (AWAITING_WEIGHING)│
-│    (xe có hàng) │     │                  │     │                      │
-└────────┬────────┘     └──────────────────┘     └──────────────────────┘
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
+│ 5b. Xác nhận     │     │ 5. Tạo phiếu cân │<────│ 4. Xác nhận Receipt  │
+│     phiếu cân    │<────│ (AWAITING_WEIGHING)│     │    (CONFIRMED)       │
+│   (WEIGHING_1)   │     └──────────────────┘     └──────────────────────┘
+└────────┬─────────┘
          │
          v
 ┌─────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
-│ 7. Dỡ hàng      │────>│ 7b. Hoàn thành   │────>│ 8. Cân lần 2         │
-│    (chọn vị trí │     │     dỡ hàng      │     │    Tare (xe rỗng)    │
-│     dỡ vào kho) │     │                  │     │                      │
+│ 6. Ghi cân lần 1│────>│ 7. Dỡ hàng       │────>│ 7b. Hoàn thành dỡ    │
+│    Gross         │     │   (UNLOADING)    │     │     (UNLOADED)       │
+│  → UNLOADING     │     │  chọn vị trí kho │     │  Chờ cân lần 2      │
 └─────────────────┘     └──────────────────┘     └──────────┬───────────┘
                                                             │
                                                             v
                                                  ┌──────────────────────┐
-                                                 │ 9. Hệ thống tự động: │
+                                                 │ 8. Cân lần 2 Tare    │
+                                                 │    (WEIGHING_2)      │
+                                                 │  → COMPLETED         │
                                                  │  • Net = Gross - Tare│
-                                                 │  • Tolerance check   │
                                                  │  • Post GOODS_RECEIVED│
                                                  │    → Cộng tồn kho    │
-                                                 │  • Ghi lịch sử GD   │
                                                  └──────────────────────┘
 ```
 
@@ -314,13 +325,13 @@ VALIDATED → WEIGHING (Đã cân lần 1 gross) → COMPLETED (Đã cân lần 
 | 1. Tạo PO | ✅ Đã triển khai | CRUD + confirm/cancel/close |
 | 2. Xác nhận PO | ✅ Đã triển khai | |
 | 3. Tạo Receipt (ASN) | ✅ Đã triển khai | Multi-line, liên kết PO |
-| 4. Xác nhận Receipt | ✅ Đã triển khai | DRAFT → AWAITING_WEIGHING |
-| 5. Tạo phiếu cân | ✅ Đã triển khai | Trạm cân, loại Cân vào |
-| 6. Cân lần 1 (Gross) | ✅ Đã triển khai | Weighbridge WEIGH_IN |
-| 7. Dỡ hàng (Unloading) | ✅ Đã triển khai | Chọn vị trí dỡ, dropdown locations |
-| 8. Cân lần 2 (Tare) | ✅ Đã triển khai | Validation chưa dỡ xong → block |
+| 4. Xác nhận Receipt | ✅ Đã triển khai | NEW → CONFIRMED |
+| 5. Tạo phiếu cân | ✅ Đã triển khai | CONFIRMED → AWAITING_WEIGHING |
+| 5b. Xác nhận phiếu cân | ✅ Đã triển khai | AWAITING_WEIGHING → WEIGHING_1 |
+| 6. Cân lần 1 (Gross) | ✅ Đã triển khai | WEIGHING_1 → UNLOADING (nếu chưa dỡ) / UNLOADED (nếu đã dỡ) |
+| 7. Dỡ hàng (Unloading) | ✅ Đã triển khai | UNLOADING → UNLOADED |
+| 8. Cân lần 2 (Tare) | ✅ Đã triển khai | UNLOADED → WEIGHING_2 → COMPLETED |
 | 9. Cộng tồn kho | ✅ Đã triển khai | Post GOODS_RECEIVED → cộng on_hand |
-| 10. Tolerance check | ✅ Đã triển khai | Auto accept/reject |
 
 ---
 

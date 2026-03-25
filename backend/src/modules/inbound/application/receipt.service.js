@@ -118,7 +118,7 @@ class ReceiptService {
           blNumber: data.blNumber || null,
           expectedQty: totalExpectedQtyKg,
           notes: data.notes || null,
-          status: RECEIPT_STATUS.DRAFT,
+          status: RECEIPT_STATUS.NEW,
           correlationId: context.correlationId || `corr-${Date.now()}`,
           sourceApp: data.sourceApp || 'WEB',
           owner: { connect: { id: data.ownerId } },
@@ -154,7 +154,7 @@ class ReceiptService {
         data: {
           receiptHeaderId: receipt.id,
           fromStatus: null,
-          toStatus: RECEIPT_STATUS.DRAFT,
+          toStatus: RECEIPT_STATUS.NEW,
           transitionCode: 'CREATE',
           triggeredBy: context.userId,
           triggerRole: context.userRole,
@@ -184,7 +184,7 @@ class ReceiptService {
       // Check idempotency
       if (data.externalId) {
         const existing = await this.receiptRepo.findByExternalId(data.externalId);
-        if (existing && existing.id !== receiptId && existing.status !== RECEIPT_STATUS.DRAFT) {
+        if (existing && existing.id !== receiptId && existing.status !== RECEIPT_STATUS.NEW) {
           return { receipt: existing, idempotentReplay: true };
         }
       }
@@ -206,7 +206,7 @@ class ReceiptService {
         where: { id: receiptId },
         data: {
           receiptNumber,
-          status: RECEIPT_STATUS.AWAITING_WEIGHING,
+          status: RECEIPT_STATUS.CONFIRMED,
           rowVersion: { increment: 1 },
           updatedBy: context.userId,
         },
@@ -218,7 +218,7 @@ class ReceiptService {
         data: {
           receiptHeaderId: receiptId,
           fromStatus: receipt.status,
-          toStatus: RECEIPT_STATUS.AWAITING_WEIGHING,
+          toStatus: RECEIPT_STATUS.CONFIRMED,
           transitionCode: RECEIPT_ACTIONS.CONFIRM,
           triggeredBy: context.userId,
           triggerRole: context.userRole,
@@ -285,7 +285,7 @@ class ReceiptService {
         where: { id: receiptId },
         data: {
           grossWeightKg,
-          status: RECEIPT_STATUS.WEIGHED_IN,
+          status: RECEIPT_STATUS.WEIGHING_1,
           rowVersion: { increment: 1 },
           updatedBy: context.userId,
         },
@@ -297,7 +297,7 @@ class ReceiptService {
         data: {
           receiptHeaderId: receiptId,
           fromStatus: receipt.status,
-          toStatus: RECEIPT_STATUS.WEIGHED_IN,
+          toStatus: RECEIPT_STATUS.WEIGHING_1,
           transitionCode: RECEIPT_ACTIONS.WEIGH_IN,
           triggeredBy: context.userId,
           correlationId: receipt.correlationId,
@@ -331,7 +331,7 @@ class ReceiptService {
       const updated = await tx.receiptHeader.update({
         where: { id: receiptId },
         data: {
-          status: RECEIPT_STATUS.PROCESSING,
+          status: RECEIPT_STATUS.UNLOADING,
           rowVersion: { increment: 1 },
           updatedBy: context.userId,
         },
@@ -342,7 +342,7 @@ class ReceiptService {
         data: {
           receiptHeaderId: receiptId,
           fromStatus: receipt.status,
-          toStatus: RECEIPT_STATUS.PROCESSING,
+          toStatus: RECEIPT_STATUS.UNLOADING,
           transitionCode: RECEIPT_ACTIONS.START_PROCESSING,
           triggeredBy: context.userId,
           correlationId: receipt.correlationId,
@@ -435,7 +435,7 @@ class ReceiptService {
       const toleranceResult = TolerancePolicy.checkTolerance(variancePct, toleranceLookup.tolerance);
 
       // Determine next status
-      const nextStatus = toleranceResult.pass ? RECEIPT_STATUS.RECEIVED : RECEIPT_STATUS.REJECTED;
+      const nextStatus = toleranceResult.pass ? RECEIPT_STATUS.COMPLETED : RECEIPT_STATUS.REJECTED;
       const transitionCode = toleranceResult.pass ? RECEIPT_ACTIONS.AUTO_ACCEPT : RECEIPT_ACTIONS.AUTO_REJECT;
 
       // Update receipt
@@ -504,7 +504,7 @@ class ReceiptService {
         data: {
           receiptHeaderId: receiptId,
           fromStatus: receipt.status,
-          toStatus: RECEIPT_STATUS.WEIGHED_OUT,
+          toStatus: RECEIPT_STATUS.WEIGHING_2,
           transitionCode: RECEIPT_ACTIONS.WEIGH_OUT,
           triggeredBy: context.userId,
           correlationId: receipt.correlationId,
@@ -515,7 +515,7 @@ class ReceiptService {
       await tx.receiptStatusHistory.create({
         data: {
           receiptHeaderId: receiptId,
-          fromStatus: RECEIPT_STATUS.WEIGHED_OUT,
+          fromStatus: RECEIPT_STATUS.WEIGHING_2,
           toStatus: nextStatus,
           transitionCode,
           triggeredBy: context.userId,
@@ -569,7 +569,7 @@ class ReceiptService {
       const updated = await tx.receiptHeader.update({
         where: { id: receiptId },
         data: {
-          status: RECEIPT_STATUS.AWAITING_WEIGHING,
+          status: RECEIPT_STATUS.CONFIRMED,
           attemptNumber: { increment: 1 },
           grossWeightKg: null,
           tareWeightKg: null,
@@ -585,7 +585,7 @@ class ReceiptService {
         data: {
           receiptHeaderId: receiptId,
           fromStatus: receipt.status,
-          toStatus: RECEIPT_STATUS.AWAITING_WEIGHING,
+          toStatus: RECEIPT_STATUS.CONFIRMED,
           transitionCode: RECEIPT_ACTIONS.REWEIGH,
           triggeredBy: context.userId,
           correlationId: receipt.correlationId,
@@ -713,7 +713,7 @@ class ReceiptService {
       }
 
       // Chỉ cho phép báo lỗi khi status = DRAFT
-      if (receipt.status !== RECEIPT_STATUS.DRAFT) {
+      if (receipt.status !== RECEIPT_STATUS.NEW) {
         throw createInvalidStateError(receipt.status, 'REPORT_ERROR');
       }
 

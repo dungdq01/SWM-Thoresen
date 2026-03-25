@@ -18,7 +18,7 @@ export class UnloadingController {
   constructor(private readonly unloadingService: UnloadingService) {}
 
   @Get('receipts')
-  @ApiOperation({ summary: 'List receipts available for unloading (WEIGHED_IN + PROCESSING)' })
+  @ApiOperation({ summary: 'List receipts available for unloading (CONFIRMED + WEIGHING_1 + UNLOADING)' })
   @ApiQuery({ name: 'warehouseId', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
@@ -51,7 +51,7 @@ export class UnloadingController {
 
   @Post(':id/start')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Start unloading — transition to PROCESSING status' })
+  @ApiOperation({ summary: 'Start unloading — transition to UNLOADING status' })
   @ApiParam({ name: 'id', description: 'Receipt ID' })
   async startUnloading(@Param('id', ParseUUIDPipe) id: string) {
     return this.unloadingService.startUnloading(id);

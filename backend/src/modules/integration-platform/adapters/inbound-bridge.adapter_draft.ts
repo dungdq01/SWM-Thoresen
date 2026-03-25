@@ -92,7 +92,7 @@ export class InboundBridgeAdapter {
       }
 
       // Guard: Chỉ xử lý nếu receipt đang ở AWAITING_WEIGHING
-      if (receipt.status !== 'AWAITING_WEIGHING') {
+      if (receipt.status !== 'CONFIRMED') {
         return {
           success: true,
           skipped: true,
@@ -107,7 +107,7 @@ export class InboundBridgeAdapter {
         const updatedReceipt = await tx.receiptHeader.update({
           where: { id: log.receiptId },
           data: {
-            status: 'WEIGHED_IN',
+            status: 'WEIGHING_1',
             grossWeightKg: log.grossWeightKg,
             rowVersion: { increment: 1 },
             updatedBy: context.userId,
@@ -118,8 +118,8 @@ export class InboundBridgeAdapter {
         await tx.receiptStatusHistory.create({
           data: {
             receiptHeaderId: log.receiptId!,
-            fromStatus: 'AWAITING_WEIGHING',
-            toStatus: 'WEIGHED_IN',
+            fromStatus: 'CONFIRMED',
+            toStatus: 'WEIGHING_1',
             transitionCode: 'M8_WEIGHBRIDGE_CONFIRMED',
             triggeredBy: context.userId,
             correlationId: receipt.correlationId,
@@ -192,7 +192,7 @@ export class InboundBridgeAdapter {
       }
 
       // Guard: Chỉ xử lý nếu receipt đang ở WEIGHED_IN
-      if (receipt.status !== 'WEIGHED_IN') {
+      if (receipt.status !== 'WEIGHING_1') {
         return {
           success: true,
           skipped: true,
@@ -206,7 +206,7 @@ export class InboundBridgeAdapter {
         const updatedReceipt = await tx.receiptHeader.update({
           where: { id: log.receiptId },
           data: {
-            status: 'PROCESSING' as any,
+            status: 'UNLOADING' as any,
             grossWeightKg: log.grossWeightKg,
             rowVersion: { increment: 1 },
             updatedBy: context.userId,
@@ -217,8 +217,8 @@ export class InboundBridgeAdapter {
         await tx.receiptStatusHistory.create({
           data: {
             receiptHeaderId: log.receiptId!,
-            fromStatus: 'WEIGHED_IN',
-            toStatus: 'PROCESSING',
+            fromStatus: 'WEIGHING_1',
+            toStatus: 'UNLOADING',
             transitionCode: 'M8_GROSS_WEIGHT_RECORDED',
             triggeredBy: context.userId,
             correlationId: receipt.correlationId,
@@ -237,7 +237,7 @@ export class InboundBridgeAdapter {
       return {
         success: true,
         receiptId: updated.id,
-        newStatus: 'PROCESSING',
+        newStatus: 'UNLOADING',
         skipped: false,
       };
     } catch (error) {
@@ -298,7 +298,7 @@ export class InboundBridgeAdapter {
       }
 
       // Guard: Chỉ xử lý nếu receipt đang ở PROCESSING (đang cân lần 2)
-      if (receipt.status !== 'PROCESSING') {
+      if (receipt.status !== 'UNLOADING') {
         return {
           success: true,
           skipped: true,
@@ -313,7 +313,7 @@ export class InboundBridgeAdapter {
         const updatedReceipt = await tx.receiptHeader.update({
           where: { id: log.receiptId },
           data: {
-            status: 'WEIGHED_OUT' as any,
+            status: 'WEIGHING_2' as any,
             tareWeightKg: log.tareWeightKg,
             netWeightKg: log.netWeightKg,
             rowVersion: { increment: 1 },
@@ -337,7 +337,7 @@ export class InboundBridgeAdapter {
               where: { id: line.id },
               data: {
                 receivedQty: receivedQty,
-                status: 'RECEIVED' as any,
+                status: 'COMPLETED' as any,
                 updatedBy: context.userId,
               },
             });
@@ -374,8 +374,8 @@ export class InboundBridgeAdapter {
         await tx.receiptStatusHistory.create({
           data: {
             receiptHeaderId: log.receiptId!,
-            fromStatus: 'PROCESSING',
-            toStatus: 'WEIGHED_OUT',
+            fromStatus: 'UNLOADING',
+            toStatus: 'WEIGHING_2',
             transitionCode: 'M8_WEIGHBRIDGE_COMPLETED',
             triggeredBy: context.userId,
             correlationId: receipt.correlationId,
@@ -399,7 +399,7 @@ export class InboundBridgeAdapter {
       return {
         success: true,
         receiptId: updated.id,
-        newStatus: 'WEIGHED_OUT',
+        newStatus: 'WEIGHING_2',
         skipped: false,
         poUpdated: poResult.updated,
         poId: poResult.poId,
@@ -438,7 +438,7 @@ export class InboundBridgeAdapter {
       }
 
       // Aggregate netWeightKg từ các Receipt đã done (WEIGHED_OUT trở lên)
-      const doneStatuses = ['WEIGHED_OUT', 'RECEIVED', 'PUTAWAY', 'CLOSED'];
+      const doneStatuses = ['WEIGHING_2', 'COMPLETED', 'CLOSED', 'CLOSED'];
       const aggregation = await this.prisma.receiptHeader.aggregate({
         where: {
           poId: poId,

@@ -189,10 +189,10 @@ export class ReceiptController {
   }
 
   @Put('receipts/:id')
-  @ApiOperation({ summary: 'Update receipt (DRAFT status only)' })
+  @ApiOperation({ summary: 'Update receipt (NEW status only)' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt updated' })
-  @ApiResponse({ status: 400, description: 'Cannot update receipt not in DRAFT status' })
+  @ApiResponse({ status: 400, description: 'Cannot update receipt not in NEW status' })
   @Permission('inbound.receipt.create')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -204,10 +204,10 @@ export class ReceiptController {
 
   @Delete('receipts/:id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete receipt (DRAFT status only)' })
+  @ApiOperation({ summary: 'Delete receipt (NEW status only)' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Receipt deleted' })
-  @ApiResponse({ status: 400, description: 'Cannot delete receipt not in DRAFT status' })
+  @ApiResponse({ status: 400, description: 'Cannot delete receipt not in NEW status' })
   @Permission('inbound.receipt.create')
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: RequestUser) {
     return this.receiptService.deleteReceipt(id, user?.id || 'system');

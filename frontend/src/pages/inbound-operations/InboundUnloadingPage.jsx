@@ -16,9 +16,11 @@ import {
 } from '@domains/inbound-operations/hooks/useInboundOperations'
 
 const STATUS_BADGE = {
+  CONFIRMED: { label: 'Xác nhận', cls: 'bg-gray-100 text-gray-800' },
   AWAITING_WEIGHING: { label: 'Chờ cân', cls: 'bg-orange-100 text-orange-800' },
-  WEIGHED_IN: { label: 'Chờ dỡ', cls: 'bg-blue-100 text-blue-800' },
-  PROCESSING: { label: 'Đang dỡ', cls: 'bg-yellow-100 text-yellow-800' },
+  WEIGHING_1: { label: 'Chờ dỡ', cls: 'bg-blue-100 text-blue-800' },
+  UNLOADING: { label: 'Đang dỡ', cls: 'bg-yellow-100 text-yellow-800' },
+  UNLOADED: { label: 'Đã dỡ xong', cls: 'bg-green-100 text-green-800' },
 }
 
 /**
@@ -196,7 +198,7 @@ export function InboundUnloadingPage() {
               </div>
 
               {/* Start button — phải cân gross trước */}
-              {(detail.status === 'AWAITING_WEIGHING' || detail.status === 'WEIGHED_IN') && (
+              {(detail.status === 'CONFIRMED' || detail.status === 'WEIGHING_1') && (
                 <div className={`rounded-xl p-6 text-center border ${
                   detail.hasGross
                     ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
@@ -224,7 +226,7 @@ export function InboundUnloadingPage() {
               )}
 
               {/* Pending items — chọn vị trí dỡ hàng */}
-              {detail.status === 'PROCESSING' && pendingLines.length > 0 && (
+              {detail.status === 'UNLOADING' && pendingLines.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="font-medium text-gray-900 dark:text-white">Chưa dỡ ({pendingLines.length})</h3>
@@ -266,7 +268,7 @@ export function InboundUnloadingPage() {
                             </div>
                           </div>
                         </div>
-                        {detail.status === 'PROCESSING' && !unloadingCompleted && (
+                        {detail.status === 'UNLOADING' && !unloadingCompleted && !detail.hasTare && (
                           <button
                             onClick={() => handleUndo(line.id)}
                             disabled={undoMut.isPending}
@@ -282,7 +284,7 @@ export function InboundUnloadingPage() {
               )}
 
               {/* Complete button */}
-              {detail.status === 'PROCESSING' && pendingLines.length === 0 && unloadedLines.length > 0 && !unloadingCompleted && (
+              {detail.status === 'UNLOADING' && pendingLines.length === 0 && unloadedLines.length > 0 && !unloadingCompleted && !detail.hasTare && (
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 text-center border border-green-200 dark:border-green-800">
                   <p className="text-sm text-green-700 dark:text-green-300 mb-4">
                     Tất cả mặt hàng đã dỡ xuống kho
@@ -297,8 +299,16 @@ export function InboundUnloadingPage() {
                 </div>
               )}
 
+              {/* Completed — already weighed tare */}
+              {detail.hasTare && (
+                <div className="bg-green-50 rounded-xl p-6 text-center border border-green-200">
+                  <p className="text-green-800 font-medium mb-1">Đã hoàn thành</p>
+                  <p className="text-sm text-green-600">Xe đã cân tare. Phiếu nhập đã được xử lý xong.</p>
+                </div>
+              )}
+
               {/* Completed — remind to go weigh tare */}
-              {detail.status === 'PROCESSING' && unloadingCompleted && !detail.hasTare && (
+              {detail.status === 'UNLOADING' && unloadingCompleted && !detail.hasTare && (
                 <div className="bg-yellow-50 rounded-xl p-6 text-center border border-yellow-200">
                   <p className="text-yellow-800 font-medium mb-1">Đã dỡ hàng xong</p>
                   <p className="text-sm text-yellow-600">Vui lòng đưa xe đến Trạm cân để cân lần 2 (tare — xe rỗng)</p>

@@ -4,23 +4,32 @@ import { X, Package, Truck, User, Warehouse, Calendar, FileText } from 'lucide-r
 import { Badge, Button } from '@shared/ui'
 
 const STATUS_LABELS = {
-  DRAFT: 'Tạo mới',
+  NEW: 'Tạo mới',
+  CONFIRMED: 'Xác nhận',
   AWAITING_WEIGHING: 'Chờ cân',
-  WEIGHED_IN: 'Đang cân lần 1',
-  PROCESSING: 'Đang cân lần 2',
-  WEIGHED_OUT: 'Đã hoàn thành',
+  WEIGHING_1: 'Đang cân lần 1',
+  UNLOADING: 'Đang dỡ hàng',
+  UNLOADED: 'Chờ cân lần 2',
+  WEIGHING_2: 'Đang cân lần 2',
   COMPLETED: 'Hoàn thành',
+  CLOSED: 'Đã đóng',
+  REJECTED: 'Từ chối',
   CANCELLED: 'Đã hủy',
+  ERROR: 'Lỗi',
 }
 
 const statusTone = (status) => {
-  if (status === 'DRAFT') return 'default'
+  if (status === 'NEW') return 'default'
+  if (status === 'CONFIRMED') return 'success'
   if (status === 'AWAITING_WEIGHING') return 'info'
-  if (status === 'WEIGHED_IN') return 'info'
-  if (status === 'PROCESSING') return 'warning'
-  if (status === 'WEIGHED_OUT') return 'warning'
+  if (status === 'WEIGHING_1') return 'info'
+  if (status === 'UNLOADING') return 'warning'
+  if (status === 'UNLOADED') return 'info'
+  if (status === 'WEIGHING_2') return 'warning'
   if (status === 'COMPLETED') return 'success'
   if (status === 'CANCELLED') return 'danger'
+  if (status === 'REJECTED') return 'danger'
+  if (status === 'ERROR') return 'danger'
   return 'default'
 }
 

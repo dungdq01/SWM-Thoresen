@@ -225,6 +225,33 @@ export class WeighbridgeIngestService {
 
     this.logger.log(`Manual weigh event created: ${dto.weighbridgeEventId}, log ID: ${log.id}`);
 
+    // Update receipt status: CONFIRMED → AWAITING_WEIGHING when weigh ticket created
+    if (receiptId) {
+      try {
+        const receipt = await this.prisma.receiptHeader.findUnique({ where: { id: receiptId }, select: { status: true } });
+        if (receipt && receipt.status === 'CONFIRMED') {
+          await this.prisma.receiptHeader.update({
+            where: { id: receiptId },
+            data: { status: 'AWAITING_WEIGHING' },
+          });
+          await this.prisma.receiptStatusHistory.create({
+            data: {
+              receiptHeaderId: receiptId,
+              fromStatus: 'CONFIRMED',
+              toStatus: 'AWAITING_WEIGHING',
+              transitionCode: 'CREATE_WEIGH_TICKET',
+              triggeredBy: createdBy,
+              correlationId: dto.correlationId || receiptId,
+              occurredAt: new Date(),
+            },
+          });
+          this.logger.log(`Receipt ${receiptId} status: CONFIRMED → AWAITING_WEIGHING`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`Failed to update receipt status on weigh ticket creation: ${e.message}`);
+      }
+    }
+
     // Dispatch callback
     this.dispatchCallbackAsync(log.id, dto.referenceType, dto.referenceId);
 

@@ -21,39 +21,45 @@ import { CreateInboundReceiptModal, ViewReceiptModal, EditReceiptModal } from '@
 
 const RECEIPT_STATUSES = [
   { value: '', label: 'Tất cả' },
-  { value: 'DRAFT', label: 'Tạo mới' },
+  { value: 'NEW', label: 'Tạo mới' },
   { value: 'CONFIRMED', label: 'Xác nhận' },
   { value: 'ERROR', label: 'Lỗi' },
   { value: 'AWAITING_WEIGHING', label: 'Chờ cân' },
-  { value: 'WEIGHED_IN', label: 'Đang cân lần 1' },
-  { value: 'PROCESSING', label: 'Đang cân lần 2' },
-  { value: 'WEIGHED_OUT', label: 'Đã hoàn thành' },
+  { value: 'WEIGHING_1', label: 'Đang cân lần 1' },
+  { value: 'UNLOADING', label: 'Đang dỡ hàng' },
+  { value: 'UNLOADED', label: 'Chờ cân lần 2' },
+  { value: 'WEIGHING_2', label: 'Đang cân lần 2' },
   { value: 'COMPLETED', label: 'Hoàn thành' },
   { value: 'CANCELLED', label: 'Đã hủy' },
 ]
 
 const STATUS_LABELS = {
-  DRAFT: 'Tạo mới',
+  NEW: 'Tạo mới',
   CONFIRMED: 'Xác nhận',
   ERROR: 'Lỗi',
   AWAITING_WEIGHING: 'Chờ cân',
-  WEIGHED_IN: 'Đang cân lần 1',
-  PROCESSING: 'Đang cân lần 2',
-  WEIGHED_OUT: 'Đã hoàn thành',
+  WEIGHING_1: 'Đang cân lần 1',
+  UNLOADING: 'Đang dỡ hàng',
+  UNLOADED: 'Chờ cân lần 2',
+  WEIGHING_2: 'Đang cân lần 2',
   COMPLETED: 'Hoàn thành',
+  CLOSED: 'Đã đóng',
+  REJECTED: 'Từ chối',
   CANCELLED: 'Đã hủy',
 }
 
 const statusTone = (status) => {
-  if (status === 'DRAFT') return 'default'
+  if (status === 'NEW') return 'default'
   if (status === 'CONFIRMED') return 'success'
   if (status === 'ERROR') return 'danger'
   if (status === 'AWAITING_WEIGHING') return 'info'
-  if (status === 'WEIGHED_IN') return 'info'
-  if (status === 'PROCESSING') return 'warning'
-  if (status === 'WEIGHED_OUT') return 'warning'
+  if (status === 'WEIGHING_1') return 'info'
+  if (status === 'UNLOADING') return 'warning'
+  if (status === 'UNLOADED') return 'info'
+  if (status === 'WEIGHING_2') return 'warning'
   if (status === 'COMPLETED') return 'success'
   if (status === 'CANCELLED') return 'danger'
+  if (status === 'REJECTED') return 'danger'
   return 'default'
 }
 
@@ -272,7 +278,7 @@ export function InboundReceiptsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {receipt.status === 'DRAFT' && (
+                        {receipt.status === 'NEW' && (
                           <>
                             <Button
                               variant="ghost"

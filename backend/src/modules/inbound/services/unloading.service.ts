@@ -53,7 +53,7 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (!['AWAITING_WEIGHING', 'WEIGHED_IN', 'PROCESSING'].includes(receipt.status)) {
+    if (!['CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING'].includes(receipt.status)) {
       throw new BadRequestException('Receipt phải ở trạng thái Chờ cân, Đã cân lần 1, hoặc Đang dỡ');
     }
 
@@ -64,17 +64,17 @@ export class UnloadingService {
     }
 
     // Chuyển sang PROCESSING nếu chưa
-    if (receipt.status !== 'PROCESSING') {
+    if (receipt.status !== 'UNLOADING') {
       await this.prisma.receiptHeader.update({
         where: { id: receiptId },
-        data: { status: 'PROCESSING', updatedBy: userId },
+        data: { status: 'UNLOADING', updatedBy: userId },
       });
 
       await this.prisma.receiptStatusHistory.create({
         data: {
           receiptHeaderId: receiptId,
           fromStatus: receipt.status,
-          toStatus: 'PROCESSING',
+          toStatus: 'UNLOADING',
           transitionCode: 'START_UNLOADING',
           triggeredBy: userId,
           correlationId: receiptId,
@@ -95,7 +95,7 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (receipt.status !== 'PROCESSING') {
+    if (receipt.status !== 'UNLOADING') {
       throw new BadRequestException('Receipt phải ở trạng thái PROCESSING');
     }
 
@@ -142,7 +142,7 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (receipt.status !== 'PROCESSING') {
+    if (receipt.status !== 'UNLOADING') {
       throw new BadRequestException('Receipt phải ở trạng thái PROCESSING');
     }
 
@@ -179,7 +179,7 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (receipt.status !== 'PROCESSING') {
+    if (receipt.status !== 'UNLOADING') {
       throw new BadRequestException('Receipt phải ở trạng thái PROCESSING');
     }
 
@@ -192,8 +192,24 @@ export class UnloadingService {
       throw new BadRequestException(`Còn ${openCount} mặt hàng chưa dỡ`);
     }
 
-    // Không đổi status header — vẫn giữ PROCESSING
-    // Status sẽ chuyển sang WEIGHED_OUT khi cân lần 2 (tare)
+    // Chuyển sang UNLOADED — dỡ hàng xong, chờ cân tare
+    await this.prisma.receiptHeader.update({
+      where: { id: receiptId },
+      data: { status: 'UNLOADED', updatedBy: userId },
+    });
+
+    await this.prisma.receiptStatusHistory.create({
+      data: {
+        receiptHeaderId: receiptId,
+        fromStatus: 'UNLOADING',
+        toStatus: 'UNLOADED',
+        transitionCode: 'COMPLETE_UNLOADING',
+        triggeredBy: userId,
+        correlationId: receiptId,
+        occurredAt: new Date(),
+      },
+    });
+
     return this.getUnloadingStatus(receiptId);
   }
 
@@ -300,7 +316,7 @@ export class UnloadingService {
     const pageSize = params.pageSize || 20;
 
     const where: any = {
-      status: { in: ['AWAITING_WEIGHING', 'WEIGHED_IN', 'PROCESSING'] },
+      status: { in: ['CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING'] },
     };
     if (params.warehouseId) where.warehouseId = params.warehouseId;
 

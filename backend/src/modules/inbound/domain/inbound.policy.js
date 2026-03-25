@@ -101,7 +101,7 @@ class TolerancePolicy {
  * Cancel Policy - Kiểm tra điều kiện cancel receipt
  */
 class CancelPolicy {
-  static CANCELLABLE_STATES = ['DRAFT', 'AWAITING_WEIGHING', 'WEIGHED_IN', 'PROCESSING'];
+  static CANCELLABLE_STATES = ['NEW', 'CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING'];
 
   /**
    * Kiểm tra có thể cancel không
@@ -141,7 +141,7 @@ class BaggedPolicy {
       where: {
         header: {
           poId,
-          status: { in: ['RECEIVED', 'PUTAWAY', 'CLOSED'] },
+          status: { in: ['COMPLETED', 'CLOSED'] },
         },
         cargoForm: { in: ['BAGGED_25KG', 'BAGGED_40KG', 'BAGGED_50KG'] },
       },
