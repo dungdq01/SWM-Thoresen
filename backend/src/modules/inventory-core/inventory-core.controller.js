@@ -151,12 +151,40 @@ class InventoryCoreController {
         }
       }
 
+      // Group by SKU (item + owner + warehouse + location) to calculate total physical across all statuses
+      // and allocatable qty (only status with isAllocatable = true)
+      const skuTotals = {};
+      for (const r of result.items) {
+        const dim = r.inventDim || {};
+        const skuKey = `${r.itemId}|${dim.owner?.ownerCode || ''}|${dim.warehouse?.warehouseCode || ''}|${dim.location?.locationCode || ''}`;
+        
+        if (!skuTotals[skuKey]) {
+          skuTotals[skuKey] = { totalPhysical: 0, allocatablePhysical: 0 };
+        }
+        
+        const physical = Number(r.physicalQty) || 0;
+        skuTotals[skuKey].totalPhysical += physical;
+        
+        // Only count as allocatable if status.isAllocatable = true
+        if (dim.inventoryStatus?.isAllocatable) {
+          skuTotals[skuKey].allocatablePhysical += physical;
+        }
+      }
+
       const enrichedData = result.items.map(r => {
         const key = `${r.itemId}|${dimWarehouseMap[r.inventDimId]}`;
+        const dim = r.inventDim || {};
+        const skuKey = `${r.itemId}|${dim.owner?.ownerCode || ''}|${dim.warehouse?.warehouseCode || ''}|${dim.location?.locationCode || ''}`;
+        const totals = skuTotals[skuKey] || { totalPhysical: 0, allocatablePhysical: 0 };
+        
         return {
           ...r,
           outboundDemandQty: outboundMap[key] || 0,
           inboundReceivedQty: inboundMap[key] || 0,
+          // Thực tế = tổng tất cả SKU cùng loại (bao gồm cả tốt và hỏng)
+          totalPhysicalQty: totals.totalPhysical,
+          // Khả dụng = chỉ SKU có trạng thái tốt (isAllocatable = true)
+          allocatableQty: totals.allocatablePhysical,
         };
       });
 

@@ -78,8 +78,8 @@ export function InventoryOnHandPage() {
     let totalAllocated = 0
     const uniqueItems = new Set()
     for (const row of rows) {
-      totalPhysical += Number(row.physicalQty) || 0
-      totalAvailable += Number(row.availableQty) || 0
+      totalPhysical += Number(row.totalPhysicalQty) || Number(row.physicalQty) || 0
+      totalAvailable += Number(row.allocatableQty) || Number(row.availableQty) || 0
       totalAllocated += Number(row.allocatedQty) || 0
       if (row.item?.itemCode) uniqueItems.add(row.item.itemCode)
     }
@@ -194,7 +194,7 @@ export function InventoryOnHandPage() {
                         <p className="text-xs text-navy-400">{row.inventDim?.warehouse?.warehouseName || '—'}</p>
                       </TableCell>
                       <TableCell align="right">
-                        <span className="font-semibold text-navy-900">{formatQty(row.physicalQty)}</span>
+                        <span className="font-semibold text-navy-900">{formatQty(row.totalPhysicalQty ?? row.physicalQty)}</span>
                       </TableCell>
                       <TableCell align="right">
                         <span className="text-navy-600">{formatQty(row.allocatedQty)}</span>
@@ -210,7 +210,7 @@ export function InventoryOnHandPage() {
                         </span>
                       </TableCell>
                       <TableCell align="right">
-                        <span className="font-semibold text-emerald-600">{formatQty(row.availableQty)}</span>
+                        <span className="font-semibold text-emerald-600">{formatQty(row.allocatableQty ?? row.availableQty)}</span>
                       </TableCell>
                       <TableCell>
                         <span className="font-mono text-sm font-medium text-navy-700">KG</span>
