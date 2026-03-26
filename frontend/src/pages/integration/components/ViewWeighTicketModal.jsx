@@ -31,7 +31,8 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
   const weighingTypeLabel = data.weighingType === 'WEIGH_IN' ? 'Cân vào' : data.weighingType === 'WEIGH_OUT' ? 'Cân ra' : data.weighingType
   const isWeighOut = data.weighingType === 'WEIGH_OUT'
   const receiptLines = data.receipt?.lines || []
-  const shipmentLines = data.shipment?.lines || []
+  // Sort shipmentLines theo lineNumber để khớp với thứ tự ở OutboundLoadingPage
+  const shipmentLines = [...(data.shipment?.lines || [])].sort((a, b) => (a.lineNumber || 0) - (b.lineNumber || 0))
   const ticketLines = isWeighOut ? shipmentLines : receiptLines
 
   const formatDateTime = (dateStr) => {

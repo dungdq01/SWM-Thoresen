@@ -91,7 +91,7 @@ export class WeighbridgeLogService {
             id: true,
             shipmentNumber: true,
             owner: { select: { id: true, ownerCode: true, ownerName: true } },
-            lines: { select: { id: true, item: { select: { itemCode: true, itemName: true } }, expectedQtyKg: true, allocatedQty: true, shippedQty: true, netWeightKg: true, lineStatus: true, uom: { select: { uomCode: true } } } },
+            lines: { select: { id: true, lineNumber: true, item: { select: { itemCode: true, itemName: true } }, expectedQtyKg: true, allocatedQty: true, shippedQty: true, netWeightKg: true, lineStatus: true, uom: { select: { uomCode: true } } }, orderBy: { lineNumber: 'asc' } },
           },
         })
       : [];
@@ -871,6 +871,7 @@ export class WeighbridgeLogService {
         shipmentNumber: shipment.shipmentNumber,
         lines: (shipment.lines || []).map((l: any) => ({
           id: l.id,
+          lineNumber: l.lineNumber || 0,
           item: l.item,
           itemName: l.item?.itemName || null,
           itemCode: l.item?.itemCode || null,

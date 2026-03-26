@@ -19,9 +19,13 @@ export function WeighingModal({
   const previousWeight = data?.lastWeightKg || (data?.grossWeightKg ? Number(data.grossWeightKg) : 0)
   const weighingNumber = (data?.weightRecordCount || 0) + 1
 
-  // Item đã dỡ đang chờ cân (UNLOADED)
+  // Item đã dỡ đang chờ cân (UNLOADED) - cho inbound
   const unloadedLines = (data?.receipt?.lines || []).filter((l) => l.status === 'UNLOADED')
   const currentUnloadedItem = unloadedLines[0] || null
+
+  // Item đã xếp đang chờ cân (LOADING) - cho outbound
+  const loadingLines = (data?.shipment?.lines || []).filter((l) => l.lineStatus === 'LOADING')
+  const currentLoadingItem = loadingLines[0] || null
 
   useEffect(() => {
     if (isOpen) {
@@ -53,9 +57,11 @@ export function WeighingModal({
     ? `Trọng lượng (${Number(weightKg).toLocaleString('vi-VN')} kg) phải nhỏ hơn lần trước (${previousWeight.toLocaleString('vi-VN')} kg) vì đã dỡ hàng`
     : null
 
-  // Block nếu cân lần 2+ mà chưa dỡ hàng
+  // Block nếu cân lần 2+ mà chưa dỡ hàng (inbound)
   const needsUnload = isSecondWeighing && !isWeighOut && unloadedLines.length === 0 && (data?.receipt?.lines || []).some((l) => l.status === 'OPEN')
-  const isValid = weightKg !== '' && Number(weightKg) > 0 && !weightError && !needsUnload
+  // Block nếu cân lần 2+ mà chưa xếp hàng (outbound)
+  const needsLoad = isSecondWeighing && isWeighOut && loadingLines.length === 0 && (data?.shipment?.lines || []).some((l) => l.lineStatus === 'PENDING')
+  const isValid = weightKg !== '' && Number(weightKg) > 0 && !weightError && !needsUnload && !needsLoad
 
   const weighingTypeLabel = data?.weighingType === 'WEIGH_IN' ? 'Cân vào' : data?.weighingType === 'WEIGH_OUT' ? 'Cân ra' : data?.weighingType
 
@@ -120,11 +126,11 @@ export function WeighingModal({
                     <p className="font-medium text-navy-800">{data.owner?.name || data.owner?.code || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-navy-500">Phiếu nhập</p>
-                    <p className="font-medium text-navy-800">{data.asnId || data.ticketNumber || '-'}</p>
+                    <p className="text-xs text-navy-500">{isWeighOut ? 'Phiếu xuất' : 'Phiếu nhập'}</p>
+                    <p className="font-medium text-navy-800">{data.shipment?.shipmentNumber || data.asnId || data.ticketNumber || '-'}</p>
                   </div>
                 </div>
-                {/* Danh sách items trên xe */}
+                {/* Danh sách items trên xe - inbound */}
                 {data.receipt?.lines?.length > 0 && (
                   <div>
                     <p className="text-xs text-navy-500 mb-1">Mặt hàng trên xe ({data.receipt.lines.length})</p>
@@ -134,6 +140,30 @@ export function WeighingModal({
                           <span className="font-semibold">{l.item?.itemCode || l.itemCode}</span>
                           <span className="text-navy-400">—</span>
                           <span>{l.item?.itemName || ''}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Danh sách items trên xe - outbound */}
+                {data.shipment?.lines?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-navy-500 mb-1">Mặt hàng ({data.shipment.lines.length})</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {data.shipment.lines.map((l, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white border border-moon-200 px-2 py-1 text-xs text-navy-700">
+                          <span className="font-semibold">{l.item?.itemCode || l.itemCode}</span>
+                          <span className="text-navy-400">—</span>
+                          <span>{l.item?.itemName || l.itemName || ''}</span>
+                          {l.lineStatus && (
+                            <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${
+                              l.lineStatus === 'LINE_SHIPPED' ? 'bg-green-100 text-green-700' :
+                              l.lineStatus === 'LOADING' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {l.lineStatus === 'LINE_SHIPPED' ? 'Đã cân' : l.lineStatus === 'LOADING' ? 'Đã xếp' : 'Chờ'}
+                            </span>
+                          )}
                         </span>
                       ))}
                     </div>
@@ -165,7 +195,7 @@ export function WeighingModal({
                     </div>
                   </div>
 
-                  {/* Item đã dỡ — đang tính cân cho item này */}
+                  {/* Item đã dỡ — đang tính cân cho item này (inbound) */}
                   {currentUnloadedItem && (
                     <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
                       <p className="text-xs text-emerald-600 mb-1">Hàng vừa dỡ — lần cân này tính cho:</p>
@@ -181,10 +211,26 @@ export function WeighingModal({
                       </p>
                     </div>
                   )}
+                  {/* Item đã xếp — đang tính cân cho item này (outbound) */}
+                  {currentLoadingItem && (
+                    <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
+                      <p className="text-xs text-emerald-600 mb-1">Hàng vừa xếp — lần cân này tính cho:</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-200 text-emerald-800 text-xs font-bold">📦</div>
+                        <div>
+                          <p className="font-semibold text-emerald-900">{currentLoadingItem.item?.itemName || currentLoadingItem.itemName || ''}</p>
+                          <p className="text-xs text-emerald-700">{currentLoadingItem.item?.itemCode || currentLoadingItem.itemCode || ''}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-emerald-600 mt-2">
+                        TL ròng = TL lần {weighingNumber} − {previousWeight.toLocaleString('vi-VN')} KG (lần {weighingNumber - 1})
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Cảnh báo chưa dỡ hàng */}
+              {/* Cảnh báo chưa dỡ hàng (inbound) */}
               {needsUnload && (
                 <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
                   <p className="text-sm font-semibold text-red-800">⚠ Chưa dỡ mặt hàng nào</p>
@@ -193,6 +239,19 @@ export function WeighingModal({
                   </p>
                   <a href="/app/inbound-operations/unloading" className="inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
                     Đến trang Dỡ hàng →
+                  </a>
+                </div>
+              )}
+
+              {/* Cảnh báo chưa xếp hàng (outbound) */}
+              {needsLoad && (
+                <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-red-800">⚠ Chưa xếp mặt hàng nào</p>
+                  <p className="text-sm text-red-700">
+                    Vui lòng đến trang <strong>Xếp hàng</strong> để xếp ít nhất 1 mặt hàng lên xe trước khi cân tiếp.
+                  </p>
+                  <a href="/app/outbound-operations/loading" className="inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+                    Đến trang Xếp hàng →
                   </a>
                 </div>
               )}

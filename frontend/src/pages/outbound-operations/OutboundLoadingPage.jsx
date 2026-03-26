@@ -71,6 +71,7 @@ function LocationPicker({ shipmentId, line, onLoad, isLoading }) {
 
 export function OutboundLoadingPage() {
   const [selectedId, setSelectedId] = useState(null)
+  const [confirmedForWeigh, setConfirmedForWeigh] = useState(false)
 
   const { data: shipmentsData, isLoading: listLoading } = useShipmentsForLoading()
   const { data: detail } = useLoadingStatus(selectedId)
@@ -95,7 +96,12 @@ export function OutboundLoadingPage() {
 
   const handleUnload = useCallback((lineId) => {
     unloadMut.mutate({ shipmentId: selectedId, shipmentLineId: lineId })
+    setConfirmedForWeigh(false) // Reset khi hoàn tác
   }, [selectedId, unloadMut])
+
+  const handleConfirmForWeigh = useCallback(() => {
+    setConfirmedForWeigh(true)
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -268,8 +274,23 @@ export function OutboundLoadingPage() {
                 </div>
               )}
 
-              {/* "Đưa xe đi cân" reminder — khi có LOADING items */}
-              {detail.status === 'LOADING' && loadingLines.length > 0 && (
+              {/* Button xác nhận hoàn thành — khi có LOADING items và chưa confirm */}
+              {detail.status === 'LOADING' && loadingLines.length > 0 && !confirmedForWeigh && (
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-200 space-y-3">
+                  <p className="text-sm text-blue-700">
+                    Đã xếp <strong>{loadingLines.length}</strong> mặt hàng lên xe. Kiểm tra lại và xác nhận để đưa xe đi cân.
+                  </p>
+                  <button
+                    onClick={handleConfirmForWeigh}
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                  >
+                    Xác nhận hoàn thành xếp hàng
+                  </button>
+                </div>
+              )}
+
+              {/* "Đưa xe đi cân" reminder — khi có LOADING items VÀ đã confirm */}
+              {detail.status === 'LOADING' && loadingLines.length > 0 && confirmedForWeigh && (
                 <div className="bg-orange-50 rounded-xl p-5 border border-orange-300 space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">⚠️</span>
