@@ -29,7 +29,10 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
   if (!isOpen || !data) return null
 
   const weighingTypeLabel = data.weighingType === 'WEIGH_IN' ? 'Cân vào' : data.weighingType === 'WEIGH_OUT' ? 'Cân ra' : data.weighingType
+  const isWeighOut = data.weighingType === 'WEIGH_OUT'
   const receiptLines = data.receipt?.lines || []
+  const shipmentLines = data.shipment?.lines || []
+  const ticketLines = isWeighOut ? shipmentLines : receiptLines
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '-'
@@ -136,7 +139,7 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
               <div className="space-y-4">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-navy-800">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-100 text-xs font-bold text-navy-600">2</span>
-                  Thông tin cân {receiptLines.length > 1 ? `(${receiptLines.length} items — N+1 lần cân)` : ''}
+                  Thông tin cân {ticketLines.length > 1 ? `(${ticketLines.length} items${!isWeighOut ? ' — N+1 lần cân' : ''})` : ''}
                 </h3>
 
                 <div className="overflow-hidden rounded-lg border border-moon-200">
@@ -152,16 +155,51 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {receiptLines.length > 0 ? (() => {
-                        // Tính TL cân trước / cân sau cho từng line dựa trên thứ tự dỡ
-                        // Gross → dỡ item 1 → cân → dỡ item 2 → cân → ...
-                        // TL cân trước item i = Gross - sum(net của items trước i)
-                        // TL cân sau item i = TL cân trước - net item i
-                        const gross = data.grossWeightKg ? Number(data.grossWeightKg) : null
-                        const receivedLines = receiptLines.filter((l) => l.receivedQty && Number(l.receivedQty) > 0)
-                        let runningWeight = gross
+                      {ticketLines.length > 0 ? (() => {
+                        // Cân vào (WEIGH_IN): xe nặng → nhẹ dần (dỡ hàng ra), TL cân trước > TL cân sau
+                        // Cân ra (WEIGH_OUT): xe nhẹ → nặng dần (xếp hàng lên), TL cân trước < TL cân sau
+                        const tare = data.grossWeightKg ? Number(data.grossWeightKg) : null // Lần 1 outbound = tare (xe rỗng)
+                        let runningWeight = tare
 
-                        return receiptLines.map((line, idx) => {
+                        return ticketLines.map((line, idx) => {
+                          if (isWeighOut) {
+                            // Cân ra: logic N+1 lần cân (ngược với cân vào)
+                            const netWeight = line.netWeightKg ? Number(line.netWeightKg) : null
+                            const isShipped = line.lineStatus === 'LINE_SHIPPED' && netWeight > 0
+                            const prevWeight = isShipped ? runningWeight : null
+                            const afterWeight = isShipped && runningWeight != null ? runningWeight + netWeight : null
+
+                            if (isShipped && runningWeight != null) {
+                              runningWeight = runningWeight + netWeight
+                            }
+
+                            const lineStatusLabel = {
+                              'PENDING': 'Chờ xếp',
+                              'LOADING': 'Đã xếp',
+                              'LINE_SHIPPED': 'Đã cân',
+                              'WEIGHED_PASS': 'Đã cân',
+                            }
+
+                            return (
+                              <tr key={idx} className="border-t border-moon-100">
+                                <td className="px-3 py-2.5 text-navy-400">{idx + 1}</td>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-medium text-navy-800">{line.item?.itemName || line.itemName || '-'}</p>
+                                  <p className="text-xs text-navy-400">{line.item?.itemCode || line.itemCode}</p>
+                                </td>
+                                <td className="px-3 py-2.5 text-right font-mono text-navy-700">{prevWeight != null ? formatWeight(prevWeight) : '-'}</td>
+                                <td className="px-3 py-2.5 text-right font-mono text-navy-700">{afterWeight != null ? formatWeight(afterWeight) : '-'}</td>
+                                <td className="px-3 py-2.5 text-right font-mono font-semibold text-navy-900">{netWeight != null && netWeight > 0 ? formatWeight(netWeight) : '-'}</td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <Badge variant={line.lineStatus === 'LINE_SHIPPED' ? 'success' : line.lineStatus === 'LOADING' ? 'warning' : 'default'}>
+                                    {lineStatusLabel[line.lineStatus] || line.lineStatus || 'Chờ'}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            )
+                          }
+
+                          // Cân vào: logic N+1 lần cân
                           const netWeight = line.receivedQty ? Number(line.receivedQty) : null
                           const isReceived = line.status === 'RECEIVED' && netWeight > 0
                           const prevWeight = isReceived ? runningWeight : null
@@ -204,7 +242,7 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
                         </tr>
                       )}
                       {/* Dòng tổng */}
-                      {receiptLines.length > 0 && (
+                      {ticketLines.length > 0 && (
                         <tr className="border-t-2 border-navy-200 bg-moon-50">
                           <td className="px-3 py-2.5" colSpan={2}>
                             <p className="font-semibold text-navy-800">Tổng</p>

@@ -11,7 +11,6 @@ import {
   useStartLoading,
   useLoadItem,
   useUnloadItem,
-  useCompleteLoading,
   useLocationsWithStock,
 } from '@domains/outbound-operations/hooks/useOutboundOperations'
 
@@ -78,11 +77,12 @@ export function OutboundLoadingPage() {
   const startMut = useStartLoading()
   const loadMut = useLoadItem()
   const unloadMut = useUnloadItem()
-  const completeMut = useCompleteLoading()
 
   const shipments = shipmentsData?.items || []
-  const pendingLines = detail?.lines?.filter((l) => !l.isLoaded) || []
-  const loadedLines = detail?.lines?.filter((l) => l.isLoaded) || []
+  // Multi-item: phân loại theo lineStatus
+  const pendingLines = detail?.lines?.filter((l) => l.lineStatus === 'PENDING') || []
+  const loadingLines = detail?.lines?.filter((l) => l.lineStatus === 'LOADING') || [] // Đã xếp, chờ cân
+  const shippedLines = detail?.lines?.filter((l) => l.lineStatus === 'LINE_SHIPPED') || [] // Đã cân xong
 
   const handleStart = useCallback(() => {
     if (!selectedId) return
@@ -96,11 +96,6 @@ export function OutboundLoadingPage() {
   const handleUnload = useCallback((lineId) => {
     unloadMut.mutate({ shipmentId: selectedId, shipmentLineId: lineId })
   }, [selectedId, unloadMut])
-
-  const handleComplete = useCallback(() => {
-    if (!selectedId) return
-    completeMut.mutate(selectedId)
-  }, [selectedId, completeMut])
 
   return (
     <div className="space-y-6">
@@ -221,8 +216,8 @@ export function OutboundLoadingPage() {
                 </div>
               )}
 
-              {/* Pending items — chọn vị trí lấy hàng */}
-              {detail.status === 'LOADING' && pendingLines.length > 0 && (
+              {/* Pending items — chọn vị trí lấy hàng. Chỉ hiển thị khi không có item nào đang chờ cân */}
+              {detail.status === 'LOADING' && pendingLines.length > 0 && loadingLines.length === 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                   <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="font-medium text-gray-900 dark:text-white">Chưa xếp ({pendingLines.length})</h3>
@@ -241,71 +236,87 @@ export function OutboundLoadingPage() {
                 </div>
               )}
 
-              {/* Loaded items */}
-              {loadedLines.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-medium text-green-700 dark:text-green-400">Đã xếp ({loadedLines.length})</h3>
+              {/* LOADING items — đã xếp, chờ cân */}
+              {loadingLines.length > 0 && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl shadow-sm border border-yellow-200 dark:border-yellow-700">
+                  <div className="px-4 py-3 border-b border-yellow-200 dark:border-yellow-700">
+                    <h3 className="font-medium text-yellow-800 dark:text-yellow-400">✓ Đã xếp — chờ cân ({loadingLines.length})</h3>
                   </div>
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {loadedLines.map((line, i) => (
+                  <div className="divide-y divide-yellow-100 dark:divide-yellow-700">
+                    {loadingLines.map((line, i) => (
                       <div key={line.id} className="px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-xs bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">
-                            {line.loadSequence || i + 1}
-                          </span>
+                          <span className="text-xs bg-yellow-200 text-yellow-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">✓</span>
                           <div>
                             <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
                             <div className="text-xs text-gray-500">
                               {line.itemCode}
-                              {line.locationCode && (
-                                <span className="ml-2 text-blue-600">@ {line.locationCode}</span>
-                              )}
+                              {line.locationCode && <span className="ml-2 text-blue-600">→ Vị trí: {line.locationCode}</span>}
                             </div>
                           </div>
                         </div>
-                        {detail.status === 'LOADING' && (
-                          <button
-                            onClick={() => handleUnload(line.id)}
-                            disabled={unloadMut.isPending}
-                            className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
-                          >
-                            Bỏ xếp
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleUnload(line.id)}
+                          disabled={unloadMut.isPending}
+                          className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                        >
+                          Hoàn tác
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Complete button */}
-              {detail.status === 'LOADING' && pendingLines.length === 0 && loadedLines.length > 0 && (
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 text-center border border-green-200 dark:border-green-800">
-                  <p className="text-sm text-green-700 dark:text-green-300 mb-4">
-                    Tất cả mặt hàng đã xếp lên xe
+              {/* "Đưa xe đi cân" reminder — khi có LOADING items */}
+              {detail.status === 'LOADING' && loadingLines.length > 0 && (
+                <div className="bg-orange-50 rounded-xl p-5 border border-orange-300 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    <h4 className="font-semibold text-orange-800">Đưa xe đến Trạm cân</h4>
+                  </div>
+                  <p className="text-sm text-orange-700">
+                    {pendingLines.length > 0
+                      ? <>Đã xếp <strong>{loadingLines.map(l => l.itemName || l.itemCode).join(', ')}</strong> lên xe. Đưa xe đến Trạm cân để tính khối lượng, sau đó quay lại xếp {pendingLines.length} mặt hàng còn lại.</>
+                      : <>Tất cả mặt hàng đã xếp (<strong>{loadingLines.map(l => l.itemName || l.itemCode).join(', ')}</strong>). Đưa xe đến Trạm cân để cân lần cuối (gross).</>
+                    }
                   </p>
-                  <button
-                    onClick={handleComplete}
-                    disabled={completeMut.isPending}
-                    className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
-                  >
-                    {completeMut.isPending ? 'Đang xử lý...' : 'Hoàn thành xếp hàng'}
-                  </button>
+                  <a href="/app/weighbridge" className="inline-block px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
+                    Đến Trạm cân →
+                  </a>
                 </div>
               )}
 
-              {/* Loaded — remind to go weigh */}
-              {detail.status === 'LOADED' && !detail.hasGross && (
-                <div className="bg-yellow-50 rounded-xl p-6 text-center border border-yellow-200">
-                  <p className="text-yellow-800 font-medium mb-1">Đã xếp hàng xong</p>
-                  <p className="text-sm text-yellow-600">Vui lòng đưa xe đến Trạm cân để cân lần 2 (gross)</p>
+              {/* SHIPPED items — đã cân xong */}
+              {shippedLines.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-green-200 dark:border-green-700">
+                  <div className="px-4 py-3 border-b border-green-200 dark:border-green-700">
+                    <h3 className="font-medium text-green-700 dark:text-green-400">Đã hoàn thành ({shippedLines.length})</h3>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {shippedLines.map((line, i) => (
+                      <div key={line.id} className="px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">{i + 1}</span>
+                          <div>
+                            <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
+                            <div className="text-xs text-gray-500">
+                              {line.itemCode} {line.locationCode && <span className="ml-2 text-blue-600">→ {line.locationCode}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-sm font-semibold text-green-700">{line.netWeightKg > 0 ? `${line.netWeightKg.toLocaleString()} kg` : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {detail.status === 'LOADED' && detail.hasGross && (
+              {/* SHIPPED status */}
+              {detail.status === 'SHIPPED' && (
                 <div className="bg-green-50 rounded-xl p-6 text-center border border-green-200">
-                  <p className="text-green-700 font-medium">Hoàn tất — đã cân lần 2, sẵn sàng xuất hàng</p>
+                  <p className="text-green-800 font-medium mb-1">Đã hoàn thành</p>
+                  <p className="text-sm text-green-600">Tất cả mặt hàng đã cân xong. Tồn kho đã được cập nhật.</p>
                 </div>
               )}
             </div>

@@ -188,45 +188,28 @@ export class LoadingService {
   }
 
   /**
-   * Hoàn thành xếp hàng
+   * Xác nhận sẵn sàng đưa xe đi cân — yêu cầu ít nhất 1 line LOADING
+   * Multi-item: gọi sau mỗi đợt xếp hàng, trước khi cân tiếp
+   * KHÔNG đổi header status — vẫn giữ LOADING để cho phép xếp tiếp sau khi cân
    */
   async completeLoading(shipmentId: string, userId?: string) {
     const shipment = await this.headerRepo.findById(shipmentId);
     if (!shipment) throw new NotFoundException('Shipment not found');
 
-    this.stateMachine.assertCanTransition(shipment.status as any, 'COMPLETE_LOADING');
-
-    const lines = await this.prisma.shipmentLine.findMany({
-      where: { shipmentHeaderId: shipmentId },
-    });
-
-    const pendingCount = lines.filter(l => l.lineStatus === 'PENDING').length;
-    if (pendingCount > 0) {
-      throw new BadRequestException(`Còn ${pendingCount} mặt hàng chưa xếp`);
+    if (shipment.status !== 'LOADING') {
+      throw new BadRequestException('Shipment phải ở trạng thái Đang xếp hàng');
     }
 
-    const corrId = uuidv4();
-
-    await this.prisma.shipmentHeader.update({
-      where: { id: shipmentId },
-      data: { status: 'LOADED', updatedBy: userId },
+    const lines = await this.prisma.shipmentLine.findMany({
+      where: { shipmentHeaderId: shipmentId, lineStatus: { not: 'CANCELLED' } },
     });
 
-    await this.prisma.shipmentLine.updateMany({
-      where: { shipmentHeaderId: shipmentId, lineStatus: 'LOADING' },
-      data: { lineStatus: 'WEIGHED_PASS' },
-    });
+    const loadingCount = lines.filter(l => l.lineStatus === 'LOADING').length;
+    if (loadingCount === 0) {
+      throw new BadRequestException('Chưa có mặt hàng nào được xếp lên xe. Vui lòng xếp ít nhất 1 mặt hàng trước khi đưa xe đi cân.');
+    }
 
-    await this.historyRepo.create({
-      shipmentHeaderId: shipmentId,
-      entityLevel: 'HEADER',
-      fromStatus: 'LOADING',
-      toStatus: 'LOADED',
-      triggerAction: 'COMPLETE_LOADING',
-      changedBy: userId,
-      correlationId: corrId,
-    });
-
+    // KHÔNG đổi header status — Weighbridge recordWeight sẽ xử lý tính net và chuyển status
     return this.getLoadingStatus(shipmentId);
   }
 
@@ -275,6 +258,9 @@ export class LoadingService {
         locationId: l.locationId || null,
         locationCode: (l as any).location?.locationCode || null,
         isLoaded: l.lineStatus !== 'PENDING' && l.lineStatus !== 'CANCELLED',
+        // Hiển thị trọng lượng ròng cho items đã cân xong
+        netWeightKg: l.netWeightKg ? Number(l.netWeightKg) : null,
+        shippedQty: l.shippedQty ? Number(l.shippedQty) : null,
       })),
     };
   }
@@ -327,7 +313,7 @@ export class LoadingService {
     const pageSize = params.pageSize || 20;
 
     const where: any = {
-      status: { in: ['CONFIRMED', 'LOADING', 'LOADED', 'SHIPPED', 'COMPLETED'] },
+      status: { in: ['CONFIRMED', 'LOADING', 'LOADED', 'SHIPPED', 'CLOSED'] },
     };
     if (params.warehouseId) where.warehouseId = params.warehouseId;
 

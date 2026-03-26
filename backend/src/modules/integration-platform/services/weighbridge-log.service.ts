@@ -91,7 +91,7 @@ export class WeighbridgeLogService {
             id: true,
             shipmentNumber: true,
             owner: { select: { id: true, ownerCode: true, ownerName: true } },
-            lines: { select: { id: true, item: { select: { itemCode: true, itemName: true } }, expectedQty: true, allocatedQty: true, uom: { select: { uomCode: true } } } },
+            lines: { select: { id: true, item: { select: { itemCode: true, itemName: true } }, expectedQtyKg: true, allocatedQty: true, shippedQty: true, netWeightKg: true, lineStatus: true, uom: { select: { uomCode: true } } } },
           },
         })
       : [];
@@ -290,120 +290,217 @@ export class WeighbridgeLogService {
       return this.recordInboundWeight(id, log, data.weightKg, now);
     }
 
-    // ─── OUTBOUND (giữ nguyên logic 2 lần cân) ───
-    // Lần 1: chưa có grossWeightKg → ghi gross
-    if (log.grossWeightKg == null) {
-      await this.logRepo.update(id, { grossWeightKg: data.weightKg, grossWeightAt: now });
-      await this.eventStateRepo.updateByLogId(id, { processingStatus: WeighEventProcessingStatus.WEIGHING as any });
-      return { id, grossWeightKg: data.weightKg, grossWeightAt: now, processingStatus: WeighEventProcessingStatus.WEIGHING };
+    // ─── OUTBOUND MULTI-ITEM WEIGHING (N+1 lần cân) ───
+    if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
+      return this.recordOutboundWeight(id, log, data.weightKg, now);
     }
 
-    // Lần 2: ghi tare
-    if (log.tareWeightKg == null) {
-      if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
-        const shipment = await this.prisma.shipmentHeader.findUnique({ where: { id: log.shipmentId }, select: { status: true } });
-        if (shipment && shipment.status !== 'LOADED') {
-          throw new BadRequestException('Xe chưa xếp hàng xong. Vui lòng hoàn thành xếp hàng trước khi cân lần 2.');
-        }
-      }
+    throw new WeighbridgeError(IntegrationErrorCodes.INVALID_WEIGHING_TYPE, 'Invalid weighing type or missing reference');
+  }
 
-      const grossWeight = Number(log.grossWeightKg);
-      const tareWeight = data.weightKg;
-      if (log.weighingType === 'WEIGH_OUT' && tareWeight < grossWeight) {
-        throw new WeighbridgeError(IntegrationErrorCodes.INVALID_WEIGHING_TYPE, `TL lần 2 (${tareWeight} kg) < TL lần 1 (${grossWeight} kg)`);
-      }
-      const netWeightKg = log.weighingType === 'WEIGH_OUT' ? tareWeight - grossWeight : grossWeight - tareWeight;
+  /**
+   * Multi-item outbound weighing: N items → N+1 lần cân
+   * Lần 1: Tare (xe rỗng)
+   * Lần 2+: Gross sau khi xếp hàng, net = lần này − lần trước
+   */
+  private async recordOutboundWeight(logId: string, log: any, weightKg: number, now: Date) {
+    const shipmentId = log.shipmentId!;
 
-      await this.logRepo.update(id, { tareWeightKg: tareWeight, tareWeightAt: now, netWeightKg: Math.abs(netWeightKg) });
-      await this.eventStateRepo.updateByLogId(id, { processingStatus: WeighEventProcessingStatus.COMPLETED as any });
+    // Get existing weight records
+    let existingRecords = await this.prisma.weighbridgeWeightRecord.findMany({
+      where: { weighbridgeLogId: logId },
+      orderBy: { sequence: 'asc' },
+    });
 
-      // Sync net weight back to shipment lines and post inventory transaction
-      if (log.weighingType === 'WEIGH_OUT' && log.shipmentId) {
-        const absNet = Math.abs(netWeightKg);
-        // Get shipment with warehouse, owner, lines (including location)
-        const shipment = await this.prisma.shipmentHeader.findUnique({
-          where: { id: log.shipmentId },
+    const shipment = await this.prisma.shipmentHeader.findUnique({
+      where: { id: shipmentId },
+      include: {
+        warehouse: { select: { warehouseCode: true } },
+        owner: { select: { ownerCode: true } },
+        lines: {
+          where: { lineStatus: { not: 'CANCELLED' } },
           include: {
-            warehouse: { select: { warehouseCode: true } },
-            owner: { select: { ownerCode: true } },
-            lines: {
-              where: { lineStatus: { not: 'CANCELLED' } },
-              include: {
-                item: { select: { itemCode: true } },
-                uom: { select: { uomCode: true } },
-                location: { select: { locationCode: true } },
-              },
-            },
+            item: { select: { itemCode: true } },
+            uom: { select: { uomCode: true } },
+            location: { select: { locationCode: true } },
+          },
+        },
+      },
+    }) as any;
+    if (!shipment) throw new NotFoundException('Shipment not found');
+
+    // Backward compat: nếu gross đã ghi (flow cũ) nhưng chưa có WeightRecord, tạo record lần 1
+    if (existingRecords.length === 0 && log.grossWeightKg != null) {
+      await this.prisma.weighbridgeWeightRecord.create({
+        data: {
+          weighbridgeLogId: logId,
+          sequence: 1,
+          weightKg: Number(log.grossWeightKg),
+          recordedAt: log.grossWeightAt || now,
+          isFinal: false,
+        },
+      });
+      existingRecords = await this.prisma.weighbridgeWeightRecord.findMany({
+        where: { weighbridgeLogId: logId },
+        orderBy: { sequence: 'asc' },
+      });
+      this.logger.log(`Created retroactive weight record #1 from existing grossWeightKg=${log.grossWeightKg}`);
+    }
+
+    const nextSequence = existingRecords.length + 1;
+
+    // ─── Lần 1: Tare (xe rỗng) ───
+    if (existingRecords.length === 0) {
+      await this.prisma.weighbridgeWeightRecord.create({
+        data: {
+          weighbridgeLogId: logId,
+          sequence: 1,
+          weightKg,
+          recordedAt: now,
+          isFinal: false,
+        },
+      });
+
+      await this.logRepo.update(logId, { grossWeightKg: weightKg, grossWeightAt: now });
+      await this.eventStateRepo.updateByLogId(logId, { processingStatus: WeighEventProcessingStatus.WEIGHING as any });
+
+      // Shipment → LOADING (nếu chưa)
+      const prevStatus = shipment.status;
+      if (prevStatus === 'CONFIRMED') {
+        await this.prisma.shipmentHeader.update({ where: { id: shipmentId }, data: { status: 'LOADING' } });
+        await this.prisma.shipmentStatusHistory.create({
+          data: {
+            shipmentHeaderId: shipmentId,
+            entityLevel: 'HEADER',
+            fromStatus: prevStatus,
+            toStatus: 'LOADING',
+            triggerAction: 'WEIGH_OUT_TARE',
+            correlationId: shipmentId,
           },
         });
-
-        if (shipment) {
-          const lines = shipment.lines;
-          // Update shippedQty on lines (proportional split if multiple)
-          if (lines.length === 1) {
-            await this.prisma.shipmentLine.update({
-              where: { id: lines[0].id },
-              data: { shippedQty: absNet, netWeightKg: absNet },
-            });
-          } else if (lines.length > 1) {
-            const totalExpected = lines.reduce((s, l) => s + Number(l.expectedQtyKg), 0);
-            for (const line of lines) {
-              const ratio = totalExpected > 0 ? Number(line.expectedQtyKg) / totalExpected : 1 / lines.length;
-              const lineNet = Math.round(absNet * ratio * 1000) / 1000;
-              await this.prisma.shipmentLine.update({
-                where: { id: line.id },
-                data: { shippedQty: lineNet, netWeightKg: lineNet },
-              });
-            }
-          }
-
-          // Post SHIP_CONFIRMED inventory transaction for each line
-          try {
-            const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
-            const postingEngine = new PostingEngineService(this.prisma);
-
-            for (const line of lines) {
-              const lineNet = lines.length === 1
-                ? absNet
-                : Math.round(absNet * (Number(line.expectedQtyKg) / lines.reduce((s, l) => s + Number(l.expectedQtyKg), 0)) * 1000) / 1000;
-
-              if (lineNet <= 0) continue;
-
-              await postingEngine.postInventory({
-                externalId: `SHP-${log.shipmentId}-${line.id}-${Date.now()}`,
-                correlationId: `SHP-${shipment.shipmentNumber || log.shipmentId}`,
-                eventCode: 'SHIP_CONFIRMED',
-                refType: 'SHIPMENT',
-                refId: log.shipmentId,
-                refLineId: line.id,
-                itemId: line.itemId,
-                qty: String(lineNet),
-                uomCode: line.uom?.uomCode || 'KG',
-                dimFrom: {
-                  warehouseCode: shipment.warehouse?.warehouseCode,
-                  locationCode: line.location?.locationCode || undefined,
-                  ownerCode: shipment.owner?.ownerCode,
-                  statusCode: 'AVAILABLE',
-                },
-                sourceApp: 'SYSTEM',
-                postedBy: undefined,
-                weighbridgeTicketId: id,
-              });
-
-              this.logger.log(`Posted SHIP_CONFIRMED for line ${line.id}, qty=${lineNet} kg`);
-            }
-          } catch (postErr) {
-            this.logger.error(`Error posting inventory for shipment ${log.shipmentId}`, postErr);
-          }
-        }
-
-        this.logger.log(`Synced net weight ${absNet} kg to shipment ${log.shipmentId}`);
       }
 
-      return { id, tareWeightKg: data.weightKg, tareWeightAt: now, netWeightKg: Math.abs(netWeightKg), processingStatus: WeighEventProcessingStatus.COMPLETED };
+      this.logger.log(`Outbound weighing #1 (tare): ${weightKg} kg for shipment ${shipmentId}`);
+      return { id: logId, sequence: 1, tareWeightKg: weightKg, processingStatus: WeighEventProcessingStatus.WEIGHING };
     }
 
-    throw new WeighbridgeError(IntegrationErrorCodes.INVALID_WEIGHING_TYPE, 'Both weights have already been recorded');
+    // ─── Lần 2+: Gross sau khi xếp hàng ───
+    const previousRecord = existingRecords[existingRecords.length - 1];
+    const previousWeight = Number(previousRecord.weightKg);
+
+    // Validation: phải có ít nhất 1 line LOADING (xếp sau lần cân trước)
+    const loadingLines = shipment.lines.filter((l: any) => l.lineStatus === 'LOADING');
+    if (loadingLines.length === 0) {
+      throw new BadRequestException('Chưa xếp mặt hàng nào. Vui lòng xếp ít nhất 1 mặt hàng trước khi cân tiếp.');
+    }
+
+    // Validation: xe nặng dần (outbound: xếp hàng lên nên trọng lượng tăng)
+    if (weightKg <= previousWeight) {
+      throw new BadRequestException(`Trọng lượng (${weightKg} kg) phải lớn hơn lần cân trước (${previousWeight} kg) vì đã xếp hàng.`);
+    }
+
+    const netWeight = weightKg - previousWeight;
+    const loadedLineIds = loadingLines.map((l: any) => l.id);
+
+    // Check if this is the final weighing (no PENDING lines left)
+    const pendingLines = shipment.lines.filter((l: any) => l.lineStatus === 'PENDING');
+    const isFinal = pendingLines.length === 0;
+
+    // Create weight record
+    await this.prisma.weighbridgeWeightRecord.create({
+      data: {
+        weighbridgeLogId: logId,
+        sequence: nextSequence,
+        weightKg,
+        recordedAt: now,
+        unloadedLineIds: loadedLineIds, // reuse field for loaded lines
+        netWeightKg: netWeight,
+        isFinal,
+      },
+    });
+
+    // Distribute net weight among LOADING lines → SHIPPED + post inventory
+    const lineNets: { line: any; lineNet: number }[] = [];
+    if (loadingLines.length === 1) {
+      lineNets.push({ line: loadingLines[0], lineNet: netWeight });
+    } else {
+      const totalExpected = loadingLines.reduce((s: number, l: any) => s + Number(l.expectedQtyKg), 0);
+      for (const line of loadingLines) {
+        const ratio = totalExpected > 0 ? Number(line.expectedQtyKg) / totalExpected : 1 / loadingLines.length;
+        lineNets.push({ line, lineNet: Math.round(netWeight * ratio * 1000) / 1000 });
+      }
+    }
+
+    // Update lines → LINE_SHIPPED
+    for (const { line, lineNet } of lineNets) {
+      await this.prisma.shipmentLine.update({
+        where: { id: line.id },
+        data: { lineStatus: 'LINE_SHIPPED', shippedQty: lineNet, netWeightKg: lineNet },
+      });
+    }
+
+    // Post SHIP_CONFIRMED immediately for each line in this batch
+    try {
+      const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
+      const postingEngine = new PostingEngineService(this.prisma);
+
+      for (const { line, lineNet } of lineNets) {
+        if (lineNet <= 0) continue;
+        await postingEngine.postInventory({
+          externalId: `SHP-${shipmentId}-${line.id}-${Date.now()}`,
+          correlationId: `SHP-${shipment.shipmentNumber || shipmentId}`,
+          eventCode: 'SHIP_CONFIRMED',
+          refType: 'SHIPMENT',
+          refId: shipmentId,
+          refLineId: line.id,
+          itemId: line.itemId,
+          qty: String(lineNet),
+          uomCode: (line as any).uom?.uomCode || 'KG',
+          dimFrom: {
+            warehouseCode: shipment.warehouse?.warehouseCode,
+            locationCode: (line as any).location?.locationCode || undefined,
+            ownerCode: shipment.owner?.ownerCode,
+            statusCode: 'AVAILABLE',
+          },
+          sourceApp: 'SYSTEM',
+          postedBy: undefined,
+          weighbridgeTicketId: logId,
+        });
+        this.logger.log(`Posted SHIP_CONFIRMED for line ${line.id}, qty=${lineNet} kg`);
+      }
+    } catch (postErr: any) {
+      this.logger.error(`Error posting inventory for shipment ${shipmentId}`, postErr);
+    }
+
+    this.logger.log(`Outbound weighing #${nextSequence}: ${weightKg} kg, net=${netWeight} kg for ${loadingLines.length} items`);
+
+    // ─── If FINAL weighing: complete shipment ───
+    if (isFinal) {
+      const totalNet = weightKg - Number(existingRecords[0].weightKg);
+      await this.logRepo.update(logId, { tareWeightKg: weightKg, tareWeightAt: now, netWeightKg: totalNet });
+      await this.eventStateRepo.updateByLogId(logId, { processingStatus: WeighEventProcessingStatus.COMPLETED as any });
+
+      await this.prisma.shipmentHeader.update({
+        where: { id: shipmentId },
+        data: { status: 'SHIPPED' },
+      });
+      await this.prisma.shipmentStatusHistory.create({
+        data: {
+          shipmentHeaderId: shipmentId,
+          entityLevel: 'HEADER',
+          fromStatus: 'LOADING',
+          toStatus: 'SHIPPED',
+          triggerAction: 'WEIGH_FINAL',
+          correlationId: shipmentId,
+        },
+      });
+
+      this.logger.log(`Shipment ${shipmentId} SHIPPED: total net=${totalNet} kg`);
+      return { id: logId, sequence: nextSequence, isFinal: true, netWeightKg: netWeight, totalNetWeightKg: totalNet, processingStatus: WeighEventProcessingStatus.COMPLETED };
+    }
+
+    // ─── NOT final: keep LOADING ───
+    return { id: logId, sequence: nextSequence, isFinal: false, netWeightKg: netWeight, processingStatus: WeighEventProcessingStatus.WEIGHING };
   }
 
   /**
@@ -750,7 +847,11 @@ export class WeighbridgeLogService {
         name: owner.ownerName,
       } : null,
       ticketNumber,
-      itemCode: log.itemCode || itemInfo?.itemCode || null,
+      itemCode: log.itemCode || (receipt?.lines?.length > 0
+        ? receipt.lines.map((l: any) => l.item?.itemCode).filter(Boolean).join(', ')
+        : shipment?.lines?.length > 0
+          ? shipment.lines.map((l: any) => l.item?.itemCode).filter(Boolean).join(', ')
+          : null),
       itemName: itemInfo?.itemName || null,
       asnId,
       notes: log.notes || null,
@@ -762,6 +863,22 @@ export class WeighbridgeLogService {
           expectedQty: l.expectedQty ? Number(l.expectedQty) : null,
           receivedQty: l.receivedQty ? Number(l.receivedQty) : null,
           status: l.status,
+          uomCode: l.uom?.uomCode || null,
+        })),
+      } : null,
+      shipment: shipment ? {
+        id: shipment.id,
+        shipmentNumber: shipment.shipmentNumber,
+        lines: (shipment.lines || []).map((l: any) => ({
+          id: l.id,
+          item: l.item,
+          itemName: l.item?.itemName || null,
+          itemCode: l.item?.itemCode || null,
+          expectedQty: l.expectedQtyKg ? Number(l.expectedQtyKg) : null,
+          allocatedQty: l.allocatedQty ? Number(l.allocatedQty) : null,
+          shippedQty: l.shippedQty ? Number(l.shippedQty) : null,
+          netWeightKg: l.netWeightKg ? Number(l.netWeightKg) : null,
+          lineStatus: l.lineStatus || null,
           uomCode: l.uom?.uomCode || null,
         })),
       } : null,

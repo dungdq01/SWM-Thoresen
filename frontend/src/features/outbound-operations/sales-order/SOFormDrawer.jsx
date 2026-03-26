@@ -96,9 +96,20 @@ export function SOFormDrawer({
   const updateLine = useCallback((idx, field, value) => {
     setDraft((prev) => ({
       ...prev,
-      lines: prev.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
+      lines: prev.lines.map((l, i) => {
+        if (i !== idx) return l
+        const updated = { ...l, [field]: value }
+        // Autofill UOM khi chọn mặt hàng
+        if (field === 'itemId' && value) {
+          const selectedItem = items.find((it) => it.id === value)
+          if (selectedItem?.extra?.baseUomId) {
+            updated.uomId = selectedItem.extra.baseUomId
+          }
+        }
+        return updated
+      }),
     }))
-  }, [])
+  }, [items])
 
   const addLine = useCallback(() => {
     setDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyLine }] }))
@@ -363,6 +374,7 @@ export function SOFormDrawer({
                               onChange={(e) => updateLine(idx, 'uomId', e.target.value)}
                               options={uomOptions}
                               className="min-w-[100px]"
+                              disabled={!!line.itemId}
                             />
                           </td>
                           <td className="px-3 py-2.5 text-center">

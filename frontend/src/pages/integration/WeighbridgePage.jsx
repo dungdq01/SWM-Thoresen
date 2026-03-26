@@ -160,20 +160,32 @@ export function WeighbridgePage() {
                   <p className="text-navy-700">{row.ticketNumber || row.asnId || '-'}</p>
                 </TableCell>
                 <TableCell>
-                  {row.receipt?.lines?.length > 1 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {row.receipt.lines.slice(0, 3).map((l, i) => (
-                        <span key={i} className="inline-flex text-xs bg-navy-100 text-navy-700 px-1.5 py-0.5 rounded">
-                          {l.item?.itemCode || l.itemCode}
+                  {(() => {
+                    // Dùng receipt.lines cho cân vào, shipment.lines cho cân ra
+                    const lines = row.receipt?.lines || row.shipment?.lines || []
+                    if (lines.length > 1) {
+                      return (
+                        <div className="flex flex-wrap gap-1">
+                          {lines.slice(0, 3).map((l, i) => (
+                            <span key={i} className="inline-flex text-xs bg-navy-100 text-navy-700 px-1.5 py-0.5 rounded">
+                              {l.item?.itemCode || l.itemCode}
+                            </span>
+                          ))}
+                          {lines.length > 3 && (
+                            <span className="text-xs text-navy-400">+{lines.length - 3}</span>
+                          )}
+                        </div>
+                      )
+                    }
+                    if (lines.length === 1) {
+                      return (
+                        <span className="inline-flex text-xs bg-navy-100 text-navy-700 px-1.5 py-0.5 rounded">
+                          {lines[0].item?.itemCode || lines[0].itemCode}
                         </span>
-                      ))}
-                      {row.receipt.lines.length > 3 && (
-                        <span className="text-xs text-navy-400">+{row.receipt.lines.length - 3}</span>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-navy-700">{row.itemCode || row.receipt?.lines?.[0]?.item?.itemCode || '-'}</p>
-                  )}
+                      )
+                    }
+                    return <p className="text-navy-700">{row.itemCode || '-'}</p>
+                  })()}
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusTone(row.processingStatus)}>
