@@ -220,7 +220,7 @@ export class UnloadingService {
   }
 
   /**
-   * Lấy danh sách vị trí có thể dỡ hàng vào (storage locations trong kho)
+   * Lấy danh sách vị trí có thể dỡ hàng vào (tất cả vị trí trong kho)
    */
   async getAvailableLocations(warehouseId: string) {
     const locations = await this.prisma.mdLocation.findMany({
@@ -228,7 +228,6 @@ export class UnloadingService {
         warehouseId,
         isActive: true,
         status: 'OK',
-        locationType: { in: ['STORAGE', 'RECEIVING'] },
       },
       select: {
         id: true,
