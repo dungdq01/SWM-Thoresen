@@ -6,9 +6,12 @@ import { useWarehouse3D } from '../../hooks/useWarehouse3DStore'
 export const WarehouseGroup = memo(function WarehouseGroup() {
   const { state, computed } = useWarehouse3D()
 
+  // Use API data if available, fallback to mock WH_DATA
+  const data = state.warehouseData || WH_DATA
+
   return (
     <group>
-      {WH_DATA.map((wh, idx) => (
+      {data.map((wh, idx) => (
         <WarehouseBuilding
           key={wh.code}
           wh={wh}

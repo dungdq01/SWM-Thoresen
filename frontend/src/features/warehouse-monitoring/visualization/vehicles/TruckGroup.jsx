@@ -6,6 +6,8 @@ import { WH_DATA } from '../../data/warehouseData'
 import { useWarehouse3D } from '../../hooks/useWarehouse3DStore'
 import { Truck } from './Truck'
 
+// Use API data if available, fallback to mock WH_DATA
+
 // Shared ref so AnimatedGoods4D can read live truck state
 export const truckPositions = { current: [] }
 // phase: 'patrol' | 'toDock' | 'docked' | 'departing'
@@ -45,6 +47,9 @@ export const TruckGroup = memo(function TruckGroup() {
   const trucksRef = useRef([])
   const { state } = useWarehouse3D()
 
+  // Use API data if available, fallback to mock WH_DATA
+  const whData = state.warehouseData || WH_DATA
+
   const routes = useMemo(() => {
     return TRUCK_ROUTE_DEFINITIONS.map((waypoints, i) => {
       const { segDists, totalDist } = precomputeSegments(waypoints)
@@ -55,7 +60,7 @@ export const TruckGroup = memo(function TruckGroup() {
   // Compute docking positions from warehouse data
   const dockingTargets = useMemo(() => {
     return TRUCK_4D_OPERATIONS.map((op) => {
-      const wh = WH_DATA[op.whIdx]
+      const wh = whData[op.whIdx]
       if (!wh) return null
       return {
         x: wh.pos[0] + wh.width * 0.26,
@@ -64,7 +69,7 @@ export const TruckGroup = memo(function TruckGroup() {
         whType: wh.type,
       }
     })
-  }, [])
+  }, [whData])
 
   const progressRef = useRef(routes.map(() => 0))
   const prev4DRef = useRef(false)
@@ -262,7 +267,7 @@ export const TruckGroup = memo(function TruckGroup() {
     <group>
       {routes.map((route, i) => {
         const op = TRUCK_4D_OPERATIONS[i]
-        const wh = op ? WH_DATA[op.whIdx] : null
+        const wh = op ? whData[op.whIdx] : null
         return (
           <group key={i} ref={el => { trucksRef.current[i] = el }}>
             <Truck color={route.color} />

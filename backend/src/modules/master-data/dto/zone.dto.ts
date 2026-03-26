@@ -31,6 +31,42 @@ export class CreateZoneDto {
   @IsOptional()
   @IsString()
   externalId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  xCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  yCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  zoneWidthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  zoneDepthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  rotationDeg?: number;
+
+  @IsOptional()
+  @IsString()
+  displayColor?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  sortOrder?: number;
 }
 
 export class UpdateZoneDto {
@@ -54,6 +90,42 @@ export class UpdateZoneDto {
   @IsNumber()
   @Type(() => Number)
   maxCapacityMt?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  xCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  yCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  zoneWidthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  zoneDepthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  rotationDeg?: number;
+
+  @IsOptional()
+  @IsString()
+  displayColor?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  sortOrder?: number;
 
   @IsInt()
   @Min(0)

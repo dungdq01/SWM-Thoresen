@@ -29,10 +29,12 @@ export const TRUCK_4D_OPERATIONS = [
 ]
 
 // Compute docking position for each 4D operation (truck parks near warehouse door)
-export function getTruck4DDockingPos(opIdx) {
+// Accepts optional whData parameter; falls back to mock WH_DATA
+export function getTruck4DDockingPos(opIdx, whData) {
   const op = TRUCK_4D_OPERATIONS[opIdx]
   if (!op) return null
-  const wh = WH_DATA[op.whIdx]
+  const data = whData || WH_DATA
+  const wh = data[op.whIdx]
   if (!wh) return null
   const doorX = wh.pos[0] + wh.width * 0.26
   const doorZ = wh.pos[2] + wh.depth / 2 + 15

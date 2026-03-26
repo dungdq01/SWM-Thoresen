@@ -6,6 +6,8 @@ import { TRUCK_4D_OPERATIONS } from '../../data/truckRoutes'
 import { truckPositions, truckPhases } from '../vehicles/TruckGroup'
 import { useWarehouse3D } from '../../hooks/useWarehouse3DStore'
 
+// Uses API data if available, fallback to mock WH_DATA
+
 // Single animated cargo item
 const CargoItem = memo(function CargoItem({ startPos, midPos, endPos, speed, whType }) {
   const ref = useRef()
@@ -59,6 +61,9 @@ export const AnimatedGoods4D = memo(function AnimatedGoods4D() {
   const [goods, setGoods] = useState([])
   const idCounter = useRef(0)
 
+  // Use API data if available, fallback to mock WH_DATA
+  const whData = state.warehouseData || WH_DATA
+
   useEffect(() => {
     if (!state.mode4D) {
       setGoods([])
@@ -68,7 +73,7 @@ export const AnimatedGoods4D = memo(function AnimatedGoods4D() {
     const spawn = () => {
       const newGoods = []
       TRUCK_4D_OPERATIONS.forEach((op) => {
-        const wh = WH_DATA[op.whIdx]
+        const wh = whData[op.whIdx]
         if (!wh) return
 
         // Only spawn goods when truck is docked at warehouse
@@ -125,7 +130,7 @@ export const AnimatedGoods4D = memo(function AnimatedGoods4D() {
     // Spawn every 1.5s (faster cycle since goods only appear when docked)
     const interval = setInterval(spawn, 1500)
     return () => clearInterval(interval)
-  }, [state.mode4D])
+  }, [state.mode4D, whData])
 
   if (!state.mode4D || goods.length === 0) return null
 

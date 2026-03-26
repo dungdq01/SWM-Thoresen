@@ -21,6 +21,7 @@ import {
 import * as argon2 from 'argon2';
 import { seedMasterDataSample } from './seed/master-data-sample.seed';
 import { seedBillingSample } from './seed/billing-sample.seed';
+import { seedTvlGoliveMasterData } from './seed/tvl-golive-masterdata.seed';
 
 const prisma = new PrismaClient();
 
@@ -1268,6 +1269,9 @@ async function main() {
 
   console.log('✅ Module 3 Inventory Event Mapping seeded successfully');
 
+
+  // ========== TVL Go-live Master Data (from masterdata_TVL_golive1.xlsx) ==========
+  await seedTvlGoliveMasterData(prisma);
 
   // Seed billing sample data
   await seedBillingSample(prisma);

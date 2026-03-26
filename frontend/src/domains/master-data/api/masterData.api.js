@@ -585,3 +585,26 @@ export const dropdownConfigApi = {
     (entity) => httpClient.get(`${BASE_URL}/dropdown-configs/fields`, { params: { entity } })
   ),
 }
+
+// ==================== MONITORING APIs ====================
+export const monitoringApi = {
+  getSiteOverview: (siteId = 'TVL-SITE') => httpClient.get('/monitoring/site-overview', { params: { siteId } }),
+  getWarehouseDetail: (id) => httpClient.get(`/monitoring/warehouses/${id}/detail`),
+}
+
+// ==================== RACK APIs ====================
+export const rackApi = {
+  getList: (params) => httpClient.get(`${BASE_URL}/racks`, { params }),
+  getById: (id) => httpClient.get(`${BASE_URL}/racks/${id}`),
+  create: (data) => httpClient.post(`${BASE_URL}/racks`, data),
+  update: (id, data) => httpClient.put(`${BASE_URL}/racks/${id}`, data),
+  deactivate: (id, reason) => httpClient.post(`${BASE_URL}/racks/${id}/deactivate`, { note: reason }),
+}
+
+// ==================== LAYOUT APIs ====================
+export const layoutApi = {
+  getWarehouseLayout: (warehouseId) => httpClient.get(`${BASE_URL}/warehouses/${warehouseId}/layout`),
+  saveWarehouseLayout: (warehouseId, data) => httpClient.put(`${BASE_URL}/warehouses/${warehouseId}/layout`, data),
+  getSiteLayout: (siteId) => httpClient.get(`${BASE_URL}/sites/${siteId}/layout`),
+  saveSiteLayout: (siteId, data) => httpClient.put(`${BASE_URL}/sites/${siteId}/layout`, data),
+}

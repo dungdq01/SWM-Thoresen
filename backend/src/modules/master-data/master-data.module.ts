@@ -23,6 +23,9 @@ import { ItemGroupController } from './controllers/item-group.controller';
 import { LotController } from './controllers/lot.controller';
 import { OwnerWarehouseAccessController } from './controllers/owner-warehouse-access.controller';
 import { ItemIncompatibilityController } from './controllers/item-incompatibility.controller';
+import { RackController } from './controllers/rack.controller';
+import { LayoutController } from './controllers/layout.controller';
+import { MonitoringController } from './controllers/monitoring.controller';
 
 import { OwnerRepository } from './repositories/owner.repository';
 import { VendorRepository } from './repositories/vendor.repository';
@@ -44,6 +47,7 @@ import { ItemGroupRepository } from './repositories/item-group.repository';
 import { LotRepository } from './repositories/lot.repository';
 import { OwnerWarehouseAccessRepository } from './repositories/owner-warehouse-access.repository';
 import { ItemIncompatibilityRepository } from './repositories/item-incompatibility.repository';
+import { RackRepository } from './repositories/rack.repository';
 
 import { OwnerService } from './services/owner.service';
 import { VendorService } from './services/vendor.service';
@@ -65,6 +69,9 @@ import { ItemGroupService } from './services/item-group.service';
 import { LotService } from './services/lot.service';
 import { OwnerWarehouseAccessService } from './services/owner-warehouse-access.service';
 import { ItemIncompatibilityService } from './services/item-incompatibility.service';
+import { RackService } from './services/rack.service';
+import { LayoutService } from './services/layout.service';
+import { MonitoringService } from './services/monitoring.service';
 
 @Module({
   imports: [PrismaModule, FoundationModule],
@@ -90,6 +97,9 @@ import { ItemIncompatibilityService } from './services/item-incompatibility.serv
     LotController,
     OwnerWarehouseAccessController,
     ItemIncompatibilityController,
+    RackController,
+    LayoutController,
+    MonitoringController,
   ],
   providers: [
     OwnerRepository,
@@ -112,6 +122,7 @@ import { ItemIncompatibilityService } from './services/item-incompatibility.serv
     LotRepository,
     OwnerWarehouseAccessRepository,
     ItemIncompatibilityRepository,
+    RackRepository,
     OwnerService,
     VendorService,
     ItemService,
@@ -132,6 +143,9 @@ import { ItemIncompatibilityService } from './services/item-incompatibility.serv
     LotService,
     OwnerWarehouseAccessService,
     ItemIncompatibilityService,
+    RackService,
+    LayoutService,
+    MonitoringService,
   ],
   exports: [
     OwnerService,
@@ -154,6 +168,9 @@ import { ItemIncompatibilityService } from './services/item-incompatibility.serv
     LotService,
     OwnerWarehouseAccessService,
     ItemIncompatibilityService,
+    RackService,
+    LayoutService,
+    MonitoringService,
   ],
 })
 export class MasterDataModule {}

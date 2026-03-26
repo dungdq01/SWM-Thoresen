@@ -226,6 +226,11 @@ export const MASTER_DATA_QUERY_KEYS = {
   lotTraceability: (id) => ['master-data', 'lots', id, 'traceability'],
   lotDerivedLots: (id) => ['master-data', 'lots', id, 'derived-lots'],
   lotFifo: (itemId, ownerId, warehouseId) => ['master-data', 'lots', 'fifo', itemId, ownerId, warehouseId],
+  // Layout Editor
+  racks: ['master-data', 'racks'],
+  rackDetail: (id) => ['master-data', 'racks', id],
+  warehouseLayout: (id) => ['master-data', 'warehouse-layout', id],
+  siteLayout: (siteId) => ['master-data', 'site-layout', siteId],
 }
 
 // Item Incompatibility constants

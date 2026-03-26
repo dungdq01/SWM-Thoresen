@@ -116,37 +116,37 @@ class InventoryCoreController {
       const { page, pageSize, ...filters } = value;
       const result = await this.onHandService.queryOnHand(filters, { page, pageSize });
 
-      // Get warehouseId from inventDim for each on-hand row
+      // Get warehouseId + ownerId from inventDim for each on-hand row
       const inventDimIds = result.items.map(r => r.inventDimId).filter(Boolean);
       const dimRows = inventDimIds.length > 0
         ? await this.prisma.inventDim.findMany({
             where: { id: { in: inventDimIds } },
-            select: { id: true, warehouseId: true },
+            select: { id: true, warehouseId: true, ownerId: true },
           })
         : [];
-      const dimWarehouseMap = {};
-      for (const d of dimRows) dimWarehouseMap[d.id] = d.warehouseId;
+      const dimLookup = {};
+      for (const d of dimRows) dimLookup[d.id] = { warehouseId: d.warehouseId, ownerId: d.ownerId };
 
-      // Enrich with outbound shipped qty per item+warehouse
+      // Enrich with outbound shipped qty per item+warehouse+owner
       const outboundMap = {};
-      // Enrich with inbound received qty per item+warehouse
+      // Enrich with inbound received qty per item+warehouse+owner
       const inboundMap = {};
       if (result.items.length > 0) {
         const shipmentLines = await this.prisma.shipmentLine.findMany({
           where: { shippedQty: { gt: 0 }, lineStatus: { notIn: ['CANCELLED'] } },
-          select: { itemId: true, shippedQty: true, header: { select: { warehouseId: true } } },
+          select: { itemId: true, shippedQty: true, header: { select: { warehouseId: true, ownerId: true } } },
         });
         for (const sl of shipmentLines) {
-          const key = `${sl.itemId}|${sl.header?.warehouseId}`;
+          const key = `${sl.itemId}|${sl.header?.warehouseId}|${sl.header?.ownerId}`;
           outboundMap[key] = (outboundMap[key] || 0) + Number(sl.shippedQty || 0);
         }
 
         const receiptLines = await this.prisma.receiptLine.findMany({
           where: { receivedQty: { gt: 0 }, status: { notIn: ['CANCELLED'] } },
-          select: { itemId: true, receivedQty: true, header: { select: { warehouseId: true } } },
+          select: { itemId: true, receivedQty: true, header: { select: { warehouseId: true, ownerId: true } } },
         });
         for (const rl of receiptLines) {
-          const key = `${rl.itemId}|${rl.header?.warehouseId}`;
+          const key = `${rl.itemId}|${rl.header?.warehouseId}|${rl.header?.ownerId}`;
           inboundMap[key] = (inboundMap[key] || 0) + Number(rl.receivedQty || 0);
         }
       }
@@ -172,7 +172,8 @@ class InventoryCoreController {
       }
 
       const enrichedData = result.items.map(r => {
-        const key = `${r.itemId}|${dimWarehouseMap[r.inventDimId]}`;
+        const dimInfo = dimLookup[r.inventDimId] || {};
+        const key = `${r.itemId}|${dimInfo.warehouseId}|${dimInfo.ownerId}`;
         const dim = r.inventDim || {};
         const skuKey = `${r.itemId}|${dim.owner?.ownerCode || ''}|${dim.warehouse?.warehouseCode || ''}|${dim.location?.locationCode || ''}`;
         const totals = skuTotals[skuKey] || { totalPhysical: 0, allocatablePhysical: 0 };

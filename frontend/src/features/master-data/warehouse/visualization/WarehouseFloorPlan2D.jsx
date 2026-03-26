@@ -316,6 +316,56 @@ function Legend({ items, x, y }) {
   )
 }
 
+function ZoneOverlay({ zones, scale, halfL, halfW }) {
+  if (!zones?.length) return null
+  return (
+    <g>
+      {zones.map((z) => {
+        const x = -halfL + (Number(z.xCoord) || 0) * scale
+        const y = -halfW + (Number(z.yCoord) || 0) * scale
+        const w = (Number(z.zoneWidthM) || 10) * scale
+        const h = (Number(z.zoneDepthM) || 8) * scale
+        const color = z.displayColor || '#3b82f6'
+        return (
+          <g key={z.id}>
+            <rect x={x} y={y} width={w} height={h} fill={color} opacity={0.18} stroke={color} strokeWidth={1.2} strokeDasharray="6,3" rx={2} />
+            <text x={x + 4} y={y + 13} fontSize={10} fontWeight="600" fill="#1e293b" fontFamily="Inter, system-ui, sans-serif">
+              {z.zoneCode}
+            </text>
+            <text x={x + 4} y={y + 24} fontSize={8} fill="#475569" fontFamily="Inter, system-ui, sans-serif">
+              {z.zoneName}
+            </text>
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+function RackOverlay({ racks, scale, halfL, halfW }) {
+  if (!racks?.length) return null
+  return (
+    <g>
+      {racks.map((r) => {
+        const x = -halfL + (Number(r.xCoord) || 0) * scale
+        const y = -halfW + (Number(r.yCoord) || 0) * scale
+        const w = (Number(r.rackWidthM) || 2) * scale
+        const h = (Number(r.rackDepthM) || 8) * scale
+        return (
+          <g key={r.id}>
+            <rect x={x} y={y} width={w} height={h} fill="#f97316" opacity={0.35} stroke="#ea580c" strokeWidth={0.8} rx={1} />
+            {w > 15 && (
+              <text x={x + 2} y={y + 10} fontSize={7} fill="#9a3412" fontFamily="Inter, system-ui, sans-serif">
+                {r.rackCode}
+              </text>
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 function Compass({ x, y }) {
   return (
     <g transform={`translate(${x}, ${y})`}>
@@ -355,6 +405,8 @@ export function WarehouseFloorPlan2D({
   specs,
   columnPositions,
   warehouse,
+  zones,
+  racks,
   className = '',
 }) {
   const containerRef = useRef(null)
@@ -425,8 +477,14 @@ export function WarehouseFloorPlan2D({
     if (usableRatio < 1) {
       items.push({ color: 'rgba(59, 130, 246, 0.15)', stroke: C.usableStroke, label: 'DT sử dụng' })
     }
+    if (zones?.length) {
+      items.push({ color: 'rgba(59, 130, 246, 0.18)', stroke: '#3b82f6', label: 'Zone' })
+    }
+    if (racks?.length) {
+      items.push({ color: 'rgba(249, 115, 22, 0.35)', stroke: '#ea580c', label: 'Rack' })
+    }
     return items
-  }, [docks, specs, usableRatio])
+  }, [docks, specs, usableRatio, zones, racks])
 
   return (
     <div ref={containerRef} className={`w-full h-full min-h-[400px] ${className}`}>
@@ -442,7 +500,11 @@ export function WarehouseFloorPlan2D({
           {/* 2. Usable area */}
           <UsableArea lengthPx={lengthPx} widthPx={widthPx} usableRatio={usableRatio} />
 
-          {/* 3. Sprinkler grid */}
+          {/* 3. Zone + Rack overlays (from backend layout data) */}
+          <ZoneOverlay zones={zones} scale={scale} halfL={lengthPx / 2} halfW={widthPx / 2} />
+          <RackOverlay racks={racks} scale={scale} halfL={lengthPx / 2} halfW={widthPx / 2} />
+
+          {/* 3b. Sprinkler grid */}
           <SprinklerGrid geometry={geometry} specs={specs} scale={scale} />
 
           {/* 4. Walls */}

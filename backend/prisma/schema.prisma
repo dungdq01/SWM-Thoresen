@@ -578,6 +578,12 @@ model MdWarehouse {
   weighbridgeCount           Int?          @map("weighbridge_count")
   isBonded                   Boolean       @default(false) @map("is_bonded")
   capacityWarningPct         Decimal       @map("capacity_warning_pct") @db.Decimal(5, 2)
+  lengthM                    Decimal?      @map("length_m") @db.Decimal(18, 2)
+  widthM                     Decimal?      @map("width_m") @db.Decimal(18, 2)
+  siteXCoord                 Decimal?      @map("site_x_coord") @db.Decimal(18, 6)
+  siteYCoord                 Decimal?      @map("site_y_coord") @db.Decimal(18, 6)
+  siteRotationDeg            Decimal?      @default(0) @map("site_rotation_deg") @db.Decimal(5, 2)
+  displayColor               String?       @map("display_color") @db.VarChar(20)
   defaultReceivingLocationId String?       @map("default_receiving_location_id") @db.Uuid
   defaultStagingLocationId   String?       @map("default_staging_location_id") @db.Uuid
   defaultShippingLocationId  String?       @map("default_shipping_location_id") @db.Uuid
@@ -616,6 +622,8 @@ model MdWarehouse {
   ownerAccess             MdOwnerWarehouseAccess[]
   itemGroups              MdItemGroup[]           @relation("ItemGroupDefaultWarehouse")
   itemGroupWarehouses     MdItemGroupWarehouse[]  @relation("ItemGroupWarehouses")
+  racks                   MdRack[]
+  siteMapElements         MdSiteMapElement[]      @relation("SiteMapWarehouse")
 
   @@map("md_warehouse")
 }
@@ -629,6 +637,13 @@ model MdZone {
   isBillingZone   Boolean   @default(false) @map("is_billing_zone")
   billingRateZone String?   @map("billing_rate_zone") @db.VarChar(100)
   maxCapacityMt   Decimal?  @map("max_capacity_mt") @db.Decimal(18, 3)
+  xCoord          Decimal?  @map("x_coord") @db.Decimal(18, 6)
+  yCoord          Decimal?  @map("y_coord") @db.Decimal(18, 6)
+  zoneWidthM      Decimal?  @map("zone_width_m") @db.Decimal(18, 2)
+  zoneDepthM      Decimal?  @map("zone_depth_m") @db.Decimal(18, 2)
+  rotationDeg     Decimal?  @default(0) @map("rotation_deg") @db.Decimal(5, 2)
+  displayColor    String?   @map("display_color") @db.VarChar(20)
+  sortOrder       Int?      @default(0) @map("sort_order")
   isActive        Boolean   @default(true) @map("is_active")
   rowVersion      BigInt    @default(0) @map("row_version")
   createdAt       DateTime  @default(now()) @map("created_at")
@@ -640,6 +655,7 @@ model MdZone {
 
   warehouse MdWarehouse  @relation(fields: [warehouseId], references: [id])
   locations MdLocation[]
+  racks     MdRack[]
   items     MdItem[]
 
   @@unique([warehouseId, zoneCode])
@@ -663,6 +679,10 @@ model MdLocation {
   stackingRule      String?        @map("stacking_rule") @db.VarChar(30)
   xCoord            Decimal?       @map("x_coord") @db.Decimal(18, 6)
   yCoord            Decimal?       @map("y_coord") @db.Decimal(18, 6)
+  locationWidthM    Decimal?       @map("location_width_m") @db.Decimal(18, 2)
+  locationDepthM    Decimal?       @map("location_depth_m") @db.Decimal(18, 2)
+  rotationDeg       Decimal?       @default(0) @map("rotation_deg") @db.Decimal(5, 2)
+  displayColor      String?        @map("display_color") @db.VarChar(20)
   isActive          Boolean        @default(true) @map("is_active")
   rowVersion        BigInt         @default(0) @map("row_version")
   createdAt         DateTime       @default(now()) @map("created_at")
@@ -5287,4 +5307,81 @@ model MdLocationType {
   updatedBy        String?  @map("updated_by") @db.Uuid
 
   @@map("md_location_types")
+}
+
+// ─── Layout Editor Models ────────────────────────────────────────────────────
+
+enum RackType {
+  SELECTIVE
+  DRIVE_IN
+  PUSH_BACK
+  PALLET_FLOW
+  CANTILEVER
+  MEZZANINE
+  FLOOR_STACK
+}
+
+enum SiteElementType {
+  ROAD
+  GATE
+  PARKING
+  WEIGHBRIDGE
+  OFFICE
+  LOADING_AREA
+  GREEN_AREA
+}
+
+model MdRack {
+  id              String    @id @default(uuid()) @db.Uuid
+  warehouseId     String    @map("warehouse_id") @db.Uuid
+  zoneId          String?   @map("zone_id") @db.Uuid
+  rackCode        String    @map("rack_code") @db.VarChar(50)
+  rackName        String?   @map("rack_name") @db.VarChar(255)
+  rackType        RackType  @map("rack_type")
+  xCoord          Decimal   @map("x_coord") @db.Decimal(18, 6)
+  yCoord          Decimal   @map("y_coord") @db.Decimal(18, 6)
+  rackWidthM      Decimal   @map("rack_width_m") @db.Decimal(18, 2)
+  rackDepthM      Decimal   @map("rack_depth_m") @db.Decimal(18, 2)
+  rackHeightM     Decimal?  @map("rack_height_m") @db.Decimal(18, 2)
+  rotationDeg     Decimal   @default(0) @map("rotation_deg") @db.Decimal(5, 2)
+  levels          Int       @default(1)
+  baysPerLevel    Int       @default(1) @map("bays_per_level")
+  displayColor    String?   @map("display_color") @db.VarChar(20)
+  isActive        Boolean   @default(true) @map("is_active")
+  rowVersion      BigInt    @default(0) @map("row_version")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  createdBy       String?   @map("created_by") @db.Uuid
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  updatedBy       String?   @map("updated_by") @db.Uuid
+
+  warehouse MdWarehouse @relation(fields: [warehouseId], references: [id])
+  zone      MdZone?     @relation(fields: [zoneId], references: [id])
+
+  @@unique([warehouseId, rackCode])
+  @@index([zoneId, isActive])
+  @@map("md_rack")
+}
+
+model MdSiteMapElement {
+  id              String          @id @default(uuid()) @db.Uuid
+  siteId          String          @map("site_id") @db.VarChar(50)
+  warehouseId     String?         @map("warehouse_id") @db.Uuid
+  elementType     SiteElementType @map("element_type")
+  label           String?         @db.VarChar(255)
+  xCoord          Decimal         @map("x_coord") @db.Decimal(18, 6)
+  yCoord          Decimal         @map("y_coord") @db.Decimal(18, 6)
+  elementWidthM   Decimal?        @map("element_width_m") @db.Decimal(18, 2)
+  elementDepthM   Decimal?        @map("element_depth_m") @db.Decimal(18, 2)
+  rotationDeg     Decimal?        @default(0) @map("rotation_deg") @db.Decimal(5, 2)
+  metadata        Json?
+  isActive        Boolean         @default(true) @map("is_active")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  createdBy       String?         @map("created_by") @db.Uuid
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  updatedBy       String?         @map("updated_by") @db.Uuid
+
+  warehouse MdWarehouse? @relation("SiteMapWarehouse", fields: [warehouseId], references: [id])
+
+  @@index([siteId, isActive])
+  @@map("md_site_map_element")
 }

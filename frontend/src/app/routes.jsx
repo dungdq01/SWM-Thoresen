@@ -39,6 +39,8 @@ const LocationTypesPage = lazy(() => import('@pages/master-data').then(m => ({ d
 const LotsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LotsPage })))
 const OwnerWarehouseAccessPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerWarehouseAccessPage })))
 const ItemIncompatibilitiesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemIncompatibilitiesPage })))
+const WarehouseLayoutEditorPage = lazy(() => import('@features/layout-editor').then(m => ({ default: m.WarehouseLayoutEditor })))
+const SiteMapEditorPage = lazy(() => import('@features/layout-editor/site-editor/SiteMapEditor').then(m => ({ default: m.default })))
 
 // Inventory Core Pages
 const InventoryCoreLayout = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryCoreLayout })))
@@ -248,6 +250,14 @@ export const router = createBrowserRouter([
           {
             path: 'warehouses/:id',
             element: withSuspense(WarehouseDetailPage),
+          },
+          {
+            path: 'warehouses/:id/layout-editor',
+            element: withSuspense(WarehouseLayoutEditorPage),
+          },
+          {
+            path: 'site-map-editor',
+            element: withSuspense(SiteMapEditorPage),
           },
           {
             path: 'zones',

@@ -64,6 +64,32 @@ export class CreateWarehouseDto {
   @IsOptional()
   @IsUUID()
   ownerId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lengthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  widthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  siteXCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  siteYCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  siteRotationDeg?: number;
+
+  @IsOptional()
+  @IsString()
+  displayColor?: string;
 }
 
 export class UpdateWarehouseDto {
@@ -133,6 +159,32 @@ export class UpdateWarehouseDto {
   @IsOptional()
   @IsUUID()
   ownerId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lengthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  widthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  siteXCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  siteYCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  siteRotationDeg?: number;
+
+  @IsOptional()
+  @IsString()
+  displayColor?: string;
 
   @IsNumber()
   rowVersion!: number;

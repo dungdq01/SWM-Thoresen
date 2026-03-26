@@ -64,6 +64,27 @@ export class CreateLocationDto {
   yCoord?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  locationWidthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  locationDepthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  rotationDeg?: number;
+
+  @IsOptional()
+  @IsString()
+  displayColor?: string;
+
+  @IsOptional()
   @IsString()
   externalId?: string;
 }
@@ -121,6 +142,27 @@ export class UpdateLocationDto {
   @IsNumber()
   @Type(() => Number)
   yCoord?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  locationWidthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  locationDepthM?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  rotationDeg?: number;
+
+  @IsOptional()
+  @IsString()
+  displayColor?: string;
 
   @IsInt()
   @Min(0)

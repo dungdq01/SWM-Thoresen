@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, CancelPurchaseOrderDto, PurchaseOrderQueryDto } from '../dto/purchase-order.dto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -24,6 +24,8 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
 
 @Injectable()
 export class PurchaseOrderService {
+  private readonly logger = new Logger(PurchaseOrderService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private includeDetail() {
@@ -370,9 +372,175 @@ export class PurchaseOrderService {
   }
 
   /**
-   * Reverse all PO_CONFIRMED M3 postings for a PO.
-   * Called when PO is cancelled or unconfirmed.
+   * Recalculate PO line statuses + PO header status based on actual received quantities.
+   * Called after each weighing event that updates receipt lines.
+   *
+   * Logic:
+   * 1. Aggregate receivedQty from all ReceiptLines (status=RECEIVED) grouped by itemId
+   * 2. Update each PO Line:
+   *    - receivedQty = sum of receipt lines for that item
+   *    - status: OPEN (0%), PARTIAL (>0% && <100%), RECEIVED (>=100%)
+   * 3. Update PO Header:
+   *    - totalReceivedQty = sum of all PO line receivedQty
+   *    - status: CONFIRMED→RECEIVING (first receipt activity), stays RECEIVING until manual close
+   *
+   * @param poNumber - The PO number (not UUID) as stored in receipt.poId
+   * @param userId - Optional user ID for audit trail
    */
+  async recalculatePOStatus(
+    poNumber: string,
+    userId?: string,
+  ): Promise<{
+    updated: boolean;
+    poId?: string;
+    poNumber?: string;
+    fromStatus?: string;
+    toStatus?: string;
+    totalReceivedQty?: number;
+    totalExpectedQty?: number;
+    linesSummary?: Array<{ lineNumber: number; itemId: string; expectedQty: number; receivedQty: number; status: string }>;
+    reason?: string;
+  }> {
+    if (!poNumber) {
+      return { updated: false, reason: 'No poNumber provided' };
+    }
+
+    try {
+      // 1. Find PO with lines
+      const po = await this.prisma.purchaseOrder.findUnique({
+        where: { poNumber },
+        include: {
+          lines: {
+            where: { status: { not: 'CANCELLED' } },
+            orderBy: { lineNumber: 'asc' },
+          },
+        },
+      });
+
+      if (!po) {
+        return { updated: false, poNumber, reason: `PO ${poNumber} not found` };
+      }
+
+      if (po.status === 'CLOSED' || po.status === 'CANCELLED') {
+        return { updated: false, poId: po.id, poNumber, reason: `PO is ${po.status}, skip recalculation` };
+      }
+
+      // 2. Aggregate receivedQty from all receipt lines linked to this PO, grouped by itemId
+      const receiptLines = await this.prisma.receiptLine.findMany({
+        where: {
+          header: { poId: poNumber },
+          status: 'RECEIVED',
+        },
+        select: {
+          itemId: true,
+          receivedQty: true,
+        },
+      });
+
+      // Group by itemId → total received per item
+      const receivedByItem = new Map<string, number>();
+      for (const rl of receiptLines) {
+        const current = receivedByItem.get(rl.itemId) || 0;
+        receivedByItem.set(rl.itemId, current + Number(rl.receivedQty || 0));
+      }
+
+      // 3. Update each PO line status + receivedQty
+      const linesSummary: Array<{ lineNumber: number; itemId: string; expectedQty: number; receivedQty: number; status: string }> = [];
+      let totalReceivedQty = 0;
+
+      for (const poLine of po.lines) {
+        const expectedQty = Number(poLine.expectedQty);
+        const receivedQty = receivedByItem.get(poLine.itemId) || 0;
+        totalReceivedQty += receivedQty;
+
+        let newLineStatus: string;
+        if (receivedQty <= 0) {
+          newLineStatus = 'OPEN';
+        } else if (receivedQty >= expectedQty) {
+          newLineStatus = 'RECEIVED';
+        } else {
+          newLineStatus = 'PARTIAL';
+        }
+
+        // Only update if status or receivedQty changed
+        if (poLine.status !== newLineStatus || Number(poLine.receivedQty) !== receivedQty) {
+          await this.prisma.purchaseOrderLine.update({
+            where: { id: poLine.id },
+            data: {
+              receivedQty,
+              status: newLineStatus as any,
+            },
+          });
+        }
+
+        linesSummary.push({
+          lineNumber: poLine.lineNumber,
+          itemId: poLine.itemId,
+          expectedQty,
+          receivedQty,
+          status: newLineStatus,
+        });
+      }
+
+      // 4. Determine PO header status
+      const fromStatus = po.status;
+      let toStatus = fromStatus;
+
+      const hasAnyReceived = linesSummary.some((l) => l.receivedQty > 0);
+      const allLinesReceived = po.lines.length > 0 && linesSummary.every((l) => l.status === 'RECEIVED');
+
+      if (hasAnyReceived && (fromStatus === 'CONFIRMED' || fromStatus === 'NEW')) {
+        // First receiving activity → move to RECEIVING
+        toStatus = 'RECEIVING';
+      }
+
+      // Note: We do NOT auto-close the PO even when all lines are RECEIVED.
+      // Closing is a manual action because the operator may need to verify totals,
+      // handle tolerances, or wait for documentation.
+
+      // 5. Update PO header
+      const totalExpectedQty = Number(po.totalExpectedQty);
+      const updateData: any = {
+        totalReceivedQty,
+        rowVersion: { increment: 1 },
+        updatedBy: userId || null,
+      };
+
+      if (toStatus !== fromStatus) {
+        updateData.status = toStatus;
+      }
+
+      await this.prisma.purchaseOrder.update({
+        where: { id: po.id },
+        data: updateData,
+      });
+
+      this.logger.log(
+        `PO ${poNumber} recalculated: status ${fromStatus}→${toStatus}, ` +
+        `received ${totalReceivedQty}/${totalExpectedQty} KG, ` +
+        `lines: ${linesSummary.map((l) => `#${l.lineNumber}=${l.status}`).join(', ')}`,
+      );
+
+      return {
+        updated: true,
+        poId: po.id,
+        poNumber,
+        fromStatus,
+        toStatus,
+        totalReceivedQty,
+        totalExpectedQty,
+        linesSummary,
+      };
+    } catch (error: any) {
+      this.logger.error(`Failed to recalculate PO ${poNumber}: ${error.message}`, error.stack);
+      return {
+        updated: false,
+        poNumber,
+        reason: error.message || 'Unknown error',
+      };
+    }
+  }
+
   private async reversePoConfirmedPostings(poId: string, reasonCode: string, userId?: string) {
     try {
       const reversalEngine = new ReversalEngineService(this.prisma);

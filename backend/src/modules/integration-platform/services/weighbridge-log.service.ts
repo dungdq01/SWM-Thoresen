@@ -4,6 +4,7 @@ import { WeighbridgeLogRepository, WeighLogQueryParams } from '../repositories/w
 import { WeighbridgeEventStateRepository } from '../repositories/weighbridge-event-state.repository';
 import { WeighbridgeError, IntegrationErrorCodes } from '../domain/integration.errors';
 import { WeighEventProcessingStatus } from '../domain/integration.enums';
+import { PurchaseOrderService } from '../../inbound/services/purchase-order.service';
 // TODO: Re-enable when bridge adapters are finalized
 // import { InboundBridgeAdapter } from '../adapters/inbound-bridge.adapter_draft';
 // import { OutboundBridgeAdapter } from '../adapters/outbound-bridge.adapter_draft';
@@ -18,6 +19,7 @@ export class WeighbridgeLogService {
     private readonly logRepo: WeighbridgeLogRepository,
     private readonly eventStateRepo: WeighbridgeEventStateRepository,
     private readonly prisma: PrismaService,
+    private readonly purchaseOrderService: PurchaseOrderService,
   ) {}
 
   async getLogs(params: {
@@ -570,23 +572,20 @@ export class WeighbridgeLogService {
       this.logger.error(`Error posting inventory for receipt ${receiptId}`, postErr);
     }
 
-    // Update PO totalReceivedQty
+    // Recalculate PO line statuses + PO header status
     if (receipt.poId) {
       try {
-        const po = await this.prisma.purchaseOrder.findUnique({ where: { poNumber: receipt.poId } });
-        if (po) {
-          const allReceivedLines = await this.prisma.receiptLine.findMany({
-            where: { header: { poId: receipt.poId }, status: 'RECEIVED' },
-          });
-          const totalReceived = allReceivedLines.reduce((s, l) => s + Number(l.receivedQty || 0), 0);
-          await this.prisma.purchaseOrder.update({
-            where: { id: po.id },
-            data: { totalReceivedQty: totalReceived },
-          });
-          this.logger.log(`Updated PO ${po.poNumber} totalReceivedQty=${totalReceived}`);
+        const poResult = await this.purchaseOrderService.recalculatePOStatus(receipt.poId);
+        if (poResult.updated) {
+          this.logger.log(
+            `PO ${receipt.poId} recalculated: ${poResult.fromStatus}→${poResult.toStatus}, ` +
+            `received ${poResult.totalReceivedQty}/${poResult.totalExpectedQty} KG`,
+          );
+        } else {
+          this.logger.warn(`PO recalculation skipped: ${poResult.reason}`);
         }
       } catch (poErr: any) {
-        this.logger.warn(`Failed to update PO totalReceivedQty: ${poErr.message}`);
+        this.logger.warn(`Failed to recalculate PO status: ${poErr.message}`);
       }
     }
 
