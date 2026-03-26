@@ -20,7 +20,8 @@ const STATUS_BADGE = {
   AWAITING_WEIGHING: { label: 'Chờ cân', cls: 'bg-orange-100 text-orange-800' },
   WEIGHING_1: { label: 'Chờ dỡ', cls: 'bg-blue-100 text-blue-800' },
   UNLOADING: { label: 'Đang dỡ', cls: 'bg-yellow-100 text-yellow-800' },
-  UNLOADED: { label: 'Đã dỡ xong', cls: 'bg-green-100 text-green-800' },
+  UNLOADED: { label: 'Đã dỡ xong', cls: 'bg-teal-100 text-teal-800' },
+  COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-800' },
 }
 
 /**
@@ -172,7 +173,7 @@ export function InboundUnloadingPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm text-gray-900 dark:text-white">{r.receiptNumber}</span>
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">{r.asnId || r.receiptNumber}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
                       </div>
                       <div className="text-xs text-gray-500 space-y-0.5">
@@ -203,7 +204,7 @@ export function InboundUnloadingPage() {
               {/* Info bar */}
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
                 <div>
-                  <span className="font-medium text-gray-900 dark:text-white">{detail.receiptNumber}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{detail.asnId || detail.receiptNumber}</span>
                   <span className="text-gray-500 text-sm ml-3">Xe: {detail.vehicleNumber}</span>
                 </div>
                 <span className={`text-xs px-2.5 py-1 rounded-full ${(STATUS_BADGE[detail.status] || {}).cls || 'bg-gray-100'}`}>

@@ -298,6 +298,7 @@ export class UnloadingService {
     return {
       receiptId: receipt.id,
       receiptNumber: receipt.receiptNumber || '',
+      asnId: (receipt as any).asnId || '',
       vehicleNumber: receipt.vehicleNumber,
       status: receipt.status,
       owner: receipt.owner,
@@ -335,7 +336,7 @@ export class UnloadingService {
     const pageSize = params.pageSize || 20;
 
     const where: any = {
-      status: { in: ['CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING'] },
+      status: { in: ['CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING', 'UNLOADED', 'COMPLETED'] },
     };
     if (params.warehouseId) where.warehouseId = params.warehouseId;
 

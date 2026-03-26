@@ -18,7 +18,9 @@ import {
 const STATUS_BADGE = {
   CONFIRMED: { label: 'Chờ xếp', cls: 'bg-blue-100 text-blue-800' },
   LOADING: { label: 'Đang xếp', cls: 'bg-yellow-100 text-yellow-800' },
-  LOADED: { label: 'Đã xếp xong', cls: 'bg-green-100 text-green-800' },
+  LOADED: { label: 'Đã xếp xong', cls: 'bg-teal-100 text-teal-800' },
+  SHIPPED: { label: 'Đã xuất', cls: 'bg-purple-100 text-purple-800' },
+  COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-800' },
 }
 
 /**

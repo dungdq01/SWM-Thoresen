@@ -327,7 +327,7 @@ export class LoadingService {
     const pageSize = params.pageSize || 20;
 
     const where: any = {
-      status: { in: ['CONFIRMED', 'LOADING'] },
+      status: { in: ['CONFIRMED', 'LOADING', 'LOADED', 'SHIPPED', 'COMPLETED'] },
     };
     if (params.warehouseId) where.warehouseId = params.warehouseId;
 
