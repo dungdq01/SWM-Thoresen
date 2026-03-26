@@ -50,6 +50,7 @@ export const warehouseSchema = z.object({
     .max(100, 'Tối đa 100%')
     .optional()
     .nullable(),
+  ownerId: z.string().uuid().optional().nullable(),
 })
 
 export const warehouseDefaultValues = {
@@ -64,4 +65,5 @@ export const warehouseDefaultValues = {
   hasWeighbridge: false,
   weighbridgeCount: null,
   capacityWarningPct: 85,
+  ownerId: null,
 }

@@ -74,7 +74,7 @@ export class WeighbridgeLogService {
             receiptNumber: true,
             asnId: true,
             owner: { select: { id: true, ownerCode: true, ownerName: true } },
-            lines: { select: { item: { select: { itemCode: true, itemName: true } } }, take: 1 },
+            lines: { select: { id: true, item: { select: { itemCode: true, itemName: true } }, expectedQty: true, receivedQty: true, status: true, uom: { select: { uomCode: true } } } },
           },
         })
       : [];
@@ -89,7 +89,7 @@ export class WeighbridgeLogService {
             id: true,
             shipmentNumber: true,
             owner: { select: { id: true, ownerCode: true, ownerName: true } },
-            lines: { select: { item: { select: { itemCode: true, itemName: true } } }, take: 1 },
+            lines: { select: { id: true, item: { select: { itemCode: true, itemName: true } }, expectedQty: true, allocatedQty: true, uom: { select: { uomCode: true } } } },
           },
         })
       : [];
@@ -222,6 +222,45 @@ export class WeighbridgeLogService {
     }
 
     return { id, processingStatus: WeighEventProcessingStatus.REJECTED };
+  }
+
+  async softDeleteLog(id: string) {
+    const log = await this.logRepo.findById(id);
+    if (!log) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.WEIGH_EVENT_NOT_FOUND,
+        `Weigh log with ID ${id} not found`,
+      );
+    }
+    if (log.eventState?.processingStatus !== WeighEventProcessingStatus.RECEIVED) {
+      throw new WeighbridgeError(
+        IntegrationErrorCodes.INVALID_WEIGHING_TYPE,
+        `Chỉ có thể xóa phiếu cân ở trạng thái Tạo mới`,
+      );
+    }
+    // Soft delete: set status to REJECTED with reason
+    await this.eventStateRepo.updateByLogId(id, {
+      processingStatus: WeighEventProcessingStatus.REJECTED as any,
+      callbackError: 'SOFT_DELETED',
+    });
+
+    // Revert receipt status if needed
+    if (log.receiptId) {
+      try {
+        const receipt = await this.prisma.receiptHeader.findUnique({ where: { id: log.receiptId }, select: { status: true } });
+        if (receipt && receipt.status === 'AWAITING_WEIGHING') {
+          await this.prisma.receiptHeader.update({
+            where: { id: log.receiptId },
+            data: { status: 'CONFIRMED' },
+          });
+          this.logger.log(`Receipt ${log.receiptId} status: AWAITING_WEIGHING → CONFIRMED (weigh ticket deleted)`);
+        }
+      } catch (e: any) {
+        this.logger.warn(`Failed to revert receipt on delete: ${e.message}`);
+      }
+    }
+
+    return { id, deleted: true };
   }
 
   async recordWeight(id: string, data: { weightKg: number }) {
@@ -534,15 +573,18 @@ export class WeighbridgeLogService {
     // Update PO totalReceivedQty
     if (receipt.poId) {
       try {
-        const allReceivedLines = await this.prisma.receiptLine.findMany({
-          where: { header: { poId: receipt.poId }, status: 'RECEIVED' },
-        });
-        const totalReceived = allReceivedLines.reduce((s, l) => s + Number(l.receivedQty || 0), 0);
-        await this.prisma.purchaseOrder.update({
-          where: { id: receipt.poId },
-          data: { totalReceivedQty: totalReceived },
-        });
-        this.logger.log(`Updated PO ${receipt.poId} totalReceivedQty=${totalReceived}`);
+        const po = await this.prisma.purchaseOrder.findUnique({ where: { poNumber: receipt.poId } });
+        if (po) {
+          const allReceivedLines = await this.prisma.receiptLine.findMany({
+            where: { header: { poId: receipt.poId }, status: 'RECEIVED' },
+          });
+          const totalReceived = allReceivedLines.reduce((s, l) => s + Number(l.receivedQty || 0), 0);
+          await this.prisma.purchaseOrder.update({
+            where: { id: po.id },
+            data: { totalReceivedQty: totalReceived },
+          });
+          this.logger.log(`Updated PO ${po.poNumber} totalReceivedQty=${totalReceived}`);
+        }
       } catch (poErr: any) {
         this.logger.warn(`Failed to update PO totalReceivedQty: ${poErr.message}`);
       }
@@ -713,12 +755,52 @@ export class WeighbridgeLogService {
       itemName: itemInfo?.itemName || null,
       asnId,
       notes: log.notes || null,
+      receipt: receipt ? {
+        id: receipt.id,
+        lines: (receipt.lines || []).map((l: any) => ({
+          id: l.id,
+          item: l.item,
+          expectedQty: l.expectedQty ? Number(l.expectedQty) : null,
+          receivedQty: l.receivedQty ? Number(l.receivedQty) : null,
+          status: l.status,
+          uomCode: l.uom?.uomCode || null,
+        })),
+      } : null,
+      // Multi-item weighing: TL lần cân gần nhất (để modal cân hiển thị đúng)
+      lastWeightKg: log.weightRecords?.length > 0
+        ? Number(log.weightRecords[log.weightRecords.length - 1].weightKg)
+        : (log.grossWeightKg ? Number(log.grossWeightKg) : null),
+      weightRecordCount: log.weightRecords?.length || 0,
     };
   }
 
-  private mapLogToDetailResponse(log: any) {
+  private async mapLogToDetailResponse(log: any) {
+    // Fetch receipt with all lines for detail view
+    let receipt = null;
+    if (log.receiptId) {
+      const r = await this.prisma.receiptHeader.findUnique({
+        where: { id: log.receiptId },
+        select: {
+          id: true, asnId: true,
+          lines: { select: { id: true, item: { select: { itemCode: true, itemName: true } }, expectedQty: true, receivedQty: true, status: true, uom: { select: { uomCode: true } } } },
+        },
+      });
+      if (r) {
+        receipt = {
+          id: r.id,
+          lines: r.lines.map((l: any) => ({
+            id: l.id, item: l.item,
+            expectedQty: l.expectedQty ? Number(l.expectedQty) : null,
+            receivedQty: l.receivedQty ? Number(l.receivedQty) : null,
+            status: l.status, uomCode: l.uom?.uomCode || null,
+          })),
+        };
+      }
+    }
+
     return {
       ...this.mapLogToResponse(log),
+      receipt,
       rawPayload: log.rawPayload,
       rawWeightValue: log.rawWeightValue,
       duplicateOfEventId: log.duplicateOfEventId,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../../common/guards/auth.guard';
 import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { Permission } from '../../../common/decorators/permission.decorator';
@@ -102,6 +102,13 @@ export class WeighbridgeController {
   @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
   async rejectLog(@Param('id') id: string, @Body() dto: ReprocessWeighEventDto) {
     return this.logService.rejectLog(id, dto.reasonCode);
+  }
+
+  @Delete('logs/:id')
+  @HttpCode(HttpStatus.OK)
+  @Permission('INTEGRATION.WEIGHBRIDGE.MANUAL_CREATE')
+  async deleteLog(@Param('id') id: string) {
+    return this.logService.softDeleteLog(id);
   }
 
   @Post('logs/:id/record-weight')

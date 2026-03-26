@@ -3,7 +3,7 @@
 > **Module:** M4 - Inbound Operations  
 > **Database:** PostgreSQL  
 > **ORM:** Prisma  
-> **Last Updated:** 2026-03-25 (Receipt status refactor + Unloading: locationId + unloadSequenceNo)
+> **Last Updated:** 2026-03-26 (Multi-item weighing: WeighbridgeWeightRecord, ReceiptLineStatus UNLOADED/WEIGHED)
 
 ---
 
@@ -151,7 +151,7 @@ DRAFT ──xóa──> (deleted)
 | `status` | ENUM | NO | NEW / CONFIRMED / CLOSED / CANCELLED |
 | `owner_id` | UUID | NO | FK → md_owner (Chủ hàng) |
 | `vendor_id` | UUID | NO | FK → md_vendor (Nhà vận tải) |
-| `warehouse_id` | UUID | NO | FK → md_warehouse (Kho phân phối) |
+| `warehouse_id` | UUID | NO | FK → md_warehouse (Kho phân phối — backward compat, dùng `purchase_order_warehouses` thay thế) |
 | `vessel_name` | VARCHAR(200) | YES | Tên tàu / Nguồn gốc (chỉ dùng khi `po_type=SEA`) |
 | `origin` | VARCHAR(200) | YES | Nguồn gốc hàng hóa (chỉ dùng khi `po_type=SEA`) |
 | `bl_number` | VARCHAR(100) | YES | Số Bill of Lading (chỉ dùng khi `po_type=SEA`) |
@@ -236,9 +236,44 @@ DRAFT ──xóa──> (deleted)
 - `uom` → `md_uom` (optional)
 
 **Ghi chú:**
-- `uom_id` là optional, cho phép không chọn đơn vị tính khi tạo line
+- `uom_id` auto-fill từ `md_item.base_uom_id` khi chọn mặt hàng trên UI (disabled, không cho đổi)
+- `item_id` chỉ chấp nhận mặt hàng thuộc nhóm hàng hóa được phép ở kho đã chọn (cascade filter qua `md_item_group_warehouse`)
 - `status` tự động cập nhật dựa trên `received_qty` so với `expected_qty`
 - Khi tạo/cập nhật PO, `expected_qty` của mỗi line sẽ được quy đổi sang KG để tính `total_expected_qty`
+
+---
+
+### 3.0.3 Master Data tables phục vụ PO cascade filter
+
+Các bảng sau **thuộc Module 2 (Master Data)** nhưng ảnh hưởng trực tiếp đến logic Module 4:
+
+#### `md_warehouse.owner_id` (FK → md_owner)
+
+Xác định **chủ kho** — khi chọn Owner trên PO form, chỉ hiện kho có `owner_id = ownerId`.
+
+#### `md_item_group_warehouse` (junction table)
+
+Xác định **nhóm hàng hóa nào được phép nhập vào kho nào**:
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Primary key |
+| `item_group_id` | UUID | NO | FK → `md_item_groups.id` |
+| `warehouse_id` | UUID | NO | FK → `md_warehouse.id` |
+| `created_at` | TIMESTAMPTZ | NO | |
+
+**UNIQUE:** `(item_group_id, warehouse_id)`
+
+#### `md_item.item_group_id` (FK → md_item_groups)
+
+Liên kết mặt hàng với nhóm hàng hóa. Dùng để filter items theo kho:
+```
+warehouseIds → md_item_group_warehouse.item_group_id[] → md_item.item_group_id → filtered items
+```
+
+#### `md_item.base_uom_id` (FK → md_uom)
+
+ĐVT cơ bản của mặt hàng — auto-fill vào PO line `uom_id` khi chọn item (UI disabled).
 
 ---
 
@@ -640,47 +675,87 @@ Khi volume tăng, cân nhắc partition theo tháng:
 
 ---
 
-## 7. Schema Changes — Unloading (2026-03-25)
+## 7. Schema Changes — Multi-Item Weighing (2026-03-26)
 
-### 7.1 `receipt_line` — New Columns
+### 7.1 `receipt_line` — Columns
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
-| `location_id` | UUID | YES | FK → `md_location` — vị trí dỡ hàng (set khi unload item) |
+| `location_id` | UUID | YES | FK → `md_location` — vị trí dỡ hàng |
 | `unload_sequence_no` | INT | YES | Thứ tự dỡ hàng |
+| `weigh_sequence_no` | INT | YES | Lần cân nào tính net cho line này |
 
-**New Relation:**
+**Relations:**
 ```prisma
 location MdLocation? @relation(fields: [locationId], references: [id])
 ```
 
-**New Index:**
-```prisma
-@@index([locationId])
+### 7.2 `ReceiptLineStatus` — Updated Enum
+
+```
+OPEN      - Trên xe, chưa dỡ
+UNLOADED  - Đã dỡ xuống kho, chờ cân để tính net     ← NEW
+WEIGHED   - Đã tính net (không dùng — line → RECEIVED trực tiếp)  ← NEW
+RECEIVED  - Hoàn thành, inventory posted
+CANCELLED - Đã hủy
 ```
 
-**Ghi chú:**
-- `location_id` nullable — chỉ được set khi dỡ hàng (bước 7)
-- Ghi nhận vị trí thực tế dỡ hàng vào kho
-- Dùng cho `dimTo.locationCode` khi post `GOODS_RECEIVED` inventory transaction
-- Tương tự `shipment_line.location_id` cho outbound
+### 7.3 `weighbridge_weight_record` — Bảng mới
 
-### 7.2 `md_location` — New Relation
+Ghi lại mỗi lần cân (N+1 records per phiếu cân cho inbound multi-item).
 
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID | NO | Primary key |
+| `weighbridge_log_id` | UUID | NO | FK → `m8_weighbridge_log` |
+| `sequence` | INT | NO | Lần cân thứ mấy (1 = gross, N+1 = tare) |
+| `weight_kg` | DECIMAL(18,3) | NO | Trọng lượng lần cân này |
+| `recorded_at` | TIMESTAMP | NO | Thời gian cân |
+| `unloaded_line_ids` | JSON | YES | UUID[] receipt lines đã dỡ trước lần cân này |
+| `net_weight_kg` | DECIMAL(18,3) | YES | = weight lần trước − weight lần này |
+| `is_final` | BOOLEAN | NO | true = lần cuối (tare) |
+| `created_at` | TIMESTAMP | NO | Auto |
+
+**Indexes:**
+- `UNIQUE(weighbridge_log_id, sequence)`
+- `INDEX(weighbridge_log_id)`
+
+**Relation:**
 ```prisma
-receiptLines ReceiptLine[]
+weighLog M8WeighbridgeLog @relation(fields: [weighbridgeLogId], references: [id])
 ```
 
-### 7.3 Inventory Integration
+**Ví dụ data cho 3 items:**
 
-Sau cân lần 2 (WEIGH_IN), `weighbridge-log.service.ts` tự động:
-1. Update `receipt_line.received_qty` = net weight (proportional split)
-2. Update `receipt_line.net_weight_kg` = net weight
-3. Update `receipt_header`: `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`
-4. Post `GOODS_RECEIVED` → `invent_trans` (RECEIPT/RECEIVED) → `on_hand.physical_qty` **tăng**
+| sequence | weight_kg | net_weight_kg | unloaded_line_ids | is_final |
+|----------|-----------|---------------|-------------------|----------|
+| 1 | 1000 | null | null | false |
+| 2 | 993 | 7 | ["uuid-B"] | false |
+| 3 | 983 | 10 | ["uuid-A"] | false |
+| 4 | 968 | 15 | ["uuid-C"] | true |
 
-### 7.4 On-Hand Enhancement
+### 7.4 `m8_weighbridge_log` — New Relation
 
-Cột **"Đã nhập"** trên trang Tồn kho hiện tại:
-- Backend: `inventory-core.controller.js` enrich `inboundReceivedQty` = tổng `receipt_line.received_qty` (>0, not CANCELLED) group by `item_id + warehouse_id`
-- Frontend: `InventoryOnHandPage.jsx` cột "Đã nhập" (màu xanh dương)
+```prisma
+weightRecords WeighbridgeWeightRecord[]
+```
+
+Include trong `findMany` và `findById`:
+```prisma
+include: { weightRecords: { orderBy: { sequence: 'asc' } } }
+```
+
+Response trả thêm: `lastWeightKg` (lần cân gần nhất), `weightRecordCount`.
+
+### 7.5 Inventory Integration — Per Weighing
+
+Mỗi lần cân (không đợi cuối):
+1. Lines UNLOADED → **RECEIVED** + set `received_qty` = net weight
+2. Post `GOODS_RECEIVED` ngay → `on_hand.physical_qty` **tăng**
+3. Update `purchase_orders.total_received_qty` ngay
+4. Ghi `invent_trans` (RECEIPT/RECEIVED)
+
+### 7.6 Backward Compatibility
+
+- Phiếu cân cũ (không có weight records): khi `recordInboundWeight` phát hiện `grossWeightKg` đã set nhưng không có records → tự tạo record #1 retroactively
+- Single-item vẫn hoạt động: 1 item = 2 lần cân (gross + tare) = trường hợp đặc biệt N=1

@@ -581,6 +581,7 @@ model MdWarehouse {
   defaultReceivingLocationId String?       @map("default_receiving_location_id") @db.Uuid
   defaultStagingLocationId   String?       @map("default_staging_location_id") @db.Uuid
   defaultShippingLocationId  String?       @map("default_shipping_location_id") @db.Uuid
+  ownerId                    String?       @map("owner_id") @db.Uuid
   isActive                   Boolean       @default(true) @map("is_active")
   rowVersion                 BigInt        @default(0) @map("row_version")
   createdAt                  DateTime      @default(now()) @map("created_at")
@@ -589,6 +590,8 @@ model MdWarehouse {
   updatedBy                  String?       @map("updated_by") @db.Uuid
   deactivatedAt              DateTime?     @map("deactivated_at")
   deactivatedBy              String?       @map("deactivated_by") @db.Uuid
+
+  owner                   MdOwner?        @relation("WarehouseOwner", fields: [ownerId], references: [id])
 
   zones                   MdZone[]
   locations               MdLocation[]
@@ -611,6 +614,8 @@ model MdWarehouse {
   lots                     MdLot[]
   GoodsSplitHeader        GoodsSplitHeader[]
   ownerAccess             MdOwnerWarehouseAccess[]
+  itemGroups              MdItemGroup[]           @relation("ItemGroupDefaultWarehouse")
+  itemGroupWarehouses     MdItemGroupWarehouse[]  @relation("ItemGroupWarehouses")
 
   @@map("md_warehouse")
 }
@@ -731,6 +736,7 @@ model MdOwner {
   splitOriginalOwner  GoodsSplitHeader[]           @relation("SplitOriginalOwner")
   splitTargetOwner    GoodsSplitDetail[]           @relation("SplitTargetOwner")
   warehouseAccess     MdOwnerWarehouseAccess[]
+  ownedWarehouses     MdWarehouse[]                @relation("WarehouseOwner")
 
   @@index([ownerGroup, isActive])
   @@map("md_owner")
@@ -5167,6 +5173,7 @@ model MdItemGroup {
   description         String?  @db.Text
   cargoForm           String?  @map("cargo_form") @db.VarChar(50)
   weighbridgeQtyUomId String?  @map("weighbridge_qty_uom_id") @db.Uuid
+  defaultWarehouseId  String?  @map("default_warehouse_id") @db.Uuid
   isActive            Boolean  @default(true) @map("is_active")
   rowVersion          BigInt   @default(0) @map("row_version")
   createdAt           DateTime @default(now()) @map("created_at")
@@ -5174,12 +5181,27 @@ model MdItemGroup {
   updatedAt           DateTime @updatedAt @map("updated_at")
   updatedBy           String?  @map("updated_by") @db.Uuid
 
-  weighbridgeQtyUom MdUom?   @relation("ItemGroupWeighbridgeUom", fields: [weighbridgeQtyUomId], references: [id])
+  weighbridgeQtyUom MdUom?       @relation("ItemGroupWeighbridgeUom", fields: [weighbridgeQtyUomId], references: [id])
+  defaultWarehouse  MdWarehouse? @relation("ItemGroupDefaultWarehouse", fields: [defaultWarehouseId], references: [id])
   items             MdItem[]
+  warehouses        MdItemGroupWarehouse[]
   incompatibilityRules        MdItemIncompatibility[] @relation("IncompatibilityItemGroup")
   incompatibleWithRules       MdItemIncompatibility[] @relation("IncompatibleWithGroup")
 
   @@map("md_item_groups")
+}
+
+model MdItemGroupWarehouse {
+  id            String   @id @default(uuid()) @db.Uuid
+  itemGroupId   String   @map("item_group_id") @db.Uuid
+  warehouseId   String   @map("warehouse_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  itemGroup     MdItemGroup @relation(fields: [itemGroupId], references: [id], onDelete: Cascade)
+  warehouse     MdWarehouse @relation("ItemGroupWarehouses", fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([itemGroupId, warehouseId])
+  @@map("md_item_group_warehouse")
 }
 
 model MdCarrier {

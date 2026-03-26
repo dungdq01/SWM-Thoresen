@@ -35,8 +35,12 @@ export class ItemGroupRepository {
       ];
     }
 
+    const include = {
+      weighbridgeQtyUom: { select: { uomCode: true, description: true } },
+      warehouses: { include: { warehouse: { select: { id: true, warehouseCode: true, warehouseName: true } } } },
+    };
     const [data, total] = await Promise.all([
-      this.prisma.mdItemGroup.findMany({ where, skip, take: pageSize, orderBy: { itemGroupCode: 'asc' } }),
+      this.prisma.mdItemGroup.findMany({ where, skip, take: pageSize, orderBy: { itemGroupCode: 'asc' }, include }),
       this.prisma.mdItemGroup.count({ where }),
     ]);
 

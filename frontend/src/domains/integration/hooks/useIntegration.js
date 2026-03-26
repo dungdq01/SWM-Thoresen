@@ -118,6 +118,11 @@ export function useRejectWeighLog() {
   return useMutation({ mutationFn: ({ id, data }) => integrationApi.rejectWeighLog(id, data), onSuccess, onError })
 }
 
+export function useDeleteWeighLog() {
+  const { onSuccess, onError } = useInvalidateQueries([QUERY_KEYS.weighbridgeLogs], 'Đã xóa phiếu cân', 'Không thể xóa phiếu cân')
+  return useMutation({ mutationFn: (id) => integrationApi.deleteWeighLog(id), onSuccess, onError })
+}
+
 export function useRecordWeight() {
   const queryClient = useQueryClient()
   return useMutation({

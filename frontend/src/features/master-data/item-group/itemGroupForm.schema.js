@@ -5,18 +5,18 @@ export const itemGroupSchema = z.object({
     .string()
     .min(1, 'Tên nhóm là bắt buộc')
     .max(150, 'Tên tối đa 150 ký tự'),
-  description: z
-    .string()
-    .max(500, 'Mô tả tối đa 500 ký tự')
-    .optional()
-    .nullable(),
   cargoForm: z.enum(['BULK', 'BAGGED_25KG', 'BAGGED_40KG', 'BAGGED_50KG', 'JUMBO', 'PACKAGING', 'CONTAINER', 'DRUM', 'PALLET', 'OTHER'], {
-    errorMap: () => ({ message: 'Vui lòng chọn hình thức' }),
+    errorMap: () => ({ message: 'Vui lòng chọn chế độ' }),
   }),
+  warehouseIds: z.array(z.string().uuid()).optional().default([]),
+  weighbridgeQtyUomId: z.string().uuid().optional().nullable(),
+  isActive: z.boolean().optional(),
 })
 
 export const itemGroupDefaultValues = {
   itemGroupName: '',
-  description: '',
   cargoForm: 'BULK',
+  warehouseIds: [],
+  weighbridgeQtyUomId: null,
+  isActive: true,
 }

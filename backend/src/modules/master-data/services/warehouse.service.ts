@@ -37,6 +37,7 @@ export class WarehouseService {
         weighbridgeCount: dto.weighbridgeCount,
         isBonded: dto.isBonded || false,
         capacityWarningPct: dto.capacityWarningPct,
+        ...(dto.ownerId ? { owner: { connect: { id: dto.ownerId } } } : {}),
         createdBy: ctx.userId,
         updatedBy: ctx.userId,
       });
@@ -107,6 +108,7 @@ export class WarehouseService {
         defaultReceivingLocationId: dto.defaultReceivingLocationId,
         defaultStagingLocationId: dto.defaultStagingLocationId,
         defaultShippingLocationId: dto.defaultShippingLocationId,
+        ...(dto.ownerId !== undefined ? { owner: dto.ownerId ? { connect: { id: dto.ownerId } } : { disconnect: true } } : {}),
         updatedBy: ctx.userId,
       },
       BigInt(dto.rowVersion),

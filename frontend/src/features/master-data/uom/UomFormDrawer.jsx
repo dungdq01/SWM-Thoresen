@@ -47,9 +47,9 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
   const handleFormSubmit = (data) => {
     let payload
     if (isEdit && initialData) {
-      // UpdateUomDto chỉ cho phép: description, decimalPrecision, rowVersion
       payload = {
         description: data.description,
+        isBaseUom: data.isBaseUom,
         decimalPrecision: data.decimalPrecision,
         rowVersion: initialData.rowVersion,
       }
@@ -87,7 +87,7 @@ export function UomFormDrawer({ isOpen, onClose, onSubmit, initialData = null, i
                   name="decimalPrecision"
                   control={control}
                   render={({ field }) => (
-                    <Input label="Độ chính xác" required type="number" value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))} error={errors.decimalPrecision?.message} />
+                    <Input label="Số chữ số thập phân" required type="number" value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))} error={errors.decimalPrecision?.message} />
                   )}
                 />
               </div>

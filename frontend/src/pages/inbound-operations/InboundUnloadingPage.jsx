@@ -28,11 +28,18 @@ const STATUS_BADGE = {
  */
 function LocationPicker({ receiptId, line, onUnload, isLoading }) {
   const [locationId, setLocationId] = useState('')
+  const [confirmItem, setConfirmItem] = useState(null) // { lineId, locationId, locationCode }
   const { data: locations = [] } = useAvailableLocations(receiptId)
 
   const handleUnload = () => {
     if (!locationId) return
-    onUnload(line.id, locationId)
+    const loc = locations.find((l) => l.locationId === locationId)
+    setConfirmItem({ lineId: line.id, locationId, locationCode: loc?.locationCode || locationId })
+  }
+
+  const handleConfirm = () => {
+    onUnload(confirmItem.lineId, confirmItem.locationId)
+    setConfirmItem(null)
     setLocationId('')
   }
 
@@ -42,30 +49,53 @@ function LocationPicker({ receiptId, line, onUnload, isLoading }) {
         <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
         <div className="text-xs text-gray-500">{line.itemCode}</div>
       </div>
-      <div className="flex items-center gap-2">
-        <select
-          value={locationId}
-          onChange={(e) => setLocationId(e.target.value)}
-          className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-        >
-          <option value="">-- Chọn vị trí dỡ hàng --</option>
-          {locations.map((loc) => (
-            <option key={loc.locationId} value={loc.locationId}>
-              {loc.locationCode}
-              {loc.capacityKg ? ` (sức chứa: ${loc.capacityKg.toLocaleString()} kg)` : ''}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleUnload}
-          disabled={!locationId || isLoading}
-          className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
-        >
-          Dỡ xuống kho
-        </button>
-      </div>
+
+      {confirmItem ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+          <p className="text-sm text-blue-800">
+            Xác nhận dỡ <span className="font-semibold">{line.itemName}</span> ({line.itemCode}) xuống vị trí <span className="font-semibold">{confirmItem.locationCode}</span>?
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleConfirm}
+              disabled={isLoading}
+              className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+            >
+              {isLoading ? 'Đang xử lý...' : 'Xác nhận dỡ hàng'}
+            </button>
+            <button
+              onClick={() => setConfirmItem(null)}
+              className="px-4 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <select
+            value={locationId}
+            onChange={(e) => setLocationId(e.target.value)}
+            className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="">-- Chọn vị trí dỡ hàng --</option>
+            {locations.map((loc) => (
+              <option key={loc.locationId} value={loc.locationId}>
+                {loc.locationCode} ({loc.locationType}){loc.capacityKg ? ` — ${loc.capacityKg.toLocaleString()} kg` : ''}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleUnload}
+            disabled={!locationId || isLoading}
+            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 whitespace-nowrap"
+          >
+            Dỡ xuống kho
+          </button>
+        </div>
+      )}
       {locations.length === 0 && (
-        <div className="text-xs text-amber-600">Không tìm thấy vị trí lưu trữ trong kho</div>
+        <div className="text-xs text-amber-600">Không tìm thấy vị trí lưu trữ trong kho này. Kiểm tra Master Data &gt; Vị trí.</div>
       )}
     </div>
   )
@@ -248,16 +278,19 @@ export function InboundUnloadingPage() {
               {unloadedLines.length > 0 && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl shadow-sm border border-yellow-200 dark:border-yellow-700">
                   <div className="px-4 py-3 border-b border-yellow-200 dark:border-yellow-700">
-                    <h3 className="font-medium text-yellow-800 dark:text-yellow-400">Đã dỡ — chờ cân ({unloadedLines.length})</h3>
+                    <h3 className="font-medium text-yellow-800 dark:text-yellow-400">✓ Đã dỡ — chờ cân ({unloadedLines.length})</h3>
                   </div>
                   <div className="divide-y divide-yellow-100 dark:divide-yellow-700">
                     {unloadedLines.map((line, i) => (
                       <div key={line.id} className="px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="text-xs bg-yellow-200 text-yellow-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">{i + 1}</span>
+                          <span className="text-xs bg-yellow-200 text-yellow-800 rounded-full w-6 h-6 flex items-center justify-center font-medium">✓</span>
                           <div>
                             <div className="font-medium text-sm text-gray-900 dark:text-white">{line.itemName}</div>
-                            <div className="text-xs text-gray-500">{line.itemCode} {line.locationCode && <span className="ml-2 text-blue-600">→ {line.locationCode}</span>}</div>
+                            <div className="text-xs text-gray-500">
+                              {line.itemCode}
+                              {line.locationCode && <span className="ml-2 text-blue-600">→ Vị trí: {line.locationCode}</span>}
+                            </div>
                           </div>
                         </div>
                         <button onClick={() => handleUndo(line.id)} disabled={undoMut.isPending}
@@ -270,13 +303,20 @@ export function InboundUnloadingPage() {
 
               {/* "Đưa xe đi cân" reminder — when UNLOADED items exist */}
               {detail.status === 'UNLOADING' && unloadedLines.length > 0 && (
-                <div className="bg-orange-50 rounded-xl p-6 text-center border border-orange-200">
+                <div className="bg-orange-50 rounded-xl p-5 border border-orange-300 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    <h4 className="font-semibold text-orange-800">Đưa xe đến Trạm cân</h4>
+                  </div>
                   <p className="text-sm text-orange-700">
                     {openLines.length > 0
-                      ? `Đã dỡ ${unloadedLines.length} mặt hàng. Vui lòng đưa xe đến Trạm cân để tính khối lượng, sau đó tiếp tục dỡ ${openLines.length} mặt hàng còn lại.`
-                      : `Tất cả mặt hàng đã dỡ. Vui lòng đưa xe đến Trạm cân để cân lần cuối (tare).`
+                      ? <>Đã dỡ <strong>{unloadedLines.map(l => l.itemName || l.itemCode).join(', ')}</strong> xuống kho. Đưa xe đến Trạm cân để tính khối lượng, sau đó quay lại dỡ {openLines.length} mặt hàng còn lại.</>
+                      : <>Tất cả mặt hàng đã dỡ (<strong>{unloadedLines.map(l => l.itemName || l.itemCode).join(', ')}</strong>). Đưa xe đến Trạm cân để cân lần cuối (tare).</>
                     }
                   </p>
+                  <a href="/app/weighbridge" className="inline-block px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
+                    Đến Trạm cân →
+                  </a>
                 </div>
               )}
 

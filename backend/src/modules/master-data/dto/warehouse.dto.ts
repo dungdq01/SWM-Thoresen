@@ -60,6 +60,10 @@ export class CreateWarehouseDto {
   @IsOptional()
   @IsString()
   externalId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string;
 }
 
 export class UpdateWarehouseDto {
@@ -125,6 +129,10 @@ export class UpdateWarehouseDto {
   @IsOptional()
   @IsUUID()
   defaultShippingLocationId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string;
 
   @IsNumber()
   rowVersion!: number;

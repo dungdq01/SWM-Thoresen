@@ -69,6 +69,14 @@ export class LookupController {
     return this.lookupService.getCustomers();
   }
 
+  @Get('item-group-ids-by-warehouses')
+  @Permission('master_data.lookup.view')
+  async getItemGroupIdsByWarehouses(@Query('warehouseIds') warehouseIds: string) {
+    if (!warehouseIds) return [];
+    const ids = warehouseIds.split(',').filter(Boolean);
+    return this.lookupService.getItemGroupIdsByWarehouses(ids);
+  }
+
   @Get('dropdown-options')
   @Permission('master_data.lookup.view')
   async getDropdownOptions(@Query('entity') entity: string, @Query('fieldName') fieldName: string) {

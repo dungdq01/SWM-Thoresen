@@ -228,6 +228,7 @@ export class UnloadingService {
         warehouseId,
         isActive: true,
         status: 'OK',
+        locationType: { in: ['STORAGE', 'RECEIVING'] },
       },
       select: {
         id: true,

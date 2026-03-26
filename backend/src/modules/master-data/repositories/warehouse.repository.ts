@@ -45,6 +45,7 @@ export class WarehouseRepository {
         skip,
         take: pageSize,
         orderBy: { warehouseCode: 'asc' },
+        include: { owner: { select: { id: true, ownerCode: true, ownerName: true } } },
       }),
       this.prisma.mdWarehouse.count({ where }),
     ]);

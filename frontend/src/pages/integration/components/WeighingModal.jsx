@@ -19,6 +19,10 @@ export function WeighingModal({
   const previousWeight = data?.lastWeightKg || (data?.grossWeightKg ? Number(data.grossWeightKg) : 0)
   const weighingNumber = (data?.weightRecordCount || 0) + 1
 
+  // Item đã dỡ đang chờ cân (UNLOADED)
+  const unloadedLines = (data?.receipt?.lines || []).filter((l) => l.status === 'UNLOADED')
+  const currentUnloadedItem = unloadedLines[0] || null
+
   useEffect(() => {
     if (isOpen) {
       setWeightKg('')
@@ -49,7 +53,9 @@ export function WeighingModal({
     ? `Trọng lượng (${Number(weightKg).toLocaleString('vi-VN')} kg) phải nhỏ hơn lần trước (${previousWeight.toLocaleString('vi-VN')} kg) vì đã dỡ hàng`
     : null
 
-  const isValid = weightKg !== '' && Number(weightKg) > 0 && !weightError
+  // Block nếu cân lần 2+ mà chưa dỡ hàng
+  const needsUnload = isSecondWeighing && !isWeighOut && unloadedLines.length === 0 && (data?.receipt?.lines || []).some((l) => l.status === 'OPEN')
+  const isValid = weightKg !== '' && Number(weightKg) > 0 && !weightError && !needsUnload
 
   const weighingTypeLabel = data?.weighingType === 'WEIGH_IN' ? 'Cân vào' : data?.weighingType === 'WEIGH_OUT' ? 'Cân ra' : data?.weighingType
 
@@ -97,7 +103,7 @@ export function WeighingModal({
             {/* Body */}
             <div className="p-6 space-y-6">
               {/* Info summary */}
-              <div className="rounded-lg border border-moon-200 bg-moon-50 p-4 space-y-2">
+              <div className="rounded-lg border border-moon-200 bg-moon-50 p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs text-navy-500">Loại</p>
@@ -110,32 +116,84 @@ export function WeighingModal({
                     <p className="font-medium text-navy-800">{data.vehicleNumber}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-navy-500">Mã hàng</p>
-                    <p className="font-medium text-navy-800">{data.itemCode || '-'}</p>
-                  </div>
-                  <div>
                     <p className="text-xs text-navy-500">Chủ hàng</p>
                     <p className="font-medium text-navy-800">{data.owner?.name || data.owner?.code || '-'}</p>
                   </div>
+                  <div>
+                    <p className="text-xs text-navy-500">Phiếu nhập</p>
+                    <p className="font-medium text-navy-800">{data.asnId || data.ticketNumber || '-'}</p>
+                  </div>
                 </div>
+                {/* Danh sách items trên xe */}
+                {data.receipt?.lines?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-navy-500 mb-1">Mặt hàng trên xe ({data.receipt.lines.length})</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {data.receipt.lines.map((l, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white border border-moon-200 px-2 py-1 text-xs text-navy-700">
+                          <span className="font-semibold">{l.item?.itemCode || l.itemCode}</span>
+                          <span className="text-navy-400">—</span>
+                          <span>{l.item?.itemName || ''}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!isSecondWeighing && data.receipt?.lines?.length > 1 && (
+                  <p className="text-xs text-amber-600">
+                    Cân lần 1 ghi trọng lượng tổng (xe + tất cả hàng). Phân bổ từng item sẽ thực hiện khi dỡ hàng.
+                  </p>
+                )}
               </div>
 
               {/* Show existing gross weight if this is second weighing */}
               {isSecondWeighing && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-blue-600">Trọng lượng lần {weighingNumber - 1} (đã ghi nhận)</p>
-                      <p className="text-lg font-bold text-blue-700">
-                        {previousWeight.toLocaleString('vi-VN')} KG
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-blue-600">Trọng lượng lần {weighingNumber - 1} (đã ghi nhận)</p>
+                        <p className="text-lg font-bold text-blue-700">
+                          {previousWeight.toLocaleString('vi-VN')} KG
+                        </p>
+                      </div>
+                      {data.grossWeightAt && (
+                        <p className="text-xs text-blue-500">
+                          {new Date(data.grossWeightAt).toLocaleString('vi-VN')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Item đã dỡ — đang tính cân cho item này */}
+                  {currentUnloadedItem && (
+                    <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4">
+                      <p className="text-xs text-emerald-600 mb-1">Hàng vừa dỡ — lần cân này tính cho:</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-200 text-emerald-800 text-xs font-bold">📦</div>
+                        <div>
+                          <p className="font-semibold text-emerald-900">{currentUnloadedItem.item?.itemName || ''}</p>
+                          <p className="text-xs text-emerald-700">{currentUnloadedItem.item?.itemCode || ''}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-emerald-600 mt-2">
+                        TL ròng = {previousWeight.toLocaleString('vi-VN')} KG (lần {weighingNumber - 1}) − TL lần {weighingNumber}
                       </p>
                     </div>
-                    {data.grossWeightAt && (
-                      <p className="text-xs text-blue-500">
-                        {new Date(data.grossWeightAt).toLocaleString('vi-VN')}
-                      </p>
-                    )}
-                  </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cảnh báo chưa dỡ hàng */}
+              {needsUnload && (
+                <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-red-800">⚠ Chưa dỡ mặt hàng nào</p>
+                  <p className="text-sm text-red-700">
+                    Vui lòng đến trang <strong>Dỡ hàng</strong> để dỡ ít nhất 1 mặt hàng xuống kho trước khi cân tiếp.
+                  </p>
+                  <a href="/app/inbound-operations/unloading" className="inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+                    Đến trang Dỡ hàng →
+                  </a>
                 </div>
               )}
 

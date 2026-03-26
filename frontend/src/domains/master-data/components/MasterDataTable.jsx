@@ -14,7 +14,7 @@ import {
 
 export function ActionMenu({ onView, onEdit, onDeactivate, onReactivate, isActive }) {
   return (
-    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+    <div className="flex items-center justify-end gap-1">
       {onView && (
         <button
           onClick={(e) => { e.stopPropagation(); onView() }}

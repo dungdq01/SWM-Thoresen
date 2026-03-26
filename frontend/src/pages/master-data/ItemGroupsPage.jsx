@@ -120,7 +120,7 @@ export function ItemGroupsPage() {
         isLoading={isLoading}
         isEmpty={rows.length === 0}
         emptyMessage="Chưa có nhóm hàng hóa nào"
-        colSpan={6}
+        colSpan={8}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -131,8 +131,9 @@ export function ItemGroupsPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã</TableHead>
             <TableHead>Tên nhóm</TableHead>
-            <TableHead>Mô tả</TableHead>
-            <TableHead align="center">Hình thức</TableHead>
+            <TableHead>Kho</TableHead>
+            <TableHead>DVT cân</TableHead>
+            <TableHead align="center">Chế độ</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
@@ -148,7 +149,20 @@ export function ItemGroupsPage() {
                   <span className="font-medium text-navy-900">{row.itemGroupName}</span>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-navy-500">{row.description || '—'}</span>
+                  {row.warehouses?.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {row.warehouses.map((w) => (
+                        <span key={w.warehouse?.id} className="inline-flex text-xs bg-navy-100 text-navy-700 px-1.5 py-0.5 rounded">
+                          {w.warehouse?.warehouseCode}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-navy-400">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-navy-500">{row.weighbridgeQtyUom?.uomCode || '—'}</span>
                 </TableCell>
                 <TableCell align="center">
                   <Badge variant={(CARGO_FORM_CONFIG[row.cargoForm] || {}).variant || 'default'}>

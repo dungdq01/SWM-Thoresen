@@ -51,7 +51,7 @@ export class ItemRepository {
         skip,
         take: pageSize,
         orderBy: { itemCode: 'asc' },
-        include: { baseUom: true, billingUom: true },
+        include: { baseUom: true, billingUom: true, itemGroup: { select: { id: true, itemGroupCode: true, itemGroupName: true } } },
       }),
       this.prisma.mdItem.count({ where }),
     ]);

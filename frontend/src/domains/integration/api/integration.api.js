@@ -54,6 +54,7 @@ export const integrationApi = {
   confirmWeighLog: (id) => httpClient.post(`${BASE_URL}/weighbridge/logs/${id}/confirm`),
   rejectWeighLog: (id, data) => httpClient.post(`${BASE_URL}/weighbridge/logs/${id}/reject`, data),
   recordWeight: (id, data) => httpClient.post(`${BASE_URL}/weighbridge/logs/${id}/record-weight`, data),
+  deleteWeighLog: (id) => httpClient.delete(`${BASE_URL}/weighbridge/logs/${id}`),
 
   // OCR APIs
   uploadOcrImage: withDataSource(

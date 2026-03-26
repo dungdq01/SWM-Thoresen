@@ -34,6 +34,10 @@ export class UpdateUomDto {
   description?: string;
 
   @IsOptional()
+  @IsBoolean()
+  isBaseUom?: boolean;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(12)

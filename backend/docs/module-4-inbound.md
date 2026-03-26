@@ -4,7 +4,7 @@
 > **Status:** ✅ Implemented (Feedback Fixed v4 - Multi-line ASN + Multi-warehouse PO)  
 > **Code Path:** `src/modules/inbound`  
 > **Database Docs:** [`prisma/docs/module-4-inbound.md`](../prisma/docs/module-4-inbound.md)  
-> **Last Updated:** 2026-03-25 (Receipt status refactor + Unloading + Weighbridge auto-sync)
+> **Last Updated:** 2026-03-26 (Cascade filter: Owner→Warehouse→ItemGroup→Item→UOM auto-fill; multi-item weighing N+1)
 
 ---
 
@@ -124,6 +124,22 @@ src/modules/inbound/
 |--------|------|-------------|------------|
 | GET | `/api/v1/inbound/dashboard/summary` | Dashboard summary | `INBOUND.DASHBOARD.READ` |
 
+### 3.6 Master Data Lookups phục vụ PO (cascade filter)
+
+Các endpoint thuộc module Master Data (`/api/v1/master-data/lookups`) nhưng phục vụ trực tiếp cho PO form:
+
+| Method | Path | Params | Response | Mục đích |
+|--------|------|--------|----------|----------|
+| GET | `/lookups/warehouses` | — | `[{ id, code, name, extra: { warehouseType, ownerId } }]` | Filter kho theo owner |
+| GET | `/lookups/item-group-ids-by-warehouses` | `warehouseIds=id1,id2` | `["groupId1", ...]` | Lấy nhóm hàng được phép ở kho |
+| GET | `/lookups/items` | — | `[{ id, code, name, extra: { cargoForm, itemGroupId, baseUomId, billingUomId } }]` | Filter item + auto-fill ĐVT |
+
+**Cascade flow trên PO form:**
+1. Chọn Owner → filter warehouse dropdown (`extra.ownerId === selectedOwnerId`)
+2. Chọn Warehouse(s) → call `item-group-ids-by-warehouses` → lấy allowed `itemGroupId[]`
+3. Filter items (`extra.itemGroupId ∈ allowedGroupIds`)
+4. Chọn Item → auto-fill `uomId` từ `extra.baseUomId` (ĐVT disabled, chỉ sửa ở Master Data)
+
 ---
 
 ## 4. Chi tiết từng API
@@ -140,10 +156,11 @@ src/modules/inbound/
   "poType": "SEA",
   "ownerId": "uuid-owner",
   "vendorId": "uuid-vendor",
-  "warehouseId": "uuid-warehouse",
+  "warehouseIds": ["uuid-warehouse-1", "uuid-warehouse-2"],
   "vesselName": "MV OCEAN STAR",
   "origin": "Thailand",
   "blNumber": "BL-2026-RICE-001",
+  "vehiclePlate": "",
   "notes": "Ghi chú PO",
   "lines": [
     {
@@ -163,10 +180,11 @@ src/modules/inbound/
 | `poType` | enum | No | `SEA` (đường thủy) hoặc `LAND` (đường bộ). Default: `SEA` |
 | `ownerId` | UUID | Yes | Chủ hàng (Owner) |
 | `vendorId` | UUID | Yes | Nhà vận tải (Vendor) |
-| `warehouseId` | UUID | Yes | Kho phân phối (Warehouse) |
+| `warehouseIds` | UUID[] | Yes | Danh sách kho hàng (1 hoặc nhiều, filter theo `owner_id`) |
 | `vesselName` | string | No | Tên tàu / Nguồn gốc (chỉ dùng khi `poType=SEA`) |
 | `origin` | string | No | Nguồn gốc hàng hóa (chỉ dùng khi `poType=SEA`) |
 | `blNumber` | string | No | Số Bill of Lading (chỉ dùng khi `poType=SEA`) |
+| `vehiclePlate` | string | No | Biển số xe (dùng cho `LAND`, nhiều xe phân tách bằng `;`) |
 | `notes` | string | No | Ghi chú PO |
 | `lines` | array | Yes | Danh sách dòng hàng (min 1) |
 
@@ -174,10 +192,20 @@ src/modules/inbound/
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `itemId` | UUID | Yes | Mặt hàng |
-| `uomId` | UUID | No | Đơn vị tính |
+| `itemId` | UUID | Yes | Mặt hàng (filter theo nhóm hàng hóa được phép ở kho đã chọn) |
+| `uomId` | UUID | No | Đơn vị tính (auto-fill từ `base_uom_id` của mặt hàng, disabled trên UI) |
 | `expectedQty` | number | Yes | Số lượng dự kiến |
 | `notes` | string | No | Ghi chú dòng |
+
+**Cascade Filter Logic (Frontend):**
+
+```
+1. Chọn ownerId   → GET /lookups/warehouses → filter extra.ownerId === ownerId
+2. Chọn warehouseIds → GET /lookups/item-group-ids-by-warehouses?warehouseIds=id1,id2
+                        → trả về itemGroupId[] được phép
+3. Chọn itemId    → filter items có extra.itemGroupId ∈ allowedGroupIds
+                   → auto-fill uomId = item.extra.baseUomId (disabled)
+```
 
 **Response (201 Created):**
 ```json
@@ -190,7 +218,7 @@ src/modules/inbound/
     "status": "NEW",
     "ownerId": "uuid-owner",
     "vendorId": "uuid-vendor",
-    "warehouseId": "uuid-warehouse",
+    "warehouses": [{ "id": "...", "warehouseId": "...", "warehouse": { "warehouseCode": "WH-01" } }],
     "vesselName": "MV OCEAN STAR",
     "blNumber": "BL-2026-RICE-001",
     "totalExpectedQty": 30000,
@@ -207,10 +235,11 @@ src/modules/inbound/
   "poType": "SEA",
   "ownerId": "uuid-owner",
   "vendorId": "uuid-vendor",
-  "warehouseId": "uuid-warehouse",
+  "warehouseIds": ["uuid-warehouse-1"],
   "vesselName": "MV OCEAN STAR",
   "origin": "Thailand",
   "blNumber": "BL-2026-RICE-001",
+  "vehiclePlate": "",
   "notes": "Ghi chú cập nhật",
   "rowVersion": 0
 }
@@ -1143,109 +1172,125 @@ receipt.receiptNumber || receipt.asnId || receipt.id?.slice(0, 8)
 
 ---
 
-## 11. Unloading (Dỡ hàng) — NEW 2026-03-25
+## 11. Multi-Item Unloading & Weighing — Updated 2026-03-26
 
 ### 11.1 Tổng quan
 
-Tính năng dỡ hàng cho phép nhân viên kho dỡ hàng từ xe xuống vị trí kho, tương tự Loading của outbound nhưng ngược chiều.
+Dỡ hàng cho inbound hỗ trợ **multi-item**: 1 xe chở N loại hàng → cần **N+1 lần cân**. Giữa mỗi 2 lần cân dỡ **đúng 1 item**. Net weight = lần trước − lần sau. Inventory post **ngay** sau mỗi lần cân.
 
-**Luồng:** Cân Gross (xe có hàng) → **Dỡ hàng** (chọn vị trí) → Cân Tare (xe rỗng) → Cộng tồn kho
+**Flow:** Cân Gross → [Dỡ 1 item → Cân → Post inventory] × N → Cân Tare (lần cuối) → COMPLETED
 
 ### 11.2 Code Structure
 
 ```
 src/modules/inbound/
 ├── controllers/
-│   └── unloading.controller.ts        # ✅ NEW: REST endpoints dỡ hàng
+│   └── unloading.controller.ts         # REST endpoints dỡ hàng
 ├── services/
-│   └── unloading.service.ts           # ✅ NEW: Business logic dỡ hàng
+│   └── unloading.service.ts            # Business logic: unload, undo, complete, status
+
+src/modules/integration-platform/
+├── services/
+│   └── weighbridge-log.service.ts      # recordInboundWeight() — N+1 lần cân
+│   └── weighbridge-ingest.service.ts   # createManualWeighEvent() — tạo phiếu cân
+├── repositories/
+│   └── weighbridge-log.repository.ts   # include weightRecords
 ```
 
 ### 11.3 API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/inbound/unloading/receipts` | Danh sách receipt cần dỡ (AWAITING_WEIGHING + WEIGHED_IN + PROCESSING) |
-| GET | `/inbound/unloading/:id/status` | Trạng thái dỡ hàng + thông tin cân |
+| GET | `/inbound/unloading/receipts` | Danh sách receipt cần dỡ (CONFIRMED/AWAITING_WEIGHING/WEIGHING_1/UNLOADING) |
+| GET | `/inbound/unloading/:id/status` | Trạng thái dỡ + **weighingHistory** + 4 nhóm lines |
 | GET | `/inbound/unloading/:id/locations-available` | Vị trí active trong kho receipt |
-| POST | `/inbound/unloading/:id/start` | Bắt đầu dỡ (yêu cầu đã cân gross) → PROCESSING |
-| POST | `/inbound/unloading/:id/unload-item` | Dỡ 1 item + ghi locationId |
-| POST | `/inbound/unloading/:id/undo-unload-item` | Hoàn tác dỡ 1 item |
-| POST | `/inbound/unloading/:id/complete` | Hoàn thành dỡ hàng |
+| POST | `/inbound/unloading/:id/start` | Bắt đầu dỡ (yêu cầu đã cân gross) → UNLOADING |
+| POST | `/inbound/unloading/:id/unload-item` | Dỡ 1 item → UNLOADED (block nếu đã có item UNLOADED) |
+| POST | `/inbound/unloading/:id/undo-unload-item` | Hoàn tác dỡ (chỉ UNLOADED, không RECEIVED) |
+| POST | `/inbound/unloading/:id/complete` | Validate ≥1 UNLOADED line, nhắc đưa xe đi cân |
 
-### 11.4 POST /inbound/unloading/:id/unload-item
+### 11.4 Multi-Item Weighing — `recordInboundWeight()`
 
-**Request Body:**
-```json
-{
-  "receiptLineId": "uuid",
-  "locationId": "uuid"
-}
-```
+**File:** `weighbridge-log.service.ts`
 
-### 11.5 GET /inbound/unloading/:id/status
+Core method xử lý N+1 lần cân cho inbound. Tách riêng khỏi outbound flow.
 
-**Response:**
+**Lần cân 1 (Gross):**
+- Tạo `WeighbridgeWeightRecord` sequence=1
+- Set `grossWeightKg` trên log
+- Receipt → UNLOADING
+
+**Lần cân 2+ (Intermediate/Tare):**
+1. Validate: ≥1 line UNLOADED, trọng lượng < lần trước
+2. Tính `netWeight = previousWeight - currentWeight`
+3. Distribute net cho UNLOADED lines (1 line = full, nhiều lines = proportional)
+4. Lines: UNLOADED → **RECEIVED** (bỏ qua WEIGHED)
+5. **Post `GOODS_RECEIVED` ngay** cho từng line → cộng tồn kho
+6. **Update PO `totalReceivedQty`** ngay
+7. Tạo `WeighbridgeWeightRecord` (sequence, weightKg, netWeightKg, unloadedLineIds)
+8. Nếu lần cuối (không còn OPEN lines): Receipt → COMPLETED, phiếu cân → COMPLETED
+
+### 11.5 GET /inbound/unloading/:id/status — Response
+
 ```json
 {
   "receiptId": "uuid",
-  "receiptNumber": "RCV-20260324-000001",
-  "vehicleNumber": "123132",
-  "status": "PROCESSING",
-  "owner": { "id": "uuid", "ownerCode": "CARGILL", "ownerName": "Cargill Vietnam" },
-  "warehouse": { "id": "uuid", "warehouseCode": "MX-01", "warehouseName": "Kho tổng hợp" },
+  "receiptNumber": "RCV-20260325-000003",
+  "vehicleNumber": "1123123",
+  "status": "UNLOADING",
+  "owner": { "ownerCode": "CARGILL", "ownerName": "Cargill Vietnam" },
+  "warehouse": { "warehouseCode": "MX-01", "warehouseName": "Kho tổng hợp" },
   "hasGross": true,
   "hasTare": false,
-  "allUnloaded": false,
+  "allDone": false,
+  "hasUnloadedLines": true,
+  "canWeigh": true,
+  "weighingHistory": [
+    { "sequence": 1, "weightKg": 1000, "netWeightKg": null, "isFinal": false },
+    { "sequence": 2, "weightKg": 993, "netWeightKg": 7, "isFinal": false, "unloadedLineIds": ["uuid-B"] }
+  ],
   "lines": [
-    {
-      "id": "uuid",
-      "lineNumber": 1,
-      "itemId": "uuid",
-      "itemCode": "DAP-50",
-      "itemName": "Phân DAP — bao 50kg",
-      "uomCode": "BAG50",
-      "expectedQty": 5500,
-      "unloadSequence": 1,
-      "lineStatus": "RECEIVED",
-      "locationId": "uuid",
-      "locationCode": "LOC-1",
-      "isUnloaded": true
-    }
+    { "id": "uuid-A", "lineStatus": "OPEN", "itemCode": "DAP-50", "expectedQty": 100, "receivedQty": 0, "netWeightKg": 0, "locationCode": null },
+    { "id": "uuid-B", "lineStatus": "RECEIVED", "itemCode": "CORN-YELLOW", "expectedQty": 123, "receivedQty": 7, "netWeightKg": 7, "locationCode": "OY02-STG-01" },
+    { "id": "uuid-C", "lineStatus": "UNLOADED", "itemCode": "FERT-NPK", "expectedQty": 345, "receivedQty": 0, "netWeightKg": 0, "locationCode": "OY02-STG-01" }
   ]
 }
 ```
 
-### 11.6 Weighbridge Validation (WEIGH_IN)
+### 11.6 Validation Rules
 
-| Constraint | Location | Error |
-|------------|----------|-------|
-| Chưa cân gross → không dỡ | `unloading.service.ts` `startUnloading()` | Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước khi dỡ hàng. |
-| Chưa dỡ xong → không cân tare | `weighbridge-log.service.ts` `recordWeight()` | Xe chưa dỡ hàng xong. Vui lòng hoàn thành dỡ hàng trước khi cân lần 2. |
+| Rule | Location | Error |
+|------|----------|-------|
+| Chưa cân gross → không dỡ | `unloading.service.ts` `startUnloading()` | Xe chưa cân |
+| Chỉ dỡ 1 item mỗi lần | `unloading.service.ts` `unloadItem()` | Đã có mặt hàng chờ cân |
+| Chỉ undo UNLOADED (chưa cân) | `unloading.service.ts` `undoUnloadItem()` | Chỉ hoàn tác item chưa cân |
+| Phải dỡ trước khi cân tiếp | `weighbridge-log.service.ts` `recordInboundWeight()` | Chưa dỡ mặt hàng nào |
+| Xe nhẹ dần | `weighbridge-log.service.ts` `recordInboundWeight()` | TL phải nhỏ hơn lần trước |
 
-### 11.7 Inventory Posting sau cân lần 2 (WEIGH_IN)
+### 11.7 Inventory Posting — Mỗi lần cân
 
-Khi weighbridge hoàn thành cân lần 2 cho WEIGH_IN:
+Sau mỗi lần cân (không đợi lần cuối):
 
-1. Update `receivedQty` + `netWeightKg` trên receipt lines (proportional split)
-2. Update receipt header: `grossWeightKg`, `tareWeightKg`, `netWeightKg`
-3. Post `GOODS_RECEIVED` inventory transaction:
-   ```javascript
-   {
-     eventCode: 'GOODS_RECEIVED',
-     refType: 'RECEIPT',
-     refId: receiptId,
-     dimTo: {
-       warehouseCode: receipt.warehouse.warehouseCode,
-       locationCode: line.location.locationCode,  // vị trí dỡ hàng
-       ownerCode: receipt.owner.ownerCode,
-       statusCode: 'AVAILABLE',
-     },
-     qty: netWeight,
-   }
-   ```
-4. `on_hand.physicalQty` **tăng** tại vị trí dỡ hàng
-5. Ghi `invent_trans` record (RECEIPT/RECEIVED)
+```javascript
+{
+  eventCode: 'GOODS_RECEIVED',
+  refType: 'RECEIPT',
+  refId: receiptId,
+  refLineId: line.id,
+  itemId: line.itemId,
+  qty: lineNet,  // net weight tính từ lần cân
+  dimTo: {
+    warehouseCode: receipt.warehouse.warehouseCode,
+    locationCode: line.location.locationCode,  // vị trí đã dỡ
+    ownerCode: receipt.owner.ownerCode,
+    statusCode: 'AVAILABLE',
+  },
+}
+```
+
+→ `on_hand.physicalQty` **tăng ngay** tại vị trí dỡ
+→ `invent_trans` record tạo ngay (RECEIPT/RECEIVED)
+→ PO `totalReceivedQty` cập nhật ngay
 
 ### 11.8 Frontend
 
@@ -1253,71 +1298,66 @@ Khi weighbridge hoàn thành cân lần 2 cho WEIGH_IN:
 |-----------|------|-------|
 | InboundUnloadingPage | `pages/inbound-operations/InboundUnloadingPage.jsx` | `/app/inbound-operations/unloading` |
 | LocationPicker | (inline) | Dropdown vị trí trong kho |
+| WeighingModal | `pages/integration/components/WeighingModal.jsx` | Modal cân — hiện `lastWeightKg` + lần cân N |
 
-**Sidebar:** Vận hành nhập > Dỡ hàng
-
-### 11.9 On-Hand Page Enhancement
-
-Cột **"Đã nhập"** (`inboundReceivedQty`) = tổng `receivedQty` từ receipt lines có `receivedQty > 0`, group theo `itemId + warehouseId`.
+**4 nhóm items trên UI:**
+- **Trên xe** (OPEN) — dropdown chọn vị trí + "Dỡ xuống kho" (disable nếu có UNLOADED)
+- **Đã dỡ — chờ cân** (UNLOADED) — hiện nhắc "Đưa xe đi cân" + hoàn tác
+- **Đã hoàn thành** (RECEIVED) — hiện net weight
+- **Lịch sử cân** — timeline các lần cân + net
 
 ---
 
-## 12. Receipt Status Refactor — 2026-03-25
+## 12. Receipt Status — 2026-03-26
 
-### 12.1 Enum Migration
-
-| Enum cũ | Enum mới | Ý nghĩa |
-|---------|----------|---------|
-| `DRAFT` | `NEW` | Tạo mới |
-| — | `CONFIRMED` | Đã xác nhận, chờ tạo phiếu cân |
-| `AWAITING_WEIGHING` | `AWAITING_WEIGHING` | Đã tạo phiếu cân, chờ xác nhận |
-| `WEIGHED_IN` | `WEIGHING_1` | Đang cân lần 1 / phiếu cân đã xác nhận |
-| `PROCESSING` | `UNLOADING` | Đang dỡ hàng |
-| — | `UNLOADED` | Đã dỡ xong, chờ cân lần 2 |
-| `WEIGHED_OUT` | `WEIGHING_2` | Đang cân lần 2 (transient) |
-| `RECEIVED` | `COMPLETED` | Hoàn thành |
-| `PUTAWAY` | _(removed)_ | Không dùng — hàng đã ở đúng vị trí từ bước dỡ |
-| — | `ERROR` | Lỗi |
-
-### 12.2 State Machine Flow
+### 12.1 ReceiptStatus Enum
 
 ```
-NEW → CONFIRMED → AWAITING_WEIGHING → WEIGHING_1 → UNLOADING → UNLOADED → WEIGHING_2 → COMPLETED → CLOSED
+NEW → CONFIRMED → AWAITING_WEIGHING → WEIGHING_1 → UNLOADING → COMPLETED → CLOSED
 ```
 
-### 12.3 Trigger Points — Tự động đổi trạng thái Receipt
+> `UNLOADED` và `WEIGHING_2` không dùng cho multi-item. ASN ở **UNLOADING** suốt quá trình dỡ+cân xen kẽ, chuyển **COMPLETED** khi cân lần cuối.
 
-| Sự kiện | Trigger location | Transition |
-|---------|-----------------|------------|
-| Xác nhận receipt | `receipt.service.js` `confirmReceipt()` | NEW → CONFIRMED |
-| Tạo phiếu cân | `weighbridge-ingest.service.ts` `createManualWeighEvent()` | CONFIRMED → AWAITING_WEIGHING |
-| Hủy/reject phiếu cân | `weighbridge-log.service.ts` `rejectLog()` | AWAITING_WEIGHING → CONFIRMED |
+| Status | Ý nghĩa | Trigger |
+|--------|---------|---------|
+| NEW | Tạo mới | Tạo receipt |
+| CONFIRMED | Đã xác nhận | Bấm xác nhận |
+| AWAITING_WEIGHING | Chờ cân | Tạo phiếu cân |
+| WEIGHING_1 | Đang cân lần 1 | Xác nhận phiếu cân |
+| UNLOADING | Đang dỡ hàng + cân xen kẽ | Ghi cân lần 1 (gross) |
+| COMPLETED | Hoàn thành | Ghi cân lần cuối (tare) |
+| CLOSED | Đã đóng | Manual close |
+| CANCELLED | Đã hủy | Cancel |
+| ERROR | Lỗi | Report error |
+
+### 12.2 Trigger Points
+
+| Sự kiện | File | Transition |
+|---------|------|------------|
+| Xác nhận receipt | `receipt.service.js` | NEW → CONFIRMED |
+| Tạo phiếu cân | `weighbridge-ingest.service.ts` | CONFIRMED → AWAITING_WEIGHING |
+| Hủy phiếu cân | `weighbridge-log.service.ts` `rejectLog()` | AWAITING_WEIGHING → CONFIRMED |
 | Xác nhận phiếu cân | `weighbridge-log.service.ts` `confirmLog()` | AWAITING_WEIGHING → WEIGHING_1 |
-| Ghi gross (cân lần 1) | `weighbridge-log.service.ts` `recordWeight()` lần 1 | WEIGHING_1 → UNLOADING (chưa dỡ) / UNLOADED (đã dỡ) |
-| Bắt đầu dỡ hàng | `unloading.service.ts` `startUnloading()` | → UNLOADING |
-| Hoàn thành dỡ hàng | `unloading.service.ts` `completeUnloading()` | UNLOADING → UNLOADED |
-| Ghi tare (cân lần 2) | `weighbridge-log.service.ts` `recordWeight()` lần 2 | UNLOADED → WEIGHING_2 → COMPLETED |
-| Đóng receipt | `receipt.service.ts` `putawayComplete()` | COMPLETED → CLOSED |
+| Ghi cân lần 1 | `weighbridge-log.service.ts` `recordInboundWeight()` | → UNLOADING |
+| Ghi cân lần cuối | `weighbridge-log.service.ts` `recordInboundWeight()` | UNLOADING → COMPLETED |
 
-### 12.4 Validation Rules
+### 12.3 ReceiptLineStatus
 
-| Rule | Check point | Error message |
-|------|-----------|---------------|
-| Chưa cân gross → không dỡ | `unloading.service.ts` `startUnloading()` | Xe chưa cân. Vui lòng đưa xe đến Trạm cân trước |
-| Chưa dỡ xong → không cân lần 2 | `weighbridge-log.service.ts` `recordWeight()` | Receipt status phải = UNLOADED |
-| Chỉ edit/delete ở NEW | `receipt.service.ts` | Chỉ có thể chỉnh sửa ở trạng thái Tạo mới |
+```
+OPEN      → UNLOADED     → RECEIVED
+(trên xe)   (đã dỡ, chờ cân)  (đã cân, inventory posted)
+```
 
-### 12.5 Frontend Status Labels
+> `WEIGHED` tồn tại trong enum nhưng không dùng — line chuyển thẳng UNLOADED → RECEIVED.
 
-| Status | Label VN | Badge color |
-|--------|---------|-------------|
-| NEW | Tạo mới | default (gray) |
-| CONFIRMED | Xác nhận | success (green) |
-| AWAITING_WEIGHING | Chờ cân | info (blue) |
-| WEIGHING_1 | Đang cân lần 1 | info (blue) |
-| UNLOADING | Đang dỡ hàng | warning (yellow) |
-| UNLOADED | Chờ cân lần 2 | info (blue) |
-| WEIGHING_2 | Đang cân lần 2 | warning (yellow) |
-| COMPLETED | Hoàn thành | success (green) |
-| CANCELLED | Đã hủy | danger (red) |
-| ERROR | Lỗi | danger (red) |
+### 12.4 Frontend Labels
+
+| Status | Label | Color |
+|--------|-------|-------|
+| NEW | Tạo mới | gray |
+| CONFIRMED | Xác nhận | green |
+| AWAITING_WEIGHING | Chờ cân | blue |
+| WEIGHING_1 | Đang cân lần 1 | blue |
+| UNLOADING | Đang dỡ hàng | yellow |
+| COMPLETED | Hoàn thành | green |
+| CANCELLED | Đã hủy | red |

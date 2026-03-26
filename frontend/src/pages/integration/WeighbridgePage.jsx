@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Eye, Plus, Check, X, Trash2, Pencil, Weight } from 'lucide-react'
-import { useWeighbridgeLogs, useWeighbridgeDevices, useCreateWeighEvent, useUpdateWeighLog, useConfirmWeighLog, useRejectWeighLog, useRecordWeight } from '@domains/integration'
+import { useWeighbridgeLogs, useWeighbridgeDevices, useCreateWeighEvent, useUpdateWeighLog, useConfirmWeighLog, useRejectWeighLog, useRecordWeight, useDeleteWeighLog } from '@domains/integration'
 import { useLookupOwners, useLookupItems, useLookupWarehouses } from '@domains/master-data'
 import { useInboundReceipts } from '@domains/inbound-operations'
 import { useShipments } from '@domains/outbound-operations'
@@ -51,11 +52,13 @@ const statusLabel = (status) => {
 }
 
 export function WeighbridgePage() {
+  const queryClient = useQueryClient()
   const [logFilters, setLogFilters] = useState({ page: 1, limit: 20, referenceType: '', weighingType: '' })
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [viewModalData, setViewModalData] = useState(null)
   const [editModalData, setEditModalData] = useState(null)
   const [weighingModalData, setWeighingModalData] = useState(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
   const { data: logsResponse, isLoading: logsLoading, refetch: refetchLogs } = useWeighbridgeLogs(logFilters)
   const { data: devicesResponse, refetch: refetchDevices } = useWeighbridgeDevices({})
@@ -69,6 +72,7 @@ export function WeighbridgePage() {
   const confirmWeighLogMutation = useConfirmWeighLog()
   const rejectWeighLogMutation = useRejectWeighLog()
   const recordWeightMutation = useRecordWeight()
+  const deleteWeighLogMutation = useDeleteWeighLog()
 
   const logs = logsResponse?.data || []
   const logsPagination = logsResponse?.pagination || { page: 1, totalPages: 1 }
@@ -88,6 +92,7 @@ export function WeighbridgePage() {
     try {
       await createWeighEventMutation.mutateAsync(payload)
       setIsCreateModalOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['inbound-operations', 'receipts'] })
     } catch (error) {
       // Error handled by mutation
     }
@@ -155,7 +160,20 @@ export function WeighbridgePage() {
                   <p className="text-navy-700">{row.ticketNumber || row.asnId || '-'}</p>
                 </TableCell>
                 <TableCell>
-                  <p className="text-navy-700">{row.itemCode || '-'}</p>
+                  {row.receipt?.lines?.length > 1 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {row.receipt.lines.slice(0, 3).map((l, i) => (
+                        <span key={i} className="inline-flex text-xs bg-navy-100 text-navy-700 px-1.5 py-0.5 rounded">
+                          {l.item?.itemCode || l.itemCode}
+                        </span>
+                      ))}
+                      {row.receipt.lines.length > 3 && (
+                        <span className="text-xs text-navy-400">+{row.receipt.lines.length - 3}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-navy-700">{row.itemCode || row.receipt?.lines?.[0]?.item?.itemCode || '-'}</p>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusTone(row.processingStatus)}>
@@ -178,7 +196,7 @@ export function WeighbridgePage() {
                       </>
                     )}
                     {(row.processingStatus === 'VALIDATED' || row.processingStatus === 'WEIGHING') && !(row.grossWeightKg && row.tareWeightKg) && (
-                      <Button variant="ghost" size="sm" title={row.grossWeightKg ? 'Cân lần 2' : 'Cân lần 1'} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={() => setWeighingModalData(row)}>
+                      <Button variant="ghost" size="sm" title={row.grossWeightKg ? 'Cân lần 2' : 'Cân lần 1'} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={async () => { const res = await refetchLogs(); const fresh = (res.data?.data || []).find((l) => l.id === row.id); setWeighingModalData(fresh || row) }}>
                         <Weight className="h-4 w-4" />
                       </Button>
                     )}
@@ -191,7 +209,7 @@ export function WeighbridgePage() {
                       </Button>
                     )}
                     {row.processingStatus === 'RECEIVED' && (
-                      <Button variant="ghost" size="sm" title="Xóa" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Button variant="ghost" size="sm" title="Xóa" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setDeleteConfirmId(row.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
@@ -281,6 +299,33 @@ export function WeighbridgePage() {
         }}
         data={weighingModalData}
       />
+
+      {/* Confirm xóa phiếu cân */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-navy-900">Xác nhận xóa</h3>
+            <p className="mt-2 text-sm text-navy-600">Bạn có chắc muốn xóa phiếu cân này? Phiếu nhập liên kết sẽ quay về trạng thái Đã xác nhận.</p>
+            <div className="mt-5 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Hủy</Button>
+              <Button
+                variant="danger"
+                isLoading={deleteWeighLogMutation.isPending}
+                onClick={async () => {
+                  try {
+                    await deleteWeighLogMutation.mutateAsync(deleteConfirmId)
+                    setDeleteConfirmId(null)
+                    refetchLogs()
+                    queryClient.invalidateQueries({ queryKey: ['inbound-operations', 'receipts'] })
+                  } catch (e) { /* handled by mutation */ }
+                }}
+              >
+                Xóa
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

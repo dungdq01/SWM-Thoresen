@@ -84,24 +84,50 @@ export async function seedMasterDataSample(prisma: PrismaClient) {
   console.log(`  ✅ UOM Conversions: ${convCount} new records`);
 
   // ============================================================
-  // 3. Warehouses
+  // 3. Owners (seed trước Warehouses để có ownerId)
   // ============================================================
+  const ownerSeedsEarly = [
+    { ownerCode: 'OWN-001', ownerName: 'Thoresen Vietnamese Logistics', shortName: 'TVL',     ownerGroup: 'LOCAL',   ownerType: 'DIRECT',    taxCode: '3602352688', address: 'KCN Phú Mỹ 1, Tân Thành, BRVT' },
+    { ownerCode: 'OWN-002', ownerName: 'Công ty CP Nông sản Miền Nam',  shortName: 'NSMT',    ownerGroup: 'LOCAL',   ownerType: 'DIRECT',    taxCode: '0301234567', address: '45 Nguyễn Huệ, Q1, TP.HCM' },
+    { ownerCode: 'OWN-003', ownerName: 'Toyota Tsusho (Vietnam)',        shortName: 'TTCV',    ownerGroup: 'FOREIGN', ownerType: 'DIRECT',    taxCode: '0309876543', address: 'Lầu 12, Saigon Centre, Q1, TP.HCM' },
+    { ownerCode: 'OWN-004', ownerName: 'PVFCCo — Đạm Phú Mỹ',          shortName: 'PVFCCO',  ownerGroup: 'LOCAL',   ownerType: 'DIRECT',    taxCode: '3500100200', address: 'KCN Phú Mỹ, TX Phú Mỹ, BRVT' },
+    { ownerCode: 'OWN-005', ownerName: 'COFCO International Vietnam',   shortName: 'COFCO',   ownerGroup: 'FOREIGN', ownerType: 'CONSIGNED', taxCode: '0312345678', address: '15 Lê Duẩn, Q1, TP.HCM' },
+    { ownerCode: 'OWN-006', ownerName: 'Tổng công ty Thép Việt Nam',    shortName: 'VNSteel', ownerGroup: 'LOCAL',   ownerType: 'DIRECT',    taxCode: '0100101010', address: '91 Láng Hạ, Đống Đa, Hà Nội' },
+    { ownerCode: 'OWN-007', ownerName: 'Công ty TNHH Hóa chất Đông Á', shortName: 'HCDA',    ownerGroup: 'LOCAL',   ownerType: 'OTHER',     taxCode: '3601112233', address: '78 Trần Hưng Đạo, Tp Vũng Tàu, BRVT' },
+  ];
+
+  const earlyOwnerMap: Record<string, string> = {};
+  for (const o of ownerSeedsEarly) {
+    const created = await prisma.mdOwner.upsert({
+      where: { ownerCode: o.ownerCode },
+      update: { ownerName: o.ownerName, updatedBy: by },
+      create: { ownerCode: o.ownerCode, ownerName: o.ownerName, shortName: o.shortName, ownerGroup: o.ownerGroup, ownerType: o.ownerType as any, taxCode: o.taxCode, address: o.address, createdBy: by, updatedBy: by },
+    });
+    earlyOwnerMap[o.ownerCode] = created.id;
+  }
+
+  // ============================================================
+  // 4. Warehouses (với ownerId)
+  // ============================================================
+  // ownerCode → warehouseCode mapping (chủ kho)
   const warehouseSeeds = [
-    { warehouseCode: 'WH-01', warehouseName: 'Kho 1 — Hàng rời',       warehouseType: WarehouseType.COVERED,   totalAreaM2: 12000, usableAreaM2: 10500, maxHeightM: 15, maxCapacityMt: 50000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 2, isBonded: false, capacityWarningPct: 85 },
-    { warehouseCode: 'WH-02', warehouseName: 'Kho 2 — Hàng bao',       warehouseType: WarehouseType.COVERED,   totalAreaM2: 8000,  usableAreaM2: 7200,  maxHeightM: 12, maxCapacityMt: 30000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: false, capacityWarningPct: 85 },
-    { warehouseCode: 'WH-03', warehouseName: 'Kho 3 — Phân bón',       warehouseType: WarehouseType.COVERED,   totalAreaM2: 6000,  usableAreaM2: 5400,  maxHeightM: 10, maxCapacityMt: 25000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: false, weighbridgeCount: null, isBonded: false, capacityWarningPct: 80 },
-    { warehouseCode: 'WH-04', warehouseName: 'Kho 4 — Kho ngoại quan', warehouseType: WarehouseType.COVERED,   totalAreaM2: 5000,  usableAreaM2: 4500,  maxHeightM: 10, maxCapacityMt: 20000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: true,  capacityWarningPct: 90 },
-    { warehouseCode: 'OY-01', warehouseName: 'Bãi hở A — Thép & Sắt', warehouseType: WarehouseType.OPEN_YARD, totalAreaM2: 15000, usableAreaM2: 13000, maxHeightM: 0,  maxCapacityMt: 40000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: false, capacityWarningPct: 80 },
-    { warehouseCode: 'OY-02', warehouseName: 'Bãi hở B — Container',   warehouseType: WarehouseType.OPEN_YARD, totalAreaM2: 20000, usableAreaM2: 18000, maxHeightM: 0,  maxCapacityMt: 35000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: false, weighbridgeCount: null, isBonded: false, capacityWarningPct: 80 },
-    { warehouseCode: 'MX-01', warehouseName: 'Kho tổng hợp',           warehouseType: WarehouseType.MIXED,     totalAreaM2: 10000, usableAreaM2: 8500,  maxHeightM: 12, maxCapacityMt: 35000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: false, capacityWarningPct: 85 },
+    { warehouseCode: 'WH-01', warehouseName: 'Kho 1 — Hàng rời',       warehouseType: WarehouseType.COVERED,   totalAreaM2: 12000, usableAreaM2: 10500, maxHeightM: 15, maxCapacityMt: 50000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 2, isBonded: false, capacityWarningPct: 85, ownerCode: 'OWN-001' },
+    { warehouseCode: 'WH-02', warehouseName: 'Kho 2 — Hàng bao',       warehouseType: WarehouseType.COVERED,   totalAreaM2: 8000,  usableAreaM2: 7200,  maxHeightM: 12, maxCapacityMt: 30000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: false, capacityWarningPct: 85, ownerCode: 'OWN-002' },
+    { warehouseCode: 'WH-03', warehouseName: 'Kho 3 — Phân bón',       warehouseType: WarehouseType.COVERED,   totalAreaM2: 6000,  usableAreaM2: 5400,  maxHeightM: 10, maxCapacityMt: 25000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: false, weighbridgeCount: null, isBonded: false, capacityWarningPct: 80, ownerCode: 'OWN-004' },
+    { warehouseCode: 'WH-04', warehouseName: 'Kho 4 — Kho ngoại quan', warehouseType: WarehouseType.COVERED,   totalAreaM2: 5000,  usableAreaM2: 4500,  maxHeightM: 10, maxCapacityMt: 20000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: true,  capacityWarningPct: 90, ownerCode: 'OWN-003' },
+    { warehouseCode: 'OY-01', warehouseName: 'Bãi hở A — Thép & Sắt', warehouseType: WarehouseType.OPEN_YARD, totalAreaM2: 15000, usableAreaM2: 13000, maxHeightM: 0,  maxCapacityMt: 40000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: false, capacityWarningPct: 80, ownerCode: 'OWN-006' },
+    { warehouseCode: 'OY-02', warehouseName: 'Bãi hở B — Container',   warehouseType: WarehouseType.OPEN_YARD, totalAreaM2: 20000, usableAreaM2: 18000, maxHeightM: 0,  maxCapacityMt: 35000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: false, weighbridgeCount: null, isBonded: false, capacityWarningPct: 80, ownerCode: 'OWN-005' },
+    { warehouseCode: 'MX-01', warehouseName: 'Kho tổng hợp',           warehouseType: WarehouseType.MIXED,     totalAreaM2: 10000, usableAreaM2: 8500,  maxHeightM: 12, maxCapacityMt: 35000, address: 'Cảng TVL, Phú Mỹ, Bà Rịa - Vũng Tàu', hasWeighbridge: true,  weighbridgeCount: 1, isBonded: false, capacityWarningPct: 85, ownerCode: 'OWN-007' },
   ];
 
   const whMap: Record<string, string> = {};
   for (const wh of warehouseSeeds) {
+    const ownerId = wh.ownerCode ? earlyOwnerMap[wh.ownerCode] : undefined;
+    const { ownerCode, ...whData } = wh;
     const created = await prisma.mdWarehouse.upsert({
       where: { warehouseCode: wh.warehouseCode },
-      update: { warehouseName: wh.warehouseName, warehouseType: wh.warehouseType, totalAreaM2: wh.totalAreaM2, usableAreaM2: wh.usableAreaM2, maxHeightM: wh.maxHeightM, maxCapacityMt: wh.maxCapacityMt, address: wh.address, hasWeighbridge: wh.hasWeighbridge, weighbridgeCount: wh.weighbridgeCount, isBonded: wh.isBonded, capacityWarningPct: wh.capacityWarningPct, updatedBy: by },
-      create: { ...wh, siteId: 'TVL-SITE', createdBy: by, updatedBy: by },
+      update: { warehouseName: wh.warehouseName, warehouseType: wh.warehouseType, totalAreaM2: wh.totalAreaM2, usableAreaM2: wh.usableAreaM2, maxHeightM: wh.maxHeightM, maxCapacityMt: wh.maxCapacityMt, address: wh.address, hasWeighbridge: wh.hasWeighbridge, weighbridgeCount: wh.weighbridgeCount, isBonded: wh.isBonded, capacityWarningPct: wh.capacityWarningPct, ownerId: ownerId ?? null, updatedBy: by },
+      create: { ...whData, siteId: 'TVL-SITE', ownerId: ownerId ?? null, createdBy: by, updatedBy: by },
     });
     whMap[wh.warehouseCode] = created.id;
   }
@@ -268,40 +294,80 @@ export async function seedMasterDataSample(prisma: PrismaClient) {
   console.log(`  ✅ Customers: ${customerSeeds.length} records`);
 
   // ============================================================
+  // 8b. Item Groups (seed trước Items)
+  // ============================================================
+  const itemGroupSeeds = [
+    { itemGroupCode: 'GRP-RICE',  itemGroupName: 'Lúa gạo',           cargoForm: 'BULK',        weighbridgeUom: 'KG', warehouseCodes: ['WH-01', 'WH-02'] },
+    { itemGroupCode: 'GRP-RICE-B',itemGroupName: 'Gạo đóng bao',      cargoForm: 'BAGGED_50KG', weighbridgeUom: 'KG', warehouseCodes: ['WH-02'] },
+    { itemGroupCode: 'GRP-FERT',  itemGroupName: 'Phân bón',           cargoForm: 'BULK',        weighbridgeUom: 'KG', warehouseCodes: ['WH-03'] },
+    { itemGroupCode: 'GRP-STEEL', itemGroupName: 'Thép & Kim loại',    cargoForm: 'OTHER',       weighbridgeUom: 'KG', warehouseCodes: ['OY-01', 'OY-02'] },
+    { itemGroupCode: 'GRP-CHEM',  itemGroupName: 'Hóa chất',           cargoForm: 'DRUM',        weighbridgeUom: 'KG', warehouseCodes: ['MX-01', 'WH-04'] },
+    { itemGroupCode: 'GRP-BULK',  itemGroupName: 'Hàng rời tổng hợp', cargoForm: 'BULK',        weighbridgeUom: 'KG', warehouseCodes: ['WH-01', 'MX-01'] },
+    { itemGroupCode: 'GRP-PKG',   itemGroupName: 'Vật liệu đóng gói', cargoForm: 'PACKAGING',   weighbridgeUom: 'KG', warehouseCodes: ['WH-02'] },
+  ];
+
+  const itemGroupMap: Record<string, string> = {};
+  for (const g of itemGroupSeeds) {
+    const weighbridgeQtyUomId = uomMap[g.weighbridgeUom] ?? null;
+    const defaultWarehouseId = g.warehouseCodes.length > 0 ? whMap[g.warehouseCodes[0]] : null;
+    const created = await prisma.mdItemGroup.upsert({
+      where: { itemGroupCode: g.itemGroupCode },
+      update: { itemGroupName: g.itemGroupName, cargoForm: g.cargoForm, weighbridgeQtyUomId, defaultWarehouseId, updatedBy: by },
+      create: { itemGroupCode: g.itemGroupCode, itemGroupName: g.itemGroupName, cargoForm: g.cargoForm, weighbridgeQtyUomId, defaultWarehouseId, createdBy: by, updatedBy: by },
+    });
+    itemGroupMap[g.itemGroupCode] = created.id;
+
+    // Sync junction table
+    for (const wCode of g.warehouseCodes) {
+      const wId = whMap[wCode];
+      if (!wId) continue;
+      await prisma.mdItemGroupWarehouse.upsert({
+        where: { itemGroupId_warehouseId: { itemGroupId: created.id, warehouseId: wId } },
+        update: {},
+        create: { itemGroupId: created.id, warehouseId: wId },
+      });
+    }
+  }
+  console.log(`  ✅ Item Groups: ${Object.keys(itemGroupMap).length} records`);
+
+  // ============================================================
   // 9. Items
   // ============================================================
   const itemSeeds = [
-    { itemCode: 'RICE-5T',   itemName: 'Gạo 5% tấm',              itemNameEn: 'Rice 5% Broken',          productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BAGGED_50KG, category: 'Lương thực',  baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: 50.5, stdNetWeight: 50.0, densityMtPerM3: 0.75, tolerancePctInbound: 2.0, tolerancePctOutbound: 1.5, shrinkageRatePct: 0.5, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50, hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'RICE-15T',  itemName: 'Gạo 15% tấm',             itemNameEn: 'Rice 15% Broken',         productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BAGGED_50KG, category: 'Lương thực',  baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: 50.5, stdNetWeight: 50.0, densityMtPerM3: 0.73, tolerancePctInbound: 2.0, tolerancePctOutbound: 1.5, shrinkageRatePct: 0.5, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50, hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'RICE-JB',   itemName: 'Gạo xuất khẩu (Jumbo)',    itemNameEn: 'Rice Export Jumbo',       productGroup: 'AGRICULTURAL', cargoForm: CargoForm.JUMBO,       category: 'Lương thực',  baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: 1005, stdNetWeight: 1000, densityMtPerM3: 0.75, tolerancePctInbound: 1.5, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.3, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'RICE-BLK',  itemName: 'Gạo rời',                  itemNameEn: 'Bulk Rice',               productGroup: 'AGRICULTURAL', cargoForm: CargoForm.BULK,        category: 'Lương thực',  baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 0.78, tolerancePctInbound: 2.5, tolerancePctOutbound: 2.0, shrinkageRatePct: 0.8, rotateBy: 'FEFO', shelfLifeDays: 300, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'UREA-BLK',  itemName: 'Phân Urea hạt — rời',      itemNameEn: 'Urea Prilled Bulk',      productGroup: 'FERTILIZER',   cargoForm: CargoForm.BULK,        category: 'Phân bón',    baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 0.77, tolerancePctInbound: 2.0, tolerancePctOutbound: 1.5, shrinkageRatePct: 0.2, rotateBy: 'FEFO', shelfLifeDays: 730, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '3102.10', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'UREA-50',   itemName: 'Phân Urea hạt — bao 50kg', itemNameEn: 'Urea Prilled 50kg Bag',  productGroup: 'FERTILIZER',   cargoForm: CargoForm.BAGGED_50KG, category: 'Phân bón',    baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: 50.3, stdNetWeight: 50.0, densityMtPerM3: 0.77, tolerancePctInbound: 1.5, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.2, rotateBy: 'FEFO', shelfLifeDays: 730, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50,   hsCode: '3102.10', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'DAP-50',    itemName: 'Phân DAP — bao 50kg',      itemNameEn: 'DAP Fertilizer 50kg Bag', productGroup: 'FERTILIZER',   cargoForm: CargoForm.BAGGED_50KG, category: 'Phân bón',    baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: 50.3, stdNetWeight: 50.0, densityMtPerM3: 0.95, tolerancePctInbound: 1.5, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.1, rotateBy: 'FEFO', shelfLifeDays: 730, isCatchWeight: false, isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50,   hsCode: '3105.10', countryOfOrigin: 'China' },
-    { itemCode: 'STEEL-HR',  itemName: 'Thép cuộn cán nóng',       itemNameEn: 'Hot Rolled Steel Coil',   productGroup: 'STEEL',        cargoForm: CargoForm.OTHER,       category: 'Kim loại',    baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 7.85, tolerancePctInbound: 0.5, tolerancePctOutbound: 0.5, shrinkageRatePct: 0.0, rotateBy: null,   shelfLifeDays: null, isCatchWeight: true, isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '7208.10', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'STEEL-RB',  itemName: 'Thép thanh vằn',            itemNameEn: 'Deformed Steel Bar',     productGroup: 'STEEL',        cargoForm: CargoForm.OTHER,       category: 'Kim loại',    baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 7.85, tolerancePctInbound: 0.5, tolerancePctOutbound: 0.5, shrinkageRatePct: 0.0, rotateBy: null,   shelfLifeDays: null, isCatchWeight: true, isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '7214.20', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'CHEM-NaOH', itemName: 'Xút (NaOH) lỏng',          itemNameEn: 'Caustic Soda Liquid',    productGroup: 'CHEMICAL',     cargoForm: CargoForm.DRUM,        category: 'Hóa chất',    baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 1.52, tolerancePctInbound: 1.0, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.0, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '2815.11', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'CLINKER',   itemName: 'Clinker xi măng',           itemNameEn: 'Cement Clinker',          productGroup: 'GENERAL',      cargoForm: CargoForm.BULK,        category: 'VLXD',        baseUom: 'KG',  billingUom: 'KG',  stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 1.40, tolerancePctInbound: 3.0, tolerancePctOutbound: 2.0, shrinkageRatePct: 0.5, rotateBy: null,   shelfLifeDays: null, isCatchWeight: true, isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '2523.10', countryOfOrigin: 'Vietnam' },
-    { itemCode: 'PKG-PP50',  itemName: 'Bao PP 50kg (vật liệu đóng gói)', itemNameEn: 'PP Bag 50kg',     productGroup: 'PACKAGING',    cargoForm: CargoForm.PACKAGING,   category: 'Bao bì',      baseUom: 'BAG50', billingUom: 'BAG50', stdGrossWeight: 0.12, stdNetWeight: null,  densityMtPerM3: null, tolerancePctInbound: null, tolerancePctOutbound: null, shrinkageRatePct: null, rotateBy: null,  shelfLifeDays: null, isCatchWeight: false, isStorageBillable: false, isPackaging: true,  defaultBagWeightKg: null, hsCode: '6305.33', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'RICE-5T',   itemName: 'Gạo 5% tấm',              itemNameEn: 'Rice 5% Broken',          itemGroup: 'GRP-RICE-B', cargoForm: CargoForm.BAGGED_50KG, category: 'Lương thực',  baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: 50.5, stdNetWeight: 50.0, densityMtPerM3: 0.75, tolerancePctInbound: 2.0, tolerancePctOutbound: 1.5, shrinkageRatePct: 0.5, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50,   hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'RICE-15T',  itemName: 'Gạo 15% tấm',             itemNameEn: 'Rice 15% Broken',         itemGroup: 'GRP-RICE-B', cargoForm: CargoForm.BAGGED_50KG, category: 'Lương thực',  baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: 50.5, stdNetWeight: 50.0, densityMtPerM3: 0.73, tolerancePctInbound: 2.0, tolerancePctOutbound: 1.5, shrinkageRatePct: 0.5, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50,   hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'RICE-JB',   itemName: 'Gạo xuất khẩu (Jumbo)',    itemNameEn: 'Rice Export Jumbo',       itemGroup: 'GRP-RICE',   cargoForm: CargoForm.JUMBO,       category: 'Lương thực',  baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: 1005, stdNetWeight: 1000, densityMtPerM3: 0.75, tolerancePctInbound: 1.5, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.3, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'RICE-BLK',  itemName: 'Gạo rời',                  itemNameEn: 'Bulk Rice',               itemGroup: 'GRP-RICE',   cargoForm: CargoForm.BULK,        category: 'Lương thực',  baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 0.78, tolerancePctInbound: 2.5, tolerancePctOutbound: 2.0, shrinkageRatePct: 0.8, rotateBy: 'FEFO', shelfLifeDays: 300, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '1006.30', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'UREA-BLK',  itemName: 'Phân Urea hạt — rời',      itemNameEn: 'Urea Prilled Bulk',       itemGroup: 'GRP-FERT',   cargoForm: CargoForm.BULK,        category: 'Phân bón',    baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 0.77, tolerancePctInbound: 2.0, tolerancePctOutbound: 1.5, shrinkageRatePct: 0.2, rotateBy: 'FEFO', shelfLifeDays: 730, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '3102.10', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'UREA-50',   itemName: 'Phân Urea hạt — bao 50kg', itemNameEn: 'Urea Prilled 50kg Bag',   itemGroup: 'GRP-FERT',   cargoForm: CargoForm.BAGGED_50KG, category: 'Phân bón',    baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: 50.3, stdNetWeight: 50.0, densityMtPerM3: 0.77, tolerancePctInbound: 1.5, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.2, rotateBy: 'FEFO', shelfLifeDays: 730, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50,   hsCode: '3102.10', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'DAP-50',    itemName: 'Phân DAP — bao 50kg',      itemNameEn: 'DAP Fertilizer 50kg Bag', itemGroup: 'GRP-FERT',   cargoForm: CargoForm.BAGGED_50KG, category: 'Phân bón',    baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: 50.3, stdNetWeight: 50.0, densityMtPerM3: 0.95, tolerancePctInbound: 1.5, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.1, rotateBy: 'FEFO', shelfLifeDays: 730, isCatchWeight: false, isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: 50,   hsCode: '3105.10', countryOfOrigin: 'China' },
+    { itemCode: 'STEEL-HR',  itemName: 'Thép cuộn cán nóng',       itemNameEn: 'Hot Rolled Steel Coil',   itemGroup: 'GRP-STEEL',  cargoForm: CargoForm.OTHER,       category: 'Kim loại',    baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 7.85, tolerancePctInbound: 0.5, tolerancePctOutbound: 0.5, shrinkageRatePct: 0.0, rotateBy: null,   shelfLifeDays: null, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '7208.10', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'STEEL-RB',  itemName: 'Thép thanh vằn',            itemNameEn: 'Deformed Steel Bar',      itemGroup: 'GRP-STEEL',  cargoForm: CargoForm.OTHER,       category: 'Kim loại',    baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 7.85, tolerancePctInbound: 0.5, tolerancePctOutbound: 0.5, shrinkageRatePct: 0.0, rotateBy: null,   shelfLifeDays: null, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '7214.20', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'CHEM-NaOH', itemName: 'Xút (NaOH) lỏng',          itemNameEn: 'Caustic Soda Liquid',     itemGroup: 'GRP-CHEM',   cargoForm: CargoForm.DRUM,        category: 'Hóa chất',    baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 1.52, tolerancePctInbound: 1.0, tolerancePctOutbound: 1.0, shrinkageRatePct: 0.0, rotateBy: 'FEFO', shelfLifeDays: 365, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '2815.11', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'CLINKER',   itemName: 'Clinker xi măng',           itemNameEn: 'Cement Clinker',          itemGroup: 'GRP-BULK',   cargoForm: CargoForm.BULK,        category: 'VLXD',        baseUom: 'KG',    billingUom: 'KG',    stdGrossWeight: null, stdNetWeight: null,  densityMtPerM3: 1.40, tolerancePctInbound: 3.0, tolerancePctOutbound: 2.0, shrinkageRatePct: 0.5, rotateBy: null,   shelfLifeDays: null, isCatchWeight: true,  isStorageBillable: true,  isPackaging: false, defaultBagWeightKg: null, hsCode: '2523.10', countryOfOrigin: 'Vietnam' },
+    { itemCode: 'PKG-PP50',  itemName: 'Bao PP 50kg (vật liệu đóng gói)', itemNameEn: 'PP Bag 50kg',    itemGroup: 'GRP-PKG',    cargoForm: CargoForm.PACKAGING,   category: 'Bao bì',      baseUom: 'BAG50', billingUom: 'BAG50', stdGrossWeight: 0.12, stdNetWeight: null,  densityMtPerM3: null, tolerancePctInbound: null, tolerancePctOutbound: null, shrinkageRatePct: null, rotateBy: null,  shelfLifeDays: null, isCatchWeight: false, isStorageBillable: false, isPackaging: true,  defaultBagWeightKg: null, hsCode: '6305.33', countryOfOrigin: 'Vietnam' },
   ];
 
   for (const item of itemSeeds) {
+    const itemGroupId = itemGroupMap[item.itemGroup] ?? null;
     await prisma.mdItem.upsert({
       where: { itemCode: item.itemCode },
       update: {
-        itemName: item.itemName, itemNameEn: item.itemNameEn, productGroup: item.productGroup, cargoForm: item.cargoForm,
+        itemName: item.itemName, itemNameEn: item.itemNameEn, cargoForm: item.cargoForm,
         category: item.category, stdGrossWeight: item.stdGrossWeight, stdNetWeight: item.stdNetWeight,
         densityMtPerM3: item.densityMtPerM3, tolerancePctInbound: item.tolerancePctInbound,
         tolerancePctOutbound: item.tolerancePctOutbound, shrinkageRatePct: item.shrinkageRatePct,
         rotateBy: item.rotateBy, shelfLifeDays: item.shelfLifeDays, isCatchWeight: item.isCatchWeight,
         isStorageBillable: item.isStorageBillable, isPackaging: item.isPackaging,
         defaultBagWeightKg: item.defaultBagWeightKg, hsCode: item.hsCode, countryOfOrigin: item.countryOfOrigin,
+        ...(itemGroupId ? { itemGroupId } : {}),
         updatedBy: by,
       },
       create: {
         itemCode: item.itemCode, itemName: item.itemName, itemNameEn: item.itemNameEn,
-        productGroup: item.productGroup, cargoForm: item.cargoForm, category: item.category,
+        cargoForm: item.cargoForm, category: item.category,
         baseUomId: uomMap[item.baseUom], billingUomId: uomMap[item.billingUom],
+        ...(itemGroupId ? { itemGroupId } : {}),
         stdGrossWeight: item.stdGrossWeight, stdNetWeight: item.stdNetWeight,
         densityMtPerM3: item.densityMtPerM3, tolerancePctInbound: item.tolerancePctInbound,
         tolerancePctOutbound: item.tolerancePctOutbound, shrinkageRatePct: item.shrinkageRatePct,
@@ -501,23 +567,42 @@ export async function seedMasterDataSample(prisma: PrismaClient) {
   }
   console.log(`  ✅ On-Hand: ${onHandCount} new records`);
 
-  // ─── Item Groups ─────────────────────────────────────────────────────────
+  // ─── Item Groups (bổ sung kho + DVT cho nhóm cũ) ─────────────────────
+  const allUomsLate = await prisma.mdUom.findMany({ select: { id: true, uomCode: true } });
+  const uomIdMapLate: Record<string, string> = {};
+  for (const u of allUomsLate) uomIdMapLate[u.uomCode] = u.id;
+
+  const allWhLate = await prisma.mdWarehouse.findMany({ select: { id: true, warehouseCode: true } });
+  const whIdMapLate: Record<string, string> = {};
+  for (const w of allWhLate) whIdMapLate[w.warehouseCode] = w.id;
+
   const itemGroups = [
-    { itemGroupCode: 'FEED',    itemGroupName: 'Thức ăn chăn nuôi',   cargoForm: 'BULK',    description: 'Ngũ cốc, cám, bột cá...' },
-    { itemGroupCode: 'FERT',    itemGroupName: 'Phân bón',             cargoForm: 'BULK',    description: 'Phân đạm, lân, kali...' },
-    { itemGroupCode: 'CHEM',    itemGroupName: 'Hóa chất',             cargoForm: 'DRUM',    description: 'Hóa chất công nghiệp' },
-    { itemGroupCode: 'GRAIN',   itemGroupName: 'Nông sản hạt',        cargoForm: 'BULK',    description: 'Gạo, ngô, đậu...' },
-    { itemGroupCode: 'PACKMAT', itemGroupName: 'Bao bì đóng gói',     cargoForm: 'BAGGED',  description: 'Bao PP, túi PE...' },
-    { itemGroupCode: 'OTHER',   itemGroupName: 'Khác',                 cargoForm: null,      description: null },
+    { itemGroupCode: 'FEED',    itemGroupName: 'Thức ăn chăn nuôi', cargoForm: 'BULK',        description: 'Ngũ cốc, cám, bột cá...', weighbridgeUom: 'KG', warehouseCodes: ['WH-02', 'WH-01'] },
+    { itemGroupCode: 'FERT',    itemGroupName: 'Phân bón',           cargoForm: 'BULK',        description: 'Phân đạm, lân, kali...',   weighbridgeUom: 'KG', warehouseCodes: ['WH-03'] },
+    { itemGroupCode: 'CHEM',    itemGroupName: 'Hóa chất',           cargoForm: 'DRUM',        description: 'Hóa chất công nghiệp',     weighbridgeUom: 'KG', warehouseCodes: ['MX-01'] },
+    { itemGroupCode: 'GRAIN',   itemGroupName: 'Nông sản hạt',      cargoForm: 'BULK',        description: 'Gạo, ngô, đậu...',         weighbridgeUom: 'KG', warehouseCodes: ['WH-01', 'WH-02'] },
+    { itemGroupCode: 'PACKMAT', itemGroupName: 'Bao bì đóng gói',   cargoForm: 'BAGGED_50KG', description: 'Bao PP, túi PE...',         weighbridgeUom: 'KG', warehouseCodes: ['WH-02'] },
+    { itemGroupCode: 'OTHER',   itemGroupName: 'Khác',               cargoForm: 'OTHER',       description: null,                        weighbridgeUom: 'KG', warehouseCodes: ['MX-01'] },
   ];
   for (const ig of itemGroups) {
-    await prisma.mdItemGroup.upsert({
+    const weighbridgeQtyUomId = uomIdMapLate[ig.weighbridgeUom] ?? null;
+    const defaultWarehouseId = ig.warehouseCodes.length > 0 ? (whIdMapLate[ig.warehouseCodes[0]] ?? null) : null;
+    const created = await prisma.mdItemGroup.upsert({
       where: { itemGroupCode: ig.itemGroupCode },
-      update: { itemGroupName: ig.itemGroupName, cargoForm: ig.cargoForm, description: ig.description, updatedBy: by },
-      create: { itemGroupCode: ig.itemGroupCode, itemGroupName: ig.itemGroupName, cargoForm: ig.cargoForm, description: ig.description, createdBy: by, updatedBy: by },
+      update: { itemGroupName: ig.itemGroupName, cargoForm: ig.cargoForm, description: ig.description, weighbridgeQtyUomId, defaultWarehouseId, updatedBy: by },
+      create: { itemGroupCode: ig.itemGroupCode, itemGroupName: ig.itemGroupName, cargoForm: ig.cargoForm, description: ig.description, weighbridgeQtyUomId, defaultWarehouseId, createdBy: by, updatedBy: by },
     });
+    for (const wCode of ig.warehouseCodes) {
+      const wId = whIdMapLate[wCode];
+      if (!wId) continue;
+      await prisma.mdItemGroupWarehouse.upsert({
+        where: { itemGroupId_warehouseId: { itemGroupId: created.id, warehouseId: wId } },
+        update: {},
+        create: { itemGroupId: created.id, warehouseId: wId },
+      });
+    }
   }
-  console.log(`  ✅ Item Groups: ${itemGroups.length} records`);
+  console.log(`  ✅ Item Groups (legacy): ${itemGroups.length} records`);
 
   // ─── Carriers ────────────────────────────────────────────────────────────
   const carriers = [

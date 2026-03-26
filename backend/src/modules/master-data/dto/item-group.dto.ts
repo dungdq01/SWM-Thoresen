@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, Min } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean, IsArray, Min, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateItemGroupDto {
@@ -17,6 +17,15 @@ export class CreateItemGroupDto {
   cargoForm?: string;
 
   @IsOptional()
+  @IsUUID()
+  weighbridgeQtyUomId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  warehouseIds?: string[];
+
+  @IsOptional()
   @IsString()
   externalId?: string;
 }
@@ -33,6 +42,20 @@ export class UpdateItemGroupDto {
   @IsOptional()
   @IsString()
   cargoForm?: string;
+
+  @IsOptional()
+  @IsUUID()
+  weighbridgeQtyUomId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  warehouseIds?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  isActive?: boolean;
 
   @IsInt()
   @Min(0)

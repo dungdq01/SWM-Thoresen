@@ -29,6 +29,7 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
   if (!isOpen || !data) return null
 
   const weighingTypeLabel = data.weighingType === 'WEIGH_IN' ? 'Cân vào' : data.weighingType === 'WEIGH_OUT' ? 'Cân ra' : data.weighingType
+  const receiptLines = data.receipt?.lines || []
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '-'
@@ -135,29 +136,85 @@ export function ViewWeighTicketModal({ isOpen, onClose, data }) {
               <div className="space-y-4">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-navy-800">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-100 text-xs font-bold text-navy-600">2</span>
-                  Thông tin cân
+                  Thông tin cân {receiptLines.length > 1 ? `(${receiptLines.length} items — N+1 lần cân)` : ''}
                 </h3>
+
                 <div className="overflow-hidden rounded-lg border border-moon-200">
                   <table className="w-full text-sm">
                     <thead className="bg-moon-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-navy-700">Mã hàng</th>
-                        <th className="px-4 py-3 text-right font-semibold text-navy-700">TL Lần 1 (KG)</th>
-                        <th className="px-4 py-3 text-center font-semibold text-navy-700">Ngày giờ cân L1</th>
-                        <th className="px-4 py-3 text-right font-semibold text-navy-700">TL Lần 2 (KG)</th>
-                        <th className="px-4 py-3 text-center font-semibold text-navy-700">Ngày giờ cân L2</th>
-                        <th className="px-4 py-3 text-right font-semibold text-navy-700">TL Hàng ròng</th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-navy-700">STT</th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-navy-700">Mặt hàng</th>
+                        <th className="px-3 py-2.5 text-right font-semibold text-navy-700">TL cân trước</th>
+                        <th className="px-3 py-2.5 text-right font-semibold text-navy-700">TL cân sau</th>
+                        <th className="px-3 py-2.5 text-right font-semibold text-navy-700">TL ròng</th>
+                        <th className="px-3 py-2.5 text-center font-semibold text-navy-700">Trạng thái</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-t border-moon-100">
-                        <td className="px-4 py-3 font-medium text-navy-800">{data.itemCode || data.item?.code || '-'}</td>
-                        <td className="px-4 py-3 text-right text-navy-700">{formatWeight(data.grossWeightKg)}</td>
-                        <td className="px-4 py-3 text-center text-navy-600">{formatDateTime(data.grossWeightAt)}</td>
-                        <td className="px-4 py-3 text-right text-navy-700">{formatWeight(data.tareWeightKg)}</td>
-                        <td className="px-4 py-3 text-center text-navy-600">{formatDateTime(data.tareWeightAt)}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-navy-900">{formatWeight(data.netWeightKg)}</td>
-                      </tr>
+                      {receiptLines.length > 0 ? (() => {
+                        // Tính TL cân trước / cân sau cho từng line dựa trên thứ tự dỡ
+                        // Gross → dỡ item 1 → cân → dỡ item 2 → cân → ...
+                        // TL cân trước item i = Gross - sum(net của items trước i)
+                        // TL cân sau item i = TL cân trước - net item i
+                        const gross = data.grossWeightKg ? Number(data.grossWeightKg) : null
+                        const receivedLines = receiptLines.filter((l) => l.receivedQty && Number(l.receivedQty) > 0)
+                        let runningWeight = gross
+
+                        return receiptLines.map((line, idx) => {
+                          const netWeight = line.receivedQty ? Number(line.receivedQty) : null
+                          const isReceived = line.status === 'RECEIVED' && netWeight > 0
+                          const prevWeight = isReceived ? runningWeight : null
+                          const afterWeight = isReceived && runningWeight != null ? runningWeight - netWeight : null
+
+                          if (isReceived && runningWeight != null) {
+                            runningWeight = runningWeight - netWeight
+                          }
+
+                          return (
+                            <tr key={idx} className="border-t border-moon-100">
+                              <td className="px-3 py-2.5 text-navy-400">{idx + 1}</td>
+                              <td className="px-3 py-2.5">
+                                <p className="font-medium text-navy-800">{line.item?.itemName || line.itemName || '-'}</p>
+                                <p className="text-xs text-navy-400">{line.item?.itemCode || line.itemCode}</p>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-mono text-navy-700">{prevWeight != null ? formatWeight(prevWeight) : '-'}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-navy-700">{afterWeight != null ? formatWeight(afterWeight) : '-'}</td>
+                              <td className="px-3 py-2.5 text-right font-mono font-semibold text-navy-900">{netWeight != null && netWeight > 0 ? formatWeight(netWeight) : '-'}</td>
+                              <td className="px-3 py-2.5 text-center">
+                                <Badge variant={line.status === 'RECEIVED' ? 'success' : line.status === 'UNLOADED' ? 'warning' : 'default'}>
+                                  {line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'UNLOADED' ? 'Đã dỡ' : line.status === 'OPEN' ? 'Chờ dỡ' : line.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      })() : (
+                        <tr className="border-t border-moon-100">
+                          <td className="px-3 py-2.5 text-navy-400">1</td>
+                          <td className="px-3 py-2.5 font-medium text-navy-800">{data.itemCode || '-'}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-navy-700">{formatWeight(data.grossWeightKg)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-navy-700">{formatWeight(data.tareWeightKg)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono font-semibold text-navy-900">{formatWeight(data.netWeightKg)}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <Badge variant={data.netWeightKg ? 'success' : 'default'}>
+                              {data.netWeightKg ? 'Đã nhận' : 'Chờ'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      )}
+                      {/* Dòng tổng */}
+                      {receiptLines.length > 0 && (
+                        <tr className="border-t-2 border-navy-200 bg-moon-50">
+                          <td className="px-3 py-2.5" colSpan={2}>
+                            <p className="font-semibold text-navy-800">Tổng</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-mono font-semibold text-navy-700">{formatWeight(data.grossWeightKg)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono font-semibold text-navy-700">{formatWeight(data.tareWeightKg)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono font-bold text-emerald-700">{formatWeight(data.netWeightKg)}</td>
+                          <td className="px-3 py-2.5" />
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

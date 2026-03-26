@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { Button, Input, Select, Textarea, Switch } from '@shared/ui'
 import { warehouseSchema, warehouseDefaultValues } from './warehouseForm.schema'
-import { WAREHOUSE_TYPES } from '@domains/master-data'
+import { WAREHOUSE_TYPES, useOwnerList } from '@domains/master-data'
 
 export function WarehouseFormDrawer({
   isOpen,
@@ -16,6 +16,12 @@ export function WarehouseFormDrawer({
   isLoading = false,
 }) {
   const isEdit = !!initialData
+
+  const { data: ownerResponse } = useOwnerList({ isActive: true, pageSize: 200 })
+  const owners = (ownerResponse?.data || []).map((o) => ({
+    value: o.id,
+    label: `${o.ownerCode} — ${o.ownerName}`,
+  }))
 
   const {
     register,
@@ -46,6 +52,7 @@ export function WarehouseFormDrawer({
           hasWeighbridge: initialData.hasWeighbridge || false,
           weighbridgeCount: initialData.weighbridgeCount != null ? Number(initialData.weighbridgeCount) : null,
           capacityWarningPct: initialData.capacityWarningPct != null ? Number(initialData.capacityWarningPct) : 85,
+          ownerId: initialData.ownerId || null,
         })
       } else {
         reset(warehouseDefaultValues)
@@ -160,6 +167,17 @@ export function WarehouseFormDrawer({
                     error={errors.address?.message}
                   />
                 </div>
+
+                <Controller name="ownerId" control={control} render={({ field }) => (
+                  <Select
+                    label="Chủ kho"
+                    placeholder="Chọn chủ kho..."
+                    options={[{ value: '', label: '— Không có —' }, ...owners]}
+                    error={errors.ownerId?.message}
+                    value={field.value || ''}
+                    onChange={(e) => field.onChange(e.target.value || null)}
+                  />
+                )} />
 
                 <div className="border-t border-navy-100 pt-5">
                   <h3 className="text-sm font-semibold text-navy-900 mb-4">Thông số kỹ thuật</h3>

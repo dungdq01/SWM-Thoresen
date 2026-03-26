@@ -166,7 +166,7 @@ export function ItemsPage() {
         isLoading={isLoading}
         isEmpty={items.length === 0}
         emptyMessage="Chưa có mặt hàng nào"
-        colSpan={6}
+        colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -175,6 +175,7 @@ export function ItemsPage() {
           <TableRow hoverable={false}>
             <TableHead>Mã hàng</TableHead>
             <TableHead>Tên hàng</TableHead>
+            <TableHead>Nhóm hàng</TableHead>
             <TableHead align="center">Dạng hàng</TableHead>
             <TableHead>Trọng lượng chuẩn</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
@@ -195,6 +196,16 @@ export function ItemsPage() {
                       <p className="text-xs text-navy-400">{item.itemNameEn}</p>
                     )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {item.itemGroup ? (
+                    <div>
+                      <p className="font-medium text-navy-900 text-sm">{item.itemGroup.itemGroupCode}</p>
+                      <p className="text-xs text-navy-500 line-clamp-1">{item.itemGroup.itemGroupName}</p>
+                    </div>
+                  ) : (
+                    <span className="text-navy-400">—</span>
+                  )}
                 </TableCell>
                 <TableCell align="center">
                   <CargoFormBadge cargoForm={item.cargoForm} />

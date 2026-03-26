@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { OwnerRepository } from '../repositories/owner.repository';
 import { VendorRepository } from '../repositories/vendor.repository';
 import { CustomerRepository } from '../repositories/customer.repository';
@@ -21,6 +22,7 @@ export interface LookupItem {
 @Injectable()
 export class LookupService {
   constructor(
+    private readonly prisma: PrismaService,
     private readonly ownerRepository: OwnerRepository,
     private readonly vendorRepository: VendorRepository,
     private readonly itemRepository: ItemRepository,
@@ -46,12 +48,12 @@ export class LookupService {
 
   async getItems(): Promise<LookupItem[]> {
     const items = await this.itemRepository.findAllActive();
-    return items.map((i) => ({ id: i.id, code: i.itemCode, name: i.itemName, extra: { cargoForm: i.cargoForm, productGroup: i.productGroup } }));
+    return items.map((i) => ({ id: i.id, code: i.itemCode, name: i.itemName, extra: { cargoForm: i.cargoForm, productGroup: i.productGroup, itemGroupId: i.itemGroupId, baseUomId: i.baseUomId, billingUomId: i.billingUomId } }));
   }
 
   async getWarehouses(): Promise<LookupItem[]> {
     const warehouses = await this.warehouseRepository.findAllActive();
-    return warehouses.map((w) => ({ id: w.id, code: w.warehouseCode, name: w.warehouseName, extra: { warehouseType: w.warehouseType } }));
+    return warehouses.map((w) => ({ id: w.id, code: w.warehouseCode, name: w.warehouseName, extra: { warehouseType: w.warehouseType, ownerId: w.ownerId } }));
   }
 
   async getZones(warehouseId?: string): Promise<LookupItem[]> {
@@ -96,6 +98,15 @@ export class LookupService {
       name: c.customerName,
       extra: { customerGroup: c.customerGroup, customerType: c.customerType },
     }));
+  }
+
+  async getItemGroupIdsByWarehouses(warehouseIds: string[]): Promise<string[]> {
+    const rows = await this.prisma.mdItemGroupWarehouse.findMany({
+      where: { warehouseId: { in: warehouseIds } },
+      select: { itemGroupId: true },
+      distinct: ['itemGroupId'],
+    });
+    return rows.map((r) => r.itemGroupId);
   }
 
   async getDropdownOptions(entity: string, fieldName: string) {

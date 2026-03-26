@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { Button, Input, Select } from '@shared/ui'
 import { itemSchema, itemDefaultValues } from './itemForm.schema'
-import { CARGO_FORMS, PRODUCT_GROUPS, useLookupUoms, useLookupItems, useItemNextCode } from '@domains/master-data'
+import { CARGO_FORMS, useLookupUoms, useLookupItems, useItemNextCode, useItemGroupList } from '@domains/master-data'
 
 export function ItemFormDrawer({
   isOpen,
@@ -20,12 +20,20 @@ export function ItemFormDrawer({
   const nextCode = nextCodeResponse?.data?.code || ''
   const { data: uoms = [] } = useLookupUoms()
   const { data: existingItems = [] } = useLookupItems()
+  const { data: itemGroupResponse } = useItemGroupList({ isActive: true, pageSize: 200 })
+  const rawItemGroups = itemGroupResponse?.data || []
+  const itemGroups = rawItemGroups.map((g) => ({
+    value: g.id,
+    label: `${g.itemGroupCode} — ${g.itemGroupName}`,
+  }))
 
   const {
     register,
     handleSubmit,
     reset,
     control,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(itemSchema),
@@ -40,7 +48,7 @@ export function ItemFormDrawer({
           itemName: initialData.itemName || '',
           itemNameEn: initialData.itemNameEn || '',
           cargoForm: initialData.cargoForm || 'BULK',
-          productGroup: initialData.productGroup || 'AGRICULTURAL',
+          itemGroupId: initialData.itemGroupId || '',
           baseUomId: initialData.baseUomId || '',
           billingUomId: initialData.billingUomId || '',
           stdGrossWeight: initialData.stdGrossWeight != null ? Number(initialData.stdGrossWeight) : null,
@@ -64,6 +72,15 @@ export function ItemFormDrawer({
       document.body.style.overflow = ''
     }
   }, [isOpen])
+
+  const selectedGroupId = watch('itemGroupId')
+  useEffect(() => {
+    if (!selectedGroupId || isEdit) return
+    const group = rawItemGroups.find((g) => g.id === selectedGroupId)
+    if (!group) return
+    if (group.cargoForm) setValue('cargoForm', group.cargoForm)
+    if (group.weighbridgeQtyUomId) setValue('baseUomId', group.weighbridgeQtyUomId)
+  }, [selectedGroupId, rawItemGroups])
 
   const handleFormSubmit = (data) => {
     const payload = { ...data }
@@ -136,12 +153,13 @@ export function ItemFormDrawer({
                       </div>
                     )}
                   </div>
-                  <Controller name="productGroup" control={control} render={({ field }) => (
+                  <Controller name="itemGroupId" control={control} render={({ field }) => (
                     <Select
-                      label="Nhóm sản phẩm"
+                      label="Nhóm hàng hóa"
                       required
-                      options={PRODUCT_GROUPS}
-                      error={errors.productGroup?.message}
+                      placeholder="Chọn nhóm"
+                      options={itemGroups}
+                      error={errors.itemGroupId?.message}
                       value={field.value}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
@@ -175,6 +193,7 @@ export function ItemFormDrawer({
                     <Select
                       label="Dạng hàng"
                       required
+                      disabled={!!selectedGroupId}
                       options={CARGO_FORMS}
                       error={errors.cargoForm?.message}
                       value={field.value}
@@ -185,6 +204,7 @@ export function ItemFormDrawer({
                     <Select
                       label="Đơn vị tính cơ bản"
                       required
+                      disabled={!!selectedGroupId}
                       placeholder="Chọn đơn vị"
                       options={uoms.map((u) => ({ value: u.id, label: `${u.code} - ${u.name}` }))}
                       error={errors.baseUomId?.message}

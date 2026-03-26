@@ -21,6 +21,10 @@ export class CreateItemDto {
   @IsString()
   productGroup?: string;
 
+  @IsOptional()
+  @IsUUID()
+  itemGroupId?: string;
+
   @IsEnum(CargoForm)
   cargoForm!: CargoForm;
 
@@ -151,6 +155,10 @@ export class UpdateItemDto {
   @IsOptional()
   @IsString()
   productGroup?: string;
+
+  @IsOptional()
+  @IsUUID()
+  itemGroupId?: string;
 
   @IsOptional()
   @IsString()

@@ -85,6 +85,16 @@ export function useLookupInventoryStatuses() {
   })
 }
 
+export function useLookupItemGroupIdsByWarehouses(warehouseIds = []) {
+  return useQuery({
+    queryKey: ['lookupItemGroupIdsByWarehouses', ...warehouseIds],
+    queryFn: () => lookupApi.getItemGroupIdsByWarehouses(warehouseIds),
+    staleTime: 30000,
+    enabled: warehouseIds.length > 0,
+    select: (response) => (Array.isArray(response) ? response : response.data || []),
+  })
+}
+
 export function useLookupVessels() {
   return useQuery({
     queryKey: [...MASTER_DATA_QUERY_KEYS.vessels, 'lookup'],

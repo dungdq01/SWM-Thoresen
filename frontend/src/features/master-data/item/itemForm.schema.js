@@ -18,9 +18,7 @@ export const itemSchema = z.object({
   cargoForm: z.enum(['BULK', 'BAGGED_25KG', 'BAGGED_40KG', 'BAGGED_50KG', 'JUMBO', 'PACKAGING', 'CONTAINER', 'DRUM', 'PALLET', 'OTHER'], {
     errorMap: () => ({ message: 'Vui lòng chọn dạng hàng' }),
   }),
-  productGroup: z.enum(['AGRICULTURAL', 'FERTILIZER', 'CHEMICAL', 'STEEL', 'GENERAL'], {
-    errorMap: () => ({ message: 'Vui lòng chọn nhóm sản phẩm' }),
-  }),
+  itemGroupId: z.string().uuid('Vui lòng chọn nhóm hàng hóa').min(1, 'Nhóm hàng hóa là bắt buộc'),
   baseUomId: z.string().min(1, 'Đơn vị tính cơ bản là bắt buộc'),
   billingUomId: z.string().min(1, 'Đơn vị tính xuất HĐ là bắt buộc'),
   stdGrossWeight: z
@@ -52,7 +50,7 @@ export const itemDefaultValues = {
   itemName: '',
   itemNameEn: '',
   cargoForm: 'BULK',
-  productGroup: 'AGRICULTURAL',
+  itemGroupId: '',
   baseUomId: '',
   billingUomId: '',
   stdGrossWeight: null,

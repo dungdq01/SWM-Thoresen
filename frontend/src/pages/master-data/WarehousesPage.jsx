@@ -94,14 +94,10 @@ export function WarehousesPage() {
   const handleSubmit = async (data) => {
     try {
       if (drawerState.data) {
-        // Remove warehouseCode (immutable) and add rowVersion for optimistic locking
         const { warehouseCode, ...updateFields } = data
         await updateMutation.mutateAsync({
           id: drawerState.data.id,
-          data: {
-            ...updateFields,
-            rowVersion: Number(drawerState.data.rowVersion)
-          }
+          data: { ...updateFields, rowVersion: Number(drawerState.data.rowVersion) }
         })
       } else {
         await createMutation.mutateAsync(data)
@@ -168,7 +164,7 @@ export function WarehousesPage() {
         isLoading={isLoading}
         isEmpty={warehouses.length === 0}
         emptyMessage="Chưa có kho nào"
-        colSpan={6}
+        colSpan={7}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -179,6 +175,7 @@ export function WarehousesPage() {
             <TableHead>Tên kho</TableHead>
             <TableHead align="center">Loại</TableHead>
             <TableHead>Sức chứa</TableHead>
+            <TableHead>Chủ kho</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
           </TableRow>
@@ -221,6 +218,16 @@ export function WarehousesPage() {
                       <span className="text-navy-400">—</span>
                     )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {wh.owner ? (
+                    <div>
+                      <p className="font-medium text-navy-900 text-sm">{wh.owner.ownerCode}</p>
+                      <p className="text-xs text-navy-500 line-clamp-1">{wh.owner.ownerName}</p>
+                    </div>
+                  ) : (
+                    <span className="text-navy-400">—</span>
+                  )}
                 </TableCell>
                 <TableCell align="center">
                   <StatusBadge isActive={wh.isActive} />

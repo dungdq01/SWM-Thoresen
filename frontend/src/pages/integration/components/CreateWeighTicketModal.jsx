@@ -26,7 +26,6 @@ export function CreateWeighTicketModal({
     weighingType: 'WEIGH_IN',
     ownerId: '',
     ticketNumber: '',
-    itemCode: '',
     notes: '',
   })
 
@@ -39,7 +38,6 @@ export function CreateWeighTicketModal({
         weighingType: 'WEIGH_IN',
         ownerId: '',
         ticketNumber: '',
-        itemCode: '',
         notes: '',
       })
     }
@@ -53,7 +51,6 @@ export function CreateWeighTicketModal({
       weighingType,
       ownerId: '',
       ticketNumber: '',
-      itemCode: '',
       notes: '',
     })
   }
@@ -84,7 +81,6 @@ export function CreateWeighTicketModal({
         warehouseId: '',
         vehicleNumber: '',
         ownerId: '',
-        itemCode: '',
       }))
       return
     }
@@ -101,7 +97,6 @@ export function CreateWeighTicketModal({
         warehouseId: ticket.warehouseId || ticket.warehouse?.id || '',
         vehicleNumber: ticket.vehicleNumber || '',
         ownerId: ticket.ownerId || ticket.owner?.id || '',
-        itemCode: ticket.lines?.[0]?.item?.itemCode || ticket.lines?.[0]?.itemCode || '',
       }))
     }
   }
@@ -128,7 +123,6 @@ export function CreateWeighTicketModal({
       // Additional fields for manual entry
       warehouseId: draft.warehouseId || null,
       ownerId: draft.ownerId || null,
-      itemCode: draft.itemCode || null,
       notes: draft.notes || null,
     }
     onSubmit(payload)
@@ -165,22 +159,18 @@ export function CreateWeighTicketModal({
     ]
   }, [owners, ticketOwnerId])
 
-  const itemOptions = useMemo(() => {
-    if (currentTicket?.lines?.length > 0) {
-      const ticketItems = currentTicket.lines.map((l) => l.item?.itemCode || l.itemCode).filter(Boolean)
-      const filteredItems = items.filter((i) => ticketItems.includes(i.code))
-      if (filteredItems.length > 0) {
-        return [
-          { value: '', label: '-- Chọn mã hàng --' },
-          ...filteredItems.map((i) => ({ value: i.code, label: `${i.code} - ${i.name}` })),
-        ]
-      }
-    }
-    return [
-      { value: '', label: '-- Chọn mã hàng --' },
-      ...items.map((i) => ({ value: i.code, label: `${i.code} - ${i.name}` })),
-    ]
-  }, [items, currentTicket])
+  // Danh sách items từ ASN/shipment
+  const ticketLines = useMemo(() => {
+    if (!currentTicket?.lines?.length) return []
+    return currentTicket.lines.map((l, idx) => ({
+      lineNumber: idx + 1,
+      itemCode: l.item?.itemCode || l.itemCode || '—',
+      itemName: l.item?.itemName || l.itemName || '',
+      expectedQty: l.expectedQty || 0,
+      uomCode: l.uom?.uomCode || l.uomCode || '',
+      status: l.status || 'OPEN',
+    }))
+  }, [currentTicket])
 
   // Tạo options cho mã phiếu dựa theo loại cân
   const ticketOptions = useMemo(() => {
@@ -317,19 +307,42 @@ export function CreateWeighTicketModal({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Mã hàng */}
-                  <Select
-                    label="Mã hàng"
-                    value={draft.itemCode}
-                    onChange={(e) => setDraft((prev) => ({ ...prev, itemCode: e.target.value }))}
-                    options={itemOptions}
-                    disabled={!!(currentTicket && currentTicket.lines?.length > 0)}
-                  />
-
-                  {/* Placeholder for layout */}
-                  <div />
-                </div>
+                {/* Danh sách mặt hàng từ phiếu */}
+                {ticketLines.length > 0 && (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-navy-700">
+                      Mặt hàng trên phiếu ({ticketLines.length} dòng)
+                    </label>
+                    <div className="rounded-xl border border-moon-200 overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-moon-50 text-navy-600">
+                            <th className="px-3 py-2 text-left font-medium">#</th>
+                            <th className="px-3 py-2 text-left font-medium">Mặt hàng</th>
+                            <th className="px-3 py-2 text-right font-medium">SL dự kiến</th>
+                            <th className="px-3 py-2 text-center font-medium">ĐVT</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-moon-100">
+                          {ticketLines.map((line) => (
+                            <tr key={line.lineNumber} className="text-navy-800">
+                              <td className="px-3 py-2 text-navy-400">{line.lineNumber}</td>
+                              <td className="px-3 py-2">
+                                <p className="font-medium">{line.itemName}</p>
+                                <p className="text-xs text-navy-400">{line.itemCode}</p>
+                              </td>
+                              <td className="px-3 py-2 text-right font-mono">{Number(line.expectedQty).toLocaleString('vi-VN')}</td>
+                              <td className="px-3 py-2 text-center">{line.uomCode}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-1.5 text-xs text-navy-400">
+                      Phiếu cân sẽ áp dụng cho tất cả {ticketLines.length} mặt hàng. Phân bổ khối lượng theo quy trình dỡ hàng (N+1 lần cân).
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Section 2: Ghi chú */}

@@ -510,6 +510,8 @@ export const lookupApi = {
     (entity, fieldName) => masterDataMockApi.lookupApi.getDropdownOptions(entity, fieldName),
     (entity, fieldName) => httpClient.get(`${BASE_URL}/lookups/dropdown-options`, { params: { entity, fieldName } })
   ),
+  getItemGroupIdsByWarehouses: (warehouseIds) =>
+    httpClient.get(`${BASE_URL}/lookups/item-group-ids-by-warehouses`, { params: { warehouseIds: warehouseIds.join(',') } }),
 }
 
 // ==================== LOT APIs ====================

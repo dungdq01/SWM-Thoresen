@@ -58,6 +58,7 @@ export class UomService {
     const oldValue = { ...uom };
     const result = await this.uomRepository.update(id, {
       description: dto.description,
+      ...(dto.isBaseUom !== undefined && { isBaseUom: dto.isBaseUom }),
       decimalPrecision: dto.decimalPrecision,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));

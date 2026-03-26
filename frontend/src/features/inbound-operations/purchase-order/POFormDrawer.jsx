@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FileText, X, Plus, Trash2, Sparkles, Ship, Truck } from 'lucide-react'
 import { Button, Input, Select, MultiSelect, Textarea } from '@shared/ui'
+import { useLookupItemGroupIdsByWarehouses } from '@domains/master-data'
 
 const PO_TYPES = [
   { value: 'SEA', label: 'Nhập đường thủy' },
@@ -49,6 +50,16 @@ export function POFormDrawer({
   const isEdit = !!initialData
   const [draft, setDraft] = useState({ ...emptyDraft, lines: [{ ...emptyLine }] })
 
+  // Lấy danh sách itemGroupIds được phép theo kho đã chọn
+  const { data: allowedGroupIds = [] } = useLookupItemGroupIdsByWarehouses(draft.warehouseIds)
+
+  // Filter items: chỉ hiện items thuộc nhóm hàng được phép ở kho đã chọn
+  const filteredItems = useMemo(() => {
+    if (draft.warehouseIds.length === 0) return items
+    if (allowedGroupIds.length === 0) return []
+    return items.filter((i) => i.extra?.itemGroupId && allowedGroupIds.includes(i.extra.itemGroupId))
+  }, [items, draft.warehouseIds, allowedGroupIds])
+
   useEffect(() => {
     if (!isOpen) return
     if (initialData) {
@@ -88,9 +99,20 @@ export function POFormDrawer({
   const updateLine = useCallback((idx, field, value) => {
     setDraft((prev) => ({
       ...prev,
-      lines: prev.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
+      lines: prev.lines.map((l, i) => {
+        if (i !== idx) return l
+        const updated = { ...l, [field]: value }
+        // Autofill UOM khi chọn mặt hàng
+        if (field === 'itemId' && value) {
+          const selectedItem = items.find((it) => it.id === value)
+          if (selectedItem?.extra?.baseUomId) {
+            updated.uomId = selectedItem.extra.baseUomId
+          }
+        }
+        return updated
+      }),
     }))
-  }, [])
+  }, [items])
 
   const addLine = useCallback(() => {
     setDraft((prev) => ({ ...prev, lines: [...prev.lines, { ...emptyLine }] }))
@@ -129,7 +151,7 @@ export function POFormDrawer({
   const isLandTransportValid = draft.poType !== 'LAND' || !!draft.vehiclePlate.trim()
   const isValid = !!(draft.ownerId && draft.vendorId && draft.warehouseIds.length > 0 && draft.lines.some((l) => l.itemId) && isSeaTransportValid && isLandTransportValid)
 
-  const itemOptions = [{ value: '', label: '-- Chọn mặt hàng --' }, ...items.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
+  const itemOptions = [{ value: '', label: draft.warehouseIds.length === 0 ? '-- Chọn kho trước --' : '-- Chọn mặt hàng --' }, ...filteredItems.map((i) => ({ value: i.id, label: `${i.code} - ${i.name}` }))]
   const uomOptions = [{ value: '', label: '--' }, ...uoms.map((u) => ({ value: u.id, label: u.code }))]
 
   const sectionNum = (n) => draft.poType === 'SEA' ? n : n - 1
@@ -205,7 +227,7 @@ export function POFormDrawer({
                   <Select
                     label="Chủ hàng (Owner) *"
                     value={draft.ownerId}
-                    onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value }))}
+                    onChange={(e) => setDraft((p) => ({ ...p, ownerId: e.target.value, warehouseIds: [] }))}
                     options={[{ value: '', label: '-- Chọn Owner --' }, ...owners.map((o) => ({ value: o.id, label: `${o.code} - ${o.name}` }))]}
                   />
                   <Select
@@ -219,9 +241,12 @@ export function POFormDrawer({
                 <MultiSelect
                   label="Kho hàng *"
                   value={draft.warehouseIds}
-                  onChange={(values) => setDraft((p) => ({ ...p, warehouseIds: values }))}
-                  options={warehouses.map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))}
-                  placeholder="-- Chọn kho (có thể chọn nhiều) --"
+                  onChange={(values) => setDraft((p) => ({ ...p, warehouseIds: values, lines: [{ ...emptyLine }] }))}
+                  options={warehouses
+                    .filter((w) => !draft.ownerId || w.extra?.ownerId === draft.ownerId)
+                    .map((w) => ({ value: w.id, label: `${w.code} - ${w.name}` }))}
+                  placeholder={draft.ownerId ? '-- Chọn kho --' : '-- Chọn chủ hàng trước --'}
+                  disabled={!draft.ownerId}
                 />
 
                 <Textarea
@@ -334,6 +359,7 @@ export function POFormDrawer({
                           value={line.uomId}
                           onChange={(e) => updateLine(idx, 'uomId', e.target.value)}
                           options={uomOptions}
+                          disabled={!!line.itemId}
                         />
                         <div className="flex items-end pb-0.5">
                           {draft.lines.length > 1 ? (
