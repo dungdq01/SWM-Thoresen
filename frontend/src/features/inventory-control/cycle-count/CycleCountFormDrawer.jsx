@@ -69,7 +69,7 @@ export function CycleCountFormDrawer({
             onClick={onClose}
           />
           <motion.div
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-white shadow-2xl"
+            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[100vw] sm:max-w-xl flex-col bg-white shadow-2xl"
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
           >

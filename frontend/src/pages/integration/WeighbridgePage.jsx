@@ -37,11 +37,12 @@ const statusTone = (status) => {
   return 'default'
 }
 
-const statusLabel = (status) => {
+const statusLabel = (status, row) => {
+  if (status === 'WEIGHING') {
+    return row?.grossWeightKg ? 'Đang cân lần 2' : 'Đang cân lần 1'
+  }
   const labels = {
     RECEIVED: 'Tạo mới',
-    VALIDATED: 'Đã xác nhận',
-    WEIGHING: 'Đang cân lần 2',
     COMPLETED: 'Hoàn thành',
     LINKED: 'Đã liên kết',
     DUPLICATE: 'Trùng lặp',
@@ -189,7 +190,7 @@ export function WeighbridgePage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusTone(row.processingStatus)}>
-                    {statusLabel(row.processingStatus)}
+                    {statusLabel(row.processingStatus, row)}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -207,7 +208,7 @@ export function WeighbridgePage() {
                         </Button>
                       </>
                     )}
-                    {(row.processingStatus === 'VALIDATED' || row.processingStatus === 'WEIGHING') && !(row.grossWeightKg && row.tareWeightKg) && (
+                    {row.processingStatus === 'WEIGHING' && !(row.grossWeightKg && row.tareWeightKg) && (
                       <Button variant="ghost" size="sm" title={row.grossWeightKg ? 'Cân lần 2' : 'Cân lần 1'} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" onClick={async () => { const res = await refetchLogs(); const fresh = (res.data?.data || []).find((l) => l.id === row.id); setWeighingModalData(fresh || row) }}>
                         <Weight className="h-4 w-4" />
                       </Button>

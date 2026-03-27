@@ -74,7 +74,7 @@ export function TourLauncher() {
           />
 
           {/* Panel */}
-          <div className="fixed right-4 top-[72px] z-[9991] w-[420px] max-h-[calc(100vh-96px)] overflow-hidden rounded-2xl border border-moon-200 bg-white shadow-2xl animate-in slide-in-from-top-2 duration-200">
+          <div className="fixed right-2 sm:right-4 top-[72px] z-[9991] w-[calc(100vw-1rem)] sm:w-[380px] md:w-[420px] max-h-[calc(100vh-96px)] max-h-[calc(100dvh-96px)] overflow-hidden rounded-2xl border border-moon-200 bg-white shadow-2xl animate-in slide-in-from-top-2 duration-200">
             {/* Panel header */}
             <div className="border-b border-moon-200 bg-gradient-to-r from-navy-800 to-navy-900 px-5 py-4">
               <div className="flex items-center justify-between">
@@ -142,7 +142,7 @@ export function TourLauncher() {
             </div>
 
             {/* Flow list */}
-            <div className="overflow-y-auto max-h-[calc(100vh-320px)] p-3 space-y-2">
+            <div className="overflow-y-auto max-h-[calc(100vh-320px)] max-h-[calc(100dvh-320px)] p-3 space-y-2">
               {filteredFlows.map(flow => {
                 const completed = isTourCompleted(flow.id)
                 return (
@@ -202,17 +202,17 @@ export function TourLauncher() {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-moon-200 px-4 py-3 flex items-center justify-between">
+            <div className="border-t border-moon-200 px-3 sm:px-4 py-3 flex items-center justify-between">
               <button
                 onClick={resetProgress}
                 className="flex items-center gap-1.5 text-xs text-navy-400 hover:text-navy-600 transition-colors"
                 title="Reset tiến trình"
               >
                 <RotateCcw className="h-3 w-3" />
-                <span>Reset tiến trình</span>
+                <span>Reset</span>
               </button>
 
-              <div className="flex items-center gap-2 text-xs text-navy-500">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-navy-500">
                 <span>Phím tắt:</span>
                 <kbd className="rounded border border-moon-300 bg-moon-100 px-1.5 py-0.5 text-[10px] font-mono">←</kbd>
                 <kbd className="rounded border border-moon-300 bg-moon-100 px-1.5 py-0.5 text-[10px] font-mono">→</kbd>

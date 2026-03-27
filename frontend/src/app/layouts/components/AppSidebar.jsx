@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { 
+import {
   Boxes,
   ChevronDown,
   ChevronRight,
@@ -10,8 +10,8 @@ import {
   Settings,
   Database,
   FileText,
-  Package, 
-  Truck, 
+  Package,
+  Truck,
   TruckIcon,
   ArrowRightLeft,
   Waypoints,
@@ -21,6 +21,8 @@ import {
   ScanEye,
   Scale,
   Split,
+  PenTool,
+  Map,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { useLanguage } from '@shared/i18n'
@@ -64,6 +66,8 @@ const getMenuConfig = (t) => [
       { to: '/app/master-data/locations', label: t('sidebar.items.locations') },
       { to: '/app/master-data/location-types', label: 'Loại vị trí' },
       { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner' },
+      { _groupLabel: 'Thiết kế mặt bằng' },
+      { to: '/app/master-data/site-map-editor', label: 'Bản đồ tổng thể' },
       { _groupLabel: 'Cấu hình hệ thống' },
       { to: '/app/master-data/uoms', label: t('sidebar.items.uoms') },
       { to: '/app/master-data/uom-conversions', label: t('sidebar.items.uomConversions') },
@@ -81,9 +85,9 @@ const getMenuConfig = (t) => [
       { to: '/app/inventory-core/on-hand', label: t('sidebar.items.onHand') },
       { to: '/app/inventory-core/transactions', label: t('sidebar.items.transactions') },
       { to: '/app/inventory-core/holds', label: t('sidebar.items.holds') },
-      { to: '/app/inventory-core/workbench', label: t('sidebar.items.workbench') },
-      { to: '/app/inventory-core/reconciliation', label: t('sidebar.items.reconciliation') },
-      { to: '/app/inventory-core/snapshots', label: t('sidebar.items.snapshots') },
+      // { to: '/app/inventory-core/workbench', ... } — hidden
+      // { to: '/app/inventory-core/reconciliation', ... } — hidden
+      // { to: '/app/inventory-core/snapshots', ... } — hidden
     ],
   },
   { _divider: true, label: t('sidebar.sections.operations') },
@@ -111,26 +115,8 @@ const getMenuConfig = (t) => [
       { to: '/app/outbound-operations/documents', label: 'Chứng từ xuất' },
     ],
   },
-  {
-    id: 'goods-split',
-    label: 'Chia hàng đổi chủ',
-    icon: Split,
-    to: '/app/goods-split',
-  },
-  {
-    id: 'inventory-control',
-    label: t('sidebar.items.inventoryControlMenu'),
-    icon: ArrowRightLeft,
-    basePath: '/app/inventory-control',
-    children: [
-      { to: '/app/inventory-control/move-orders', label: t('sidebar.items.moveOrders') },
-      { to: '/app/inventory-control/transfers', label: t('sidebar.items.transfers') },
-      { to: '/app/inventory-control/status-change', label: t('sidebar.items.statusChange') },
-      { to: '/app/inventory-control/cycle-count', label: t('sidebar.items.cycleCount') },
-      { to: '/app/inventory-control/adjustments', label: t('sidebar.items.adjustments') },
-      { to: '/app/inventory-control/history', label: t('sidebar.items.history') },
-    ],
-  },
+  // { id: 'goods-split', label: 'Chia hàng đổi chủ', icon: Split, to: '/app/goods-split' },
+  // { id: 'inventory-control', ... } — hidden
   { _divider: true, label: t('sidebar.sections.services') },
   {
     id: 'vas',
@@ -143,33 +129,9 @@ const getMenuConfig = (t) => [
       { to: '/app/vas/dashboard', label: t('sidebar.items.vasDashboard') },
     ],
   },
-  {
-    id: 'billing',
-    label: t('sidebar.items.billingInvoices'),
-    icon: FileText,
-    basePath: '/app/billing',
-    children: [
-      { to: '/app/billing/invoices', label: t('sidebar.items.invoices') },
-      { to: '/app/billing/rate-cards', label: t('sidebar.items.rateCards') },
-      { to: '/app/billing/events', label: t('sidebar.items.billableEvents') },
-      { to: '/app/billing/dashboard', label: t('sidebar.items.billingDashboard') },
-    ],
-  },
+  // { id: 'billing', ... } — hidden
   { _divider: true, label: t('sidebar.sections.system') },
-  {
-    id: 'reporting',
-    label: t('sidebar.items.reportingMenu'),
-    icon: BarChart3,
-    basePath: '/app/reporting',
-    children: [
-      { to: '/app/reporting/dashboard', label: t('sidebar.items.reportingDashboard') },
-      { to: '/app/reporting/inventory', label: t('sidebar.items.inventoryReport') },
-      { to: '/app/reporting/billing', label: t('sidebar.items.billingReport') },
-      { to: '/app/reporting/audit', label: t('sidebar.items.auditTrail') },
-      { to: '/app/reporting/reconciliation', label: t('sidebar.items.reconciliation') },
-      { to: '/app/reporting/go-live', label: t('sidebar.items.goLiveChecklist') },
-    ],
-  },
+  // { id: 'reporting', ... } — hidden
   {
     id: 'weighbridge',
     label: t('sidebar.items.weighbridge'),
@@ -182,17 +144,7 @@ const getMenuConfig = (t) => [
     icon: ScanEye,
     to: '/app/ocr',
   },
-  {
-    id: 'integration',
-    label: t('sidebar.items.integrationHub'),
-    icon: Waypoints,
-    basePath: '/app/integration',
-    children: [
-      { to: '/app/integration/monitoring', label: t('sidebar.items.monitoring') },
-      { to: '/app/integration/alerts', label: t('sidebar.items.alerts') },
-      { to: '/app/integration/channels', label: t('sidebar.items.channels') },
-    ],
-  },
+  // { id: 'integration', ... } — hidden
   {
     id: 'foundation',
     label: t('sidebar.items.foundationGovernance'),

@@ -144,7 +144,7 @@ export class WeighbridgeLogService {
       );
     }
     await this.eventStateRepo.updateByLogId(id, {
-      processingStatus: WeighEventProcessingStatus.VALIDATED as any,
+      processingStatus: WeighEventProcessingStatus.WEIGHING as any,
     });
 
     // Update receipt status: AWAITING_WEIGHING → WEIGHING_1 when weigh ticket confirmed
@@ -174,7 +174,7 @@ export class WeighbridgeLogService {
       }
     }
 
-    return { id, processingStatus: WeighEventProcessingStatus.VALIDATED };
+    return { id, processingStatus: WeighEventProcessingStatus.WEIGHING };
   }
 
   async rejectLog(id: string, reason?: string) {
@@ -380,6 +380,35 @@ export class WeighbridgeLogService {
         });
       }
 
+      // SO → WEIGHING when first weighing starts
+      if (shipment.salesOrderId) {
+        try {
+          const so = await this.prisma.salesOrder.findUnique({
+            where: { id: shipment.salesOrderId },
+            select: { status: true },
+          });
+          if (so && so.status === 'CONFIRMED') {
+            await this.prisma.salesOrder.update({
+              where: { id: shipment.salesOrderId },
+              data: { status: 'WEIGHING' },
+            });
+            await this.prisma.salesOrderStatusHistory.create({
+              data: {
+                soId: shipment.salesOrderId,
+                entityLevel: 'HEADER',
+                fromStatus: 'CONFIRMED',
+                toStatus: 'WEIGHING',
+                triggerAction: 'WEIGH_OUT_START',
+                correlationId: shipmentId,
+              },
+            });
+            this.logger.log(`SO ${shipment.salesOrderId} status: CONFIRMED → WEIGHING`);
+          }
+        } catch (e: any) {
+          this.logger.warn(`Failed to update SO status on tare: ${e.message}`);
+        }
+      }
+
       this.logger.log(`Outbound weighing #1 (tare): ${weightKg} kg for shipment ${shipmentId}`);
       return { id: logId, sequence: 1, tareWeightKg: weightKg, processingStatus: WeighEventProcessingStatus.WEIGHING };
     }
@@ -496,6 +525,99 @@ export class WeighbridgeLogService {
       });
 
       this.logger.log(`Shipment ${shipmentId} SHIPPED: total net=${totalNet} kg`);
+
+      // Rollup shipped qty to SalesOrder lines
+      try {
+        const shippedShipment = await this.prisma.shipmentHeader.findUnique({
+          where: { id: shipmentId },
+          select: { salesOrderId: true },
+        });
+        if (shippedShipment?.salesOrderId) {
+          const soLines = await this.prisma.salesOrderLine.findMany({
+            where: { soId: shippedShipment.salesOrderId },
+            select: { id: true, itemId: true, expectedQtyKg: true },
+          });
+          let soTotalShipped = 0;
+          for (const soLine of soLines) {
+            const shipLines = await this.prisma.shipmentLine.findMany({
+              where: { soLineId: soLine.id, lineStatus: 'LINE_SHIPPED' },
+              select: { shippedQty: true, netWeightKg: true },
+            });
+            // Fallback: match by itemId if soLineId not set
+            const shipLinesByItem = shipLines.length === 0
+              ? await this.prisma.shipmentLine.findMany({
+                  where: {
+                    header: { salesOrderId: shippedShipment.salesOrderId },
+                    itemId: soLine.itemId,
+                    lineStatus: 'LINE_SHIPPED',
+                  },
+                  select: { shippedQty: true, netWeightKg: true },
+                })
+              : shipLines;
+            const totalShippedQty = shipLinesByItem.reduce(
+              (sum: number, sl: any) => sum + Number(sl.shippedQty || sl.netWeightKg || 0), 0,
+            );
+            soTotalShipped += totalShippedQty;
+            await this.prisma.salesOrderLine.update({
+              where: { id: soLine.id },
+              data: { shippedQtyKg: totalShippedQty, totalShippedQty },
+            });
+          }
+          // Determine SO status based on shipped qty and active shipments
+          const so = await this.prisma.salesOrder.findUnique({
+            where: { id: shippedShipment.salesOrderId },
+            select: { status: true, totalExpectedQtyKg: true },
+          });
+          const soUpdateData: any = { totalShippedQtyKg: soTotalShipped };
+
+          if (so && !['CLOSED', 'CANCELLED'].includes(so.status)) {
+            const totalExpected = Number(so.totalExpectedQtyKg || 0);
+            const activeShipmentCount = await this.prisma.shipmentHeader.count({
+              where: {
+                salesOrderId: shippedShipment.salesOrderId,
+                status: { notIn: ['SHIPPED', 'CLOSED', 'CANCELLED'] },
+              },
+            });
+
+            if (activeShipmentCount === 0 && soTotalShipped > 0) {
+              // All shipments done → SHIPPED
+              soUpdateData.status = 'SHIPPED';
+              await this.prisma.salesOrderLine.updateMany({
+                where: { soId: shippedShipment.salesOrderId, status: { notIn: ['CANCELLED'] } },
+                data: { status: 'SHIPPED' },
+              });
+            } else if (soTotalShipped > 0 && soTotalShipped < totalExpected) {
+              // Some shipped but not all → PARTIAL
+              if (['CONFIRMED', 'WEIGHING'].includes(so.status)) {
+                soUpdateData.status = 'PARTIALLY_RELEASED';
+              }
+            }
+
+            // Record status history if changed
+            if (soUpdateData.status && soUpdateData.status !== so.status) {
+              await this.prisma.salesOrderStatusHistory.create({
+                data: {
+                  soId: shippedShipment.salesOrderId,
+                  entityLevel: 'HEADER',
+                  fromStatus: so.status,
+                  toStatus: soUpdateData.status,
+                  triggerAction: 'WEIGH_SHIP_COMPLETE',
+                  correlationId: shipmentId,
+                },
+              });
+            }
+          }
+
+          await this.prisma.salesOrder.update({
+            where: { id: shippedShipment.salesOrderId },
+            data: soUpdateData,
+          });
+          this.logger.log(`SO rollup completed: ${shippedShipment.salesOrderId}, status=${soUpdateData.status || 'unchanged'}, total shipped=${soTotalShipped} kg`);
+        }
+      } catch (rollupErr: any) {
+        this.logger.error(`SO rollup failed for shipment ${shipmentId}: ${rollupErr.message}`);
+      }
+
       return { id: logId, sequence: nextSequence, isFinal: true, netWeightKg: netWeight, totalNetWeightKg: totalNet, processingStatus: WeighEventProcessingStatus.COMPLETED };
     }
 
@@ -699,14 +821,20 @@ export class WeighbridgeLogService {
         data: { grossWeightKg: Number(existingRecords[0].weightKg), tareWeightKg: weightKg, netWeightKg: totalNet, status: 'COMPLETED' },
       });
       await this.prisma.receiptStatusHistory.create({
-        data: { receiptHeaderId: receiptId, fromStatus: 'UNLOADING', toStatus: 'COMPLETED', transitionCode: 'WEIGH_FINAL', triggeredBy: undefined, correlationId: receiptId, occurredAt: now },
+        data: { receiptHeaderId: receiptId, fromStatus: receipt.status, toStatus: 'COMPLETED', transitionCode: 'WEIGH_FINAL', triggeredBy: undefined, correlationId: receiptId, occurredAt: now },
       });
 
       this.logger.log(`Receipt ${receiptId} COMPLETED: total net=${totalNet} kg`);
       return { id: logId, sequence: nextSequence, isFinal: true, netWeightKg: netWeight, totalNetWeightKg: totalNet, processingStatus: WeighEventProcessingStatus.COMPLETED };
     }
 
-    // ─── NOT final: keep UNLOADING ───
+    // ─── NOT final: back to UNLOADING for next unload batch ───
+    if (receipt.status !== 'UNLOADING') {
+      await this.prisma.receiptHeader.update({ where: { id: receiptId }, data: { status: 'UNLOADING' } });
+      await this.prisma.receiptStatusHistory.create({
+        data: { receiptHeaderId: receiptId, fromStatus: receipt.status, toStatus: 'UNLOADING', transitionCode: 'WEIGH_INTERMEDIATE', triggeredBy: undefined, correlationId: receiptId, occurredAt: now },
+      });
+    }
     return { id: logId, sequence: nextSequence, isFinal: false, netWeightKg: netWeight, processingStatus: WeighEventProcessingStatus.WEIGHING };
   }
 

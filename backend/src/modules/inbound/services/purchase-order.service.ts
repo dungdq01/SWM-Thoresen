@@ -16,8 +16,8 @@ enum PoStatus {
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   NEW: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['NEW', 'RECEIVING', 'CLOSED', 'CANCELLED'],
-  RECEIVING: ['CLOSED', 'CANCELLED'],
+  CONFIRMED: ['RECEIVING', 'CLOSED'],
+  RECEIVING: ['CLOSED'],
   CLOSED: [],
   CANCELLED: [],
 };
@@ -188,7 +188,7 @@ export class PurchaseOrderService {
     const validSortFields: Record<string, string> = { createdAt: 'createdAt', poNumber: 'poNumber', status: 'status', expectedDeliveryDate: 'expectedDeliveryDate' };
     const orderField = validSortFields[sortBy] || 'createdAt';
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.prisma.purchaseOrder.findMany({
         where,
         include: this.includeDetail(),
@@ -198,6 +198,46 @@ export class PurchaseOrderService {
       }),
       this.prisma.purchaseOrder.count({ where }),
     ]);
+
+    // Attach receipts for each PO (ReceiptHeader.poId stores poNumber string)
+    const poNumbers = rawData.map((po) => po.poNumber);
+    const receipts = poNumbers.length > 0
+      ? await this.prisma.receiptHeader.findMany({
+          where: { poId: { in: poNumbers } },
+          select: {
+            id: true,
+            receiptNumber: true,
+            asnId: true,
+            poId: true,
+            vehicleNumber: true,
+            status: true,
+            netWeightKg: true,
+            grossWeightKg: true,
+            tareWeightKg: true,
+            createdAt: true,
+            lines: {
+              select: {
+                itemId: true,
+                receivedQty: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+
+    const receiptsByPo = new Map<string, typeof receipts>();
+    for (const r of receipts) {
+      const list = receiptsByPo.get(r.poId) || [];
+      list.push(r);
+      receiptsByPo.set(r.poId, list);
+    }
+
+    const data = rawData.map((po) => ({
+      ...po,
+      receipts: receiptsByPo.get(po.poNumber) || [],
+    }));
 
     return {
       data,

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Stage, Layer, Rect, Text, Group, Line } from 'react-konva'
+import { Layers, Box } from 'lucide-react'
 import { useSiteLayout, useSaveSiteLayout } from '@domains/master-data/hooks/useLayout'
-import { useState } from 'react'
 import { snapToGrid } from '../utils/coordTransform'
+
+const SitePreview3D = lazy(() => import('./SitePreview3D'))
 
 const SITE_ID = 'TVL-SITE'
 const PIXELS_PER_METER = 1.5
@@ -20,6 +22,7 @@ export default function SiteMapEditor() {
   const [elements, setElements] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [isDirty, setIsDirty] = useState(false)
+  const [viewMode, setViewMode] = useState('2d')
 
   useEffect(() => {
     if (siteData) {
@@ -100,7 +103,7 @@ export default function SiteMapEditor() {
   }
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen text-slate-400">Đang tải site map...</div>
+    return <div className="flex items-center justify-center h-screen h-dvh text-slate-400">Đang tải site map...</div>
   }
 
   const containerWidth = containerRef.current?.clientWidth || 1200
@@ -119,14 +122,41 @@ export default function SiteMapEditor() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen h-dvh bg-white">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
-        <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-700 text-sm">
-          ← Quay lại
+      <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 shrink-0 overflow-x-auto">
+        <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-700 text-sm flex-shrink-0">
+          ← <span className="hidden sm:inline">Quay lại</span>
         </button>
-        <div className="w-px h-5 bg-slate-300" />
-        <h1 className="text-sm font-semibold text-slate-800">Site Map Editor: {SITE_ID}</h1>
+        <div className="w-px h-5 bg-slate-300 flex-shrink-0" />
+        <h1 className="text-xs sm:text-sm font-semibold text-slate-800 truncate">Site Map Editor: {SITE_ID}</h1>
+
+        {/* 2D/3D Toggle */}
+        <div className="ml-auto sm:ml-4 flex items-center bg-slate-200 rounded-lg p-0.5 flex-shrink-0">
+          <button
+            onClick={() => setViewMode('2d')}
+            className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              viewMode === '2d'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            2D
+          </button>
+          <button
+            onClick={() => setViewMode('3d')}
+            className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              viewMode === '3d'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Box className="w-3.5 h-3.5" />
+            3D
+          </button>
+        </div>
+
         <div className="flex-1" />
         {isDirty && <span className="text-xs text-amber-600 mr-2">Chưa lưu</span>}
         <button
@@ -139,77 +169,90 @@ export default function SiteMapEditor() {
       </div>
 
       {/* Canvas */}
-      <div ref={containerRef} className="flex-1 bg-slate-100 overflow-hidden">
-        <Stage
-          ref={stageRef}
-          width={containerWidth}
-          height={containerHeight}
-          x={containerWidth / 2}
-          y={containerHeight / 2}
-          draggable
-          onWheel={handleWheel}
-          onClick={(e) => { if (e.target === e.target.getStage()) setSelectedId(null) }}
+      {viewMode === '2d' ? (
+        <div ref={containerRef} className="flex-1 bg-slate-100 overflow-hidden">
+          <Stage
+            ref={stageRef}
+            width={containerWidth}
+            height={containerHeight}
+            x={containerWidth / 2}
+            y={containerHeight / 2}
+            draggable
+            onWheel={handleWheel}
+            onClick={(e) => { if (e.target === e.target.getStage()) setSelectedId(null) }}
+          >
+            <Layer>
+              {gridLines}
+
+              {/* Origin crosshair */}
+              <Line points={[-20, 0, 20, 0]} stroke="#94a3b8" strokeWidth={1} />
+              <Line points={[0, -20, 0, 20]} stroke="#94a3b8" strokeWidth={1} />
+
+              {/* Warehouses */}
+              {warehouses.map((wh, idx) => {
+                const wPx = wh.lengthM * PIXELS_PER_METER
+                const hPx = wh.widthM * PIXELS_PER_METER
+                const isSelected = selectedId === wh.id
+                return (
+                  <Group
+                    key={wh.id}
+                    x={wh.xM * PIXELS_PER_METER}
+                    y={wh.yM * PIXELS_PER_METER}
+                    draggable
+                    onClick={(e) => { e.cancelBubble = true; setSelectedId(wh.id) }}
+                    onDragEnd={(e) => handleDragEnd(idx, e)}
+                  >
+                    <Rect
+                      width={wPx}
+                      height={hPx}
+                      fill={wh.displayColor || '#3b82f6'}
+                      opacity={isSelected ? 0.5 : 0.3}
+                      stroke={isSelected ? '#1d4ed8' : wh.displayColor || '#3b82f6'}
+                      strokeWidth={isSelected ? 2 : 1}
+                      cornerRadius={2}
+                    />
+                    <Text
+                      text={wh.code}
+                      x={4}
+                      y={4}
+                      fontSize={11}
+                      fontStyle="bold"
+                      fill="#1e293b"
+                    />
+                    <Text
+                      text={wh.name}
+                      x={4}
+                      y={18}
+                      fontSize={9}
+                      fill="#475569"
+                      width={wPx - 8}
+                      ellipsis
+                    />
+                    <Text
+                      text={`${wh.lengthM}x${wh.widthM}m`}
+                      x={4}
+                      y={hPx - 14}
+                      fontSize={8}
+                      fill="#64748b"
+                    />
+                  </Group>
+                )
+              })}
+            </Layer>
+          </Stage>
+        </div>
+      ) : (
+        <Suspense
+          fallback={
+            <div className="flex-1 flex items-center justify-center bg-slate-900 text-slate-400">
+              <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mr-3" />
+              Đang tải 3D...
+            </div>
+          }
         >
-          <Layer>
-            {gridLines}
-
-            {/* Origin crosshair */}
-            <Line points={[-20, 0, 20, 0]} stroke="#94a3b8" strokeWidth={1} />
-            <Line points={[0, -20, 0, 20]} stroke="#94a3b8" strokeWidth={1} />
-
-            {/* Warehouses */}
-            {warehouses.map((wh, idx) => {
-              const wPx = wh.lengthM * PIXELS_PER_METER
-              const hPx = wh.widthM * PIXELS_PER_METER
-              const isSelected = selectedId === wh.id
-              return (
-                <Group
-                  key={wh.id}
-                  x={wh.xM * PIXELS_PER_METER}
-                  y={wh.yM * PIXELS_PER_METER}
-                  draggable
-                  onClick={(e) => { e.cancelBubble = true; setSelectedId(wh.id) }}
-                  onDragEnd={(e) => handleDragEnd(idx, e)}
-                >
-                  <Rect
-                    width={wPx}
-                    height={hPx}
-                    fill={wh.displayColor || '#3b82f6'}
-                    opacity={isSelected ? 0.5 : 0.3}
-                    stroke={isSelected ? '#1d4ed8' : wh.displayColor || '#3b82f6'}
-                    strokeWidth={isSelected ? 2 : 1}
-                    cornerRadius={2}
-                  />
-                  <Text
-                    text={wh.code}
-                    x={4}
-                    y={4}
-                    fontSize={11}
-                    fontStyle="bold"
-                    fill="#1e293b"
-                  />
-                  <Text
-                    text={wh.name}
-                    x={4}
-                    y={18}
-                    fontSize={9}
-                    fill="#475569"
-                    width={wPx - 8}
-                    ellipsis
-                  />
-                  <Text
-                    text={`${wh.lengthM}x${wh.widthM}m`}
-                    x={4}
-                    y={hPx - 14}
-                    fontSize={8}
-                    fill="#64748b"
-                  />
-                </Group>
-              )
-            })}
-          </Layer>
-        </Stage>
-      </div>
+          <SitePreview3D warehouses={warehouses} />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -48,7 +48,7 @@ export const WarehouseDetailPanel = memo(function WarehouseDetailPanel() {
   const dashLen = (wh.fill / 100) * circumference
 
   return (
-    <div className="absolute top-0 right-0 h-full w-[360px] pointer-events-auto animate-in slide-in-from-right duration-300 z-[150]">
+    <div className="absolute top-0 right-0 h-full w-[calc(100vw-1rem)] sm:w-[320px] md:w-[360px] max-w-[360px] pointer-events-auto animate-in slide-in-from-right duration-300 z-[150]">
       <div className="h-full bg-black/90 backdrop-blur-xl border-l border-white/8 overflow-y-auto overflow-x-hidden"
         style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
 

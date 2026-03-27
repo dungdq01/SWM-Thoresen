@@ -342,7 +342,7 @@ export function CreateInboundReceiptModal({
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[100vw] sm:max-w-xl md:max-w-2xl flex-col bg-white shadow-2xl"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-moon-200 px-6 py-4">

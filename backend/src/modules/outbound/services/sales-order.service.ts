@@ -13,16 +13,8 @@ const SO_TYPE_MAP: Record<string, string> = {
   LAND: 'CONSIGNMENT',
 };
 
-// Map schema status to frontend status
-const STATUS_MAP: Record<string, string> = {
-  DRAFT: 'NEW',
-  CONFIRMED: 'CONFIRMED',
-  WEIGHING: 'WEIGHING',
-  PARTIALLY_RELEASED: 'PARTIAL',
-  FULLY_RELEASED: 'SHIPPED',
-  CLOSED: 'CLOSED',
-  CANCELLED: 'CANCELLED',
-};
+// Status passthrough — return raw DB enum values to frontend
+// FE uses: DRAFT, CONFIRMED, WEIGHING, PARTIALLY_RELEASED, FULLY_RELEASED, SHIPPED, CLOSED, CANCELLED
 
 @Injectable()
 export class SalesOrderService {
@@ -127,9 +119,7 @@ export class SalesOrderService {
       ];
     }
     if (status) {
-      // Map frontend status to schema status
-      const schemaStatus = Object.entries(STATUS_MAP).find(([_, v]) => v === status)?.[0];
-      if (schemaStatus) where.status = schemaStatus;
+      where.status = status;
     }
     if (ownerId) where.ownerId = ownerId;
 
@@ -148,11 +138,128 @@ export class SalesOrderService {
       this.prisma.salesOrder.count({ where }),
     ]);
 
-    const data = items.map((so: any) => this.transformSalesOrder(so));
+    // Enrich with actual shipped qty from ShipmentLines
+    const soIds = items.map((so: any) => so.id);
+    let shippedBySoLineId = new Map<string, number>();
+    let shippedBySoItemKey = new Map<string, number>();
+    let shippedBySoId = new Map<string, number>();
+    let activeCountMap = new Map<string, number>();
+
+    if (soIds.length > 0) {
+      const shippedLines = await this.prisma.shipmentLine.findMany({
+        where: {
+          header: { salesOrderId: { in: soIds } },
+          lineStatus: 'LINE_SHIPPED',
+        },
+        select: {
+          soLineId: true,
+          itemId: true,
+          shippedQty: true,
+          netWeightKg: true,
+          header: { select: { salesOrderId: true } },
+        },
+      });
+
+      for (const sl of shippedLines) {
+        const qty = Number(sl.shippedQty || sl.netWeightKg || 0);
+        if (qty <= 0) continue;
+        const soId = sl.header?.salesOrderId;
+        if (soId) shippedBySoId.set(soId, (shippedBySoId.get(soId) || 0) + qty);
+        if (sl.soLineId) {
+          shippedBySoLineId.set(sl.soLineId, (shippedBySoLineId.get(sl.soLineId) || 0) + qty);
+        } else if (soId && sl.itemId) {
+          const key = `${soId}|${sl.itemId}`;
+          shippedBySoItemKey.set(key, (shippedBySoItemKey.get(key) || 0) + qty);
+        }
+      }
+
+      const activeCounts = await this.prisma.shipmentHeader.groupBy({
+        by: ['salesOrderId'],
+        where: { salesOrderId: { in: soIds }, status: { notIn: ['SHIPPED', 'CLOSED', 'CANCELLED'] } },
+        _count: { id: true },
+      });
+      for (const row of activeCounts) {
+        if (row.salesOrderId) activeCountMap.set(row.salesOrderId, row._count.id);
+      }
+    }
+
+    const data = items.map((so: any) => {
+      const transformed = this.transformSalesOrder(so);
+
+      // Enrich lines with actual shipped qty
+      if (transformed.lines) {
+        for (const line of transformed.lines) {
+          const actualShipped = shippedBySoLineId.get(line.id)
+            ?? shippedBySoItemKey.get(`${so.id}|${line.itemId}`)
+            ?? 0;
+          if (actualShipped > 0) {
+            line.shippedQtyKg = actualShipped;
+            line.shippedQty = actualShipped;
+          }
+        }
+      }
+
+      const totalShipped = shippedBySoId.get(so.id) || 0;
+      if (totalShipped > 0) {
+        transformed.totalShippedQty = totalShipped;
+        transformed.totalShippedQtyKg = totalShipped;
+      }
+
+      // Fix stale status
+      if (!['CLOSED', 'CANCELLED'].includes(so.status) && totalShipped > 0) {
+        const totalExpected = Number(so.totalExpectedQtyKg || 0);
+        const activeCount = activeCountMap.get(so.id) || 0;
+        if (activeCount === 0 && totalExpected > 0 && totalShipped >= totalExpected * 0.99) {
+          transformed.status = 'SHIPPED';
+          this.prisma.salesOrder.update({ where: { id: so.id }, data: { status: 'SHIPPED' } }).catch(() => {});
+        } else if (totalShipped > 0 && totalShipped < totalExpected && ['CONFIRMED', 'WEIGHING'].includes(so.status)) {
+          transformed.status = 'PARTIALLY_RELEASED';
+          this.prisma.salesOrder.update({ where: { id: so.id }, data: { status: 'PARTIALLY_RELEASED' } }).catch(() => {});
+        }
+      }
+
+      return transformed;
+    });
+
+    // Attach shipments for each SO
+    let shipmentsBySoId = new Map<string, any[]>();
+    if (soIds.length > 0) {
+      const shipments = await this.prisma.shipmentHeader.findMany({
+        where: { salesOrderId: { in: soIds } },
+        select: {
+          id: true,
+          shipmentNumber: true,
+          vehicleNumber: true,
+          status: true,
+          createdAt: true,
+          salesOrderId: true,
+          lines: {
+            select: {
+              itemId: true,
+              shippedQty: true,
+              netWeightKg: true,
+              grossWeightKg: true,
+              lineStatus: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const shp of shipments) {
+        const list = shipmentsBySoId.get(shp.salesOrderId!) || [];
+        list.push(shp);
+        shipmentsBySoId.set(shp.salesOrderId!, list);
+      }
+    }
+
+    const enrichedData = data.map((so: any) => ({
+      ...so,
+      shipments: shipmentsBySoId.get(so.id) || [],
+    }));
 
     return {
-      data,
-      items: data,
+      data: enrichedData,
+      items: enrichedData,
       pagination: {
         page,
         pageSize,
@@ -394,7 +501,7 @@ export class SalesOrderService {
       blNumber: so.externalSoNumber,
       vesselName: so.vesselName || '',
       vehiclePlate: so.vehiclePlate || '',
-      status: STATUS_MAP[so.status] || so.status,
+      status: so.status,
       totalExpectedQty: Number(so.totalExpectedQtyKg || 0),
       totalShippedQty: Number(so.totalShippedQtyKg || 0),
       lines: so.lines?.map((l: any) => ({

@@ -10,7 +10,7 @@ const SC = SCENE_CONFIG
 
 // ==================== SCENE SETUP ====================
 
-function SceneSetup({ height }) {
+export function SceneSetup({ height }) {
   const { scene } = useThree()
   useMemo(() => {
     scene.background = new THREE.Color(SC.bgColor)
@@ -38,7 +38,7 @@ function SceneSetup({ height }) {
 
 // ==================== FLOOR ====================
 
-function Floor({ length, width }) {
+export function Floor({ length, width }) {
   return (
     <group>
       {/* Main floor */}
@@ -57,7 +57,7 @@ function Floor({ length, width }) {
 
 // ==================== WALLS ====================
 
-function Walls({ length, width, height }) {
+export function Walls({ length, width, height }) {
   const wallT = 0.3
   const baseH = 0.8
   const halfL = length / 2
@@ -91,7 +91,7 @@ function Walls({ length, width, height }) {
 
 // ==================== COLUMNS ====================
 
-function Columns({ positions, height }) {
+export function Columns({ positions, height }) {
   if (!positions?.length) return null
   const colW = 0.4
 
@@ -109,7 +109,7 @@ function Columns({ positions, height }) {
 
 // ==================== ROOF ====================
 
-function RoofStructure({ length, width, height, roof }) {
+export function RoofStructure({ length, width, height, roof }) {
   const slopePercent = roof?.slopePercent || 15
   const slope = Math.max(slopePercent / 100, 0.12)
   const halfWidth = width / 2
@@ -186,7 +186,7 @@ function RoofStructure({ length, width, height, roof }) {
 
 // ==================== TRUSSES ====================
 
-function Trusses({ length, width, height, roof, columnSpacingM }) {
+export function Trusses({ length, width, height, roof, columnSpacingM }) {
   const spacing = columnSpacingM || 6
   const trussCount = Math.max(Math.floor(length / spacing) + 1, 2)
   const halfWidth = width / 2
@@ -246,7 +246,7 @@ function Trusses({ length, width, height, roof, columnSpacingM }) {
 
 // ==================== DOCK BAYS ====================
 
-function DockBays3D({ docks, geometry }) {
+export function DockBays3D({ docks, geometry }) {
   if (!docks?.positions?.length) return null
   const halfL = geometry.length / 2
   const halfW = geometry.width / 2

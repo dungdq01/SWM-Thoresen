@@ -173,7 +173,7 @@ export function SOFormDrawer({
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl"
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[100vw] sm:max-w-xl md:max-w-2xl flex-col bg-white shadow-2xl"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-moon-200 px-6 py-4">
@@ -328,17 +328,17 @@ export function SOFormDrawer({
                 </div>
 
                 {/* Table with horizontal scroll */}
-                <div className="rounded-xl border border-moon-200 overflow-x-auto">
-                  <table className="min-w-[900px] w-full text-sm">
+                <div className="rounded-xl border border-moon-200 overflow-x-auto -webkit-overflow-scrolling-touch">
+                  <table className="min-w-[700px] md:min-w-[900px] w-full text-sm">
                     <thead>
                       <tr className="bg-moon-50 text-left text-xs text-navy-500 border-b border-moon-200">
                         <th className="px-3 py-2.5 w-12 whitespace-nowrap">STT</th>
-                        <th className="px-3 py-2.5 min-w-[220px] whitespace-nowrap">Mã hàng hóa *</th>
+                        <th className="px-3 py-2.5 min-w-[180px] md:min-w-[220px] whitespace-nowrap">Mã hàng hóa *</th>
                         <th className="px-3 py-2.5 w-28 text-right whitespace-nowrap">SL dự kiến *</th>
                         <th className="px-3 py-2.5 w-24 text-right whitespace-nowrap">SL đã xuất</th>
                         <th className="px-3 py-2.5 w-28 whitespace-nowrap">ĐVT</th>
                         <th className="px-3 py-2.5 w-24 text-center whitespace-nowrap">Trạng thái</th>
-                        <th className="px-3 py-2.5 min-w-[180px] whitespace-nowrap">Ghi chú</th>
+                        <th className="px-3 py-2.5 min-w-[140px] md:min-w-[180px] whitespace-nowrap">Ghi chú</th>
                         <th className="px-3 py-2.5 w-12 text-center whitespace-nowrap">Xóa</th>
                       </tr>
                     </thead>
@@ -351,7 +351,7 @@ export function SOFormDrawer({
                               value={line.itemId}
                               onChange={(e) => updateLine(idx, 'itemId', e.target.value)}
                               options={itemOptions}
-                              className="min-w-[200px]"
+                              className="min-w-[160px] md:min-w-[200px]"
                             />
                           </td>
                           <td className="px-3 py-2.5">
@@ -387,7 +387,7 @@ export function SOFormDrawer({
                               value={line.notes}
                               onChange={(e) => updateLine(idx, 'notes', e.target.value)}
                               placeholder="Ghi chú..."
-                              className="min-w-[160px]"
+                              className="min-w-[120px] md:min-w-[160px]"
                             />
                           </td>
                           <td className="px-3 py-2.5 text-center">
@@ -413,14 +413,14 @@ export function SOFormDrawer({
             </div>
 
             {/* Footer */}
-            <div className="shrink-0 border-t border-moon-200 bg-moon-50 px-6 py-4">
-              <div className="flex items-center justify-between">
+            <div className="shrink-0 border-t border-moon-200 bg-moon-50 px-3 sm:px-6 py-3 sm:py-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-navy-400">
                   {isValid
                     ? <span className="font-medium text-emerald-600">✓ {draft.lines.filter((l) => l.itemId).length} dòng hàng sẵn sàng</span>
                     : '* Loại SO, Chủ hàng, Số B/L, vận chuyển và ít nhất 1 mặt hàng là bắt buộc'}
                 </p>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3 flex-shrink-0">
                   <Button variant="outline" onClick={onClose} disabled={isLoading}>Hủy</Button>
                   <Button variant="accent" onClick={handleSubmit} isLoading={isLoading} disabled={!isValid}>
                     {isEdit ? 'Lưu thay đổi' : 'Tạo SO'}

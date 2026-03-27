@@ -1,11 +1,10 @@
 import React, { useState, useCallback } from 'react'
-import { Plus, Check, Lock, Ban, ChevronDown, ChevronUp, Package, Pencil, RotateCcw, FileInput } from 'lucide-react'
+import { Plus, Check, Lock, Ban, ChevronDown, ChevronUp, Package, Pencil, FileInput, Truck } from 'lucide-react'
 import {
   usePurchaseOrders,
   useCreatePurchaseOrder,
   useUpdatePurchaseOrder,
   useConfirmPurchaseOrder,
-  useUnconfirmPurchaseOrder,
   useClosePurchaseOrder,
   useCancelPurchaseOrder,
   useNextPoNumber,
@@ -23,7 +22,7 @@ const PO_STATUSES = [
   { value: '', label: 'Tất cả' },
   { value: 'NEW', label: 'Tạo mới' },
   { value: 'CONFIRMED', label: 'Xác nhận' },
-  { value: 'RECEIVING', label: 'Đang nhập' },
+  { value: 'RECEIVING', label: 'Đã nhận' },
   { value: 'CLOSED', label: 'Đã đóng' },
   { value: 'CANCELLED', label: 'Đã hủy' },
 ]
@@ -37,7 +36,7 @@ const statusTone = (status) => {
   return 'warning'
 }
 
-const STATUS_LABELS = { NEW: 'Tạo mới', CONFIRMED: 'Xác nhận', RECEIVING: 'Đang nhập', CLOSED: 'Đã đóng', CANCELLED: 'Đã hủy' }
+const STATUS_LABELS = { NEW: 'Tạo mới', CONFIRMED: 'Xác nhận', RECEIVING: 'Đã nhận', CLOSED: 'Đã đóng', CANCELLED: 'Đã hủy' }
 
 export function PurchaseOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '', vendorId: '' })
@@ -62,7 +61,6 @@ export function PurchaseOrdersPage() {
   const confirmPo = useConfirmPurchaseOrder()
   const closePo = useClosePurchaseOrder()
   const cancelPo = useCancelPurchaseOrder()
-  const unconfirmPo = useUnconfirmPurchaseOrder()
   const createReceipt = useCreateInboundReceipt()
 
   const { data: owners = [] } = useLookupOwners()
@@ -216,7 +214,15 @@ export function PurchaseOrdersPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusTone(po.status)}>{STATUS_LABELS[po.status] || po.status}</Badge>
+                    {po.status === 'RECEIVING' ? (() => {
+                      const lines = po.lines || []
+                      const allReceived = lines.length > 0 && lines.every(l => l.status === 'RECEIVED')
+                      return allReceived
+                        ? <Badge variant="success">Đã nhận</Badge>
+                        : <Badge variant="warning">Nhận 1 phần</Badge>
+                    })() : (
+                      <Badge variant={statusTone(po.status)}>{STATUS_LABELS[po.status] || po.status}</Badge>
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <div className="flex items-center justify-center gap-1">
@@ -235,14 +241,18 @@ export function PurchaseOrdersPage() {
                       )}
                       {po.status === 'CONFIRMED' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => unconfirmPo.mutate(po.id)} title="Hủy xác nhận">
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </Button>
                           <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập">
                             <FileInput className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy PO">
-                            <Ban className="h-3.5 w-3.5" />
+                        </>
+                      )}
+                      {po.status === 'RECEIVING' && (
+                        <>
+                          <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập">
+                            <FileInput className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="success" size="sm" onClick={() => closePo.mutate(po.id)} title="Đóng PO">
+                            <Lock className="h-3.5 w-3.5" />
                           </Button>
                         </>
                       )}
@@ -272,7 +282,6 @@ export function PurchaseOrdersPage() {
                               <th className="pb-2 pr-3 text-right">SL đã nhận</th>
                               <th className="pb-2 pr-3 text-right">Đơn giá</th>
                               <th className="pb-2 pr-3 text-right">Thành tiền</th>
-                              <th className="pb-2 text-center">Trạng thái</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -294,30 +303,65 @@ export function PurchaseOrdersPage() {
                                 <td className="py-2 pr-3 text-right font-medium text-navy-800">
                                   {((line.expectedQty || 0) * (line.unitPrice || 0)).toLocaleString()}
                                 </td>
-                                <td className="py-2 text-center">
-                                  <Badge
-                                    variant={line.status === 'RECEIVED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'}
-                                    className="text-xs"
-                                  >
-                                    {line.status === 'OPEN' ? 'Mới' : line.status === 'RECEIVED' ? 'Đã nhận' : line.status === 'PARTIAL' ? 'Nhận 1 phần' : line.status}
-                                  </Badge>
-                                </td>
                               </tr>
                             ))}
                           </tbody>
-                          <tfoot>
-                            <tr className="border-t border-moon-300 font-semibold text-navy-900">
-                              <td colSpan={3} className="pt-2 pr-3">Tổng</td>
-                              <td className="pt-2 pr-3 text-right">{(po.totalExpectedQty || 0).toLocaleString()}</td>
-                              <td className="pt-2 pr-3 text-right text-emerald-600">{(po.totalReceivedQty || 0).toLocaleString()}</td>
-                              <td className="pt-2 pr-3"></td>
-                              <td className="pt-2 pr-3 text-right">
-                                {(po.lines || []).reduce((s, l) => s + (l.expectedQty || 0) * (l.unitPrice || 0), 0).toLocaleString()}
-                              </td>
-                              <td></td>
-                            </tr>
-                          </tfoot>
                         </table>
+
+                        {/* Danh sách xe đã nhập */}
+                        {(po.receipts || []).length > 0 && (
+                          <div className="mt-4 pt-3 border-t border-moon-200">
+                            <div className="mb-2 flex items-center gap-2">
+                              <Truck className="h-4 w-4 text-ice" />
+                              <h4 className="text-sm font-semibold text-navy-900">Danh sách xe nhập hàng ({po.receipts.length} chuyến)</h4>
+                            </div>
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-moon-200 text-left text-xs text-navy-400">
+                                  <th className="pb-2 pr-3">#</th>
+                                  <th className="pb-2 pr-3">Số phiếu nhập</th>
+                                  <th className="pb-2 pr-3">Số xe</th>
+                                  <th className="pb-2 pr-3 text-right">Tổng lượng (kg)</th>
+                                  <th className="pb-2 pr-3 text-right">Bì (kg)</th>
+                                  <th className="pb-2 pr-3 text-right">Tịnh (kg)</th>
+                                  <th className="pb-2 pr-3">Trạng thái</th>
+                                  <th className="pb-2 text-xs">Ngày</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {po.receipts.map((r, idx) => {
+                                  const receiptStatusMap = {
+                                    NEW: ['Mới', 'default'],
+                                    CONFIRMED: ['Xác nhận', 'info'],
+                                    AWAITING_WEIGHING: ['Chờ cân', 'info'],
+                                    WEIGHING_1: ['Cân lần 1', 'warning'],
+                                    UNLOADING: 'Đang dỡ',
+                                    UNLOADED: 'Đã dỡ',
+                                    WEIGHING_2: ['Cân lần 2', 'warning'],
+                                    COMPLETED: ['Hoàn thành', 'success'],
+                                    CLOSED: ['Đã đóng', 'default'],
+                                    REJECTED: ['Từ chối', 'danger'],
+                                    CANCELLED: ['Đã hủy', 'danger'],
+                                    ERROR: ['Lỗi', 'danger'],
+                                  }
+                                  const [label, tone] = Array.isArray(receiptStatusMap[r.status]) ? receiptStatusMap[r.status] : [receiptStatusMap[r.status] || r.status, 'default']
+                                  return (
+                                    <tr key={r.id} className="border-b border-moon-100 last:border-b-0">
+                                      <td className="py-1.5 pr-3 text-navy-400">{idx + 1}</td>
+                                      <td className="py-1.5 pr-3 font-medium text-navy-800">{r.receiptNumber || r.asnId || '—'}</td>
+                                      <td className="py-1.5 pr-3 font-mono text-navy-700">{r.vehicleNumber}</td>
+                                      <td className="py-1.5 pr-3 text-right text-navy-600">{r.grossWeightKg ? Number(r.grossWeightKg).toLocaleString() : '—'}</td>
+                                      <td className="py-1.5 pr-3 text-right text-navy-600">{r.tareWeightKg ? Number(r.tareWeightKg).toLocaleString() : '—'}</td>
+                                      <td className="py-1.5 pr-3 text-right font-medium text-emerald-600">{r.netWeightKg ? Number(r.netWeightKg).toLocaleString() : '—'}</td>
+                                      <td className="py-1.5 pr-3"><Badge variant={tone} className="text-xs">{label}</Badge></td>
+                                      <td className="py-1.5 text-xs text-navy-400">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

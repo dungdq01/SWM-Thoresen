@@ -229,10 +229,10 @@ export function DashboardPage() {
           </p>
         </div>
         {criticalCount > 0 && (
-          <div className="flex items-center gap-2 rounded-xl border border-[#fca5a5] bg-[#fef2f2] px-4 py-2.5">
-            <AlertCircle className="h-4 w-4 text-[#ef4444]" />
-            <span className="text-sm font-semibold text-[#b91c1c]">
-              {criticalCount} vấn đề nghiêm trọng cần xử lý ngay
+          <div className="flex items-center gap-2 rounded-xl border border-[#fca5a5] bg-[#fef2f2] px-3 sm:px-4 py-2 sm:py-2.5">
+            <AlertCircle className="h-4 w-4 text-[#ef4444] flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-semibold text-[#b91c1c]">
+              {criticalCount} vấn đề nghiêm trọng
             </span>
           </div>
         )}
@@ -288,7 +288,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── ZONE 2: KPI Stats ── */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 xl:grid-cols-4">
         {statsData.map((stat, index) => {
           const iconCfg = STAT_ICONS[index] || STAT_ICONS[0]
           const IconComp = iconCfg.icon
@@ -329,14 +329,14 @@ export function DashboardPage() {
               <h2 className="section-title">Xuất nhập kho</h2>
               <p className="section-description">7 ngày gần nhất</p>
             </div>
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[#10b981]" />
-                <span className="text-navy-600">Nhập kho</span>
+            <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-[#10b981]" />
+                <span className="text-navy-600">Nhập</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full bg-[#3b82f6]" />
-                <span className="text-navy-600">Xuất kho</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-[#3b82f6]" />
+                <span className="text-navy-600">Xuất</span>
               </div>
             </div>
           </div>

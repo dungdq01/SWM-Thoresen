@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { Plus, Check, Trash2, Pencil, RotateCcw, FileOutput, ChevronDown, ChevronUp, Package } from 'lucide-react'
+import { Plus, Check, Trash2, Pencil, RotateCcw, FileOutput, ChevronDown, ChevronUp, Package, Truck } from 'lucide-react'
 import {
   useSalesOrders,
   useCreateSalesOrder,
@@ -20,27 +20,29 @@ import { SOFormDrawer, CreateShipmentModal } from '@features/outbound-operations
 
 const SO_STATUSES = [
   { value: '', label: 'Tất cả' },
-  { value: 'NEW', label: 'Tạo mới' },
+  { value: 'DRAFT', label: 'Nháp' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
   { value: 'WEIGHING', label: 'Đang cân' },
-  { value: 'PARTIAL', label: 'Xuất 1 phần' },
-  { value: 'SHIPPED', label: 'Xuất đủ' },
+  { value: 'PARTIALLY_RELEASED', label: 'Xuất 1 phần' },
+  { value: 'FULLY_RELEASED', label: 'Đã giao đủ phiếu' },
+  { value: 'SHIPPED', label: 'Đã xuất kho' },
   { value: 'CLOSED', label: 'Đã đóng' },
   { value: 'CANCELLED', label: 'Đã hủy' },
 ]
 
 const statusTone = (status) => {
-  if (status === 'NEW') return 'info'
+  if (status === 'DRAFT') return 'info'
   if (status === 'CONFIRMED') return 'success'
   if (status === 'WEIGHING') return 'warning'
-  if (status === 'PARTIAL') return 'warning'
+  if (status === 'PARTIALLY_RELEASED') return 'warning'
+  if (status === 'FULLY_RELEASED') return 'success'
   if (status === 'SHIPPED') return 'success'
   if (status === 'CLOSED') return 'default'
   if (status === 'CANCELLED') return 'danger'
   return 'warning'
 }
 
-const STATUS_LABELS = { NEW: 'Tạo mới', CONFIRMED: 'Đã xác nhận', WEIGHING: 'Đang cân', PARTIAL: 'Xuất 1 phần', SHIPPED: 'Xuất đủ', CLOSED: 'Đã đóng', CANCELLED: 'Đã hủy' }
+const STATUS_LABELS = { DRAFT: 'Nháp', CONFIRMED: 'Đã xác nhận', WEIGHING: 'Đang cân', PARTIALLY_RELEASED: 'Xuất 1 phần', FULLY_RELEASED: 'Đã giao đủ phiếu', SHIPPED: 'Đã xuất kho', CLOSED: 'Đã đóng', CANCELLED: 'Đã hủy' }
 
 export function SalesOrdersPage() {
   const [filters, setFilters] = useState({ page: 1, pageSize: 20, keyword: '', status: '', ownerId: '' })
@@ -186,7 +188,7 @@ export function SalesOrdersPage() {
             {!isLoading && rows.map((so) => {
               const isExpanded = expandedId === so.id
               const totalExpectedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.expectedQtyKg || l.expectedQty || 0), 0)
-              const totalShippedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.shippedQtyKg || l.shippedQty || 0), 0)
+              const totalShippedFromLines = (so.lines || []).reduce((sum, l) => sum + Number(l.shippedQtyKg || l.shippedQty || 0), 0) || Number(so.totalShippedQtyKg || 0)
               return (
                 <React.Fragment key={so.id}>
                   <TableRow>
@@ -234,11 +236,20 @@ export function SalesOrdersPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusTone(so.status)}>{STATUS_LABELS[so.status] || so.status}</Badge>
+                      {(() => {
+                        const lines = so.lines || []
+                        if (['PARTIALLY_RELEASED', 'FULLY_RELEASED', 'SHIPPED'].includes(so.status)) {
+                          const hasPartial = lines.some(l => Number(l.shippedQtyKg || l.shippedQty || 0) > 0 && Number(l.shippedQtyKg || l.shippedQty || 0) < Number(l.expectedQtyKg || l.expectedQty || 0))
+                          const allShipped = lines.length > 0 && lines.every(l => Number(l.shippedQtyKg || l.shippedQty || 0) >= Number(l.expectedQtyKg || l.expectedQty || 0) * 0.99)
+                          if (allShipped) return <Badge variant="success">Đã xuất kho</Badge>
+                          if (hasPartial || so.status === 'PARTIALLY_RELEASED') return <Badge variant="warning">Xuất 1 phần</Badge>
+                        }
+                        return <Badge variant={statusTone(so.status)}>{STATUS_LABELS[so.status] || so.status}</Badge>
+                      })()}
                     </TableCell>
                     <TableCell align="center">
                       <div className="flex items-center justify-center gap-1">
-                        {so.status === 'NEW' && (
+                        {so.status === 'DRAFT' && (
                           <>
                             <Button variant="outline" size="sm" onClick={() => handleEdit(so)} title="Chỉnh sửa">
                               <Pencil className="h-3.5 w-3.5" />
@@ -261,7 +272,7 @@ export function SalesOrdersPage() {
                             </Button>
                           </>
                         )}
-                        {['PARTIAL', 'SHIPPED'].includes(so.status) && (
+                        {['PARTIALLY_RELEASED', 'FULLY_RELEASED', 'SHIPPED'].includes(so.status) && (
                           <span className="text-xs text-navy-400">Đang xử lý</span>
                         )}
                         {['CLOSED', 'CANCELLED'].includes(so.status) && (
@@ -307,24 +318,71 @@ export function SalesOrdersPage() {
                                   </td>
                                   <td className="py-2 text-center">
                                     <Badge
-                                      variant={line.status === 'SHIPPED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'}
+                                      variant={line.status === 'SHIPPED' ? 'success' : line.status === 'PARTIALLY_RELEASED' ? 'warning' : line.status === 'FULLY_RELEASED' ? 'success' : 'default'}
                                       className="text-xs"
                                     >
-                                      {line.status === 'OPEN' ? 'Mới' : line.status === 'SHIPPED' ? 'Đã xuất' : line.status === 'PARTIAL' ? 'Xuất 1 phần' : line.status}
+                                      {line.status === 'OPEN' ? 'Mới' : line.status === 'SHIPPED' ? 'Đã xuất' : line.status === 'PARTIALLY_RELEASED' ? 'Xuất 1 phần' : line.status === 'FULLY_RELEASED' ? 'Đã giao đủ' : line.status === 'CANCELLED' ? 'Đã hủy' : line.status}
                                     </Badge>
                                   </td>
                                 </tr>
                               ))}
                             </tbody>
-                            <tfoot>
-                              <tr className="border-t border-moon-300 font-semibold text-navy-900">
-                                <td colSpan={3} className="pt-2 pr-3">Tổng</td>
-                                <td className="pt-2 pr-3 text-right">{totalExpectedFromLines.toLocaleString()}</td>
-                                <td className="pt-2 pr-3 text-right text-emerald-600">{totalShippedFromLines.toLocaleString()}</td>
-                                <td></td>
-                              </tr>
-                            </tfoot>
                           </table>
+
+                          {/* Danh sách phiếu xuất (Shipments) */}
+                          {(so.shipments || []).length > 0 && (
+                            <div className="mt-4">
+                              <div className="mb-2 flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-ice" />
+                                <h4 className="text-sm font-semibold text-navy-900">Danh sách xe xuất hàng</h4>
+                              </div>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-moon-200 text-left text-xs text-navy-400">
+                                    <th className="pb-2 pr-3">#</th>
+                                    <th className="pb-2 pr-3">Số phiếu xuất</th>
+                                    <th className="pb-2 pr-3">Số xe</th>
+                                    <th className="pb-2 pr-3 text-right">KL xuất (kg)</th>
+                                    <th className="pb-2 pr-3">Trạng thái</th>
+                                    <th className="pb-2">Ngày tạo</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {so.shipments.map((shp, idx) => {
+                                    const shpTotalShipped = (shp.lines || []).reduce((s, l) => s + Number(l.shippedQty || l.netWeightKg || 0), 0)
+                                    const shpStatusLabel = {
+                                      DRAFT: ['Nháp', 'default'],
+                                      NEW: ['Mới', 'info'],
+                                      CONFIRMED: ['Xác nhận', 'info'],
+                                      AWAITING_WEIGHING: ['Chờ cân', 'info'],
+                                      LOADING: ['Đang chất', 'warning'],
+                                      LOADED: ['Đã chất', 'warning'],
+                                      WEIGHING: ['Đang cân', 'warning'],
+                                      SHIPPED: ['Đã xuất', 'success'],
+                                      CLOSED: ['Đã đóng', 'default'],
+                                      CANCELLED: ['Đã hủy', 'danger'],
+                                      ERROR: ['Lỗi', 'danger'],
+                                    }
+                                    const [label, tone] = shpStatusLabel[shp.status] || [shp.status, 'default']
+                                    return (
+                                      <tr key={shp.id} className="border-b border-moon-100 last:border-b-0">
+                                        <td className="py-2 pr-3 text-navy-400">{idx + 1}</td>
+                                        <td className="py-2 pr-3 font-medium text-navy-800">{shp.shipmentNumber || '—'}</td>
+                                        <td className="py-2 pr-3 font-mono text-navy-700">{shp.vehicleNumber || '—'}</td>
+                                        <td className="py-2 pr-3 text-right">
+                                          <span className={shpTotalShipped > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                                            {shpTotalShipped > 0 ? shpTotalShipped.toLocaleString() : '—'}
+                                          </span>
+                                        </td>
+                                        <td className="py-2 pr-3"><Badge variant={tone} className="text-xs">{label}</Badge></td>
+                                        <td className="py-2 text-navy-500 text-xs">{shp.createdAt ? new Date(shp.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

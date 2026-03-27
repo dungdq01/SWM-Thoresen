@@ -10,6 +10,7 @@ import {
   Edit2,
   ToggleLeft,
   ToggleRight,
+  PenTool,
 } from 'lucide-react'
 import {
   useWarehouseDetail,
@@ -91,10 +92,10 @@ export function WarehouseDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-48 bg-navy-100 rounded" />
-          <div className="h-[500px] bg-navy-50 rounded-2xl" />
+          <div className="h-[300px] md:h-[400px] lg:h-[500px] bg-navy-50 rounded-2xl" />
         </div>
       </div>
     )
@@ -102,7 +103,7 @@ export function WarehouseDetailPage() {
 
   if (!warehouse) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <div className="text-center py-20">
           <Warehouse className="w-12 h-12 text-navy-300 mx-auto mb-3" />
           <p className="text-navy-600 font-medium">Không tìm thấy kho</p>
@@ -116,26 +117,26 @@ export function WarehouseDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={() => navigate('/app/master-data/warehouses')}
-            className="p-2 rounded-lg text-navy-400 hover:text-navy-600 hover:bg-navy-100 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg text-navy-400 hover:text-navy-600 hover:bg-navy-100 transition-colors flex-shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <Warehouse className="w-5 h-5 text-emerald-600" />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <Warehouse className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-navy-900">{warehouse.warehouseName}</h1>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-bold text-navy-900 truncate">{warehouse.warehouseName}</h1>
                 <StatusBadge isActive={warehouse.isActive} />
               </div>
-              <div className="flex items-center gap-2 text-sm text-navy-500">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-navy-500">
                 <span className="font-mono">{warehouse.warehouseCode}</span>
                 <span>·</span>
                 <WarehouseTypeBadge type={warehouse.warehouseType} />
@@ -144,27 +145,35 @@ export function WarehouseDetailPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/app/master-data/warehouses/${id}/layout-editor`)}>
+            <PenTool className="w-3.5 h-3.5 mr-1" />
+            <span className="hidden sm:inline">Thiết kế mặt bằng</span>
+            <span className="sm:hidden">Layout</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setDrawerOpen(true)}>
-            <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-            Chỉnh sửa
+            <Edit2 className="w-3.5 h-3.5 mr-1" />
+            <span className="hidden sm:inline">Chỉnh sửa</span>
+            <span className="sm:hidden">Sửa</span>
           </Button>
           {warehouse.isActive ? (
             <Button variant="outline" size="sm" onClick={() => setDeactivateOpen(true)} className="text-red-600 border-red-200 hover:bg-red-50">
-              <ToggleLeft className="w-3.5 h-3.5 mr-1.5" />
-              Ngừng hoạt động
+              <ToggleLeft className="w-3.5 h-3.5 mr-1" />
+              <span className="hidden md:inline">Ngừng hoạt động</span>
+              <span className="md:hidden">Ngừng</span>
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={() => setReactivateOpen(true)} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
-              <ToggleRight className="w-3.5 h-3.5 mr-1.5" />
-              Kích hoạt lại
+              <ToggleRight className="w-3.5 h-3.5 mr-1" />
+              <span className="hidden md:inline">Kích hoạt lại</span>
+              <span className="md:hidden">Kích hoạt</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Info cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <InfoCard
           icon={Ruler}
           label="Diện tích tổng"

@@ -53,8 +53,8 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (!['CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING'].includes(receipt.status)) {
-      throw new BadRequestException('Receipt phải ở trạng thái Chờ cân, Đã cân lần 1, hoặc Đang dỡ');
+    if (!['CONFIRMED', 'AWAITING_WEIGHING', 'WEIGHING_1', 'UNLOADING', 'UNLOADED'].includes(receipt.status)) {
+      throw new BadRequestException('Receipt phải ở trạng thái Chờ cân, Đã cân lần 1, Đang dỡ hoặc Đã dỡ');
     }
 
     // Kiểm tra đã cân gross chưa
@@ -138,6 +138,25 @@ export class UnloadingService {
       },
     });
 
+    // Tự động chuyển Receipt UNLOADING → UNLOADED khi có item đã dỡ
+    if (receipt.status === 'UNLOADING') {
+      await this.prisma.receiptHeader.update({
+        where: { id: receiptId },
+        data: { status: 'UNLOADED', updatedBy: userId },
+      });
+      await this.prisma.receiptStatusHistory.create({
+        data: {
+          receiptHeaderId: receiptId,
+          fromStatus: 'UNLOADING',
+          toStatus: 'UNLOADED',
+          transitionCode: 'ITEM_UNLOADED',
+          triggeredBy: userId,
+          correlationId: receiptId,
+          occurredAt: new Date(),
+        },
+      });
+    }
+
     return this.getUnloadingStatus(receiptId);
   }
 
@@ -150,8 +169,8 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (receipt.status !== 'UNLOADING') {
-      throw new BadRequestException('Receipt phải ở trạng thái PROCESSING');
+    if (!['UNLOADING', 'UNLOADED'].includes(receipt.status)) {
+      throw new BadRequestException('Receipt phải ở trạng thái Đang dỡ hoặc Đã dỡ');
     }
 
     const line = await this.prisma.receiptLine.findUnique({
@@ -175,6 +194,28 @@ export class UnloadingService {
       },
     });
 
+    // Nếu không còn line UNLOADED nào → chuyển Receipt về UNLOADING
+    const remainingUnloaded = await this.prisma.receiptLine.count({
+      where: { receiptHeaderId: receiptId, status: 'UNLOADED' },
+    });
+    if (remainingUnloaded === 0 && receipt.status === 'UNLOADED') {
+      await this.prisma.receiptHeader.update({
+        where: { id: receiptId },
+        data: { status: 'UNLOADING', updatedBy: userId },
+      });
+      await this.prisma.receiptStatusHistory.create({
+        data: {
+          receiptHeaderId: receiptId,
+          fromStatus: 'UNLOADED',
+          toStatus: 'UNLOADING',
+          transitionCode: 'UNDO_UNLOAD',
+          triggeredBy: userId,
+          correlationId: receiptId,
+          occurredAt: new Date(),
+        },
+      });
+    }
+
     return this.getUnloadingStatus(receiptId);
   }
 
@@ -191,8 +232,8 @@ export class UnloadingService {
     });
     if (!receipt) throw new NotFoundException('Receipt not found');
 
-    if (receipt.status !== 'UNLOADING') {
-      throw new BadRequestException('Receipt phải ở trạng thái Đang dỡ hàng');
+    if (!['UNLOADING', 'UNLOADED'].includes(receipt.status)) {
+      throw new BadRequestException('Receipt phải ở trạng thái Đang dỡ hoặc Đã dỡ');
     }
 
     const lines = await this.prisma.receiptLine.findMany({
@@ -204,8 +245,26 @@ export class UnloadingService {
       throw new BadRequestException('Chưa có mặt hàng nào được dỡ. Vui lòng dỡ ít nhất 1 mặt hàng trước khi đưa xe đi cân.');
     }
 
-    // Không đổi header status — vẫn giữ UNLOADING
-    // Weighbridge recordWeight sẽ xử lý tính net và chuyển status
+    // Chuyển UNLOADING → UNLOADED (idempotent: skip nếu đã UNLOADED)
+    if (receipt.status === 'UNLOADING') {
+      await this.prisma.receiptHeader.update({
+        where: { id: receiptId },
+        data: { status: 'UNLOADED', updatedBy: userId },
+      });
+
+      await this.prisma.receiptStatusHistory.create({
+        data: {
+          receiptHeaderId: receiptId,
+          fromStatus: 'UNLOADING',
+          toStatus: 'UNLOADED',
+          transitionCode: 'COMPLETE_UNLOADING',
+          triggeredBy: userId,
+          correlationId: receiptId,
+          occurredAt: new Date(),
+        },
+      });
+    }
+
     return this.getUnloadingStatus(receiptId);
   }
 

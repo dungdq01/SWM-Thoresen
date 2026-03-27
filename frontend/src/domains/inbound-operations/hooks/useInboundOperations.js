@@ -312,6 +312,7 @@ export function useUnloadItem() {
     mutationFn: ({ receiptId, receiptLineId, locationId }) =>
       inboundOperationsApi.unloadItem(receiptId, receiptLineId, locationId),
     onSuccess: (_, { receiptId }) => {
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.receipts })
       qc.invalidateQueries({ queryKey: UNLOADING_KEYS.status(receiptId) })
       toast.success('Đã dỡ hàng xuống kho')
     },
@@ -325,6 +326,7 @@ export function useUndoUnloadItem() {
     mutationFn: ({ receiptId, receiptLineId }) =>
       inboundOperationsApi.undoUnloadItem(receiptId, receiptLineId),
     onSuccess: (_, { receiptId }) => {
+      qc.invalidateQueries({ queryKey: UNLOADING_KEYS.receipts })
       qc.invalidateQueries({ queryKey: UNLOADING_KEYS.status(receiptId) })
       toast.success('Đã hoàn tác dỡ hàng')
     },

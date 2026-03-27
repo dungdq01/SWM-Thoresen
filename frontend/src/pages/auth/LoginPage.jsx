@@ -51,10 +51,10 @@ export function LoginPage() {
 
 
       {/* ── Ambient glow orbs ── */}
-      <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] rounded-full opacity-20 z-10"
+      <div className="hidden sm:block absolute top-1/4 -left-32 w-[300px] h-[300px] md:w-[500px] md:h-[500px] rounded-full opacity-20 z-10"
         style={{ background: 'radial-gradient(circle, rgba(96,165,250,0.35) 0%, transparent 70%)' }}
       />
-      <div className="absolute -bottom-20 right-0 w-[600px] h-[600px] rounded-full opacity-15 z-10"
+      <div className="hidden sm:block absolute -bottom-20 right-0 w-[350px] h-[350px] md:w-[600px] md:h-[600px] rounded-full opacity-15 z-10"
         style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)' }}
       />
 
@@ -86,7 +86,7 @@ export function LoginPage() {
 
       {/* ── Main content ── */}
       <div
-        className="relative z-20 w-full max-w-[460px] mx-4 sm:mx-6"
+        className="relative z-20 w-full max-w-[460px] mx-3 sm:mx-6"
         style={{ marginTop: 'calc(env(safe-area-inset-top, 0px) + 80px)' }}
       >
         {/* Glassmorphism card */}

@@ -110,7 +110,7 @@ export function MainLayout() {
           className="flex-shrink-0 z-20 backdrop-blur-sm safe-area-top"
           style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
         >
-          <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-6">
+          <div className="flex h-14 items-center justify-between gap-1.5 sm:gap-2 px-2 sm:px-4 md:px-6">
 
             {/* Left: hamburger + home + search */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -123,16 +123,16 @@ export function MainLayout() {
                 <Menu className="h-4 w-4" />
               </button>
 
-              <Link to="/" className="hidden xl:block flex-shrink-0">
+              <Link to="/" className="hidden lg:block flex-shrink-0">
                 <Button variant="outline" size="sm" icon={<ArrowLeft className="h-4 w-4" />}>
-                  Trang chủ
+                  <span className="hidden xl:inline">Trang chủ</span>
                 </Button>
               </Link>
 
               {/* Search trigger — Ctrl+K */}
               <button
                 onClick={openPalette}
-                className="hidden sm:flex items-center gap-2 h-9 rounded-xl border px-3 text-sm transition-colors hover:border-ice/40"
+                className="hidden sm:flex items-center gap-1.5 md:gap-2 h-9 rounded-xl border px-2 md:px-3 text-sm transition-colors hover:border-ice/40"
                 style={{
                   borderColor: 'var(--color-border)',
                   backgroundColor: 'var(--color-bg-subtle)',
@@ -140,9 +140,9 @@ export function MainLayout() {
                 }}
               >
                 <Search className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="hidden md:inline">Tìm kiếm...</span>
+                <span className="hidden md:inline text-xs lg:text-sm">Tìm kiếm...</span>
                 <kbd
-                  className="hidden lg:inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px]"
+                  className="hidden xl:inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px]"
                   style={{ backgroundColor: 'var(--color-bg-card)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}
                 >
                   Ctrl K
@@ -155,7 +155,7 @@ export function MainLayout() {
 
               {/* Mock toggle */}
               <div
-                className="hidden md:block rounded-xl px-3 py-1.5"
+                className="hidden lg:block rounded-xl px-2 xl:px-3 py-1.5"
                 style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
               >
                 <Switch
@@ -199,11 +199,11 @@ export function MainLayout() {
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-navy-800 text-xs font-bold text-ice-light">
                     {initials}
                   </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--color-text)' }}>{displayName}</p>
-                    <p className="text-xs leading-tight" style={{ color: 'var(--color-text-muted)' }}>{roleLabel}</p>
+                  <div className="hidden md:block text-left max-w-[120px] xl:max-w-none">
+                    <p className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--color-text)' }}>{displayName}</p>
+                    <p className="text-xs leading-tight truncate" style={{ color: 'var(--color-text-muted)' }}>{roleLabel}</p>
                   </div>
-                  <ChevronDown className="hidden sm:block h-3.5 w-3.5" style={{ color: 'var(--color-text-muted)' }} />
+                  <ChevronDown className="hidden md:block h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--color-text-muted)' }} />
                 </button>
 
                 {isUserMenuOpen && (

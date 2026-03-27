@@ -121,11 +121,11 @@ class InventoryCoreController {
       const dimRows = inventDimIds.length > 0
         ? await this.prisma.inventDim.findMany({
             where: { id: { in: inventDimIds } },
-            select: { id: true, warehouseId: true, ownerId: true },
+            select: { id: true, warehouseId: true, ownerId: true, locationId: true },
           })
         : [];
       const dimLookup = {};
-      for (const d of dimRows) dimLookup[d.id] = { warehouseId: d.warehouseId, ownerId: d.ownerId };
+      for (const d of dimRows) dimLookup[d.id] = { warehouseId: d.warehouseId, ownerId: d.ownerId, locationId: d.locationId };
 
       // Enrich with outbound shipped qty per item+warehouse+owner
       const outboundMap = {};
@@ -134,19 +134,19 @@ class InventoryCoreController {
       if (result.items.length > 0) {
         const shipmentLines = await this.prisma.shipmentLine.findMany({
           where: { shippedQty: { gt: 0 }, lineStatus: { notIn: ['CANCELLED'] } },
-          select: { itemId: true, shippedQty: true, header: { select: { warehouseId: true, ownerId: true } } },
+          select: { itemId: true, shippedQty: true, locationId: true, header: { select: { warehouseId: true, ownerId: true } } },
         });
         for (const sl of shipmentLines) {
-          const key = `${sl.itemId}|${sl.header?.warehouseId}|${sl.header?.ownerId}`;
+          const key = `${sl.itemId}|${sl.header?.warehouseId}|${sl.header?.ownerId}|${sl.locationId || ''}`;
           outboundMap[key] = (outboundMap[key] || 0) + Number(sl.shippedQty || 0);
         }
 
         const receiptLines = await this.prisma.receiptLine.findMany({
           where: { receivedQty: { gt: 0 }, status: { notIn: ['CANCELLED'] } },
-          select: { itemId: true, receivedQty: true, header: { select: { warehouseId: true, ownerId: true } } },
+          select: { itemId: true, receivedQty: true, locationId: true, header: { select: { warehouseId: true, ownerId: true } } },
         });
         for (const rl of receiptLines) {
-          const key = `${rl.itemId}|${rl.header?.warehouseId}|${rl.header?.ownerId}`;
+          const key = `${rl.itemId}|${rl.header?.warehouseId}|${rl.header?.ownerId}|${rl.locationId || ''}`;
           inboundMap[key] = (inboundMap[key] || 0) + Number(rl.receivedQty || 0);
         }
       }
@@ -173,7 +173,7 @@ class InventoryCoreController {
 
       const enrichedData = result.items.map(r => {
         const dimInfo = dimLookup[r.inventDimId] || {};
-        const key = `${r.itemId}|${dimInfo.warehouseId}|${dimInfo.ownerId}`;
+        const key = `${r.itemId}|${dimInfo.warehouseId}|${dimInfo.ownerId}|${dimInfo.locationId || ''}`;
         const dim = r.inventDim || {};
         const skuKey = `${r.itemId}|${dim.owner?.ownerCode || ''}|${dim.warehouse?.warehouseCode || ''}|${dim.location?.locationCode || ''}`;
         const totals = skuTotals[skuKey] || { totalPhysical: 0, allocatablePhysical: 0 };

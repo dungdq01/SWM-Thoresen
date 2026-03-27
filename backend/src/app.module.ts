@@ -18,7 +18,6 @@ import { VasModule } from './modules/vas/vas.module';
 import { InventoryCoreModule } from './modules/inventory-core/inventory-core.module';
 import { InventoryControlModule } from './modules/inventory-control/inventory-control.module';
 import { WorkExecutionModule } from './modules/work-execution/work-execution.module.nest';
-import { SalesOrderModule } from './modules/sales-orders/sales-order.module';
 import { GoodsSplitModule } from './modules/goods-split/goods-split.module';
 
 @Module({
@@ -39,7 +38,6 @@ import { GoodsSplitModule } from './modules/goods-split/goods-split.module';
     InventoryCoreModule,
     InventoryControlModule,
     WorkExecutionModule,
-    SalesOrderModule,
     GoodsSplitModule,
   ],
   controllers: [HealthController],
