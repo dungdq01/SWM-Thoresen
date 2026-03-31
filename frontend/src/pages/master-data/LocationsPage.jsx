@@ -141,7 +141,7 @@ export function LocationsPage() {
         isLoading={isLoading}
         isEmpty={locations.length === 0}
         emptyMessage="Chưa có vị trí nào"
-        colSpan={8}
+        colSpan={9}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -151,6 +151,7 @@ export function LocationsPage() {
             <TableHead>Mã vị trí</TableHead>
             <TableHead>Kho / Zone</TableHead>
             <TableHead align="center">Loại</TableHead>
+            <TableHead>Kích thước</TableHead>
             <TableHead>Diện tích</TableHead>
             <TableHead>Sức chứa</TableHead>
             <TableHead align="center">Trạng thái vị trí</TableHead>
@@ -173,6 +174,13 @@ export function LocationsPage() {
                 </TableCell>
                 <TableCell align="center">
                   <LocationTypeBadge type={loc.locationType} />
+                </TableCell>
+                <TableCell>
+                  <span className="text-navy-700 text-xs">
+                    {loc.locationWidthM && loc.locationDepthM
+                      ? `${Number(loc.locationWidthM).toFixed(1)} × ${Number(loc.locationDepthM).toFixed(1)} m`
+                      : '—'}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <span className="text-navy-700">

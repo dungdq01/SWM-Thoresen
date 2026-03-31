@@ -22,6 +22,9 @@ import {
   DeactivateModal,
   ReactivateModal,
 } from '@domains/master-data'
+import { useZoneList } from '@domains/master-data/hooks/useZones'
+import { useLocationList } from '@domains/master-data/hooks/useLocations'
+import { useRackList } from '@domains/master-data/hooks/useRacks'
 import { WarehouseFormDrawer } from '@features/master-data'
 import { WarehouseVisualization } from '@features/master-data/warehouse/visualization'
 import { Button } from '@shared/ui'
@@ -53,6 +56,13 @@ export function WarehouseDetailPage() {
   const navigate = useNavigate()
 
   const { data: response, isLoading } = useWarehouseDetail(id)
+  const { data: zoneRes } = useZoneList({ warehouseId: id, pageSize: 200 })
+  const { data: locationRes } = useLocationList({ warehouseId: id, pageSize: 500 })
+  const { data: rackRes } = useRackList({ warehouseId: id, pageSize: 200 })
+
+  const zones = zoneRes?.data || []
+  const locations = locationRes?.data || []
+  const racks = rackRes?.data || []
   const updateMutation = useUpdateWarehouse()
   const deactivateMutation = useDeactivateWarehouse()
   const reactivateMutation = useReactivateWarehouse()
@@ -209,7 +219,12 @@ export function WarehouseDetailPage() {
       )}
 
       {/* Visualization */}
-      <WarehouseVisualization warehouse={warehouse} />
+      <WarehouseVisualization
+        warehouse={warehouse}
+        zones={zones}
+        racks={racks}
+        locations={locations}
+      />
 
       {/* Modals */}
       <WarehouseFormDrawer

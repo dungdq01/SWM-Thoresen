@@ -1,25 +1,18 @@
-import { useMemo, useState, Suspense } from 'react'
+import { useMemo, useState, Suspense, useCallback } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { Eye, EyeOff } from 'lucide-react'
-
-// Monitoring-style sub-components (all pure, no store dependency)
-import { WarehouseRoof } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseRoof'
-import { WarehouseInterior } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseInterior'
-import { WarehouseDoorFrames } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseDoorFrames'
-import { WarehouseExterior } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseExterior'
-import { WALL_HEIGHT, WALL_THICK, DOOR_WIDTH, DOOR_HEIGHT } from '@features/warehouse-monitoring/data/warehouseData'
+import { Tag, Grid3X3, CloudFog, Sun, Home } from 'lucide-react'
 
 import { useLayoutEditor } from '../../hooks/useLayoutEditorStore'
 import { editorStateTo3DProps } from '../../utils/editorTo3D'
 import EditorZones3D from './EditorZones3D'
 import EditorRacks3D from './EditorRacks3D'
-import EditorLocations3D from './EditorLocations3D'
+import LocationBuildings3D from './LocationBuilding3D'
 
-// ==================== Exact Monitoring Lighting & Environment ====================
+// ==================== Lighting ====================
 
-function MonitoringLighting() {
+function SceneLighting() {
   return (
     <>
       <ambientLight color={0x6a7a9a} intensity={1.0} />
@@ -40,180 +33,153 @@ function MonitoringLighting() {
       />
       <hemisphereLight args={[0x99bbee, 0x223322, 0.8]} />
       <directionalLight color={0x6688aa} intensity={0.5} position={[-200, 200, -150]} />
+      <pointLight color={0x4488cc} intensity={0.3} position={[0, 2, 0]} distance={200} />
     </>
   )
 }
 
-function MonitoringEnvironment({ groundSize }) {
+// ==================== Environment (open yard) ====================
+
+function YardEnvironment({ whWidth, whDepth, showGrid, showFog }) {
   const { scene } = useThree()
+  const groundSize = Math.max(whWidth, whDepth) * 2.5
 
   useMemo(() => {
     scene.background = new THREE.Color(0x1a2840)
-    scene.fog = new THREE.FogExp2(0x1a2840, 0.0008)
-  }, [scene])
+    scene.fog = showFog ? new THREE.FogExp2(0x1a2840, 0.0008) : null
+  }, [scene, showFog])
+
+  const halfW = whWidth / 2
+  const halfD = whDepth / 2
+  const borderH = 0.3
+  const borderThick = 0.2
 
   return (
     <>
+      {/* World ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[groundSize, groundSize]} />
         <meshStandardMaterial color={0x0c1520} roughness={0.92} metalness={0.05} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[groundSize * 2, groundSize * 2]} />
-        <meshStandardMaterial color={0x060a12} />
+
+      {/* Warehouse yard floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
+        <planeGeometry args={[whWidth, whDepth]} />
+        <meshStandardMaterial color={0x1c2a3a} roughness={0.85} />
       </mesh>
-      <gridHelper
-        args={[groundSize, Math.floor(groundSize / 25), '#1a2a40', '#0d1825']}
-        position={[0, 0.05, 0]}
-      />
+
+      {/* Grid helper */}
+      {showGrid && (
+        <gridHelper
+          args={[groundSize, Math.floor(groundSize / 25), '#1a2a40', '#0d1825']}
+          position={[0, 0.05, 0]}
+        />
+      )}
+
+      {/* Yard boundary outline */}
+      {[
+        { pos: [0, borderH / 2, -halfD], size: [whWidth + borderThick, borderH, borderThick] },
+        { pos: [0, borderH / 2, halfD], size: [whWidth + borderThick, borderH, borderThick] },
+        { pos: [-halfW, borderH / 2, 0], size: [borderThick, borderH, whDepth] },
+        { pos: [halfW, borderH / 2, 0], size: [borderThick, borderH, whDepth] },
+      ].map((b, i) => (
+        <mesh key={`border-${i}`} position={b.pos}>
+          <boxGeometry args={b.size} />
+          <meshStandardMaterial color={0x3b82f6} emissive={0x3b82f6} emissiveIntensity={0.3} transparent opacity={0.6} />
+        </mesh>
+      ))}
+
+      {/* Corner markers */}
+      {[
+        [-halfW, -halfD], [halfW, -halfD],
+        [-halfW, halfD], [halfW, halfD],
+      ].map(([px, pz], i) => (
+        <mesh key={`corner-${i}`} position={[px, 0.4, pz]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.8, 8]} />
+          <meshStandardMaterial color={0x3b82f6} emissive={0x3b82f6} emissiveIntensity={0.4} metalness={0.5} roughness={0.3} />
+        </mesh>
+      ))}
     </>
   )
 }
 
-function PreviewScene({ props3D, monWh, showRoof }) {
+// ==================== Settings Toggle ====================
+
+function SettingsToggle({ icon: Icon, label, value, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-1">
+      <div className="flex items-center gap-2">
+        <Icon className="w-3.5 h-3.5 text-white/50" />
+        <span className="text-[11px] text-white/70">{label}</span>
+      </div>
+      <button
+        onClick={onChange}
+        className={`w-8 h-4 rounded-full transition-colors relative ${value ? 'bg-blue-500' : 'bg-white/20'}`}
+      >
+        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${value ? 'left-[18px]' : 'left-0.5'}`} />
+      </button>
+    </div>
+  )
+}
+
+// ==================== Preview Scene ====================
+
+function PreviewScene({ props3D, whWidth, whDepth, whCode, whName, settings }) {
   const { zones3D, racks3D, locations3D } = props3D
-
-  const wallColor = useMemo(() => {
-    const base = new THREE.Color(monWh.color)
-    return base.clone().offsetHSL(0, -0.05, -0.15)
-  }, [monWh.color])
-
-  const wallTopColor = useMemo(() => new THREE.Color(monWh.color), [monWh.color])
-
-  const wallMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.7, metalness: 0.2 }),
-    [wallColor],
-  )
-  const wallTopMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: wallTopColor, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.55 }),
-    [wallTopColor],
-  )
-  const windowMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: 0x60a5fa, emissive: 0x38bdf8, emissiveIntensity: 0.15, transparent: true, opacity: 0.35 }),
-    [],
-  )
-
-  const doorCenterL = -monWh.width * 0.26
-  const doorCenterR = monWh.width * 0.26
-  const bandH = 5
-
-  const wallSegments = useMemo(() => [
-    { from: -monWh.width / 2, to: doorCenterL - DOOR_WIDTH / 2 },
-    { from: doorCenterL + DOOR_WIDTH / 2, to: doorCenterR - DOOR_WIDTH / 2 },
-    { from: doorCenterR + DOOR_WIDTH / 2, to: monWh.width / 2 },
-  ], [monWh.width, doorCenterL, doorCenterR])
-
-  const windowPositions = useMemo(() => {
-    const count = Math.min(3, Math.floor(monWh.depth / 25))
-    const positions = []
-    for (let i = 0; i < count; i++) {
-      const wz = -monWh.depth / 2 + 15 + i * (monWh.depth - 20) / Math.max(1, count - 1)
-      positions.push(wz)
-    }
-    return positions
-  }, [monWh.depth])
-
-  const groundSize = Math.max(monWh.width, monWh.depth) * 2.5
 
   return (
     <>
-      <MonitoringLighting />
-      <MonitoringEnvironment groundSize={groundSize} />
+      <SceneLighting />
+      <YardEnvironment whWidth={whWidth} whDepth={whDepth} showGrid={settings.grid} showFog={settings.fog} />
 
-      <group>
-        {/* Side walls */}
-        <mesh position={[-monWh.width / 2, WALL_HEIGHT / 2, 0]} castShadow material={wallMat}>
-          <boxGeometry args={[WALL_THICK, WALL_HEIGHT, monWh.depth]} />
-        </mesh>
-        <mesh position={[monWh.width / 2, WALL_HEIGHT / 2, 0]} castShadow material={wallMat}>
-          <boxGeometry args={[WALL_THICK, WALL_HEIGHT, monWh.depth]} />
-        </mesh>
+      {/* Warehouse name label */}
+      {settings.labels && (
+        <Text
+          position={[0, 10, 0]}
+          fontSize={2.5}
+          color="#60a5fa"
+          anchorX="center"
+          anchorY="middle"
+          fontWeight="bold"
+          fillOpacity={0.8}
+        >
+          {whCode} - {whName}
+        </Text>
+      )}
 
-        {/* Front & Back walls with door openings */}
-        {[monWh.depth / 2, -monWh.depth / 2].map((faceZ, faceIdx) => (
-          <group key={faceIdx}>
-            {wallSegments.map((seg, segIdx) => {
-              const segW = seg.to - seg.from
-              if (segW <= 1) return null
-              return (
-                <mesh key={segIdx} position={[(seg.from + seg.to) / 2, WALL_HEIGHT / 2, faceZ]} castShadow material={wallMat}>
-                  <boxGeometry args={[segW, WALL_HEIGHT, WALL_THICK]} />
-                </mesh>
-              )
-            })}
-            {[doorCenterL, doorCenterR].map((cx, di) => {
-              const lintelH = WALL_HEIGHT - DOOR_HEIGHT
-              if (lintelH <= 0) return null
-              return (
-                <mesh key={`lintel-${faceIdx}-${di}`} position={[cx, DOOR_HEIGHT + lintelH / 2, faceZ]} material={wallMat}>
-                  <boxGeometry args={[DOOR_WIDTH, lintelH, WALL_THICK]} />
-                </mesh>
-              )
-            })}
-          </group>
-        ))}
-
-        {/* Windows */}
-        {windowPositions.map((wz, wi) => (
-          <group key={wi}>
-            <mesh position={[-monWh.width / 2 - 0.1, WALL_HEIGHT - 6, wz]} rotation={[0, Math.PI / 2, 0]} material={windowMat}>
-              <planeGeometry args={[8, 5]} />
-            </mesh>
-            <mesh position={[monWh.width / 2 + 0.1, WALL_HEIGHT - 6, wz]} rotation={[0, -Math.PI / 2, 0]} material={windowMat}>
-              <planeGeometry args={[8, 5]} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Upper transparent band (front/back) */}
-        {[
-          { w: monWh.width + 0.5, d: 0.4, px: 0, pz: -monWh.depth / 2 },
-          { w: monWh.width + 0.5, d: 0.4, px: 0, pz: monWh.depth / 2 },
-        ].map((b, i) => (
-          <mesh key={`band-${i}`} position={[b.px, WALL_HEIGHT + 0.5, b.pz]} material={wallTopMat}>
-            <boxGeometry args={[b.w, bandH, b.d]} />
-          </mesh>
-        ))}
-
-        {/* Concrete floor */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} receiveShadow>
-          <planeGeometry args={[monWh.width - 2, monWh.depth - 2]} />
-          <meshStandardMaterial color={0x1c2a3a} roughness={0.88} />
-        </mesh>
-
-        {/* Monitoring sub-components */}
-        {showRoof && <WarehouseRoof wh={monWh} />}
-        <WarehouseInterior wh={monWh} />
-        <WarehouseDoorFrames wh={monWh} />
-        <WarehouseExterior wh={monWh} />
-
-        {/* Editor-positioned elements (zones/racks/locations from 2D editor) */}
-        <EditorZones3D zones={zones3D} />
-        <EditorRacks3D racks={racks3D} />
-        <EditorLocations3D locations={locations3D} />
-
-        {/* Edge wireframe */}
-        <lineSegments position={[0, WALL_HEIGHT / 2, 0]}>
-          <edgesGeometry args={[new THREE.BoxGeometry(monWh.width + 1.5, WALL_HEIGHT + 1.5, monWh.depth + 1.5)]} />
-          <lineBasicMaterial color={monWh.color} transparent opacity={0.18} />
-        </lineSegments>
-      </group>
+      {/* Layout data */}
+      <EditorZones3D zones={zones3D} />
+      <LocationBuildings3D locations={locations3D} showRoof={settings.roof} showLabels={settings.labels} />
+      <EditorRacks3D racks={racks3D} />
 
       <OrbitControls
         enableDamping
         dampingFactor={0.05}
-        minDistance={30}
+        minDistance={10}
         maxDistance={500}
         maxPolarAngle={Math.PI * 0.48}
-        target={[0, WALL_HEIGHT / 2, 0]}
+        target={[0, 3, 0]}
       />
     </>
   )
 }
 
+// ==================== Main Component ====================
+
 export default function LayoutPreview3D() {
   const { state } = useLayoutEditor()
-  const [showRoof, setShowRoof] = useState(true)
+
+  const [settings, setSettings] = useState({
+    labels: true,
+    grid: true,
+    fog: true,
+    shadows: true,
+    roof: false,
+  })
+
+  const toggle = useCallback((key) => {
+    setSettings((s) => ({ ...s, [key]: !s[key] }))
+  }, [])
 
   const props3D = useMemo(() => editorStateTo3DProps(state), [
     state.warehouse,
@@ -222,31 +188,16 @@ export default function LayoutPreview3D() {
     state.locations,
   ])
 
-  // Convert editor warehouse to monitoring WH shape
-  const monWh = useMemo(() => {
-    const wh = state.warehouse
-    if (!wh) return null
-    return {
-      code: wh.code || 'WH',
-      name: wh.name || 'Warehouse',
-      width: wh.lengthM || 60,
-      depth: wh.widthM || 40,
-      fill: 50,
-      stock: 0,
-      zones: state.zones.length || 4,
-      type: wh.type || 'Hàng hỗn hợp',
-      pos: [0, 0, 0],
-      color: 0x2563eb,
-      items: [],
-      temp: 28,
-      humid: 65,
-    }
-  }, [state.warehouse, state.zones.length])
+  const wh = state.warehouse
+  const whWidth = wh?.lengthM || 60
+  const whDepth = wh?.widthM || 40
+  const whCode = wh?.code || 'WH'
+  const whName = wh?.name || 'Warehouse'
 
-  if (!props3D || !monWh) {
+  if (!props3D) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-400 bg-[#0a0e1a]">
-        Không có dữ liệu kho để hiển thị 3D
+        Khong co du lieu kho de hien thi 3D
       </div>
     )
   }
@@ -258,13 +209,13 @@ export default function LayoutPreview3D() {
           <div className="absolute inset-0 flex items-center justify-center bg-[#0a0e1a]">
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-slate-400">Đang tải mô hình 3D...</span>
+              <span className="text-sm text-slate-400">Dang tai mo hinh 3D...</span>
             </div>
           </div>
         }
       >
         <Canvas
-          shadows
+          shadows={settings.shadows}
           dpr={[1, 1.5]}
           gl={{
             antialias: true,
@@ -276,43 +227,71 @@ export default function LayoutPreview3D() {
             fov: 55,
             near: 1,
             far: 6000,
-            position: [monWh.width * 0.8, 120, monWh.depth * 0.8],
+            position: [whWidth * 0.7, Math.max(whWidth, whDepth) * 0.6, whDepth * 0.7],
           }}
           onCreated={({ gl }) => {
             gl.shadowMap.enabled = true
             gl.shadowMap.type = THREE.PCFSoftShadowMap
           }}
         >
-          <PreviewScene props3D={props3D} monWh={monWh} showRoof={showRoof} />
+          <PreviewScene
+            props3D={props3D}
+            whWidth={whWidth}
+            whDepth={whDepth}
+            whCode={whCode}
+            whName={whName}
+            settings={settings}
+          />
         </Canvas>
       </Suspense>
 
-      {/* Roof toggle */}
-      <div className="absolute top-3 right-3">
-        <button
-          onClick={() => setShowRoof(!showRoof)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg backdrop-blur-sm transition-colors ${
-            showRoof
-              ? 'bg-white/90 text-slate-700 hover:bg-white'
-              : 'bg-slate-600/90 text-white hover:bg-slate-600'
-          }`}
-        >
-          {showRoof ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          <span className="text-xs font-medium">{showRoof ? 'Ẩn mái' : 'Hiện mái'}</span>
-        </button>
+      {/* Settings panel — top right */}
+      <div className="absolute top-3 right-3 pointer-events-auto w-44">
+        <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 p-3">
+          <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">Cai dat hien thi</p>
+          <div className="space-y-1">
+            <SettingsToggle icon={Tag} label="Nhan kho" value={settings.labels} onChange={() => toggle('labels')} />
+            <SettingsToggle icon={Grid3X3} label="Luoi nen" value={settings.grid} onChange={() => toggle('grid')} />
+            <SettingsToggle icon={CloudFog} label="Suong mu" value={settings.fog} onChange={() => toggle('fog')} />
+            <SettingsToggle icon={Sun} label="Bong do" value={settings.shadows} onChange={() => toggle('shadows')} />
+            <SettingsToggle icon={Home} label="Mai kho" value={settings.roof} onChange={() => toggle('roof')} />
+          </div>
+        </div>
       </div>
 
       {/* Stats overlay */}
-      <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
-        <p className="text-xs text-white/80 font-medium">
-          {state.zones.length} zones · {state.racks.length} racks · {state.locations.length} locations
+      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm px-4 py-2.5 rounded-lg border border-white/10">
+        <p className="text-xs text-white/90 font-semibold mb-1">{whCode} - {whName}</p>
+        <p className="text-[11px] text-white/70">
+          {whWidth} x {whDepth}m
         </p>
+        <div className="flex gap-3 mt-1.5 text-[10px] text-white/60">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+            {state.zones.length} zone
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+            {state.racks.length} rack
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+            {state.locations.length} location
+          </span>
+        </div>
       </div>
 
       {/* Controls hint */}
       <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-        <p className="text-[10px] text-white/70">
-          Chuột trái: Xoay · Chuột phải: Di chuyển · Cuộn: Phóng to/thu nhỏ
+        <p className="text-[10px] text-white/60">
+          Chuot trai: Xoay · Chuot phai: Di chuyen · Cuon: Phong to/thu nho
+        </p>
+      </div>
+
+      {/* Tip */}
+      <div className="absolute bottom-3 right-3 bg-blue-600/30 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-blue-500/20">
+        <p className="text-[10px] text-blue-200/80">
+          Quay lai 2D de chinh sua vi tri zone/rack/location
         </p>
       </div>
     </div>

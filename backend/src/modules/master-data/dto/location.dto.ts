@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsInt, Min } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsInt, Min, ValidateIf, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 import { LocationType, LocationStatus } from '@prisma/client';
 
@@ -85,6 +85,10 @@ export class CreateLocationDto {
   displayColor?: string;
 
   @IsOptional()
+  @IsObject()
+  doorConfig?: Record<string, any>;
+
+  @IsOptional()
   @IsString()
   externalId?: string;
 }
@@ -134,14 +138,14 @@ export class UpdateLocationDto {
   stackingRule?: string;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
-  @Type(() => Number)
-  xCoord?: number;
+  xCoord?: number | null;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
-  @Type(() => Number)
-  yCoord?: number;
+  yCoord?: number | null;
 
   @IsOptional()
   @IsNumber()
@@ -163,6 +167,10 @@ export class UpdateLocationDto {
   @IsOptional()
   @IsString()
   displayColor?: string;
+
+  @IsOptional()
+  @IsObject()
+  doorConfig?: Record<string, any>;
 
   @IsInt()
   @Min(0)

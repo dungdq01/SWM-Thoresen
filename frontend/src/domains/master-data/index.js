@@ -17,8 +17,6 @@ export {
   carrierApi,
   vesselApi,
   locationTypeApi,
-  ownerSkuMappingApi,
-  ownerWarehouseAccessApi,
   itemIncompatibilityApi,
   lookupApi,
   dropdownConfigApi,

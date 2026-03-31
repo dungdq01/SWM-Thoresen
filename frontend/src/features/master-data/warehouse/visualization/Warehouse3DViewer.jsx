@@ -1,456 +1,290 @@
-import { useMemo, Suspense, useRef, useState } from 'react'
+import { useMemo, useState, Suspense, useCallback } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Text, ContactShadows } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { INDUSTRIAL_COLORS, SCENE_CONFIG } from './constants'
-import { Eye, EyeOff } from 'lucide-react'
+import { Tag, Grid3X3, CloudFog, Sun, Home } from 'lucide-react'
 
-const IC = INDUSTRIAL_COLORS
-const SC = SCENE_CONFIG
+import { apiDataTo3DProps } from './apiDataTo3D'
+import EditorZones3D from '@features/layout-editor/components/preview-3d/EditorZones3D'
+import EditorRacks3D from '@features/layout-editor/components/preview-3d/EditorRacks3D'
+import LocationBuildings3D from '@features/layout-editor/components/preview-3d/LocationBuilding3D'
 
-// ==================== SCENE SETUP ====================
+// ==================== Lighting ====================
 
-export function SceneSetup({ height }) {
-  const { scene } = useThree()
-  useMemo(() => {
-    scene.background = new THREE.Color(SC.bgColor)
-    scene.fog = new THREE.Fog(SC.fogColor, SC.fogNear, SC.fogFar)
-  }, [scene])
-
+function SceneLighting() {
   return (
     <>
-      <ambientLight intensity={SC.ambientIntensity} />
+      <ambientLight color={0x6a7a9a} intensity={1.0} />
       <directionalLight
-        position={[20, 30, 15]}
-        intensity={SC.keyLightIntensity}
+        color={0xffeedd}
+        intensity={3.0}
+        position={[250, 500, 200]}
         castShadow
-        shadow-mapSize={[SC.shadowMapSize, SC.shadowMapSize]}
-        shadow-camera-left={-50}
-        shadow-camera-right={50}
-        shadow-camera-top={50}
-        shadow-camera-bottom={-50}
+        shadow-camera-near={1}
+        shadow-camera-far={1500}
+        shadow-camera-left={-300}
+        shadow-camera-right={300}
+        shadow-camera-top={300}
+        shadow-camera-bottom={-300}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-bias={-0.0002}
       />
-      <directionalLight position={[-15, 25, -10]} intensity={SC.fillLightIntensity} />
-      <hemisphereLight args={['#87CEEB', '#8B7355', SC.hemisphereIntensity]} />
+      <hemisphereLight args={[0x99bbee, 0x223322, 0.8]} />
+      <directionalLight color={0x6688aa} intensity={0.5} position={[-200, 200, -150]} />
+      <pointLight color={0x4488cc} intensity={0.3} position={[0, 2, 0]} distance={200} />
     </>
   )
 }
 
-// ==================== FLOOR ====================
+// ==================== Environment (open yard) ====================
 
-export function Floor({ length, width }) {
-  return (
-    <group>
-      {/* Main floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[length, width]} />
-        <meshStandardMaterial color={IC.floor} roughness={0.8} metalness={0.05} />
-      </mesh>
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
-        <planeGeometry args={[length * 2, width * 2]} />
-        <meshStandardMaterial color={IC.ground} roughness={0.9} />
-      </mesh>
-    </group>
-  )
-}
+function YardEnvironment({ whWidth, whDepth, showGrid, showFog }) {
+  const { scene } = useThree()
+  const groundSize = Math.max(whWidth, whDepth) * 2.5
 
-// ==================== WALLS ====================
+  useMemo(() => {
+    scene.background = new THREE.Color(0x1a2840)
+    scene.fog = showFog ? new THREE.FogExp2(0x1a2840, 0.0008) : null
+  }, [scene, showFog])
 
-export function Walls({ length, width, height }) {
-  const wallT = 0.3
-  const baseH = 0.8
-  const halfL = length / 2
-  const halfW = width / 2
-
-  const wallDefs = [
-    { pos: [0, height / 2, -halfW - wallT / 2], size: [length + 2 * wallT, height, wallT] },
-    { pos: [0, height / 2, halfW + wallT / 2], size: [length + 2 * wallT, height, wallT] },
-    { pos: [-halfL - wallT / 2, height / 2, 0], size: [wallT, height, width] },
-    { pos: [halfL + wallT / 2, height / 2, 0], size: [wallT, height, width] },
-  ]
-
-  return (
-    <group>
-      {wallDefs.map((w, i) => (
-        <group key={`wall-${i}`}>
-          <mesh position={w.pos} castShadow receiveShadow>
-            <boxGeometry args={w.size} />
-            <meshStandardMaterial color={IC.wall} roughness={0.7} metalness={0.05} side={THREE.DoubleSide} />
-          </mesh>
-          {/* Concrete base band */}
-          <mesh position={[w.pos[0], baseH / 2, w.pos[2]]}>
-            <boxGeometry args={[w.size[0] + 0.02, baseH, w.size[2] + 0.02]} />
-            <meshStandardMaterial color={IC.baseBand} roughness={0.9} metalness={0.05} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  )
-}
-
-// ==================== COLUMNS ====================
-
-export function Columns({ positions, height }) {
-  if (!positions?.length) return null
-  const colW = 0.4
-
-  return (
-    <group>
-      {positions.map((col, i) => (
-        <mesh key={`col-${i}`} position={[col.x, height / 2, col.z]} castShadow>
-          <boxGeometry args={[colW, height, colW]} />
-          <meshStandardMaterial color={IC.column} roughness={0.4} metalness={0.5} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-// ==================== ROOF ====================
-
-export function RoofStructure({ length, width, height, roof }) {
-  const slopePercent = roof?.slopePercent || 15
-  const slope = Math.max(slopePercent / 100, 0.12)
-  const halfWidth = width / 2
-  const roofRise = halfWidth * slope
-  const slopeLength = Math.sqrt(halfWidth * halfWidth + roofRise * roofRise)
-  const slopeAngle = Math.atan2(roofRise, halfWidth)
-  const roofT = 0.12
-  const panelCount = Math.max(Math.floor(length / 1.2), 8)
-  const panelWidth = length / panelCount
-
-  return (
-    <group>
-      {/* Corrugated panels - LEFT slope */}
-      {Array.from({ length: panelCount }, (_, i) => {
-        const px = -length / 2 + panelWidth / 2 + i * panelWidth
-        return (
-          <group
-            key={`roof-l-${i}`}
-            position={[px, height, -halfWidth]}
-            rotation={[-slopeAngle, 0, 0]}
-          >
-            <mesh position={[0, roofT / 2, slopeLength / 2]} castShadow>
-              <boxGeometry args={[panelWidth - 0.02, roofT, slopeLength]} />
-              <meshStandardMaterial
-                color={i % 2 === 0 ? IC.roofA : IC.roofB}
-                roughness={0.5}
-                metalness={0.35}
-              />
-            </mesh>
-          </group>
-        )
-      })}
-
-      {/* Corrugated panels - RIGHT slope */}
-      {Array.from({ length: panelCount }, (_, i) => {
-        const px = -length / 2 + panelWidth / 2 + i * panelWidth
-        return (
-          <group
-            key={`roof-r-${i}`}
-            position={[px, height, halfWidth]}
-            rotation={[slopeAngle, 0, 0]}
-          >
-            <mesh position={[0, roofT / 2, -slopeLength / 2]} castShadow>
-              <boxGeometry args={[panelWidth - 0.02, roofT, slopeLength]} />
-              <meshStandardMaterial
-                color={i % 2 === 0 ? IC.roofA : IC.roofB}
-                roughness={0.5}
-                metalness={0.35}
-              />
-            </mesh>
-          </group>
-        )
-      })}
-
-      {/* Ridge cap */}
-      <mesh position={[0, height + roofRise + roofT, 0]}>
-        <boxGeometry args={[length + 0.2, 0.15, 0.5]} />
-        <meshStandardMaterial color={IC.ridge} roughness={0.4} metalness={0.4} />
-      </mesh>
-
-      {/* Gutter/fascia - left */}
-      <mesh position={[0, height - 0.1, -halfWidth - 0.15]}>
-        <boxGeometry args={[length + 0.4, 0.25, 0.2]} />
-        <meshStandardMaterial color={IC.gutter} roughness={0.5} metalness={0.4} />
-      </mesh>
-      {/* Gutter/fascia - right */}
-      <mesh position={[0, height - 0.1, halfWidth + 0.15]}>
-        <boxGeometry args={[length + 0.4, 0.25, 0.2]} />
-        <meshStandardMaterial color={IC.gutter} roughness={0.5} metalness={0.4} />
-      </mesh>
-    </group>
-  )
-}
-
-// ==================== TRUSSES ====================
-
-export function Trusses({ length, width, height, roof, columnSpacingM }) {
-  const spacing = columnSpacingM || 6
-  const trussCount = Math.max(Math.floor(length / spacing) + 1, 2)
-  const halfWidth = width / 2
-  const slopePercent = roof?.slopePercent || 15
-  const slope = Math.max(slopePercent / 100, 0.12)
-  const roofRise = halfWidth * slope
-  const slopeLength = Math.sqrt(halfWidth * halfWidth + roofRise * roofRise)
-  const slopeAngle = Math.atan2(roofRise, halfWidth)
-
-  return (
-    <group>
-      {Array.from({ length: trussCount }, (_, i) => {
-        const x = -length / 2 + i * (length / (trussCount - 1 || 1))
-        return (
-          <group key={`truss-${i}`}>
-            {/* Bottom chord */}
-            <mesh position={[x, height + 0.05, 0]}>
-              <boxGeometry args={[0.06, 0.1, width]} />
-              <meshStandardMaterial color={IC.truss} metalness={0.6} roughness={0.3} />
-            </mesh>
-
-            {/* Left rafter */}
-            <group position={[x, height, -halfWidth]} rotation={[-slopeAngle, 0, 0]}>
-              <mesh position={[0, 0, slopeLength / 2]}>
-                <boxGeometry args={[0.06, 0.05, slopeLength]} />
-                <meshStandardMaterial color={IC.trussRafter} metalness={0.5} roughness={0.4} />
-              </mesh>
-            </group>
-
-            {/* Right rafter */}
-            <group position={[x, height, halfWidth]} rotation={[slopeAngle, 0, 0]}>
-              <mesh position={[0, 0, -slopeLength / 2]}>
-                <boxGeometry args={[0.06, 0.05, slopeLength]} />
-                <meshStandardMaterial color={IC.trussRafter} metalness={0.5} roughness={0.4} />
-              </mesh>
-            </group>
-
-            {/* Web members (vertical struts) */}
-            {[0.25, 0.5, 0.75].map((f) => (
-              <group key={`web-l-${f}`}>
-                <mesh position={[x, height + roofRise * f * 0.5, -halfWidth * (1 - f)]}>
-                  <boxGeometry args={[0.04, roofRise * f + 0.1, 0.04]} />
-                  <meshStandardMaterial color={IC.trussWeb} metalness={0.5} roughness={0.4} />
-                </mesh>
-                <mesh position={[x, height + roofRise * f * 0.5, halfWidth * (1 - f)]}>
-                  <boxGeometry args={[0.04, roofRise * f + 0.1, 0.04]} />
-                  <meshStandardMaterial color={IC.trussWeb} metalness={0.5} roughness={0.4} />
-                </mesh>
-              </group>
-            ))}
-          </group>
-        )
-      })}
-    </group>
-  )
-}
-
-// ==================== DOCK BAYS ====================
-
-export function DockBays3D({ docks, geometry }) {
-  if (!docks?.positions?.length) return null
-  const halfL = geometry.length / 2
-  const halfW = geometry.width / 2
-  const dockW = 3.5
-  const dockH = 4
-
-  return (
-    <group>
-      {docks.positions.map((dock, i) => {
-        const px = -halfL + dock.offsetM + dockW / 2
-        const dockDepth = 0.3
-
-        return (
-          <group key={`dock3d-${i}`} position={[px, dockH / 2, halfW]}>
-            {/* Main dock door */}
-            <mesh>
-              <boxGeometry args={[dockW, dockH, dockDepth]} />
-              <meshStandardMaterial color={IC.dock} roughness={0.6} metalness={0.2} />
-            </mesh>
-
-            {/* Roller shutter lines */}
-            {Array.from({ length: 8 }, (_, j) => (
-              <mesh key={`shutter-${j}`} position={[0, -dockH / 2 + (j / 8) * dockH, dockDepth / 2 + 0.01]}>
-                <boxGeometry args={[dockW - 0.1, 0.03, 0.02]} />
-                <meshStandardMaterial color={IC.shutterLine} />
-              </mesh>
-            ))}
-
-            {/* Rubber bumpers */}
-            <mesh position={[-dockW / 2 + 0.3, -dockH / 4, dockDepth / 2 + 0.08]}>
-              <boxGeometry args={[0.2, 0.4, 0.15]} />
-              <meshStandardMaterial color={IC.bumper} roughness={0.9} />
-            </mesh>
-            <mesh position={[dockW / 2 - 0.3, -dockH / 4, dockDepth / 2 + 0.08]}>
-              <boxGeometry args={[0.2, 0.4, 0.15]} />
-              <meshStandardMaterial color={IC.bumper} roughness={0.9} />
-            </mesh>
-
-            {/* Warning stripes */}
-            <mesh position={[-dockW / 2 - 0.05, 0, dockDepth / 2 + 0.01]}>
-              <boxGeometry args={[0.08, dockH, 0.02]} />
-              <meshStandardMaterial color={IC.warning} />
-            </mesh>
-            <mesh position={[dockW / 2 + 0.05, 0, dockDepth / 2 + 0.01]}>
-              <boxGeometry args={[0.08, dockH, 0.02]} />
-              <meshStandardMaterial color={IC.warning} />
-            </mesh>
-
-            {/* Dock leveler (ramp) */}
-            <mesh position={[0, -dockH / 2 + 0.05, dockDepth / 2 + 1]}>
-              <boxGeometry args={[dockW + 0.4, 0.1, 2]} />
-              <meshStandardMaterial color={IC.leveler} roughness={0.8} />
-            </mesh>
-          </group>
-        )
-      })}
-    </group>
-  )
-}
-
-// ==================== INFO LABEL (3D) ====================
-
-function InfoLabel3D({ warehouse, geometry }) {
-  return (
-    <group position={[0, 0.02, -(geometry.width / 2 + 4)]}>
-      <Text
-        fontSize={1.2}
-        color="#94A3B8"
-        anchorX="center"
-        anchorY="middle"
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        {warehouse?.warehouseName || 'Warehouse'}
-      </Text>
-      <Text
-        fontSize={0.7}
-        color="#64748B"
-        anchorX="center"
-        anchorY="middle"
-        position={[0, 0, 2]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        {`${geometry.length}m × ${geometry.width}m × ${geometry.height}m`}
-      </Text>
-    </group>
-  )
-}
-
-// ==================== MAIN 3D COMPONENT ====================
-
-function WarehouseScene({ geometry, docks, roof, columnPositions, warehouse, showRoof }) {
-  const { length, width, height } = geometry
+  const halfW = whWidth / 2
+  const halfD = whDepth / 2
+  const borderH = 0.3
+  const borderThick = 0.2
 
   return (
     <>
-      <SceneSetup height={height} />
+      {/* World ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[groundSize, groundSize]} />
+        <meshStandardMaterial color={0x0c1520} roughness={0.92} metalness={0.05} />
+      </mesh>
 
-      <group>
-        <Floor length={length} width={width} />
-        <Walls length={length} width={width} height={height} />
-        <Columns positions={columnPositions} height={height} />
-        <DockBays3D docks={docks} geometry={geometry} />
-        {showRoof && (
-          <>
-            <RoofStructure length={length} width={width} height={height} roof={roof} />
-            <Trusses
-              length={length}
-              width={width}
-              height={height}
-              roof={roof}
-              columnSpacingM={geometry.columnSpacingM}
-            />
-          </>
-        )}
-        <InfoLabel3D warehouse={warehouse} geometry={geometry} />
-      </group>
+      {/* Warehouse yard floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
+        <planeGeometry args={[whWidth, whDepth]} />
+        <meshStandardMaterial color={0x1c2a3a} roughness={0.85} />
+      </mesh>
 
-      <ContactShadows
-        position={[0, -0.01, 0]}
-        opacity={0.4}
-        scale={Math.max(length, width) * 1.5}
-        blur={2}
-        far={20}
-      />
+      {/* Grid helper */}
+      {showGrid && (
+        <gridHelper
+          args={[groundSize, Math.floor(groundSize / 25), '#1a2a40', '#0d1825']}
+          position={[0, 0.05, 0]}
+        />
+      )}
+
+      {/* Yard boundary outline */}
+      {[
+        { pos: [0, borderH / 2, -halfD], size: [whWidth + borderThick, borderH, borderThick] },
+        { pos: [0, borderH / 2, halfD], size: [whWidth + borderThick, borderH, borderThick] },
+        { pos: [-halfW, borderH / 2, 0], size: [borderThick, borderH, whDepth] },
+        { pos: [halfW, borderH / 2, 0], size: [borderThick, borderH, whDepth] },
+      ].map((b, i) => (
+        <mesh key={`border-${i}`} position={b.pos}>
+          <boxGeometry args={b.size} />
+          <meshStandardMaterial color={0x3b82f6} emissive={0x3b82f6} emissiveIntensity={0.3} transparent opacity={0.6} />
+        </mesh>
+      ))}
+
+      {/* Corner markers */}
+      {[
+        [-halfW, -halfD], [halfW, -halfD],
+        [-halfW, halfD], [halfW, halfD],
+      ].map(([px, pz], i) => (
+        <mesh key={`corner-${i}`} position={[px, 0.4, pz]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.8, 8]} />
+          <meshStandardMaterial color={0x3b82f6} emissive={0x3b82f6} emissiveIntensity={0.4} metalness={0.5} roughness={0.3} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+// ==================== Settings Toggle ====================
+
+function SettingsToggle({ icon: Icon, label, value, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-1">
+      <div className="flex items-center gap-2">
+        <Icon className="w-3.5 h-3.5 text-white/50" />
+        <span className="text-[11px] text-white/70">{label}</span>
+      </div>
+      <button
+        onClick={onChange}
+        className={`w-8 h-4 rounded-full transition-colors relative ${value ? 'bg-blue-500' : 'bg-white/20'}`}
+      >
+        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${value ? 'left-[18px]' : 'left-0.5'}`} />
+      </button>
+    </div>
+  )
+}
+
+// ==================== Warehouse Scene ====================
+
+function WarehouseScene({ whWidth, whDepth, whCode, whName, zones3D, racks3D, locations3D, settings }) {
+  return (
+    <>
+      <SceneLighting />
+      <YardEnvironment whWidth={whWidth} whDepth={whDepth} showGrid={settings.grid} showFog={settings.fog} />
+
+      {/* Warehouse name label */}
+      {settings.labels && (
+        <Text
+          position={[0, 10, 0]}
+          fontSize={2.5}
+          color="#60a5fa"
+          anchorX="center"
+          anchorY="middle"
+          fontWeight="bold"
+          fillOpacity={0.8}
+        >
+          {whCode} - {whName}
+        </Text>
+      )}
+
+      {/* Layout data */}
+      <EditorZones3D zones={zones3D} />
+      <LocationBuildings3D locations={locations3D} showRoof={settings.roof} showLabels={settings.labels} />
+      <EditorRacks3D racks={racks3D} />
 
       <OrbitControls
         enableDamping
         dampingFactor={0.05}
         minDistance={10}
-        maxDistance={200}
-        maxPolarAngle={Math.PI / 2.1}
-        target={[0, height / 2, 0]}
+        maxDistance={500}
+        maxPolarAngle={Math.PI * 0.48}
+        target={[0, 3, 0]}
       />
     </>
   )
 }
 
+// ==================== Loading ====================
+
 function LoadingFallback() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
+    <div className="absolute inset-0 flex items-center justify-center bg-[#0a0e1a]">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-slate-400">Đang tải mô hình 3D...</span>
+        <span className="text-sm text-slate-400">Dang tai mo hinh 3D...</span>
       </div>
     </div>
   )
 }
 
+// ==================== Main Component ====================
+
 export function Warehouse3DViewer({
   geometry,
-  docks,
-  roof,
-  columnPositions,
   warehouse,
+  zones,
+  racks,
+  locations,
   className = '',
 }) {
-  const { length, width, height } = geometry
-  const [showRoof, setShowRoof] = useState(true)
+  const [settings, setSettings] = useState({
+    labels: true,
+    grid: true,
+    fog: true,
+    shadows: true,
+    roof: false,
+  })
+
+  const toggle = useCallback((key) => {
+    setSettings((s) => ({ ...s, [key]: !s[key] }))
+  }, [])
+
+  const whWidth = geometry?.length || geometry?.lengthM || 60
+  const whDepth = geometry?.width || geometry?.widthM || 40
+  const whCode = warehouse?.warehouseCode || 'WH'
+  const whName = warehouse?.warehouseName || 'Warehouse'
+
+  const { zones3D, racks3D, locations3D } = useMemo(
+    () => (geometry ? apiDataTo3DProps(geometry, zones, racks, locations) : { zones3D: [], racks3D: [], locations3D: [] }),
+    [geometry, zones, racks, locations],
+  )
+
+  if (!geometry) return null
 
   return (
     <div className={`relative w-full h-full min-h-[400px] rounded-xl overflow-hidden ${className}`}>
       <Suspense fallback={<LoadingFallback />}>
         <Canvas
-          camera={{
-            position: [length * 0.8, height * 1.5, width * 1.2],
-            fov: 50,
-            near: 0.1,
-            far: 2000,
+          shadows={settings.shadows}
+          dpr={[1, 1.5]}
+          gl={{
+            antialias: true,
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.4,
+            powerPreference: 'high-performance',
+            preserveDrawingBuffer: true,
           }}
-          shadows
-          dpr={[1, 2]}
-          gl={{ antialias: true, preserveDrawingBuffer: true }}
+          camera={{
+            fov: 55,
+            near: 1,
+            far: 6000,
+            position: [whWidth * 0.7, Math.max(whWidth, whDepth) * 0.6, whDepth * 0.7],
+          }}
+          onCreated={({ gl }) => {
+            gl.shadowMap.enabled = true
+            gl.shadowMap.type = THREE.PCFSoftShadowMap
+          }}
         >
           <WarehouseScene
-            geometry={geometry}
-            docks={docks}
-            roof={roof}
-            columnPositions={columnPositions}
-            warehouse={warehouse}
-            showRoof={showRoof}
+            whWidth={whWidth}
+            whDepth={whDepth}
+            whCode={whCode}
+            whName={whName}
+            zones3D={zones3D}
+            racks3D={racks3D}
+            locations3D={locations3D}
+            settings={settings}
           />
         </Canvas>
       </Suspense>
 
-      {/* Roof toggle button */}
-      <div className="absolute top-3 right-3">
-        <button
-          onClick={() => setShowRoof(!showRoof)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg backdrop-blur-sm transition-colors ${
-            showRoof
-              ? 'bg-white/90 text-navy-700 hover:bg-white'
-              : 'bg-navy-600/90 text-white hover:bg-navy-600'
-          }`}
-          title={showRoof ? 'Ẩn mái' : 'Hiện mái'}
-        >
-          {showRoof ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          <span className="text-xs font-medium">{showRoof ? 'Ẩn mái' : 'Hiện mái'}</span>
-        </button>
+      {/* Settings panel — top right */}
+      <div className="absolute top-3 right-3 pointer-events-auto w-44">
+        <div className="bg-black/70 backdrop-blur-md rounded-xl border border-white/10 p-3">
+          <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider mb-2">Cai dat hien thi</p>
+          <div className="space-y-1">
+            <SettingsToggle icon={Tag} label="Nhan kho" value={settings.labels} onChange={() => toggle('labels')} />
+            <SettingsToggle icon={Grid3X3} label="Luoi nen" value={settings.grid} onChange={() => toggle('grid')} />
+            <SettingsToggle icon={CloudFog} label="Suong mu" value={settings.fog} onChange={() => toggle('fog')} />
+            <SettingsToggle icon={Sun} label="Bong do" value={settings.shadows} onChange={() => toggle('shadows')} />
+            <SettingsToggle icon={Home} label="Mai kho" value={settings.roof} onChange={() => toggle('roof')} />
+          </div>
+        </div>
       </div>
 
-      {/* Controls hint overlay */}
+      {/* Stats overlay */}
+      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm px-4 py-2.5 rounded-lg border border-white/10">
+        <p className="text-xs text-white/90 font-semibold">{whCode} - {whName}</p>
+        <p className="text-[11px] text-white/60 mt-0.5">
+          {whWidth} x {whDepth}m
+        </p>
+        <div className="flex gap-3 mt-1.5 text-[10px] text-white/60">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
+            {zones3D.length} zone
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />
+            {racks3D.length} rack
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+            {locations3D.length} location
+          </span>
+        </div>
+      </div>
+
+      {/* Controls hint */}
       <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-        <p className="text-[10px] text-white/70">
-          Chuột trái: Xoay · Chuột phải: Di chuyển · Cuộn: Phóng to/thu nhỏ
+        <p className="text-[10px] text-white/60">
+          Chuot trai: Xoay · Chuot phai: Di chuyen · Cuon: Phong to/thu nho
         </p>
       </div>
     </div>

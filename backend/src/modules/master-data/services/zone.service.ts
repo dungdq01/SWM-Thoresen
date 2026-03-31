@@ -74,6 +74,13 @@ export class ZoneService {
       isBillingZone: dto.isBillingZone,
       billingRateZone: dto.billingRateZone,
       maxCapacityMt: dto.maxCapacityMt,
+      zoneWidthM: dto.zoneWidthM,
+      zoneDepthM: dto.zoneDepthM,
+      xCoord: dto.xCoord,
+      yCoord: dto.yCoord,
+      rotationDeg: dto.rotationDeg,
+      displayColor: dto.displayColor,
+      sortOrder: dto.sortOrder,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
 

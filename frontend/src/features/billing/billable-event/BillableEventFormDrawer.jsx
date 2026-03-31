@@ -111,10 +111,10 @@ export function BillableEventFormDrawer({
                 <Input
                   label="Số lượng (MT) *"
                   type="number"
-                  step="0.01"
+                  step="1"
                   value={draft.billingQtyMt}
                   onChange={(e) => set('billingQtyMt', e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0"
                 />
                 <Input
                   label="Ngày sự kiện *"

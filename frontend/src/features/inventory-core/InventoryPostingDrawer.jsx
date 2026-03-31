@@ -168,7 +168,7 @@ export function InventoryPostingDrawer({ isOpen, onClose }) {
                 </div>
                 <div>
                   <Label required>Số lượng</Label>
-                  <Input type="number" step="0.001" min="0" value={form.qty} onChange={(e) => handleChange('qty', e.target.value)} placeholder="Nhập số lượng" />
+                  <Input type="number" step="1" min="0" value={form.qty} onChange={(e) => handleChange('qty', e.target.value)} placeholder="Nhập số lượng" />
                 </div>
                 <div>
                   <Label required>Đơn vị</Label>

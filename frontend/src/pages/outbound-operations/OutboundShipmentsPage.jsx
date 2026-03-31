@@ -24,35 +24,37 @@ import { CreateShipmentModal, ViewShipmentModal } from '@features/outbound-opera
 
 const SHIPMENT_STATUSES = [
   { value: '', label: 'Tất cả' },
-  { value: 'NEW', label: 'Tạo mới' },
+  { value: 'DRAFT', label: 'Nháp' },
   { value: 'CONFIRMED', label: 'Đã xác nhận' },
   { value: 'LOADING', label: 'Đang xếp hàng' },
-  { value: 'LOADED', label: 'Đã xếp xong' },
   { value: 'SHIPPED', label: 'Đã xuất' },
   { value: 'CLOSED', label: 'Đã đóng' },
   { value: 'CANCELLED', label: 'Đã hủy' },
+  { value: 'ERROR', label: 'Lỗi' },
 ]
 
 const statusTone = (status) => {
-  if (status === 'NEW' || status === 'DRAFT') return 'info'
+  if (status === 'DRAFT' || status === 'NEW') return 'default'
   if (status === 'CONFIRMED') return 'success'
   if (status === 'LOADING') return 'warning'
-  if (status === 'LOADED') return 'success'
+  if (status === 'LOADED') return 'info'
   if (status === 'SHIPPED') return 'success'
   if (status === 'CLOSED') return 'default'
   if (status === 'CANCELLED') return 'danger'
+  if (status === 'ERROR') return 'danger'
   return 'default'
 }
 
 const STATUS_LABELS = {
-  NEW: 'Tạo mới',
-  DRAFT: 'Tạo mới',
+  DRAFT: 'Nháp',
+  NEW: 'Nháp',
   CONFIRMED: 'Đã xác nhận',
   LOADING: 'Đang xếp hàng',
   LOADED: 'Đã xếp xong',
   SHIPPED: 'Đã xuất',
   CLOSED: 'Đã đóng',
   CANCELLED: 'Đã hủy',
+  ERROR: 'Lỗi',
 }
 
 export function OutboundShipmentsPage() {
@@ -191,7 +193,7 @@ export function OutboundShipmentsPage() {
         </div>
 
         {/* Table */}
-        <Table>
+        <Table minWidth={1100}>
           <TableHeader>
             <TableRow hoverable={false}>
               <TableHead className="w-8"></TableHead>
@@ -257,7 +259,7 @@ export function OutboundShipmentsPage() {
                       {totalExpectedFromLines.toLocaleString()} kg
                     </TableCell>
                     <TableCell align="right">
-                      <span className={totalShippedFromLines > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                      <span className={totalShippedFromLines > 0 ? 'font-medium text-amber-500' : 'text-navy-400'}>
                         {totalShippedFromLines.toLocaleString()} kg
                       </span>
                     </TableCell>
@@ -265,53 +267,58 @@ export function OutboundShipmentsPage() {
                       <Badge variant={statusTone(shp.status)}>{STATUS_LABELS[shp.status] || shp.status}</Badge>
                     </TableCell>
                     <TableCell align="center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1.5">
                         <Button
                           variant="ghost"
                           size="sm"
                           title="Xem phiếu"
                           onClick={() => handleOpenViewModal(shp)}
+                          className="gap-1"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3.5 w-3.5" />
+                          <span className="hidden xl:inline">Xem</span>
                         </Button>
                         {(shp.status === 'NEW' || shp.status === 'DRAFT') && (
                           <>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="text-emerald-600 hover:text-emerald-700"
+                              title="Chỉnh sửa"
+                              onClick={() => handleOpenEditModal(shp)}
+                              className="gap-1"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Sửa</span>
+                            </Button>
+                            <Button
+                              variant="accent"
+                              size="sm"
                               title="Xác nhận"
                               onClick={() => handleConfirm(shp.id)}
                               disabled={confirmShipment.isPending}
+                              className="gap-1"
                             >
-                              <Check className="h-4 w-4" />
+                              <Check className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Xác nhận</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-amber-500 hover:text-amber-600"
+                              className="text-amber-500 hover:bg-amber-500/10 hover:text-amber-600"
                               title="Báo lỗi"
                               onClick={() => handleReportError(shp)}
                               disabled={reportError.isPending}
                             >
-                              <AlertTriangle className="h-4 w-4" />
+                              <AlertTriangle className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="Chỉnh sửa"
-                              onClick={() => handleOpenEditModal(shp)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 hover:text-red-700"
+                              className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                               title="Xóa"
                               onClick={() => handleOpenDeleteConfirm(shp)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </>
                         )}
@@ -355,23 +362,27 @@ export function OutboundShipmentsPage() {
                                   </td>
                                   <td className="py-2 text-center">
                                     <Badge
-                                      variant={line.status === 'SHIPPED' ? 'success' : line.status === 'PARTIAL' ? 'warning' : 'default'}
+                                      variant={
+                                        (line.lineStatus || line.status) === 'LINE_SHIPPED' ? 'success'
+                                        : (line.lineStatus || line.status) === 'LOADING' ? 'warning'
+                                        : (line.lineStatus || line.status) === 'WEIGHED_PASS' ? 'info'
+                                        : (line.lineStatus || line.status) === 'CANCELLED' ? 'danger'
+                                        : 'default'
+                                      }
                                       className="text-xs"
                                     >
-                                      {line.status === 'OPEN' ? 'Mới' : line.status === 'SHIPPED' ? 'Đã xuất' : line.status === 'PARTIAL' ? 'Xuất 1 phần' : line.status}
+                                      {{
+                                        PENDING: 'Chờ xếp',
+                                        LOADING: 'Đã xếp',
+                                        WEIGHED_PASS: 'Đã cân',
+                                        LINE_SHIPPED: 'Đã xuất',
+                                        CANCELLED: 'Đã hủy',
+                                      }[line.lineStatus || line.status] || line.lineStatus || line.status}
                                     </Badge>
                                   </td>
                                 </tr>
                               ))}
                             </tbody>
-                            <tfoot>
-                              <tr className="border-t border-moon-300 font-semibold text-navy-900">
-                                <td colSpan={3} className="pt-2 pr-3">Tổng</td>
-                                <td className="pt-2 pr-3 text-right">{totalExpectedFromLines.toLocaleString()}</td>
-                                <td className="pt-2 pr-3 text-right text-emerald-600">{totalShippedFromLines.toLocaleString()}</td>
-                                <td></td>
-                              </tr>
-                            </tfoot>
                           </table>
                         </div>
                       </td>

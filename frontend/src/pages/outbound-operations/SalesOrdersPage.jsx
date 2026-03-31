@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { Plus, Check, Trash2, Pencil, RotateCcw, FileOutput, ChevronDown, ChevronUp, Package, Truck } from 'lucide-react'
+import { Plus, Check, Trash2, Pencil, RotateCcw, FileOutput, ChevronDown, ChevronUp, Package, Truck, Lock, Ban } from 'lucide-react'
 import {
   useSalesOrders,
   useCreateSalesOrder,
@@ -7,6 +7,7 @@ import {
   useConfirmSalesOrder,
   useCancelSalesOrder,
   useUnconfirmSalesOrder,
+  useCloseSalesOrder,
   useNextSoNumber,
   useCreateShipment,
 } from '@domains/outbound-operations'
@@ -63,6 +64,7 @@ export function SalesOrdersPage() {
   const createSo = useCreateSalesOrder()
   const updateSo = useUpdateSalesOrder()
   const confirmSo = useConfirmSalesOrder()
+  const closeSo = useCloseSalesOrder()
   const cancelSo = useCancelSalesOrder()
   const unconfirmSo = useUnconfirmSalesOrder()
 
@@ -155,7 +157,7 @@ export function SalesOrdersPage() {
         </div>
 
         {/* Table */}
-        <Table>
+        <Table minWidth={1200}>
           <TableHeader>
             <TableRow hoverable={false}>
               <TableHead className="w-8"></TableHead>
@@ -231,7 +233,7 @@ export function SalesOrdersPage() {
                       {totalExpectedFromLines.toLocaleString()} kg
                     </TableCell>
                     <TableCell align="right">
-                      <span className={totalShippedFromLines > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
+                      <span className={totalShippedFromLines > 0 ? 'font-medium text-amber-500' : 'text-navy-400'}>
                         {totalShippedFromLines.toLocaleString()} kg
                       </span>
                     </TableCell>
@@ -248,35 +250,45 @@ export function SalesOrdersPage() {
                       })()}
                     </TableCell>
                     <TableCell align="center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1.5">
                         {so.status === 'DRAFT' && (
                           <>
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(so)} title="Chỉnh sửa">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(so)} title="Chỉnh sửa" className="gap-1">
                               <Pencil className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Sửa</span>
                             </Button>
-                            <Button variant="accent" size="sm" onClick={() => confirmSo.mutate(so.id)} title="Xác nhận">
+                            <Button variant="accent" size="sm" onClick={() => confirmSo.mutate(so.id)} title="Xác nhận" className="gap-1">
                               <Check className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Xác nhận</span>
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => cancelSo.mutate({ id: so.id, data: {} })} title="Xóa" className="text-danger hover:bg-danger/10">
-                              <Trash2 className="h-3.5 w-3.5" />
+                            <Button variant="ghost" size="sm" onClick={() => cancelSo.mutate({ id: so.id, data: {} })} title="Hủy SO" className="text-red-500 hover:bg-red-500/10 hover:text-red-600">
+                              <Ban className="h-3.5 w-3.5" />
                             </Button>
                           </>
                         )}
                         {so.status === 'CONFIRMED' && (
+                          <Button variant="accent" size="sm" onClick={() => handleOpenShipmentModal(so)} title="Tạo phiếu xuất" className="gap-1">
+                            <FileOutput className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">Tạo phiếu</span>
+                          </Button>
+                        )}
+                        {['PARTIALLY_RELEASED', 'FULLY_RELEASED'].includes(so.status) && (
                           <>
-                            <Button variant="outline" size="sm" onClick={() => unconfirmSo.mutate(so.id)} title="Hủy xác nhận">
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="accent" size="sm" onClick={() => handleOpenShipmentModal(so)} title="Tạo phiếu xuất">
+                            <Button variant="accent" size="sm" onClick={() => handleOpenShipmentModal(so)} title="Tạo phiếu xuất" className="gap-1">
                               <FileOutput className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Tạo phiếu</span>
+                            </Button>
+                            <Button size="sm" onClick={() => closeSo.mutate(so.id)} title="Đóng SO" className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
+                              <Lock className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Đóng</span>
                             </Button>
                           </>
                         )}
-                        {['PARTIALLY_RELEASED', 'FULLY_RELEASED', 'SHIPPED'].includes(so.status) && (
-                          <span className="text-xs text-navy-400">Đang xử lý</span>
-                        )}
-                        {['CLOSED', 'CANCELLED'].includes(so.status) && (
-                          <span className="text-xs text-navy-400">Hoàn tất</span>
+                        {so.status === 'SHIPPED' && (
+                          <Button size="sm" onClick={() => closeSo.mutate(so.id)} title="Đóng SO" className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
+                            <Lock className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">Đóng SO</span>
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -298,7 +310,8 @@ export function SalesOrdersPage() {
                                 <th className="pb-2 pr-3">ĐVT</th>
                                 <th className="pb-2 pr-3 text-right">SL dự kiến</th>
                                 <th className="pb-2 pr-3 text-right">SL đã xuất</th>
-                                <th className="pb-2 text-center">Trạng thái</th>
+                                <th className="pb-2 pr-3 text-right">Đơn giá</th>
+                                <th className="pb-2 pr-3 text-right">Thành tiền</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -310,19 +323,15 @@ export function SalesOrdersPage() {
                                     <p className="text-xs text-navy-400">{line.item?.itemCode || line.itemId?.slice(0, 8)}</p>
                                   </td>
                                   <td className="py-2 pr-3 text-navy-600">{line.uom?.uomCode || 'kg'}</td>
-                                  <td className="py-2 pr-3 text-right font-medium text-navy-900">{Number(line.expectedQtyKg || line.expectedQty || 0).toLocaleString()} kg</td>
+                                  <td className="py-2 pr-3 text-right font-medium text-navy-900">{Number(line.expectedQtyKg || line.expectedQty || 0).toLocaleString()}</td>
                                   <td className="py-2 pr-3 text-right">
-                                    <span className={Number(line.shippedQtyKg || line.shippedQty || 0) > 0 ? 'font-medium text-emerald-600' : 'text-navy-400'}>
-                                      {Number(line.shippedQtyKg || line.shippedQty || 0).toLocaleString()} kg
+                                    <span className={Number(line.shippedQtyKg || line.shippedQty || 0) > 0 ? 'font-medium text-amber-500' : 'text-navy-400'}>
+                                      {Number(line.shippedQtyKg || line.shippedQty || 0).toLocaleString()}
                                     </span>
                                   </td>
-                                  <td className="py-2 text-center">
-                                    <Badge
-                                      variant={line.status === 'SHIPPED' ? 'success' : line.status === 'PARTIALLY_RELEASED' ? 'warning' : line.status === 'FULLY_RELEASED' ? 'success' : 'default'}
-                                      className="text-xs"
-                                    >
-                                      {line.status === 'OPEN' ? 'Mới' : line.status === 'SHIPPED' ? 'Đã xuất' : line.status === 'PARTIALLY_RELEASED' ? 'Xuất 1 phần' : line.status === 'FULLY_RELEASED' ? 'Đã giao đủ' : line.status === 'CANCELLED' ? 'Đã hủy' : line.status}
-                                    </Badge>
+                                  <td className="py-2 pr-3 text-right text-navy-600">{(line.unitPrice || 0).toLocaleString()}</td>
+                                  <td className="py-2 pr-3 text-right font-medium text-navy-800">
+                                    {((line.expectedQtyKg || line.expectedQty || 0) * (line.unitPrice || 0)).toLocaleString()}
                                   </td>
                                 </tr>
                               ))}

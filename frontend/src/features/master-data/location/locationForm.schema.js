@@ -15,6 +15,16 @@ export const locationSchema = z.object({
     errorMap: () => ({ message: 'Vui lòng chọn loại vị trí' }),
   }),
   locationProfile: z.enum(['STANDARD', 'BULK', 'HEAVY']).optional().default('STANDARD'),
+  locationWidthM: z
+    .number({ invalid_type_error: 'Phải là số' })
+    .min(0.1, 'Tối thiểu 0.1m')
+    .nullable()
+    .optional(),
+  locationDepthM: z
+    .number({ invalid_type_error: 'Phải là số' })
+    .min(0.1, 'Tối thiểu 0.1m')
+    .nullable()
+    .optional(),
   areaM2: z
     .number({ invalid_type_error: 'Phải là số' })
     .min(0, 'Không được âm')
@@ -25,6 +35,14 @@ export const locationSchema = z.object({
     .min(0, 'Không được âm')
     .nullable()
     .optional(),
+  doorConfig: z
+    .object({
+      doors: z.array(
+        z.object({ wall: z.enum(['front', 'back', 'left', 'right']) })
+      ),
+    })
+    .nullable()
+    .optional(),
 })
 
 export const locationDefaultValues = {
@@ -33,6 +51,9 @@ export const locationDefaultValues = {
   zoneId: '',
   locationType: 'STORAGE',
   locationProfile: 'STANDARD',
+  locationWidthM: null,
+  locationDepthM: null,
   areaM2: null,
   stackLimitKg: null,
+  doorConfig: { doors: [{ wall: 'front' }] },
 }

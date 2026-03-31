@@ -1,28 +1,29 @@
-import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowDownToLine, ArrowUpFromLine, AlertTriangle, Package,
-  TrendingDown, TrendingUp, Activity, Boxes, Clock, Database,
-  RefreshCw, ChevronRight, Zap, ShieldAlert, CheckCircle2,
+  TrendingDown, TrendingUp, Activity, Boxes, Clock,
+  ChevronRight, Zap, ShieldAlert, CheckCircle2,
   AlertCircle, Info, XCircle,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell,
 } from 'recharts'
-import { useMockData } from '@shared/hooks/useMockData'
-import { seedAll, clearAllMockData, getSeededAt } from '@shared/lib/mockStorage'
-import {
-  dashboardStats as defaultStats,
-  inventoryFlow as defaultFlow,
-  warehouseDistribution as defaultWarehouse,
-  lowStockAlerts as defaultAlerts,
-  topOutboundProducts as defaultTopProducts,
-  recentActivities as defaultActivities,
-  exceptionItems as defaultExceptions,
-  ALL_SEED_DATA,
-} from '@shared/lib/mockSeedData'
 import { Badge, AiSuggestionCard } from '@shared/ui'
+
+// ─── Placeholder data (will be replaced by real API calls) ─────────────────────
+const PLACEHOLDER_STATS = [
+  { id: 1, key: 'totalProducts', label: 'Tổng sản phẩm', value: 0, change: 0, changeType: 'positive' },
+  { id: 2, key: 'inboundToday', label: 'Nhập hôm nay', value: 0, change: 0, changeType: 'positive' },
+  { id: 3, key: 'outboundToday', label: 'Xuất hôm nay', value: 0, change: 0, changeType: 'positive' },
+  { id: 4, key: 'exceptions', label: 'Exception', value: 0, change: 0, changeType: 'warning' },
+]
+const PLACEHOLDER_FLOW = []
+const PLACEHOLDER_WAREHOUSE = []
+const PLACEHOLDER_ALERTS = []
+const PLACEHOLDER_TOP = []
+const PLACEHOLDER_ACTIVITIES = []
+const PLACEHOLDER_EXCEPTIONS = []
 
 // ─── Workflow status config (UX spec: Grey/Blue/Orange/Green/Red) ─────────────
 const STATUS_CONFIG = {
@@ -76,29 +77,6 @@ const CustomTooltip = ({ active, payload, label }) => {
           <span style={{ fontWeight: 600 }}>{entry.value.toLocaleString()}</span>
         </p>
       ))}
-    </div>
-  )
-}
-
-// ─── Mock Data Banner ──────────────────────────────────────────────────────────
-function MockDataBanner({ onReset }) {
-  const seededAt = getSeededAt()
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ice/30 bg-ice/5 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
-      <Database className="h-4 w-4 flex-shrink-0 text-ice" />
-      <span className="text-xs font-medium text-navy-700 sm:text-sm">Dữ liệu mẫu</span>
-      <span className="hidden text-xs text-navy-400 sm:inline">
-        Persist qua refresh · Tự xóa sau 24h
-        {seededAt && <> · Tạo lúc {seededAt.toLocaleTimeString('vi-VN')}</>}
-      </span>
-      <button
-        onClick={onReset}
-        className="ml-auto flex items-center gap-1.5 rounded-lg border border-moon-200 bg-white px-2.5 py-1.5 text-xs font-medium text-navy-600 shadow-sm transition-colors hover:bg-moon-50"
-      >
-        <RefreshCw className="h-3 w-3" />
-        <span className="hidden sm:inline">Reset data</span>
-        <span className="sm:hidden">Reset</span>
-      </button>
     </div>
   )
 }
@@ -201,20 +179,14 @@ function ExceptionPanel({ exceptions }) {
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 export function DashboardPage() {
-  const { data: statsData, refresh: refreshStats } = useMockData('dashboard_stats', { defaultData: defaultStats })
-  const { data: flowData, refresh: refreshFlow } = useMockData('inventory_flow', { defaultData: defaultFlow })
-  const { data: whData, refresh: refreshWh } = useMockData('warehouse_distribution', { defaultData: defaultWarehouse })
-  const { data: alertsData, refresh: refreshAlerts } = useMockData('low_stock_alerts', { defaultData: defaultAlerts })
-  const { data: topData, refresh: refreshTop } = useMockData('top_outbound', { defaultData: defaultTopProducts })
-  const { data: activitiesData, refresh: refreshAct } = useMockData('recent_activities', { defaultData: defaultActivities })
-  const { data: exceptionsData, refresh: refreshExc } = useMockData('exception_items', { defaultData: defaultExceptions })
-
-  const handleReset = useCallback(() => {
-    clearAllMockData()
-    seedAll(ALL_SEED_DATA)
-    refreshStats(); refreshFlow(); refreshWh()
-    refreshAlerts(); refreshTop(); refreshAct(); refreshExc()
-  }, [refreshStats, refreshFlow, refreshWh, refreshAlerts, refreshTop, refreshAct, refreshExc])
+  // TODO: Replace with real API calls (e.g. useQuery from react-query)
+  const statsData = PLACEHOLDER_STATS
+  const flowData = PLACEHOLDER_FLOW
+  const whData = PLACEHOLDER_WAREHOUSE
+  const alertsData = PLACEHOLDER_ALERTS
+  const topData = PLACEHOLDER_TOP
+  const activitiesData = PLACEHOLDER_ACTIVITIES
+  const exceptionsData = PLACEHOLDER_EXCEPTIONS
 
   const criticalCount = exceptionsData.filter(e => e.priority === 'critical').length
 
@@ -237,9 +209,6 @@ export function DashboardPage() {
           </div>
         )}
       </div>
-
-      {/* Mock Data Banner */}
-      <MockDataBanner onReset={handleReset} />
 
       {/* ── ZONE 1: Exception-First (UX Principle #2) ── */}
       <ExceptionPanel exceptions={exceptionsData} />

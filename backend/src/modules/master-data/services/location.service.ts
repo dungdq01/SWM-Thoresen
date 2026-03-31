@@ -45,6 +45,7 @@ export class LocationService {
       stackingRule: dto.stackingRule,
       xCoord: dto.xCoord,
       yCoord: dto.yCoord,
+      doorConfig: dto.doorConfig,
       createdBy: ctx.userId,
       updatedBy: ctx.userId,
     });
@@ -82,12 +83,17 @@ export class LocationService {
       areaM2: dto.areaM2,
       maxHeightM: dto.maxHeightM,
       stackLimitKg: dto.stackLimitKg,
+      locationWidthM: dto.locationWidthM,
+      locationDepthM: dto.locationDepthM,
       isMixedOwner: dto.isMixedOwner,
       isMixedProduct: dto.isMixedProduct,
       isBillingLocation: dto.isBillingLocation,
       stackingRule: dto.stackingRule,
       xCoord: dto.xCoord,
       yCoord: dto.yCoord,
+      rotationDeg: dto.rotationDeg,
+      displayColor: dto.displayColor,
+      doorConfig: dto.doorConfig,
       updatedBy: ctx.userId,
     }, BigInt(dto.rowVersion));
 

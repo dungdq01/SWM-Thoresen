@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, MapPin } from 'lucide-react'
+import { X, MapPin, DoorOpen, Plus, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { Button, Input, Select } from '@shared/ui'
@@ -24,6 +24,11 @@ export function LocationFormDrawer({ isOpen, onClose, onSubmit, initialData = nu
     defaultValues: locationDefaultValues,
   })
 
+  const { fields: doorFields, append: appendDoor, remove: removeDoor } = useFieldArray({
+    control,
+    name: 'doorConfig.doors',
+  })
+
   const warehouseId = watch('warehouseId')
 
   const { data: warehouses = [] } = useLookupWarehouses()
@@ -41,8 +46,11 @@ export function LocationFormDrawer({ isOpen, onClose, onSubmit, initialData = nu
         zoneId: initialData.zoneId || initialData.zone?.id || '',
         locationType: initialData.locationType || 'STORAGE',
         locationProfile: initialData.locationProfile || 'STANDARD',
+        locationWidthM: initialData.locationWidthM != null ? Number(initialData.locationWidthM) : null,
+        locationDepthM: initialData.locationDepthM != null ? Number(initialData.locationDepthM) : null,
         areaM2: initialData.areaM2 != null ? Number(initialData.areaM2) : null,
         stackLimitKg: initialData.stackLimitKg != null ? Number(initialData.stackLimitKg) : null,
+        doorConfig: initialData.doorConfig || { doors: [{ wall: 'front' }] },
       })
     } else {
       reset(locationDefaultValues)
@@ -112,16 +120,51 @@ export function LocationFormDrawer({ isOpen, onClose, onSubmit, initialData = nu
 
               <div className="grid grid-cols-2 gap-4">
                 <Controller
+                  name="locationWidthM"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      label="Chiều rộng (m)"
+                      type="number"
+                      step="1"
+                      min="1"
+                      placeholder="VD: 5"
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
+                      error={errors.locationWidthM?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="locationDepthM"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      label="Chiều dài (m)"
+                      type="number"
+                      step="1"
+                      min="1"
+                      placeholder="VD: 3"
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
+                      error={errors.locationDepthM?.message}
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Controller
                   name="areaM2"
                   control={control}
                   render={({ field }) => (
                     <Input
                       label="Diện tích (m²)"
                       type="number"
-                      step="0.01"
+                      step="1"
                       placeholder="VD: 500"
                       value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                      onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                       error={errors.areaM2?.message}
                     />
                   )}
@@ -133,14 +176,65 @@ export function LocationFormDrawer({ isOpen, onClose, onSubmit, initialData = nu
                     <Input
                       label="Giới hạn tải (kg)"
                       type="number"
-                      step="0.01"
+                      step="1"
                       placeholder="VD: 100000"
                       value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                      onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                       error={errors.stackLimitKg?.message}
                     />
                   )}
                 />
+              </div>
+
+              {/* Door configuration */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DoorOpen className="h-4 w-4 text-navy-500" />
+                    <span className="text-sm font-medium text-navy-700">Cấu hình cửa (3D)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => appendDoor({ wall: 'front' })}
+                    disabled={doorFields.length >= 4}
+                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-cyan-600 transition-colors hover:bg-cyan-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Thêm cửa
+                  </button>
+                </div>
+
+                {doorFields.map((field, index) => (
+                  <div key={field.id} className="flex items-center gap-3 rounded-lg border border-moon-200 bg-moon-50 px-3 py-2">
+                    <span className="text-xs font-medium text-navy-400 w-14">Cửa {index + 1}</span>
+                    <Controller
+                      name={`doorConfig.doors.${index}.wall`}
+                      control={control}
+                      render={({ field: f }) => (
+                        <select
+                          value={f.value}
+                          onChange={(e) => f.onChange(e.target.value)}
+                          className="flex-1 rounded-md border border-moon-300 bg-white px-3 py-1.5 text-sm text-navy-800 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                        >
+                          <option value="front">Mặt trước</option>
+                          <option value="back">Mặt sau</option>
+                          <option value="left">Bên trái</option>
+                          <option value="right">Bên phải</option>
+                        </select>
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeDoor(index)}
+                      className="rounded-md p-1.5 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {doorFields.length === 0 && (
+                  <p className="text-xs text-navy-400 italic">Không có cửa</p>
+                )}
+                <p className="text-[11px] text-navy-400">Chọn vị trí cửa trên mỗi mặt tường trong mô hình 3D. Tối đa 4 cửa, hoặc 0 nếu không cần.</p>
               </div>
             </form>
 

@@ -29,6 +29,7 @@ export function WarehouseFormDrawer({
     reset,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(warehouseSchema),
@@ -36,6 +37,16 @@ export function WarehouseFormDrawer({
   })
 
   const hasWeighbridge = watch('hasWeighbridge')
+  const lengthM = watch('lengthM')
+  const widthM = watch('widthM')
+
+  // Auto-fill totalAreaM2 when lengthM and widthM change
+  useEffect(() => {
+    if (lengthM && widthM) {
+      const area = Math.round(lengthM * widthM)
+      setValue('totalAreaM2', area, { shouldDirty: false })
+    }
+  }, [lengthM, widthM, setValue])
 
   useEffect(() => {
     if (isOpen) {
@@ -44,6 +55,8 @@ export function WarehouseFormDrawer({
           warehouseCode: initialData.warehouseCode || '',
           warehouseName: initialData.warehouseName || '',
           warehouseType: initialData.warehouseType || 'COVERED',
+          lengthM: initialData.lengthM != null ? Number(initialData.lengthM) : null,
+          widthM: initialData.widthM != null ? Number(initialData.widthM) : null,
           totalAreaM2: initialData.totalAreaM2 != null ? Number(initialData.totalAreaM2) : null,
           usableAreaM2: initialData.usableAreaM2 != null ? Number(initialData.usableAreaM2) : null,
           maxHeightM: initialData.maxHeightM != null ? Number(initialData.maxHeightM) : null,
@@ -184,6 +197,44 @@ export function WarehouseFormDrawer({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-navy-700 mb-1.5">
+                        Chiều dài (m)
+                      </label>
+                      <Controller
+                        name="lengthM"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            type="number"
+                            step="1"
+                            placeholder="VD: 60"
+                            value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
+                            error={errors.lengthM?.message}
+                          />
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-navy-700 mb-1.5">
+                        Chiều rộng (m)
+                      </label>
+                      <Controller
+                        name="widthM"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            type="number"
+                            step="1"
+                            placeholder="VD: 40"
+                            value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
+                            error={errors.widthM?.message}
+                          />
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-navy-700 mb-1.5">
                         Diện tích tổng (m²)
                       </label>
                       <Controller
@@ -192,10 +243,10 @@ export function WarehouseFormDrawer({
                         render={({ field }) => (
                           <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             placeholder="VD: 50000"
                             value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                             error={errors.totalAreaM2?.message}
                           />
                         )}
@@ -211,10 +262,10 @@ export function WarehouseFormDrawer({
                         render={({ field }) => (
                           <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             placeholder="VD: 45000"
                             value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                             error={errors.usableAreaM2?.message}
                           />
                         )}
@@ -230,10 +281,10 @@ export function WarehouseFormDrawer({
                         render={({ field }) => (
                           <Input
                             type="number"
-                            step="0.1"
+                            step="1"
                             placeholder="VD: 12"
                             value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                             error={errors.maxHeightM?.message}
                           />
                         )}
@@ -249,10 +300,10 @@ export function WarehouseFormDrawer({
                         render={({ field }) => (
                           <Input
                             type="number"
-                            step="0.01"
+                            step="1"
                             placeholder="VD: 100000"
                             value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                            onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                             error={errors.maxCapacityMt?.message}
                           />
                         )}

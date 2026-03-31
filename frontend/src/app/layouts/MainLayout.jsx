@@ -4,10 +4,10 @@ import { ArrowLeft, Bell, ChevronDown, Menu, Search, Sun, Moon, LogOut } from 'l
 import { useAuth } from '@domains/auth'
 import { AppSidebar } from './components/AppSidebar'
 import { MobileBottomNav } from './components/MobileBottomNav'
-import { Button, Switch } from '@shared/ui'
+import { Button } from '@shared/ui'
 import { cn } from '@shared/lib/cn'
 import { usePlatform } from '@shared/hooks/usePlatform'
-import { isMockApiEnabled, setMockApiEnabled } from '@mocks/utils'
+
 import { GuidedTourProvider, TourOverlay, TourLauncher } from '@shared/guided-tour'
 import '@shared/guided-tour/guided-tour.css'
 import { CommandPalette } from '@shared/command-search/CommandPalette'
@@ -35,7 +35,6 @@ const ROLE_LABELS = {
 export function MainLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isMockEnabled, setIsMockEnabledState] = useState(() => isMockApiEnabled())
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const userMenuRef = useRef(null)
   const location = useLocation()
@@ -70,7 +69,6 @@ export function MainLayout() {
     document.documentElement.style.setProperty('--bottom-nav-height', showBottomNav ? '56px' : '0px')
   }, [showBottomNav])
 
-  useEffect(() => { setIsMockEnabledState(isMockApiEnabled()) }, [])
 
   useEffect(() => { setIsMobileMenuOpen(false) }, [location.pathname])
 
@@ -81,11 +79,6 @@ export function MainLayout() {
 
   const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), [])
 
-  const handleToggleMock = (enabled) => {
-    setMockApiEnabled(enabled)
-    setIsMockEnabledState(enabled)
-    window.location.reload()
-  }
 
   return (
     <GuidedTourProvider>
@@ -150,22 +143,8 @@ export function MainLayout() {
               </button>
             </div>
 
-            {/* Right: mock toggle + dark mode + tour + bell + avatar */}
+            {/* Right: dark mode + tour + bell + avatar */}
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-
-              {/* Mock toggle */}
-              <div
-                className="hidden lg:block rounded-xl px-2 xl:px-3 py-1.5"
-                style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-card)' }}
-              >
-                <Switch
-                  checked={isMockEnabled}
-                  onChange={handleToggleMock}
-                  label="Dữ liệu mẫu"
-                  description={isMockEnabled ? 'Đang dùng dữ liệu mẫu' : 'Đang dùng API thật'}
-                  className="items-center"
-                />
-              </div>
 
               {/* Dark mode toggle */}
               <button

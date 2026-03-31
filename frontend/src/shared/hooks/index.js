@@ -1,5 +1,4 @@
 export { useDebouncedValue } from './useDebouncedValue'
-export { useMockData, useMockToggle } from './useMockData'
 export { useScrollAnimation } from './useScrollAnimation'
 export { useUndoDelete } from './useUndoDelete'
 export { useDarkMode } from './useDarkMode'

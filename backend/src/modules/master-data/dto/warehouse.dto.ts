@@ -198,4 +198,8 @@ export class ListWarehouseDto extends PaginationDto {
   @IsOptional()
   @IsBoolean()
   hasWeighbridge?: boolean;
+
+  @IsOptional()
+  @IsString()
+  siteId?: string;
 }

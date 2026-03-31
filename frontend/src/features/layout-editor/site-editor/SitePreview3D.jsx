@@ -1,29 +1,30 @@
+/**
+ * SitePreview3D - Renders 1 large warehouse building containing all zones inside.
+ *
+ * The "warehouses" from site layout are actually zones within 1 big warehouse.
+ * Each zone has position (xM, yM), size (lengthM, widthM), and color.
+ * This component renders:
+ * - 1 big building envelope (walls, roof, columns, doors, interior)
+ * - Zone floor markings at their positioned locations inside
+ */
 import { Suspense, useMemo, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { Eye, EyeOff } from 'lucide-react'
 
-// Import monitoring-style sub-components (all are pure, no store dependency)
 import { WarehouseRoof } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseRoof'
 import { WarehouseInterior } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseInterior'
-import { WarehouseZones } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseZones'
-import { WarehouseInventory } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseInventory'
 import { WarehouseDoorFrames } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseDoorFrames'
 import { WarehouseExterior } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseExterior'
-import { WarehouseLabel } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseLabel'
-import { WarehouseShelvingRacks } from '@features/warehouse-monitoring/visualization/warehouses/WarehouseShelvingRacks'
 import { WALL_HEIGHT, WALL_THICK, DOOR_WIDTH, DOOR_HEIGHT } from '@features/warehouse-monitoring/data/warehouseData'
 
-// ==================== Exact Monitoring Lighting & Environment ====================
+// ==================== Monitoring-style Lighting & Environment ====================
 
 function MonitoringLighting() {
   return (
     <>
-      {/* Ambient - same as monitoring SceneLighting.jsx (day mode) */}
       <ambientLight color={0x6a7a9a} intensity={1.0} />
-
-      {/* Primary sun light - same position & intensity as monitoring */}
       <directionalLight
         color={0xffeedd}
         intensity={3.0}
@@ -39,78 +40,113 @@ function MonitoringLighting() {
         shadow-mapSize-height={2048}
         shadow-bias={-0.0002}
       />
-
-      {/* Hemisphere light - sky/ground color balance */}
       <hemisphereLight args={[0x99bbee, 0x223322, 0.8]} />
-
-      {/* Fill backlight */}
       <directionalLight color={0x6688aa} intensity={0.5} position={[-200, 200, -150]} />
     </>
   )
 }
 
-function MonitoringEnvironment({ centerX, centerZ, groundSize }) {
+function MonitoringEnvironment({ groundSize }) {
   const { scene } = useThree()
-
   useMemo(() => {
-    // Same as monitoring SceneEnvironment.jsx (day mode)
     scene.background = new THREE.Color(0x1a2840)
     scene.fog = new THREE.FogExp2(0x1a2840, 0.0008)
   }, [scene])
 
   return (
     <>
-      {/* Main ground plane - same color as monitoring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, centerZ]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[groundSize, groundSize]} />
         <meshStandardMaterial color={0x0c1520} roughness={0.92} metalness={0.05} />
       </mesh>
-
-      {/* Sub-ground extending beyond */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, -0.5, centerZ]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
         <planeGeometry args={[groundSize * 2, groundSize * 2]} />
         <meshStandardMaterial color={0x060a12} />
       </mesh>
-
-      {/* Grid helper - same as monitoring */}
       <gridHelper
         args={[groundSize, Math.floor(groundSize / 25), '#1a2a40', '#0d1825']}
-        position={[centerX, 0.05, centerZ]}
+        position={[0, 0.05, 0]}
       />
     </>
   )
 }
 
-/**
- * Convert site-editor warehouse data → monitoring WH_DATA shape.
- */
-function toMonitoringWh(wh) {
-  return {
-    code: wh.code || 'WH',
-    name: wh.name || 'Warehouse',
-    width: wh.lengthM || 60,
-    depth: wh.widthM || 40,
-    fill: 50,
-    stock: 0,
-    zones: 4,
-    type: wh.type || 'Hàng hỗn hợp',
-    pos: [wh.xM + (wh.lengthM || 60) / 2, 0, wh.yM + (wh.widthM || 40) / 2],
-    color: parseInt((wh.displayColor || '#3b82f6').replace('#', ''), 16),
-    items: [],
-    temp: 28,
-    humid: 65,
-  }
+// ==================== Zone Floor Markings (positioned inside the building) ====================
+
+const TAPE_HEIGHT = 0.12
+const TAPE_WIDTH = 0.15
+
+function ZoneFloorMarking({ zone }) {
+  const col = new THREE.Color(zone.color)
+  const halfW = zone.w3d / 2
+  const halfD = zone.d3d / 2
+
+  const tapes = [
+    { pos: [zone.cx, TAPE_HEIGHT / 2, zone.cz - halfD], size: [zone.w3d, TAPE_HEIGHT, TAPE_WIDTH] },
+    { pos: [zone.cx, TAPE_HEIGHT / 2, zone.cz + halfD], size: [zone.w3d, TAPE_HEIGHT, TAPE_WIDTH] },
+    { pos: [zone.cx - halfW, TAPE_HEIGHT / 2, zone.cz], size: [TAPE_WIDTH, TAPE_HEIGHT, zone.d3d] },
+    { pos: [zone.cx + halfW, TAPE_HEIGHT / 2, zone.cz], size: [TAPE_WIDTH, TAPE_HEIGHT, zone.d3d] },
+  ]
+
+  return (
+    <group>
+      {/* Floor surface */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[zone.cx, 0.08, zone.cz]}>
+        <planeGeometry args={[zone.w3d, zone.d3d]} />
+        <meshStandardMaterial
+          color={col}
+          transparent
+          opacity={0.25}
+          emissive={col}
+          emissiveIntensity={0.2}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Border tapes */}
+      {tapes.map((t, i) => (
+        <mesh key={i} position={t.pos}>
+          <boxGeometry args={t.size} />
+          <meshStandardMaterial color={zone.color} emissive={zone.color} emissiveIntensity={0.4} />
+        </mesh>
+      ))}
+
+      {/* Zone label */}
+      <Text
+        position={[zone.cx, 0.2, zone.cz]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={Math.min(zone.w3d, zone.d3d) * 0.15}
+        color={zone.color}
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={zone.w3d * 0.9}
+      >
+        {zone.code}
+      </Text>
+      <Text
+        position={[zone.cx, 0.2, zone.cz + Math.min(zone.w3d, zone.d3d) * 0.12]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={Math.min(zone.w3d, zone.d3d) * 0.08}
+        color="#94A3B8"
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={zone.w3d * 0.9}
+      >
+        {zone.name}
+      </Text>
+    </group>
+  )
 }
 
-function SiteWarehouse({ wh, showRoof }) {
-  const monWh = useMemo(() => toMonitoringWh(wh), [wh])
+// ==================== Main Scene ====================
 
+function SiteScene({ zones, buildingWh, showRoof }) {
   const wallColor = useMemo(() => {
-    const base = new THREE.Color(monWh.color)
+    const base = new THREE.Color(0x2563eb)
     return base.clone().offsetHSL(0, -0.05, -0.15)
-  }, [monWh.color])
+  }, [])
 
-  const wallTopColor = useMemo(() => new THREE.Color(monWh.color), [monWh.color])
+  const wallTopColor = useMemo(() => new THREE.Color(0x2563eb), [])
 
   const wallMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.7, metalness: 0.2 }),
@@ -125,140 +161,113 @@ function SiteWarehouse({ wh, showRoof }) {
     [],
   )
 
-  const doorCenterL = -monWh.width * 0.26
-  const doorCenterR = monWh.width * 0.26
+  const bw = buildingWh.width
+  const bd = buildingWh.depth
+  const doorCenterL = -bw * 0.26
+  const doorCenterR = bw * 0.26
   const bandH = 5
 
   const wallSegments = useMemo(() => [
-    { from: -monWh.width / 2, to: doorCenterL - DOOR_WIDTH / 2 },
+    { from: -bw / 2, to: doorCenterL - DOOR_WIDTH / 2 },
     { from: doorCenterL + DOOR_WIDTH / 2, to: doorCenterR - DOOR_WIDTH / 2 },
-    { from: doorCenterR + DOOR_WIDTH / 2, to: monWh.width / 2 },
-  ], [monWh.width, doorCenterL, doorCenterR])
+    { from: doorCenterR + DOOR_WIDTH / 2, to: bw / 2 },
+  ], [bw, doorCenterL, doorCenterR])
 
   const windowPositions = useMemo(() => {
-    const count = Math.min(3, Math.floor(monWh.depth / 25))
+    const count = Math.min(5, Math.floor(bd / 20))
     const positions = []
     for (let i = 0; i < count; i++) {
-      const wz = -monWh.depth / 2 + 15 + i * (monWh.depth - 20) / Math.max(1, count - 1)
+      const wz = -bd / 2 + 15 + i * (bd - 20) / Math.max(1, count - 1)
       positions.push(wz)
     }
     return positions
-  }, [monWh.depth])
+  }, [bd])
 
-  return (
-    <group position={monWh.pos}>
-      {/* Side walls */}
-      <mesh position={[-monWh.width / 2, WALL_HEIGHT / 2, 0]} castShadow material={wallMat}>
-        <boxGeometry args={[WALL_THICK, WALL_HEIGHT, monWh.depth]} />
-      </mesh>
-      <mesh position={[monWh.width / 2, WALL_HEIGHT / 2, 0]} castShadow material={wallMat}>
-        <boxGeometry args={[WALL_THICK, WALL_HEIGHT, monWh.depth]} />
-      </mesh>
-
-      {/* Front & Back walls with door openings */}
-      {[monWh.depth / 2, -monWh.depth / 2].map((faceZ, faceIdx) => (
-        <group key={faceIdx}>
-          {wallSegments.map((seg, segIdx) => {
-            const segW = seg.to - seg.from
-            if (segW <= 1) return null
-            return (
-              <mesh key={segIdx} position={[(seg.from + seg.to) / 2, WALL_HEIGHT / 2, faceZ]} castShadow material={wallMat}>
-                <boxGeometry args={[segW, WALL_HEIGHT, WALL_THICK]} />
-              </mesh>
-            )
-          })}
-          {/* Door lintels */}
-          {[doorCenterL, doorCenterR].map((cx, di) => {
-            const lintelH = WALL_HEIGHT - DOOR_HEIGHT
-            if (lintelH <= 0) return null
-            return (
-              <mesh key={`lintel-${faceIdx}-${di}`} position={[cx, DOOR_HEIGHT + lintelH / 2, faceZ]} material={wallMat}>
-                <boxGeometry args={[DOOR_WIDTH, lintelH, WALL_THICK]} />
-              </mesh>
-            )
-          })}
-        </group>
-      ))}
-
-      {/* Windows on side walls */}
-      {windowPositions.map((wz, wi) => (
-        <group key={wi}>
-          <mesh position={[-monWh.width / 2 - 0.1, WALL_HEIGHT - 6, wz]} rotation={[0, Math.PI / 2, 0]} material={windowMat}>
-            <planeGeometry args={[8, 5]} />
-          </mesh>
-          <mesh position={[monWh.width / 2 + 0.1, WALL_HEIGHT - 6, wz]} rotation={[0, -Math.PI / 2, 0]} material={windowMat}>
-            <planeGeometry args={[8, 5]} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Upper transparent band (front/back) - same as monitoring */}
-      {[
-        { w: monWh.width + 0.5, d: 0.4, px: 0, pz: -monWh.depth / 2 },
-        { w: monWh.width + 0.5, d: 0.4, px: 0, pz: monWh.depth / 2 },
-      ].map((b, i) => (
-        <mesh key={`band-${i}`} position={[b.px, WALL_HEIGHT + 0.5, b.pz]} material={wallTopMat}>
-          <boxGeometry args={[b.w, bandH, b.d]} />
-        </mesh>
-      ))}
-
-      {/* Concrete floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} receiveShadow>
-        <planeGeometry args={[monWh.width - 2, monWh.depth - 2]} />
-        <meshStandardMaterial color={0x1c2a3a} roughness={0.88} />
-      </mesh>
-
-      {/* Sub-components from monitoring */}
-      {showRoof && <WarehouseRoof wh={monWh} />}
-      <WarehouseInterior wh={monWh} />
-      <WarehouseZones wh={monWh} />
-      <WarehouseInventory wh={monWh} />
-      <WarehouseDoorFrames wh={monWh} />
-      <WarehouseExterior wh={monWh} />
-      <WarehouseLabel wh={monWh} />
-      <WarehouseShelvingRacks wh={monWh} />
-
-      {/* Edge wireframe glow */}
-      <lineSegments position={[0, WALL_HEIGHT / 2, 0]}>
-        <edgesGeometry args={[new THREE.BoxGeometry(monWh.width + 1.5, WALL_HEIGHT + 1.5, monWh.depth + 1.5)]} />
-        <lineBasicMaterial color={monWh.color} transparent opacity={0.18} />
-      </lineSegments>
-    </group>
-  )
-}
-
-function SiteScene({ warehouses, showRoof }) {
-  const bounds = useMemo(() => {
-    if (!warehouses.length) return { cx: 0, cz: 0, maxDim: 400 }
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
-    warehouses.forEach((wh) => {
-      const whWidth = wh.lengthM || 60
-      const whDepth = wh.widthM || 40
-      minX = Math.min(minX, wh.xM)
-      maxX = Math.max(maxX, wh.xM + whWidth)
-      minZ = Math.min(minZ, wh.yM)
-      maxZ = Math.max(maxZ, wh.yM + whDepth)
-    })
-    return {
-      cx: (minX + maxX) / 2,
-      cz: (minZ + maxZ) / 2,
-      maxDim: Math.max(maxX - minX, maxZ - minZ, 400),
-    }
-  }, [warehouses])
+  const groundSize = Math.max(bw, bd) * 2.5
 
   return (
     <>
       <MonitoringLighting />
-      <MonitoringEnvironment
-        centerX={bounds.cx}
-        centerZ={bounds.cz}
-        groundSize={bounds.maxDim * 2}
-      />
+      <MonitoringEnvironment groundSize={groundSize} />
 
-      {/* Warehouses */}
-      {warehouses.map((wh) => (
-        <SiteWarehouse key={wh.id} wh={wh} showRoof={showRoof} />
-      ))}
+      <group>
+        {/* Side walls */}
+        <mesh position={[-bw / 2, WALL_HEIGHT / 2, 0]} castShadow material={wallMat}>
+          <boxGeometry args={[WALL_THICK, WALL_HEIGHT, bd]} />
+        </mesh>
+        <mesh position={[bw / 2, WALL_HEIGHT / 2, 0]} castShadow material={wallMat}>
+          <boxGeometry args={[WALL_THICK, WALL_HEIGHT, bd]} />
+        </mesh>
+
+        {/* Front & Back walls with door openings */}
+        {[bd / 2, -bd / 2].map((faceZ, faceIdx) => (
+          <group key={faceIdx}>
+            {wallSegments.map((seg, segIdx) => {
+              const segW = seg.to - seg.from
+              if (segW <= 1) return null
+              return (
+                <mesh key={segIdx} position={[(seg.from + seg.to) / 2, WALL_HEIGHT / 2, faceZ]} castShadow material={wallMat}>
+                  <boxGeometry args={[segW, WALL_HEIGHT, WALL_THICK]} />
+                </mesh>
+              )
+            })}
+            {[doorCenterL, doorCenterR].map((cx, di) => {
+              const lintelH = WALL_HEIGHT - DOOR_HEIGHT
+              if (lintelH <= 0) return null
+              return (
+                <mesh key={`lintel-${faceIdx}-${di}`} position={[cx, DOOR_HEIGHT + lintelH / 2, faceZ]} material={wallMat}>
+                  <boxGeometry args={[DOOR_WIDTH, lintelH, WALL_THICK]} />
+                </mesh>
+              )
+            })}
+          </group>
+        ))}
+
+        {/* Windows */}
+        {windowPositions.map((wz, wi) => (
+          <group key={wi}>
+            <mesh position={[-bw / 2 - 0.1, WALL_HEIGHT - 6, wz]} rotation={[0, Math.PI / 2, 0]} material={windowMat}>
+              <planeGeometry args={[8, 5]} />
+            </mesh>
+            <mesh position={[bw / 2 + 0.1, WALL_HEIGHT - 6, wz]} rotation={[0, -Math.PI / 2, 0]} material={windowMat}>
+              <planeGeometry args={[8, 5]} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Upper transparent band */}
+        {[
+          { w: bw + 0.5, d: 0.4, px: 0, pz: -bd / 2 },
+          { w: bw + 0.5, d: 0.4, px: 0, pz: bd / 2 },
+        ].map((b, i) => (
+          <mesh key={`band-${i}`} position={[b.px, WALL_HEIGHT + 0.5, b.pz]} material={wallTopMat}>
+            <boxGeometry args={[b.w, bandH, b.d]} />
+          </mesh>
+        ))}
+
+        {/* Concrete floor */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} receiveShadow>
+          <planeGeometry args={[bw - 2, bd - 2]} />
+          <meshStandardMaterial color={0x1c2a3a} roughness={0.88} />
+        </mesh>
+
+        {/* Monitoring sub-components for the building */}
+        {showRoof && <WarehouseRoof wh={buildingWh} />}
+        <WarehouseInterior wh={buildingWh} />
+        <WarehouseDoorFrames wh={buildingWh} />
+        <WarehouseExterior wh={buildingWh} />
+
+        {/* Zone floor markings inside the building */}
+        {zones.map((zone) => (
+          <ZoneFloorMarking key={zone.id} zone={zone} />
+        ))}
+
+        {/* Edge wireframe */}
+        <lineSegments position={[0, WALL_HEIGHT / 2, 0]}>
+          <edgesGeometry args={[new THREE.BoxGeometry(bw + 1.5, WALL_HEIGHT + 1.5, bd + 1.5)]} />
+          <lineBasicMaterial color={0x2563eb} transparent opacity={0.18} />
+        </lineSegments>
+      </group>
 
       <OrbitControls
         enableDamping
@@ -266,16 +275,64 @@ function SiteScene({ warehouses, showRoof }) {
         minDistance={30}
         maxDistance={900}
         maxPolarAngle={Math.PI * 0.48}
-        target={[bounds.cx, 0, bounds.cz]}
+        target={[0, WALL_HEIGHT / 2, 0]}
       />
     </>
   )
 }
 
 export default function SitePreview3D({ warehouses }) {
-  const [showRoof, setShowRoof] = useState(true)
+  const [showRoof, setShowRoof] = useState(false) // default: hide roof to see zones inside
 
-  if (!warehouses?.length) {
+  // Calculate bounding box of all zones → derive 1 big building size
+  const { buildingWh, zones3D } = useMemo(() => {
+    if (!warehouses?.length) return { buildingWh: null, zones3D: [] }
+
+    let maxX = 0, maxZ = 0
+    warehouses.forEach((wh) => {
+      maxX = Math.max(maxX, wh.xM + wh.lengthM)
+      maxZ = Math.max(maxZ, wh.yM + wh.widthM)
+    })
+
+    // Building dimensions: encompass all zones with padding
+    const padding = 10
+    const buildingWidth = maxX + padding * 2
+    const buildingDepth = maxZ + padding * 2
+
+    // Convert warehouse/zones to 3D coordinates (top-left origin → center origin)
+    const zones = warehouses.map((wh) => ({
+      id: wh.id,
+      code: wh.code,
+      name: wh.name,
+      color: wh.displayColor || '#3b82f6',
+      // Transform: editor (xM, yM) top-left → 3D center-origin
+      cx: wh.xM + wh.lengthM / 2 - buildingWidth / 2 + padding,
+      cz: wh.yM + wh.widthM / 2 - buildingDepth / 2 + padding,
+      w3d: wh.lengthM,
+      d3d: wh.widthM,
+    }))
+
+    // Build monitoring-style wh object for the big building
+    const bWh = {
+      code: 'TVL',
+      name: 'Tổng kho TVL',
+      width: buildingWidth,
+      depth: buildingDepth,
+      fill: 60,
+      stock: 0,
+      zones: warehouses.length,
+      type: 'Hàng hỗn hợp',
+      pos: [0, 0, 0],
+      color: 0x2563eb,
+      items: [],
+      temp: 28,
+      humid: 65,
+    }
+
+    return { buildingWh: bWh, zones3D: zones }
+  }, [warehouses])
+
+  if (!buildingWh) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-400 bg-[#0a0e1a]">
         Không có dữ liệu kho để hiển thị 3D
@@ -308,14 +365,14 @@ export default function SitePreview3D({ warehouses }) {
             fov: 55,
             near: 1,
             far: 6000,
-            position: [0, 320, 380],
+            position: [buildingWh.width * 0.7, 200, buildingWh.depth * 0.7],
           }}
           onCreated={({ gl }) => {
             gl.shadowMap.enabled = true
             gl.shadowMap.type = THREE.PCFSoftShadowMap
           }}
         >
-          <SiteScene warehouses={warehouses} showRoof={showRoof} />
+          <SiteScene zones={zones3D} buildingWh={buildingWh} showRoof={showRoof} />
         </Canvas>
       </Suspense>
 
@@ -337,7 +394,7 @@ export default function SitePreview3D({ warehouses }) {
       {/* Stats overlay */}
       <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg">
         <p className="text-xs text-white/80 font-medium">
-          {warehouses.length} kho
+          {zones3D.length} zones · {Math.round(buildingWh.width)}m × {Math.round(buildingWh.depth)}m
         </p>
       </div>
 

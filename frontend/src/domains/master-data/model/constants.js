@@ -120,15 +120,6 @@ export const CARRIER_TRANSPORT_MODES = [
   { value: 'RAIL', label: 'Đường sắt' },
 ]
 
-// Owner-SKU Mapping constants
-export const BILLING_CLASSES = [
-  { value: 'ST01', label: 'ST01 - Standard 1' },
-  { value: 'ST02', label: 'ST02 - Standard 2' },
-  { value: 'ST03', label: 'ST03 - Standard 3' },
-  { value: 'PR01', label: 'PR01 - Premium 1' },
-  { value: 'PR02', label: 'PR02 - Premium 2' },
-]
-
 // Vessel constants
 export const VESSEL_TYPES = [
   { value: 'BULK_CARRIER', label: 'Tàu hàng rời' },
@@ -200,8 +191,6 @@ export const MASTER_DATA_QUERY_KEYS = {
   carrierDetail: (id) => ['master-data', 'carriers', id],
   vessels: ['master-data', 'vessels'],
   vesselDetail: (id) => ['master-data', 'vessels', id],
-  ownerSkuMappings: ['master-data', 'owner-sku-mappings'],
-  ownerSkuMappingDetail: (id) => ['master-data', 'owner-sku-mappings', id],
   locationTypes: ['master-data', 'location-types'],
   locationTypeDetail: (id) => ['master-data', 'location-types', id],
   // Lookups
@@ -215,8 +204,6 @@ export const MASTER_DATA_QUERY_KEYS = {
   lookupUoms: ['master-data', 'lookups', 'uoms'],
   lookupVehicleTypes: ['master-data', 'lookups', 'vehicle-types'],
   lookupInventoryStatuses: ['master-data', 'lookups', 'inventory-statuses'],
-  // Owner-Warehouse Access
-  ownerWarehouseAccess: (ownerId) => ['master-data', 'owner-warehouse-access', ownerId],
   // Item Incompatibility
   itemIncompatibilities: ['master-data', 'item-incompatibilities'],
   itemIncompatibilityDetail: (id) => ['master-data', 'item-incompatibilities', id],
@@ -226,11 +213,9 @@ export const MASTER_DATA_QUERY_KEYS = {
   lotTraceability: (id) => ['master-data', 'lots', id, 'traceability'],
   lotDerivedLots: (id) => ['master-data', 'lots', id, 'derived-lots'],
   lotFifo: (itemId, ownerId, warehouseId) => ['master-data', 'lots', 'fifo', itemId, ownerId, warehouseId],
-  // Layout Editor
+  // Racks
   racks: ['master-data', 'racks'],
   rackDetail: (id) => ['master-data', 'racks', id],
-  warehouseLayout: (id) => ['master-data', 'warehouse-layout', id],
-  siteLayout: (siteId) => ['master-data', 'site-layout', siteId],
 }
 
 // Item Incompatibility constants

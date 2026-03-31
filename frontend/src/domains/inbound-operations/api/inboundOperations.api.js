@@ -1,152 +1,46 @@
 import { httpClient } from '@shared/api/httpClient'
-import { inboundOperationsMockApi } from '@mocks/inboundOperations.mock'
-import { isMockApiEnabled } from '@mocks/utils'
 
 const BASE_URL = '/inbound'
 
-const withDataSource = (mockHandler, apiHandler) => (...args) => {
-  return isMockApiEnabled() ? mockHandler(...args) : apiHandler(...args)
-}
-
 export const inboundOperationsApi = {
-  getDashboardSummary: withDataSource(
-    () => inboundOperationsMockApi.getDashboardSummary(),
-    () => httpClient.get(`${BASE_URL}/dashboard/summary`)
-  ),
-  getReceipts: withDataSource(
-    (params) => inboundOperationsMockApi.getReceipts(params),
-    (params) => httpClient.get(`${BASE_URL}/receipts`, { params })
-  ),
-  getReceiptById: withDataSource(
-    (id) => inboundOperationsMockApi.getReceiptById(id),
-    (id) => httpClient.get(`${BASE_URL}/receipts/${id}`)
-  ),
-  createReceipt: withDataSource(
-    (data) => inboundOperationsMockApi.createReceipt(data),
-    (data) => httpClient.post(`${BASE_URL}/receipts`, data)
-  ),
-  updateReceipt: withDataSource(
-    (id, data) => inboundOperationsMockApi.updateReceipt?.(id, data),
-    (id, data) => httpClient.put(`${BASE_URL}/receipts/${id}`, data)
-  ),
-  deleteReceipt: withDataSource(
-    (id) => inboundOperationsMockApi.deleteReceipt?.(id),
-    (id) => httpClient.delete(`${BASE_URL}/receipts/${id}`)
-  ),
-  confirmReceipt: withDataSource(
-    (id) => inboundOperationsMockApi.confirmReceipt(id),
-    (id) => httpClient.post(`${BASE_URL}/receipts/${id}/confirm`)
-  ),
-  startProcessing: withDataSource(
-    (id) => inboundOperationsMockApi.startProcessing(id),
-    (id) => httpClient.post(`${BASE_URL}/receipts/${id}/start-processing`)
-  ),
-  recordWeighIn: withDataSource(
-    (data) => inboundOperationsMockApi.recordWeighIn(data),
-    (data) => httpClient.post(`${BASE_URL}/weigh-events/in`, data)
-  ),
-  recordWeighOut: withDataSource(
-    (data) => inboundOperationsMockApi.recordWeighOut(data),
-    (data) => httpClient.post(`${BASE_URL}/weigh-events/out`, data)
-  ),
-  applyManualWeight: withDataSource(
-    (id, data) => inboundOperationsMockApi.applyManualWeight(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/manual-weight`, data)
-  ),
-  reweighReceipt: withDataSource(
-    (id) => inboundOperationsMockApi.reweighReceipt(id),
-    (id) => httpClient.post(`${BASE_URL}/receipts/${id}/reweigh`)
-  ),
-  cancelReceipt: withDataSource(
-    (id, data) => inboundOperationsMockApi.cancelReceipt(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/cancel`, data)
-  ),
-  getExceptions: withDataSource(
-    (params) => inboundOperationsMockApi.getExceptions(params),
-    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'REJECTED,CANCELLED' } })
-  ),
-  getPutawayQueue: withDataSource(
-    (params) => inboundOperationsMockApi.getPutawayQueue(params),
-    (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'COMPLETED,CLOSED' } })
-  ),
-  completePutaway: withDataSource(
-    (id, data) => inboundOperationsMockApi.completePutaway(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/putaway-complete`, data)
-  ),
-  closeReceipt: withDataSource(
-    (id) => inboundOperationsMockApi.closeReceipt(id),
-    (id) => httpClient.post(`${BASE_URL}/receipts/${id}/close`)
-  ),
-  reportErrorReceipt: withDataSource(
-    (id, data) => inboundOperationsMockApi.reportErrorReceipt?.(id, data),
-    (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/report-error`, data)
-  ),
-  getReceiptHistory: withDataSource(
-    (id) => inboundOperationsMockApi.getReceiptHistory(id),
-    (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`)
-  ),
-  getWeighLogs: withDataSource(
-    (id) => inboundOperationsMockApi.getWeighLogs(id),
-    (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`)
-  ),
+  getDashboardSummary: () => httpClient.get(`${BASE_URL}/dashboard/summary`),
+  getReceipts: (params) => httpClient.get(`${BASE_URL}/receipts`, { params }),
+  getReceiptById: (id) => httpClient.get(`${BASE_URL}/receipts/${id}`),
+  createReceipt: (data) => httpClient.post(`${BASE_URL}/receipts`, data),
+  updateReceipt: (id, data) => httpClient.put(`${BASE_URL}/receipts/${id}`, data),
+  deleteReceipt: (id) => httpClient.delete(`${BASE_URL}/receipts/${id}`),
+  confirmReceipt: (id) => httpClient.post(`${BASE_URL}/receipts/${id}/confirm`),
+  startProcessing: (id) => httpClient.post(`${BASE_URL}/receipts/${id}/start-processing`),
+  recordWeighIn: (data) => httpClient.post(`${BASE_URL}/weigh-events/in`, data),
+  recordWeighOut: (data) => httpClient.post(`${BASE_URL}/weigh-events/out`, data),
+  applyManualWeight: (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/manual-weight`, data),
+  reweighReceipt: (id) => httpClient.post(`${BASE_URL}/receipts/${id}/reweigh`),
+  cancelReceipt: (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/cancel`, data),
+  getExceptions: (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'REJECTED,CANCELLED' } }),
+  getPutawayQueue: (params) => httpClient.get(`${BASE_URL}/receipts`, { params: { ...params, status: 'COMPLETED,CLOSED' } }),
+  completePutaway: (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/putaway-complete`, data),
+  closeReceipt: (id) => httpClient.post(`${BASE_URL}/receipts/${id}/close`),
+  reportErrorReceipt: (id, data) => httpClient.post(`${BASE_URL}/receipts/${id}/report-error`, data),
+  getReceiptHistory: (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`),
+  getWeighLogs: (id) => httpClient.get(`${BASE_URL}/receipts/${id}/history`),
 
   // ── Purchase Orders ──
-  getPurchaseOrders: withDataSource(
-    (params) => inboundOperationsMockApi.getPurchaseOrders(params),
-    (params) => httpClient.get(`${BASE_URL}/purchase-orders`, { params })
-  ),
-  getPurchaseOrderById: withDataSource(
-    (id) => inboundOperationsMockApi.getPurchaseOrderById(id),
-    (id) => httpClient.get(`${BASE_URL}/purchase-orders/${id}`)
-  ),
-  getNextPoNumber: withDataSource(
-    () => inboundOperationsMockApi.getNextPoNumber(),
-    () => httpClient.get(`${BASE_URL}/purchase-orders/next-number`)
-  ),
-  createPurchaseOrder: withDataSource(
-    (data) => inboundOperationsMockApi.createPurchaseOrder(data),
-    (data) => httpClient.post(`${BASE_URL}/purchase-orders`, data)
-  ),
-  updatePurchaseOrder: withDataSource(
-    (id, data) => inboundOperationsMockApi.updatePurchaseOrder(id, data),
-    (id, data) => httpClient.put(`${BASE_URL}/purchase-orders/${id}`, data)
-  ),
-  confirmPurchaseOrder: withDataSource(
-    (id) => inboundOperationsMockApi.confirmPurchaseOrder(id),
-    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/confirm`)
-  ),
-  unconfirmPurchaseOrder: withDataSource(
-    (id) => inboundOperationsMockApi.unconfirmPurchaseOrder(id),
-    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/unconfirm`)
-  ),
-  closePurchaseOrder: withDataSource(
-    (id) => inboundOperationsMockApi.closePurchaseOrder(id),
-    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/close`)
-  ),
-  cancelPurchaseOrder: withDataSource(
-    (id) => inboundOperationsMockApi.cancelPurchaseOrder(id),
-    (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/cancel`)
-  ),
+  getPurchaseOrders: (params) => httpClient.get(`${BASE_URL}/purchase-orders`, { params }),
+  getPurchaseOrderById: (id) => httpClient.get(`${BASE_URL}/purchase-orders/${id}`),
+  getNextPoNumber: () => httpClient.get(`${BASE_URL}/purchase-orders/next-number`),
+  createPurchaseOrder: (data) => httpClient.post(`${BASE_URL}/purchase-orders`, data),
+  updatePurchaseOrder: (id, data) => httpClient.put(`${BASE_URL}/purchase-orders/${id}`, data),
+  confirmPurchaseOrder: (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/confirm`),
+  unconfirmPurchaseOrder: (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/unconfirm`),
+  closePurchaseOrder: (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/close`),
+  cancelPurchaseOrder: (id) => httpClient.post(`${BASE_URL}/purchase-orders/${id}/cancel`),
 
-  // ─── Unloading (Dỡ hàng) ──────────────────────────────────────────────────
-  getReceiptsForUnloading: (params = {}) =>
-    httpClient.get(`${BASE_URL}/unloading/receipts`, { params }),
-
-  getUnloadingStatus: (id) =>
-    httpClient.get(`${BASE_URL}/unloading/${id}/status`),
-
-  getAvailableLocations: (receiptId) =>
-    httpClient.get(`${BASE_URL}/unloading/${receiptId}/locations-available`),
-
-  startUnloading: (id) =>
-    httpClient.post(`${BASE_URL}/unloading/${id}/start`),
-
-  unloadItem: (id, receiptLineId, locationId) =>
-    httpClient.post(`${BASE_URL}/unloading/${id}/unload-item`, { receiptLineId, locationId }),
-
-  undoUnloadItem: (id, receiptLineId) =>
-    httpClient.post(`${BASE_URL}/unloading/${id}/undo-unload-item`, { receiptLineId }),
-
-  completeUnloading: (id) =>
-    httpClient.post(`${BASE_URL}/unloading/${id}/complete`),
+  // ── Unloading ──
+  getReceiptsForUnloading: (params = {}) => httpClient.get(`${BASE_URL}/unloading/receipts`, { params }),
+  getUnloadingStatus: (id) => httpClient.get(`${BASE_URL}/unloading/${id}/status`),
+  getAvailableLocations: (receiptId) => httpClient.get(`${BASE_URL}/unloading/${receiptId}/locations-available`),
+  startUnloading: (id) => httpClient.post(`${BASE_URL}/unloading/${id}/start`),
+  unloadItem: (id, receiptLineId, locationId) => httpClient.post(`${BASE_URL}/unloading/${id}/unload-item`, { receiptLineId, locationId }),
+  undoUnloadItem: (id, receiptLineId) => httpClient.post(`${BASE_URL}/unloading/${id}/undo-unload-item`, { receiptLineId }),
+  completeUnloading: (id) => httpClient.post(`${BASE_URL}/unloading/${id}/complete`),
 }

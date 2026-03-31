@@ -20,6 +20,16 @@ export const zoneSchema = z.object({
     .min(0, 'Không được âm')
     .nullable()
     .optional(),
+  zoneWidthM: z
+    .number({ invalid_type_error: 'Phải là số' })
+    .min(0.1, 'Tối thiểu 0.1m')
+    .nullable()
+    .optional(),
+  zoneDepthM: z
+    .number({ invalid_type_error: 'Phải là số' })
+    .min(0.1, 'Tối thiểu 0.1m')
+    .nullable()
+    .optional(),
   isBillingZone: z.boolean(),
 })
 
@@ -29,5 +39,7 @@ export const zoneDefaultValues = {
   warehouseId: '',
   zoneType: 'STORAGE',
   maxCapacityMt: null,
+  zoneWidthM: null,
+  zoneDepthM: null,
   isBillingZone: false,
 }

@@ -201,7 +201,7 @@ export function InboundReceiptsPage() {
         </div>
 
         {/* Table */}
-        <Table>
+        <Table minWidth={1100}>
           <TableHeader>
             <TableRow hoverable={false}>
               <TableHead className="w-8"></TableHead>
@@ -269,53 +269,58 @@ export function InboundReceiptsPage() {
                       <Badge variant={statusTone(receipt.status)}>{STATUS_LABELS[receipt.status] || receipt.status}</Badge>
                     </TableCell>
                     <TableCell align="center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1.5">
                         <Button
                           variant="ghost"
                           size="sm"
                           title="Xem phiếu"
                           onClick={() => handleOpenViewModal(receipt)}
+                          className="gap-1"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-3.5 w-3.5" />
+                          <span className="hidden xl:inline">Xem</span>
                         </Button>
                         {receipt.status === 'NEW' && (
                           <>
                             <Button
-                              variant="ghost"
+                              variant="outline"
+                              size="sm"
+                              title="Chỉnh sửa"
+                              onClick={() => handleOpenEditModal(receipt)}
+                              className="gap-1"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Sửa</span>
+                            </Button>
+                            <Button
+                              variant="accent"
                               size="sm"
                               title="Xác nhận"
-                              className="text-emerald-600 hover:text-emerald-700"
                               onClick={() => handleConfirmReceipt(receipt)}
                               disabled={confirmReceipt.isPending}
+                              className="gap-1"
                             >
-                              <CheckCircle className="h-4 w-4" />
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Xác nhận</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               title="Báo lỗi"
-                              className="text-amber-500 hover:text-amber-600"
+                              className="text-amber-500 hover:bg-amber-500/10 hover:text-amber-600"
                               onClick={() => handleReportErrorReceipt(receipt)}
                               disabled={reportErrorReceipt.isPending}
                             >
-                              <AlertTriangle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              title="Chỉnh sửa"
-                              onClick={() => handleOpenEditModal(receipt)}
-                            >
-                              <Pencil className="h-4 w-4" />
+                              <AlertTriangle className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               title="Xóa"
-                              className="text-red-500 hover:text-red-700"
+                              className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                               onClick={() => handleOpenDeleteConfirm(receipt)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </>
                         )}

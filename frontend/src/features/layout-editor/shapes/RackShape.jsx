@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { Rect, Group, Text, Line } from 'react-konva'
 import { useLayoutEditor } from '../hooks/useLayoutEditorStore'
-import { snapToGrid } from '../utils/coordTransform'
+import { snapToGrid, snapToEdges } from '../utils/coordTransform'
 
 export default function RackShape({ rack, isSelected }) {
   const shapeRef = useRef()
@@ -17,8 +17,9 @@ export default function RackShape({ rack, isSelected }) {
     let newX = e.target.x() / ppm
     let newY = e.target.y() / ppm
     if (state.snapEnabled) {
-      newX = snapToGrid(newX, state.gridSize)
-      newY = snapToGrid(newY, state.gridSize)
+      const edgeSnap = snapToEdges(newX, newY, rack.widthM, rack.depthM, state, rack.id)
+      newX = edgeSnap.snappedX ? edgeSnap.x : snapToGrid(newX, state.gridSize)
+      newY = edgeSnap.snappedY ? edgeSnap.y : snapToGrid(newY, state.gridSize)
     }
     actions.moveRack(rack.id, newX, newY)
     e.target.x(newX * ppm)
@@ -36,10 +37,11 @@ export default function RackShape({ rack, isSelected }) {
     let newY = node.y() / ppm
 
     if (state.snapEnabled) {
-      newW = snapToGrid(newW, state.gridSize)
-      newH = snapToGrid(newH, state.gridSize)
-      newX = snapToGrid(newX, state.gridSize)
-      newY = snapToGrid(newY, state.gridSize)
+      const edgeSnap = snapToEdges(newX, newY, newW, newH, state, rack.id)
+      newX = edgeSnap.snappedX ? edgeSnap.x : snapToGrid(newX, state.gridSize)
+      newY = edgeSnap.snappedY ? edgeSnap.y : snapToGrid(newY, state.gridSize)
+      if (!edgeSnap.snappedX) newW = snapToGrid(newW, state.gridSize)
+      if (!edgeSnap.snappedY) newH = snapToGrid(newH, state.gridSize)
     }
 
     newW = Math.max(newW, 1)
@@ -60,6 +62,8 @@ export default function RackShape({ rack, isSelected }) {
     actions.selectElement(rack.id, 'rack')
   }
 
+  const rackColor = rack.displayColor || '#f97316'
+
   // Draw bay dividers
   const bayLines = []
   const bays = rack.baysPerLevel || 1
@@ -69,10 +73,11 @@ export default function RackShape({ rack, isSelected }) {
       bayLines.push(
         <Line
           key={`bay-${i}`}
-          points={[0, bayWidth * i, wPx, bayWidth * i]}
-          stroke="#c2410c"
-          strokeWidth={0.5}
-          dash={[3, 3]}
+          points={[1, bayWidth * i, wPx - 1, bayWidth * i]}
+          stroke={rackColor}
+          strokeWidth={0.8}
+          dash={[4, 3]}
+          opacity={0.75}
         />,
       )
     }
@@ -95,29 +100,81 @@ export default function RackShape({ rack, isSelected }) {
       name="rack-shape"
       id={rack.id}
     >
+      {/* Background fill with hatching pattern */}
       <Rect
         width={wPx}
         height={hPx}
-        fill={rack.displayColor || '#f97316'}
-        opacity={isSelected ? 0.6 : 0.4}
-        stroke={rack.displayColor || '#f97316'}
-        strokeWidth={isSelected ? 2 : 1}
-        cornerRadius={1}
+        fill={rackColor}
+        opacity={isSelected ? 0.5 : 0.3}
       />
+
+      {/* Border */}
+      <Rect
+        width={wPx}
+        height={hPx}
+        fill="transparent"
+        stroke={rackColor}
+        strokeWidth={isSelected ? 2.5 : 1.5}
+      />
+
+      {/* Selection highlight */}
+      {isSelected && (
+        <Rect
+          x={-2}
+          y={-2}
+          width={wPx + 4}
+          height={hPx + 4}
+          fill="transparent"
+          stroke="#ea580c"
+          strokeWidth={1}
+          dash={[4, 3]}
+          opacity={0.7}
+        />
+      )}
+
+      {/* Diagonal hatching lines for rack pattern */}
+      {wPx > 15 && hPx > 15 && Array.from({ length: Math.ceil((wPx + hPx) / 7) }, (_, i) => {
+        const offset = i * 7
+        const x1 = Math.max(0, offset - hPx)
+        const y1 = Math.min(hPx, offset)
+        const x2 = Math.min(wPx, offset)
+        const y2 = Math.max(0, offset - wPx)
+        return (
+          <Line
+            key={`hatch-${i}`}
+            points={[x1, y1, x2, y2]}
+            stroke={rackColor}
+            strokeWidth={0.4}
+            opacity={0.35}
+          />
+        )
+      })}
+
+      {/* Bay dividers */}
       {bayLines}
-      <Text
-        text={rack.rackCode}
+
+      {/* Label badge */}
+      <Rect
         x={2}
         y={2}
+        width={Math.min(wPx - 4, fontSize * rack.rackCode.length * 0.65 + 8)}
+        height={fontSize + (wPx > 40 ? fontSize + 2 : 4)}
+        fill="rgba(255,255,255,0.92)"
+        cornerRadius={2}
+      />
+      <Text
+        text={rack.rackCode}
+        x={4}
+        y={3}
         fontSize={fontSize}
         fontStyle="bold"
-        fill="#1e293b"
+        fill="#9a3412"
       />
       {wPx > 40 && (
         <Text
-          text={`L${rack.levels || 1}`}
-          x={2}
-          y={2 + fontSize + 1}
+          text={`L${rack.levels || 1} / B${rack.baysPerLevel || 1}`}
+          x={4}
+          y={3 + fontSize + 1}
           fontSize={fontSize - 1}
           fill="#78350f"
         />

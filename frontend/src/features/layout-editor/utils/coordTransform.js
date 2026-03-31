@@ -68,3 +68,67 @@ export function isWithinBounds(x, y, width, height, warehouseLengthM, warehouseW
 export function rectsOverlap(r1, r2) {
   return !(r1.x + r1.width <= r2.x || r2.x + r2.width <= r1.x || r1.y + r1.height <= r2.y || r2.y + r2.height <= r1.y)
 }
+
+/**
+ * Snap element edges to nearby edges of other elements + warehouse bounds.
+ *
+ * @param {number} x - current left position (meters)
+ * @param {number} y - current top position (meters)
+ * @param {number} w - element width (meters)
+ * @param {number} h - element depth (meters)
+ * @param {object} state - layout editor state (warehouse, zones, racks, locations)
+ * @param {string} excludeId - id of element being dragged (exclude from edge collection)
+ * @param {number} threshold - snap distance in meters (default 1.5)
+ * @returns {{ x: number, y: number, snappedX: boolean, snappedY: boolean }}
+ */
+export function snapToEdges(x, y, w, h, state, excludeId, threshold = 1.5) {
+  const xEdges = [] // vertical edges
+  const yEdges = [] // horizontal edges
+
+  // Warehouse bounds
+  const whL = state.warehouse?.lengthM || 100
+  const whW = state.warehouse?.widthM || 100
+  xEdges.push(0, whL)
+  yEdges.push(0, whW)
+
+  // Collect edges from all placed elements
+  const allItems = [
+    ...(state.zones || []).filter((z) => z.isPlaced).map((z) => ({ id: z.id, x: z.xM, y: z.yM, w: z.widthM, h: z.depthM })),
+    ...(state.racks || []).filter((r) => r.isPlaced).map((r) => ({ id: r.id, x: r.xM, y: r.yM, w: r.widthM, h: r.depthM })),
+    ...(state.locations || []).filter((l) => l.isPlaced).map((l) => ({ id: l.id, x: l.xM, y: l.yM, w: l.widthM || 3, h: l.depthM || 3 })),
+  ]
+
+  for (const item of allItems) {
+    if (item.id === excludeId) continue
+    xEdges.push(item.x, item.x + item.w)
+    yEdges.push(item.y, item.y + item.h)
+  }
+
+  // Snap X: check left edge and right edge of dragged element
+  let snapX = x
+  let snappedX = false
+  let bestDx = threshold
+
+  for (const edge of xEdges) {
+    // left edge → edge
+    const dLeft = Math.abs(x - edge)
+    if (dLeft < bestDx) { bestDx = dLeft; snapX = edge; snappedX = true }
+    // right edge → edge
+    const dRight = Math.abs(x + w - edge)
+    if (dRight < bestDx) { bestDx = dRight; snapX = edge - w; snappedX = true }
+  }
+
+  // Snap Y: check top edge and bottom edge of dragged element
+  let snapY = y
+  let snappedY = false
+  let bestDy = threshold
+
+  for (const edge of yEdges) {
+    const dTop = Math.abs(y - edge)
+    if (dTop < bestDy) { bestDy = dTop; snapY = edge; snappedY = true }
+    const dBottom = Math.abs(y + h - edge)
+    if (dBottom < bestDy) { bestDy = dBottom; snapY = edge - h; snappedY = true }
+  }
+
+  return { x: snapX, y: snapY, snappedX, snappedY }
+}

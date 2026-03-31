@@ -87,7 +87,7 @@ function layoutEditorReducer(state, action) {
       return {
         ...state,
         ...pushUndo(state),
-        zones: state.zones.map((z) => (z.id === id ? { ...z, xM, yM } : z)),
+        zones: state.zones.map((z) => (z.id === id ? { ...z, xM, yM, isPlaced: true } : z)),
         isDirty: true,
       }
     }
@@ -96,7 +96,7 @@ function layoutEditorReducer(state, action) {
       return {
         ...state,
         ...pushUndo(state),
-        zones: state.zones.map((z) => (z.id === id ? { ...z, xM, yM, widthM, depthM } : z)),
+        zones: state.zones.map((z) => (z.id === id ? { ...z, xM, yM, widthM, depthM, isPlaced: true } : z)),
         isDirty: true,
       }
     }
@@ -133,7 +133,7 @@ function layoutEditorReducer(state, action) {
       return {
         ...state,
         ...pushUndo(state),
-        racks: state.racks.map((r) => (r.id === id ? { ...r, xM, yM } : r)),
+        racks: state.racks.map((r) => (r.id === id ? { ...r, xM, yM, isPlaced: true } : r)),
         isDirty: true,
       }
     }
@@ -142,7 +142,7 @@ function layoutEditorReducer(state, action) {
       return {
         ...state,
         ...pushUndo(state),
-        racks: state.racks.map((r) => (r.id === id ? { ...r, xM, yM, widthM, depthM } : r)),
+        racks: state.racks.map((r) => (r.id === id ? { ...r, xM, yM, widthM, depthM, isPlaced: true } : r)),
         isDirty: true,
       }
     }
@@ -179,7 +179,7 @@ function layoutEditorReducer(state, action) {
       return {
         ...state,
         ...pushUndo(state),
-        locations: state.locations.map((l) => (l.id === id ? { ...l, xM, yM } : l)),
+        locations: state.locations.map((l) => (l.id === id ? { ...l, xM, yM, isPlaced: true } : l)),
         isDirty: true,
       }
     }
@@ -198,6 +198,29 @@ function layoutEditorReducer(state, action) {
         locations: state.locations.filter((l) => l.id !== action.payload),
         selectedId: state.selectedId === action.payload ? null : state.selectedId,
         selectedType: state.selectedId === action.payload ? null : state.selectedType,
+        isDirty: true,
+      }
+    }
+
+    case 'UPDATE_LOCATION_PROPS': {
+      const { id, ...props } = action.payload
+      return {
+        ...state,
+        ...pushUndo(state),
+        locations: state.locations.map((l) => (l.id === id ? { ...l, ...props } : l)),
+        isDirty: true,
+      }
+    }
+
+    case 'UNPLACE_ELEMENT': {
+      const { id, elementType } = action.payload
+      const key = elementType === 'zone' ? 'zones' : elementType === 'rack' ? 'racks' : 'locations'
+      return {
+        ...state,
+        ...pushUndo(state),
+        [key]: state[key].map((item) => (item.id === id ? { ...item, isPlaced: false, _wasUnplaced: true, xM: 0, yM: 0 } : item)),
+        selectedId: state.selectedId === id ? null : state.selectedId,
+        selectedType: state.selectedId === id ? null : state.selectedType,
         isDirty: true,
       }
     }
@@ -234,8 +257,18 @@ function layoutEditorReducer(state, action) {
         isDirty: true,
       }
     }
-    case 'MARK_SAVED':
-      return { ...state, isDirty: false }
+    case 'MARK_SAVED': {
+      // Bump rowVersion +1 on items that were sent to backend (placed OR unplaced via "gỡ khỏi sơ đồ")
+      // Clear _wasUnplaced flag after save
+      return {
+        ...state,
+        isDirty: false,
+        warehouse: state.warehouse ? { ...state.warehouse, rowVersion: (state.warehouse.rowVersion || 0) + 1 } : null,
+        zones: state.zones.map((z) => (z.isPlaced || z._wasUnplaced) ? { ...z, rowVersion: (z.rowVersion || 0) + 1, _wasUnplaced: false } : z),
+        racks: state.racks.map((r) => (r.isPlaced || r._wasUnplaced) ? { ...r, rowVersion: (r.rowVersion || 0) + 1, _wasUnplaced: false } : r),
+        locations: state.locations.map((l) => (l.isPlaced || l._wasUnplaced) ? { ...l, rowVersion: (l.rowVersion || 0) + 1, _wasUnplaced: false } : l),
+      }
+    }
 
     case 'SET_DRAWING':
       return { ...state, isDrawing: action.payload.isDrawing, drawStart: action.payload.drawStart || null }
@@ -274,8 +307,11 @@ export function LayoutEditorProvider({ children }) {
       updateRackProps: (id, props) => dispatch({ type: 'UPDATE_RACK_PROPS', payload: { id, ...props } }),
       // Location
       moveLocation: (id, xM, yM) => dispatch({ type: 'MOVE_LOCATION', payload: { id, xM, yM } }),
+      // Unplace (return to palette)
+      unplaceElement: (id, elementType) => dispatch({ type: 'UNPLACE_ELEMENT', payload: { id, elementType } }),
       addLocation: (loc) => dispatch({ type: 'ADD_LOCATION', payload: loc }),
       deleteLocation: (id) => dispatch({ type: 'DELETE_LOCATION', payload: id }),
+      updateLocationProps: (id, props) => dispatch({ type: 'UPDATE_LOCATION_PROPS', payload: { id, ...props } }),
       // Undo/Redo
       undo: () => dispatch({ type: 'UNDO' }),
       redo: () => dispatch({ type: 'REDO' }),

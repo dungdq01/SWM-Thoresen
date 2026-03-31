@@ -1,11 +1,11 @@
 import { cn } from '@shared/lib/cn'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Inbox, Loader2 } from 'lucide-react'
 
-export function Table({ children, className }) {
+export function Table({ children, className, minWidth = 1000 }) {
   return (
     <div className={cn('overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}>
       <div className="w-full overflow-x-auto">
-        <table className="w-full caption-bottom text-sm">{children}</table>
+        <table className="w-full caption-bottom text-sm" style={{ minWidth }}>{children}</table>
       </div>
     </div>
   )

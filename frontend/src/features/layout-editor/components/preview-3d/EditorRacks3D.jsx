@@ -2,16 +2,29 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Text } from '@react-three/drei'
 
-const UPRIGHT_W = 0.08
-const BEAM_H = 0.06
-const SHELF_THICKNESS = 0.03
+const UPRIGHT_W = 0.1
+const BEAM_H = 0.08
+const SHELF_THICKNESS = 0.04
 
 function SingleRack({ rack }) {
   const { cx, cz, widthM, depthM, heightM, levels, color } = rack
   const halfW = widthM / 2
   const halfD = depthM / 2
   const levelHeight = heightM / levels
-  const col = new THREE.Color(color)
+  const col = useMemo(() => new THREE.Color(color), [color])
+
+  const uprightMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: col, metalness: 0.7, roughness: 0.3 }),
+    [col],
+  )
+  const beamMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: col, metalness: 0.5, roughness: 0.4 }),
+    [col],
+  )
+  const shelfMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#9CA3AF', metalness: 0.15, roughness: 0.75 }),
+    [],
+  )
 
   const uprights = useMemo(() => [
     [cx - halfW, cz - halfD],
@@ -24,60 +37,88 @@ function SingleRack({ rack }) {
     <group>
       {/* 4 corner uprights */}
       {uprights.map(([ux, uz], i) => (
-        <mesh key={`up-${i}`} position={[ux, heightM / 2, uz]} castShadow>
+        <mesh key={`up-${i}`} position={[ux, heightM / 2, uz]} castShadow material={uprightMat}>
           <boxGeometry args={[UPRIGHT_W, heightM, UPRIGHT_W]} />
-          <meshStandardMaterial color={col} metalness={0.6} roughness={0.3} />
         </mesh>
       ))}
 
-      {/* Shelf beams at each level */}
+      {/* Shelf beams + surfaces at each level */}
       {Array.from({ length: levels + 1 }, (_, lvl) => {
         const y = lvl * levelHeight
         return (
           <group key={`lvl-${lvl}`}>
             {/* Front beam */}
-            <mesh position={[cx, y, cz - halfD]}>
+            <mesh position={[cx, y, cz - halfD]} material={beamMat}>
               <boxGeometry args={[widthM, BEAM_H, UPRIGHT_W]} />
-              <meshStandardMaterial color={col} metalness={0.5} roughness={0.4} />
             </mesh>
             {/* Back beam */}
-            <mesh position={[cx, y, cz + halfD]}>
+            <mesh position={[cx, y, cz + halfD]} material={beamMat}>
               <boxGeometry args={[widthM, BEAM_H, UPRIGHT_W]} />
-              <meshStandardMaterial color={col} metalness={0.5} roughness={0.4} />
+            </mesh>
+            {/* Left side beam */}
+            <mesh position={[cx - halfW, y, cz]} material={beamMat}>
+              <boxGeometry args={[UPRIGHT_W, BEAM_H, depthM]} />
+            </mesh>
+            {/* Right side beam */}
+            <mesh position={[cx + halfW, y, cz]} material={beamMat}>
+              <boxGeometry args={[UPRIGHT_W, BEAM_H, depthM]} />
             </mesh>
             {/* Shelf surface (except bottom) */}
             {lvl > 0 && (
-              <mesh position={[cx, y + BEAM_H / 2, cz]}>
+              <mesh position={[cx, y + BEAM_H / 2, cz]} material={shelfMat}>
                 <boxGeometry args={[widthM - UPRIGHT_W, SHELF_THICKNESS, depthM]} />
-                <meshStandardMaterial color="#9CA3AF" metalness={0.1} roughness={0.8} />
               </mesh>
             )}
           </group>
         )
       })}
 
-      {/* Cross bracing (X pattern on sides) */}
-      {[cz - halfD, cz + halfD].map((z, si) => (
-        <group key={`brace-${si}`}>
-          <mesh
-            position={[cx, heightM / 2, z]}
-            rotation={[0, 0, Math.atan2(heightM, widthM)]}
-          >
-            <boxGeometry args={[Math.sqrt(widthM ** 2 + heightM ** 2), 0.03, 0.03]} />
-            <meshStandardMaterial color={col} metalness={0.4} roughness={0.5} />
-          </mesh>
-        </group>
-      ))}
+      {/* Cross bracing (X pattern on front/back sides) */}
+      {[cz - halfD, cz + halfD].map((z, si) => {
+        const diagLen = Math.sqrt(widthM ** 2 + heightM ** 2)
+        const angle = Math.atan2(heightM, widthM)
+        return (
+          <group key={`brace-${si}`}>
+            <mesh position={[cx, heightM / 2, z]} rotation={[0, 0, angle]}>
+              <boxGeometry args={[diagLen, 0.04, 0.04]} />
+              <meshStandardMaterial color={col} metalness={0.4} roughness={0.5} />
+            </mesh>
+            <mesh position={[cx, heightM / 2, z]} rotation={[0, 0, -angle]}>
+              <boxGeometry args={[diagLen, 0.04, 0.04]} />
+              <meshStandardMaterial color={col} metalness={0.4} roughness={0.5} />
+            </mesh>
+          </group>
+        )
+      })}
 
-      {/* Label */}
+      {/* Base plate */}
+      <mesh position={[cx, 0.02, cz]}>
+        <boxGeometry args={[widthM + 0.2, 0.04, depthM + 0.2]} />
+        <meshStandardMaterial color="#475569" metalness={0.3} roughness={0.7} />
+      </mesh>
+
+      {/* Label floating above rack */}
       <Text
-        position={[cx, heightM + 0.5, cz]}
-        fontSize={0.4}
+        position={[cx, heightM + 0.8, cz]}
+        fontSize={0.5}
         color="#f97316"
         anchorX="center"
         anchorY="middle"
+        fontWeight="bold"
       >
         {rack.code || rack.name}
+      </Text>
+
+      {/* Level count label */}
+      <Text
+        position={[cx, heightM + 0.3, cz]}
+        fontSize={0.3}
+        color="#fb923c"
+        anchorX="center"
+        anchorY="middle"
+        fillOpacity={0.6}
+      >
+        {`L${levels} / B${rack.baysPerLevel || 1}`}
       </Text>
     </group>
   )

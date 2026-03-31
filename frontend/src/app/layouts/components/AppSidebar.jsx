@@ -23,6 +23,9 @@ import {
   Split,
   PenTool,
   Map,
+  Handshake,
+  Warehouse,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
 import { useLanguage } from '@shared/i18n'
@@ -43,32 +46,52 @@ const getMenuConfig = (t) => [
   },
   { _divider: true, label: t('sidebar.sections.data') },
   {
-    id: 'master-data',
-    label: t('sidebar.items.masterData'),
-    icon: Database,
+    id: 'md-partners',
+    label: 'Đối tác',
+    icon: Handshake,
     basePath: '/app/master-data',
+    matchPaths: ['/app/master-data/owners', '/app/master-data/vendors', '/app/master-data/customers', '/app/master-data/carriers', '/app/master-data/vessels'],
     children: [
-      { _groupLabel: 'Đối tác' },
       { to: '/app/master-data/owners', label: t('sidebar.items.owners') },
       { to: '/app/master-data/vendors', label: t('sidebar.items.vendors') },
       { to: '/app/master-data/customers', label: t('sidebar.items.customers') },
       { to: '/app/master-data/carriers', label: 'Nhà vận chuyển' },
       { to: '/app/master-data/vessels', label: 'Tên tàu' },
-      { _groupLabel: 'Hàng hóa' },
+    ],
+  },
+  {
+    id: 'md-goods',
+    label: 'Hàng hóa',
+    icon: Package,
+    basePath: '/app/master-data',
+    matchPaths: ['/app/master-data/item-groups', '/app/master-data/items', '/app/master-data/lots', '/app/master-data/item-incompatibilities'],
+    children: [
       { to: '/app/master-data/item-groups', label: 'Nhóm hàng hóa' },
       { to: '/app/master-data/items', label: t('sidebar.items.items') },
       { to: '/app/master-data/lots', label: 'Lô hàng' },
-      { to: '/app/master-data/owner-sku-mappings', label: 'Mapping Owner-SKU' },
       { to: '/app/master-data/item-incompatibilities', label: 'Không tương thích' },
-      { _groupLabel: 'Thiết lập kho' },
+    ],
+  },
+  {
+    id: 'md-warehouse',
+    label: 'Thiết lập kho',
+    icon: Warehouse,
+    basePath: '/app/master-data',
+    matchPaths: ['/app/master-data/warehouses', '/app/master-data/zones', '/app/master-data/locations', '/app/master-data/location-types'],
+    children: [
       { to: '/app/master-data/warehouses', label: 'Kho hàng' },
       { to: '/app/master-data/zones', label: 'Khu vực' },
       { to: '/app/master-data/locations', label: t('sidebar.items.locations') },
       { to: '/app/master-data/location-types', label: 'Loại vị trí' },
-      { to: '/app/master-data/owner-warehouse-access', label: 'Phân kho Owner' },
-      { _groupLabel: 'Thiết kế mặt bằng' },
-      { to: '/app/master-data/site-map-editor', label: 'Bản đồ tổng thể' },
-      { _groupLabel: 'Cấu hình hệ thống' },
+    ],
+  },
+  {
+    id: 'md-config',
+    label: 'Cấu hình hệ thống',
+    icon: SlidersHorizontal,
+    basePath: '/app/master-data',
+    matchPaths: ['/app/master-data/uoms', '/app/master-data/uom-conversions', '/app/master-data/inventory-statuses', '/app/master-data/vehicle-types', '/app/master-data/reason-codes'],
+    children: [
       { to: '/app/master-data/uoms', label: t('sidebar.items.uoms') },
       { to: '/app/master-data/uom-conversions', label: t('sidebar.items.uomConversions') },
       { to: '/app/master-data/inventory-statuses', label: t('sidebar.items.inventoryStatuses') },
@@ -236,9 +259,11 @@ function MenuItem({ item, isCollapsed, isExpanded, onToggle }) {
   const hasChildren = item.children && item.children.length > 0
   const isActive = item.to 
     ? location.pathname === item.to 
-    : item.basePath 
-      ? location.pathname.startsWith(item.basePath)
-      : false
+    : item.matchPaths
+      ? item.matchPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+      : item.basePath 
+        ? location.pathname.startsWith(item.basePath)
+        : false
 
   if (!hasChildren) {
     return (
@@ -303,9 +328,13 @@ export function AppSidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose 
   const menuConfig = getMenuConfig(t)
 
   const [expandedId, setExpandedId] = useState(() => {
-    const activeItem = menuConfig.find(item =>
-      item.basePath && location.pathname.startsWith(item.basePath)
-    )
+    const activeItem = menuConfig.find(item => {
+      if (!item.basePath) return false
+      if (item.matchPaths) {
+        return item.matchPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+      }
+      return location.pathname.startsWith(item.basePath)
+    })
     return activeItem?.id || null
   })
 

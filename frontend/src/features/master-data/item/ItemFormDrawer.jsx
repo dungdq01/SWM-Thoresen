@@ -239,10 +239,10 @@ export function ItemFormDrawer({
                           render={({ field }) => (
                             <Input
                               type="number"
-                              step="0.01"
-                              placeholder="VD: 49.5"
+                              step="1"
+                              placeholder="VD: 50"
                               value={field.value ?? ''}
-                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                              onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                               error={errors.stdNetWeight?.message}
                             />
                           )}
@@ -258,10 +258,10 @@ export function ItemFormDrawer({
                           render={({ field }) => (
                             <Input
                               type="number"
-                              step="0.01"
+                              step="1"
                               placeholder="VD: 50"
                               value={field.value ?? ''}
-                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                              onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                               error={errors.stdGrossWeight?.message}
                             />
                           )}
@@ -280,10 +280,10 @@ export function ItemFormDrawer({
                           render={({ field }) => (
                             <Input
                               type="number"
-                              step="0.1"
+                              step="1"
                               placeholder="VD: 2"
                               value={field.value ?? ''}
-                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                              onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                               error={errors.tolerancePctInbound?.message}
                             />
                           )}
@@ -299,10 +299,10 @@ export function ItemFormDrawer({
                           render={({ field }) => (
                             <Input
                               type="number"
-                              step="0.1"
-                              placeholder="VD: 1.5"
+                              step="1"
+                              placeholder="VD: 2"
                               value={field.value ?? ''}
-                              onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                              onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                               error={errors.tolerancePctOutbound?.message}
                             />
                           )}

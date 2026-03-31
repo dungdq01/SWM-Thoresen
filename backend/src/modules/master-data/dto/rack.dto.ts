@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsNumber, IsUUID, IsInt, Min } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsNumber, IsUUID, IsInt, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RackType } from '@prisma/client';
 
@@ -72,12 +72,14 @@ export class UpdateRackDto {
   zoneId?: string;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
-  xCoord?: number;
+  xCoord?: number | null;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
-  yCoord?: number;
+  yCoord?: number | null;
 
   @IsOptional()
   @IsNumber()

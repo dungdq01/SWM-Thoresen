@@ -15,11 +15,18 @@ import {
 } from '@domains/outbound-operations/hooks/useOutboundOperations'
 
 const STATUS_BADGE = {
+  DRAFT: { label: 'Nháp', cls: 'bg-gray-100 text-gray-800' },
+  NEW: { label: 'Nháp', cls: 'bg-gray-100 text-gray-800' },
   CONFIRMED: { label: 'Chờ xếp', cls: 'bg-blue-100 text-blue-800' },
+  AWAITING_WEIGHING: { label: 'Chờ cân', cls: 'bg-orange-100 text-orange-800' },
+  WEIGHING: { label: 'Đang cân', cls: 'bg-orange-100 text-orange-800' },
   LOADING: { label: 'Đang xếp', cls: 'bg-yellow-100 text-yellow-800' },
   LOADED: { label: 'Đã xếp xong', cls: 'bg-teal-100 text-teal-800' },
   SHIPPED: { label: 'Đã xuất', cls: 'bg-purple-100 text-purple-800' },
   COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-800' },
+  CLOSED: { label: 'Đã đóng', cls: 'bg-green-100 text-green-800' },
+  CANCELLED: { label: 'Đã hủy', cls: 'bg-red-100 text-red-800' },
+  ERROR: { label: 'Lỗi', cls: 'bg-red-100 text-red-800' },
 }
 
 /**

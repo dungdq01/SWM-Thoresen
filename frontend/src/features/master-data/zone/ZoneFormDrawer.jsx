@@ -34,6 +34,8 @@ export function ZoneFormDrawer({ isOpen, onClose, onSubmit, initialData = null, 
         warehouseId: initialData.warehouseId || initialData.warehouse?.id || '',
         zoneType: initialData.zoneType || 'STORAGE',
         maxCapacityMt: initialData.maxCapacityMt != null ? Number(initialData.maxCapacityMt) : null,
+        zoneWidthM: initialData.zoneWidthM != null ? Number(initialData.zoneWidthM) : null,
+        zoneDepthM: initialData.zoneDepthM != null ? Number(initialData.zoneDepthM) : null,
         isBillingZone: initialData.isBillingZone || false,
       })
     } else {
@@ -89,6 +91,41 @@ export function ZoneFormDrawer({ isOpen, onClose, onSubmit, initialData = null, 
                 <Select label="Kho" required options={warehouseOptions} error={errors.warehouseId?.message} placeholder="Chọn kho..." value={field.value} onChange={(e) => field.onChange(e.target.value)} />
               )} />
 
+              <div className="grid grid-cols-2 gap-4">
+                <Controller
+                  name="zoneWidthM"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      label="Chiều rộng (m)"
+                      type="number"
+                      step="1"
+                      min="1"
+                      placeholder="VD: 20"
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
+                      error={errors.zoneWidthM?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="zoneDepthM"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      label="Chiều dài (m)"
+                      type="number"
+                      step="1"
+                      min="1"
+                      placeholder="VD: 15"
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
+                      error={errors.zoneDepthM?.message}
+                    />
+                  )}
+                />
+              </div>
+
               <Controller
                 name="maxCapacityMt"
                 control={control}
@@ -96,10 +133,10 @@ export function ZoneFormDrawer({ isOpen, onClose, onSubmit, initialData = null, 
                   <Input
                     label="Sức chứa tối đa (MT)"
                     type="number"
-                    step="0.01"
+                    step="1"
                     placeholder="VD: 50000"
                     value={field.value ?? ''}
-                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                    onChange={(e) => field.onChange(e.target.value ? Math.round(Number(e.target.value)) : null)}
                     error={errors.maxCapacityMt?.message}
                   />
                 )}

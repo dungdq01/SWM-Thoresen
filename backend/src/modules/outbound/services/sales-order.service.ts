@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreateSalesOrderDto, UpdateSalesOrderDto, SalesOrderQueryDto } from '../dto/sales-order.dto';
+import { SoQtyRollupService } from './so-qty-rollup.service';
 import { v4 as uuidv4 } from 'uuid';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PostingEngineService } = require('../../inventory-core/application/posting-engine.service');
@@ -18,7 +19,12 @@ const SO_TYPE_MAP: Record<string, string> = {
 
 @Injectable()
 export class SalesOrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(SalesOrderService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly soQtyRollup: SoQtyRollupService,
+  ) {}
 
   async create(dto: CreateSalesOrderDto, userId?: string) {
     const soNumber = await this.generateSoNumber();
@@ -378,6 +384,10 @@ export class SalesOrderService {
       include: { owner: true, lines: { include: { item: true, uom: true } } },
     });
 
+    await this.prisma.salesOrderStatusHistory.create({
+      data: { soId: id, entityLevel: 'HEADER', fromStatus: existing.status, toStatus: 'CONFIRMED', triggerAction: 'CONFIRM_SO', changedBy: userId, correlationId: id },
+    });
+
     return this.transformSalesOrder(updated);
   }
 
@@ -394,20 +404,54 @@ export class SalesOrderService {
       include: { owner: true, lines: { include: { item: true, uom: true } } },
     });
 
+    await this.prisma.salesOrderStatusHistory.create({
+      data: { soId: id, entityLevel: 'HEADER', fromStatus: existing.status, toStatus: 'CANCELLED', triggerAction: 'CANCEL_SO', changedBy: userId, correlationId: id },
+    });
+
     return this.transformSalesOrder(updated);
   }
 
   async close(id: string, userId?: string) {
     const existing = await this.prisma.salesOrder.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Sales Order ${id} not found`);
-    if (existing.status !== 'FULLY_RELEASED') {
-      throw new BadRequestException('Can only close Sales Orders in FULLY_RELEASED status');
+    if (!['PARTIALLY_RELEASED', 'FULLY_RELEASED', 'SHIPPED'].includes(existing.status)) {
+      throw new BadRequestException('Chỉ có thể đóng SO ở trạng thái Xuất 1 phần, Đã giao đủ phiếu hoặc Đã xuất kho');
+    }
+
+    // Recalculate SO qty rollup trước khi đóng — đảm bảo totalShippedQtyKg chính xác
+    try {
+      const rollupResult = await this.soQtyRollup.recalculateSo(id);
+      if (rollupResult) {
+        this.logger.log(`SO close rollup: ${rollupResult.soNumber} — ${rollupResult.totalShippedQtyKg}kg shipped, ${rollupResult.linesUpdated} lines`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`SO close rollup failed for ${id}: ${e.message}`);
+    }
+
+    // Reconcile inventory: post SHIP_CONFIRMED cho bất kỳ shipment line nào chưa có inventTrans
+    try {
+      await this.reconcileShippedInventory(id, userId);
+    } catch (e: any) {
+      this.logger.warn(`SO close inventory reconcile failed for ${id}: ${e.message}`);
     }
 
     const updated = await this.prisma.salesOrder.update({
       where: { id },
       data: { status: 'CLOSED', updatedBy: userId },
       include: { owner: true, lines: { include: { item: true, uom: true } } },
+    });
+
+    // Ghi status history
+    await this.prisma.salesOrderStatusHistory.create({
+      data: {
+        soId: id,
+        entityLevel: 'HEADER',
+        fromStatus: existing.status,
+        toStatus: 'CLOSED',
+        triggerAction: 'CLOSE_SO',
+        changedBy: userId,
+        correlationId: id,
+      },
     });
 
     return this.transformSalesOrder(updated);
@@ -426,7 +470,86 @@ export class SalesOrderService {
       include: { owner: true, lines: { include: { item: true, uom: true } } },
     });
 
+    await this.prisma.salesOrderStatusHistory.create({
+      data: { soId: id, entityLevel: 'HEADER', fromStatus: existing.status, toStatus: 'DRAFT', triggerAction: 'UNCONFIRM_SO', changedBy: userId, correlationId: id },
+    });
+
     return this.transformSalesOrder(updated);
+  }
+
+  /**
+   * Reconcile inventory: ensure all shipped shipment lines have SHIP_CONFIRMED posted.
+   * Weighbridge may fail silently → on_hand not deducted. This catches up.
+   */
+  private async reconcileShippedInventory(soId: string, userId?: string) {
+    const shipments = await this.prisma.shipmentHeader.findMany({
+      where: { salesOrderId: soId },
+      include: {
+        lines: {
+          where: { lineStatus: 'LINE_SHIPPED', shippedQty: { gt: 0 } },
+          include: { uom: true },
+        },
+        warehouse: { select: { warehouseCode: true } },
+        owner: { select: { ownerCode: true } },
+      },
+    });
+
+    const postingEngine = new PostingEngineService(this.prisma);
+    let posted = 0;
+    let skipped = 0;
+
+    for (const shp of shipments) {
+      for (const line of shp.lines) {
+        // Check if inventTrans already exists for this shipment line
+        const existingTrans = await this.prisma.inventTrans.findFirst({
+          where: {
+            refType: 'SHIPMENT',
+            refId: shp.id,
+            refLineId: line.id,
+            transType: 'ISSUE',
+            isReversal: false,
+          },
+        });
+
+        if (existingTrans) {
+          skipped++;
+          continue;
+        }
+
+        // Post SHIP_CONFIRMED for missing line
+        const qty = Number(line.shippedQty || line.netWeightKg || 0);
+        if (qty <= 0) continue;
+
+        try {
+          await postingEngine.postInventory({
+            externalId: `SHP-RECONCILE-${shp.id}-${line.id}-${Date.now()}`,
+            correlationId: `SHP-CLOSE-${soId}`,
+            eventCode: 'SHIP_CONFIRMED',
+            refType: 'SHIPMENT',
+            refId: shp.id,
+            refLineId: line.id,
+            itemId: line.itemId,
+            qty: String(qty),
+            uomCode: (line as any).uom?.uomCode || 'KG',
+            dimFrom: {
+              warehouseCode: shp.warehouse?.warehouseCode,
+              ownerCode: shp.owner?.ownerCode,
+              statusCode: 'AVAILABLE',
+            },
+            sourceApp: 'M5_OUTBOUND',
+            postedBy: userId,
+          });
+          posted++;
+          this.logger.log(`Reconciled SHIP_CONFIRMED: shipment=${shp.shipmentNumber}, line=${line.id}, qty=${qty}kg`);
+        } catch (err: any) {
+          this.logger.warn(`Reconcile posting failed for line ${line.id}: ${err.message}`);
+        }
+      }
+    }
+
+    if (posted > 0) {
+      this.logger.log(`SO ${soId} inventory reconcile: ${posted} posted, ${skipped} already existed`);
+    }
   }
 
   /**

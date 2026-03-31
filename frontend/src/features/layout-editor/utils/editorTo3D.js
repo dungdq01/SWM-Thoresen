@@ -47,8 +47,8 @@ export function editorStateTo3DProps(state) {
   const roof = deriveRoof(warehouseForUtils)
   const columnPositions = computeColumnPositions(geometry)
 
-  // Transform zones
-  const zones3D = (state.zones || []).map((zone) => {
+  // Transform zones — only include placed items
+  const zones3D = (state.zones || []).filter((z) => z.isPlaced).map((zone) => {
     const { cx, cz } = toCenter(zone.xM, zone.yM, zone.widthM, zone.depthM, length, width)
     return {
       id: zone.id,
@@ -63,8 +63,14 @@ export function editorStateTo3DProps(state) {
     }
   })
 
-  // Transform racks
-  const racks3D = (state.racks || []).map((rack) => {
+  // Build zone color lookup so locations can inherit parent zone color
+  const zoneColorMap = {}
+  ;(state.zones || []).forEach((z) => {
+    if (z.id && z.displayColor) zoneColorMap[z.id] = z.displayColor
+  })
+
+  // Transform racks — only include placed items
+  const racks3D = (state.racks || []).filter((r) => r.isPlaced).map((rack) => {
     const { cx, cz } = toCenter(rack.xM, rack.yM, rack.widthM, rack.depthM, length, width)
     return {
       id: rack.id,
@@ -81,8 +87,8 @@ export function editorStateTo3DProps(state) {
     }
   })
 
-  // Transform locations
-  const locations3D = (state.locations || []).map((loc) => {
+  // Transform locations — only placed, inherit zone color via zoneId
+  const locations3D = (state.locations || []).filter((l) => l.isPlaced).map((loc) => {
     const { cx, cz } = toCenter(loc.xM, loc.yM, loc.widthM, loc.depthM, length, width)
     return {
       id: loc.id,
@@ -92,7 +98,8 @@ export function editorStateTo3DProps(state) {
       cz,
       widthM: loc.widthM,
       depthM: loc.depthM,
-      color: loc.displayColor || '#8b5cf6',
+      color: loc.displayColor || zoneColorMap[loc.zoneId] || '#8b5cf6',
+      doorConfig: loc.doorConfig || null,
     }
   })
 

@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsInt, Min } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsInt, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ZoneType } from '@prisma/client';
 
@@ -92,14 +92,14 @@ export class UpdateZoneDto {
   maxCapacityMt?: number;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
-  @Type(() => Number)
-  xCoord?: number;
+  xCoord?: number | null;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
-  @Type(() => Number)
-  yCoord?: number;
+  yCoord?: number | null;
 
   @IsOptional()
   @IsNumber()

@@ -225,39 +225,39 @@ export function PurchaseOrdersPage() {
                     )}
                   </TableCell>
                   <TableCell align="center">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1.5">
                       {po.status === 'NEW' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(po)} title="Chỉnh sửa">
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(po)} title="Chỉnh sửa" className="gap-1">
                             <Pencil className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">Sửa</span>
                           </Button>
-                          <Button variant="accent" size="sm" onClick={() => confirmPo.mutate(po.id)} title="Xác nhận">
+                          <Button variant="accent" size="sm" onClick={() => confirmPo.mutate(po.id)} title="Xác nhận" className="gap-1">
                             <Check className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">Xác nhận</span>
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy PO">
+                          <Button variant="ghost" size="sm" onClick={() => cancelPo.mutate(po.id)} title="Hủy PO" className="text-red-500 hover:bg-red-500/10 hover:text-red-600">
                             <Ban className="h-3.5 w-3.5" />
                           </Button>
                         </>
                       )}
                       {po.status === 'CONFIRMED' && (
-                        <>
-                          <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập">
-                            <FileInput className="h-3.5 w-3.5" />
-                          </Button>
-                        </>
+                        <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập" className="gap-1">
+                          <FileInput className="h-3.5 w-3.5" />
+                          <span className="hidden xl:inline">Tạo phiếu</span>
+                        </Button>
                       )}
                       {po.status === 'RECEIVING' && (
                         <>
-                          <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập">
+                          <Button variant="accent" size="sm" onClick={() => handleOpenReceiptModal(po)} title="Tạo phiếu nhập" className="gap-1">
                             <FileInput className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">Tạo phiếu</span>
                           </Button>
-                          <Button variant="success" size="sm" onClick={() => closePo.mutate(po.id)} title="Đóng PO">
+                          <Button size="sm" onClick={() => closePo.mutate(po.id)} title="Đóng PO" className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
                             <Lock className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline">Đóng</span>
                           </Button>
                         </>
-                      )}
-                      {['CLOSED', 'CANCELLED'].includes(po.status) && (
-                        <span className="text-xs text-navy-400">Hoàn tất</span>
                       )}
                     </div>
                   </TableCell>

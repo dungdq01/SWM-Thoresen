@@ -147,7 +147,7 @@ export function ZonesPage() {
         isLoading={isLoading}
         isEmpty={zones.length === 0}
         emptyMessage="Chưa có zone nào"
-        colSpan={7}
+        colSpan={8}
         page={meta.page}
         totalPages={meta.totalPages}
         onPageChange={handlePageChange}
@@ -158,6 +158,7 @@ export function ZonesPage() {
             <TableHead>Tên zone</TableHead>
             <TableHead>Kho</TableHead>
             <TableHead align="center">Loại</TableHead>
+            <TableHead>Kích thước</TableHead>
             <TableHead>Sức chứa</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
             <TableHead align="center" className="w-16"></TableHead>
@@ -183,6 +184,13 @@ export function ZonesPage() {
                 </TableCell>
                 <TableCell align="center">
                   <ZoneTypeBadge type={zone.zoneType} />
+                </TableCell>
+                <TableCell>
+                  <span className="text-navy-700 text-xs">
+                    {zone.zoneWidthM && zone.zoneDepthM
+                      ? `${Number(zone.zoneWidthM).toFixed(1)} × ${Number(zone.zoneDepthM).toFixed(1)} m`
+                      : '—'}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <span className="text-navy-700">

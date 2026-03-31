@@ -272,7 +272,7 @@ export function WeighingModal({
                   onChange={(e) => setWeightKg(e.target.value)}
                   placeholder="VD: 45000"
                   min="0"
-                  step="0.001"
+                  step="1"
                   error={weightError}
                 />
 

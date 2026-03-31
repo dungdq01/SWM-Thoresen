@@ -12,6 +12,16 @@ export const warehouseSchema = z.object({
   warehouseType: z.enum(['COVERED', 'OPEN_YARD'], {
     errorMap: () => ({ message: 'Vui lòng chọn loại kho' }),
   }),
+  lengthM: z
+    .number({ invalid_type_error: 'Phải là số' })
+    .positive('Phải lớn hơn 0')
+    .optional()
+    .nullable(),
+  widthM: z
+    .number({ invalid_type_error: 'Phải là số' })
+    .positive('Phải lớn hơn 0')
+    .optional()
+    .nullable(),
   totalAreaM2: z
     .number({ invalid_type_error: 'Phải là số' })
     .positive('Phải lớn hơn 0')
@@ -57,6 +67,8 @@ export const warehouseDefaultValues = {
   warehouseCode: '',
   warehouseName: '',
   warehouseType: 'COVERED',
+  lengthM: null,
+  widthM: null,
   totalAreaM2: null,
   usableAreaM2: null,
   maxHeightM: null,

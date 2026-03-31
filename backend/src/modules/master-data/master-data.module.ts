@@ -24,7 +24,6 @@ import { LotController } from './controllers/lot.controller';
 import { OwnerWarehouseAccessController } from './controllers/owner-warehouse-access.controller';
 import { ItemIncompatibilityController } from './controllers/item-incompatibility.controller';
 import { RackController } from './controllers/rack.controller';
-import { LayoutController } from './controllers/layout.controller';
 import { MonitoringController } from './controllers/monitoring.controller';
 
 import { OwnerRepository } from './repositories/owner.repository';
@@ -70,7 +69,6 @@ import { LotService } from './services/lot.service';
 import { OwnerWarehouseAccessService } from './services/owner-warehouse-access.service';
 import { ItemIncompatibilityService } from './services/item-incompatibility.service';
 import { RackService } from './services/rack.service';
-import { LayoutService } from './services/layout.service';
 import { MonitoringService } from './services/monitoring.service';
 
 @Module({
@@ -98,7 +96,6 @@ import { MonitoringService } from './services/monitoring.service';
     OwnerWarehouseAccessController,
     ItemIncompatibilityController,
     RackController,
-    LayoutController,
     MonitoringController,
   ],
   providers: [
@@ -144,7 +141,6 @@ import { MonitoringService } from './services/monitoring.service';
     OwnerWarehouseAccessService,
     ItemIncompatibilityService,
     RackService,
-    LayoutService,
     MonitoringService,
   ],
   exports: [
@@ -169,7 +165,6 @@ import { MonitoringService } from './services/monitoring.service';
     OwnerWarehouseAccessService,
     ItemIncompatibilityService,
     RackService,
-    LayoutService,
     MonitoringService,
   ],
 })

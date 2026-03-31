@@ -25,13 +25,15 @@ export class WarehouseRepository {
     keyword?: string;
     isActive?: boolean;
     warehouseType?: string;
+    siteId?: string;
   }): Promise<PaginatedResult<MdWarehouse>> {
-    const { page = 1, pageSize = 20, keyword, isActive, warehouseType } = params;
+    const { page = 1, pageSize = 20, keyword, isActive, warehouseType, siteId } = params;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.MdWarehouseWhereInput = {};
     if (isActive !== undefined) where.isActive = isActive;
     if (warehouseType) where.warehouseType = warehouseType as any;
+    if (siteId) where.siteId = siteId;
     if (keyword) {
       where.OR = [
         { warehouseCode: { contains: keyword, mode: 'insensitive' } },

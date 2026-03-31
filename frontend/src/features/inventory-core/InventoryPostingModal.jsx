@@ -132,7 +132,7 @@ export function InventoryPostingModal({ isOpen, onClose }) {
             <Label required>Số lượng</Label>
             <Input
               type="number"
-              step="0.001"
+              step="1"
               min="0"
               value={form.qty}
               onChange={(e) => handleChange('qty', e.target.value)}

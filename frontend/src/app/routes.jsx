@@ -34,13 +34,10 @@ const InventoryStatusesPage = lazy(() => import('@pages/master-data').then(m => 
 const ItemGroupsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemGroupsPage })))
 const CarriersPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.CarriersPage })))
 const VesselsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.VesselsPage })))
-const OwnerSkuMappingsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerSkuMappingsPage })))
 const LocationTypesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LocationTypesPage })))
 const LotsPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.LotsPage })))
-const OwnerWarehouseAccessPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.OwnerWarehouseAccessPage })))
 const ItemIncompatibilitiesPage = lazy(() => import('@pages/master-data').then(m => ({ default: m.ItemIncompatibilitiesPage })))
 const WarehouseLayoutEditorPage = lazy(() => import('@features/layout-editor').then(m => ({ default: m.WarehouseLayoutEditor })))
-const SiteMapEditorPage = lazy(() => import('@features/layout-editor/site-editor/SiteMapEditor').then(m => ({ default: m.default })))
 
 // Inventory Core Pages
 const InventoryCoreLayout = lazy(() => import('@pages/inventory-core').then(m => ({ default: m.InventoryCoreLayout })))
@@ -220,10 +217,6 @@ export const router = createBrowserRouter([
             element: withSuspense(VesselsPage),
           },
           {
-            path: 'owner-sku-mappings',
-            element: withSuspense(OwnerSkuMappingsPage),
-          },
-          {
             path: 'location-types',
             element: withSuspense(LocationTypesPage),
           },
@@ -256,10 +249,6 @@ export const router = createBrowserRouter([
             element: withSuspense(WarehouseLayoutEditorPage),
           },
           {
-            path: 'site-map-editor',
-            element: withSuspense(SiteMapEditorPage),
-          },
-          {
             path: 'zones',
             element: withSuspense(ZonesPage),
           },
@@ -286,10 +275,6 @@ export const router = createBrowserRouter([
           {
             path: 'lots',
             element: withSuspense(LotsPage),
-          },
-          {
-            path: 'owner-warehouse-access',
-            element: withSuspense(OwnerWarehouseAccessPage),
           },
           {
             path: 'item-incompatibilities',
